@@ -1,0 +1,2337 @@
+import SwiftUI
+import UIKit
+import Combine
+
+/**
+ * 全屏沉浸式帖子详情视图
+ * 提供沉浸式阅读和评论体验，支持多种手势导航和状态反馈
+ */
+struct FullscreenPostDetailView: View {
+    // 帖子数据
+    let post: UserPostModel
+    
+    // 上下文数据
+    var currentIndex: Int? = nil
+    var totalCount: Int? = nil
+    
+    // 回调函数
+    var onDismiss: () -> Void = {}
+    var onNextPost: (() -> Void)? = nil
+    var onPreviousPost: (() -> Void)? = nil
+    var onLikeComment: ((UserPostModel, UserCommentModel) -> Void)? = nil
+    var onAddComment: ((UserPostModel, String, UUID?) -> Void)? = nil
+    
+    // 添加评论回复和点赞的处理函数
+    var onReply: ((UserCommentModel) -> Void)? = nil
+    var onLike: ((UserCommentModel) -> Void)? = nil
+    
+    // 状态管理
+    @Environment(\.presentationMode) private var presentationMode
+    @ObservedObject private var tabBarManager = TabBarManager.shared
+    @State private var showShareSheet = false
+    @State private var commentText: String = ""
+    @State private var replyingTo: UserCommentModel? = nil
+    @State private var scrollOffset: CGFloat = 0
+    @State private var showNavBar: Bool = true
+    @State private var isKeyboardVisible: Bool = false
+    @State private var isFullImmersiveMode: Bool = false
+    @State private var showEmojiPicker: Bool = false
+    @State private var dragOffset: CGSize = .zero
+    @State private var showEdgePreview: Bool = false
+    @State private var showGestureTip: Bool = true
+    @State private var scrollToCommentSection: Bool = false
+    @State private var navBarOpacity: CGFloat = 0.0
+    
+    // 添加一个用于跟踪已点赞评论的集合
+    @State private var likedComments: Set<UUID> = []
+    
+    // 添加过渡动画状态
+    @State private var transitionState: TransitionState = .none
+    
+    // 触觉反馈
+    private let feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
+    
+    // 过渡状态枚举
+    private enum TransitionState {
+        case none
+        case transitioning(direction: TransitionDirection, targetPost: UserPostModel)
+        case dismissing
+        
+        enum TransitionDirection {
+            case left, right
+        }
+    }
+    
+    // 获取设备颜色模式
+    @Environment(\.colorScheme) var colorScheme
+    
+    // 滚动位置检测器
+    private var scrollPositionDetector: some View {
+        GeometryReader { innerGeometry in
+            Color.clear.preference(
+                key: ScrollOffsetPreferenceKey.self,
+                value: innerGeometry.frame(in: .named("scrollView")).minY
+            )
+        }
+        .frame(height: 0)
+    }
+    
+    // 导航手势
+    private var navigationGesture: some Gesture {
+        DragGesture(minimumDistance: 20, coordinateSpace: .global)
+            .onChanged { value in
+                handleDragGestureChange(value)
+            }
+            .onEnded { value in
+                handleDragGestureEnd(value)
+            }
+    }
+    
+    // 手势提示覆盖层
+    private var gestureHintOverlay: some View {
+        Group {
+            if showGestureTip {
+                VStack {
+                    Spacer()
+                    
+                    HStack(spacing: 24) {
+                        if onPreviousPost != nil && onNextPost != nil {
+                            // 如果有上一条和下一条，显示左右滑动切换提示
+                            Label("左右滑动切换", systemImage: "arrow.left.and.right")
+                        } else if onPreviousPost == nil && onNextPost != nil {
+                            // 如果是第一条，只显示向左滑动查看下一条
+                            Label("向左滑动查看下一条", systemImage: "arrow.right")
+                        } else if onPreviousPost != nil && onNextPost == nil {
+                            // 如果是最后一条，只显示向右滑动查看上一条
+                            Label("向右滑动查看上一条", systemImage: "arrow.left")
+                        } else {
+                            // 否则只显示右滑关闭提示
+                            Label("右滑关闭", systemImage: "chevron.backward")
+                        }
+                        
+                        Label("双击全屏", systemImage: "arrow.up.left.and.arrow.down.right")
+                    }
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.7))
+                    .foregroundColor(.white)
+                    .cornerRadius(20)
+                    .padding(.bottom, 40)
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showGestureTip)
+    }
+    
+    // 边缘预览指示器覆盖层
+    private var edgePreviewOverlay: some View {
+        Group {
+            if showEdgePreview {
+                HStack {
+                    if dragOffset.width > 0 {
+                        if onPreviousPost != nil {
+                            // 右滑预览指示 - 上一条
+                            HStack {
+                                Image(systemName: "chevron.left")
+                                Text("上一条")
+                            }
+                            .transition(.opacity)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Material.ultraThinMaterial)
+                            .cornerRadius(20)
+                            .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                            .padding(.leading, 20)
+                        } else {
+                            // 右滑关闭指示
+                            HStack {
+                                Image(systemName: "xmark.circle")
+                                Text("关闭")
+                            }
+                            .transition(.opacity)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Material.ultraThinMaterial)
+                            .cornerRadius(20)
+                            .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                            .padding(.leading, 20)
+                        }
+                        
+                        Spacer()
+                    } else if dragOffset.width < 0 && onNextPost != nil {
+                        // 左滑预览指示 - 只有在有下一篇帖子时才显示
+                        Spacer()
+                        
+                        HStack {
+                            Text("下一条")
+                            Image(systemName: "chevron.right")
+                        }
+                        .transition(.opacity)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Material.ultraThinMaterial)
+                        .cornerRadius(20)
+                        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                        .padding(.trailing, 20)
+                    } else if dragOffset.width < 0 && onNextPost == nil {
+                        // 已经是最后一篇帖子，显示提示
+                        Spacer()
+                        
+                        HStack {
+                            Text("已是最后一条")
+                            Image(systemName: "exclamationmark.circle")
+                        }
+                        .transition(.opacity)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Material.ultraThinMaterial)
+                        .cornerRadius(20)
+                        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                        .padding(.trailing, 20)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 100)
+            }
+        }
+    }
+    
+    // 优化文本布局的辅助方法
+    private func enhanceTextLayout(_ text: String) -> String {
+        // 添加适当的段落分隔，增强可读性
+        // 实际应用中这里可以处理换行、段落等格式化
+        return text
+    }
+    
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // 背景 - 使用系统背景色而非固定色
+            DesignSystem.Colors.background
+                .edgesIgnoringSafeArea(.all)
+            
+            // 主内容区域
+            GeometryReader { outerGeometry in
+                if isFullImmersiveMode {
+                    // 全屏模式内容 - 保持现有实现
+                    FullscreenContentView(
+                        post: post,
+                        scrollOffset: $scrollOffset,
+                        scrollToCommentSection: $scrollToCommentSection,
+                        dragOffset: $dragOffset,
+                        contentOpacity: contentOpacity,
+                        onLike: { comment in
+                            self.onLike?(comment)
+                            onLikeComment?(post, comment)
+                        },
+                        onReply: { comment in
+                            self.onReply?(comment)
+                            self.replyingTo = comment
+                            if isFullImmersiveMode {
+                                isFullImmersiveMode = false
+                            }
+                        },
+                        onTapGesture: handleDoubleTap,
+                        isFullImmersiveMode: $isFullImmersiveMode,
+                        replyingTo: $replyingTo
+                    )
+                    .edgesIgnoringSafeArea(.all)
+                    .gesture(navigationGesture)
+                    .overlay(gestureHintOverlay)
+                    .overlay(edgePreviewOverlay)
+                } else {
+                    // 常规模式内容 - 优化设计
+                    VStack(spacing: 0) {
+                        // 自定义导航栏 - 现代化轻量设计
+                        ZStack {
+                            // 背景 - 使用更平滑的过渡效果
+                            Rectangle()
+                                .fill(Material.ultraThinMaterial.opacity(min(0.95, max(0.4, scrollOffset / 350))))
+                                .shadow(color: Color.black.opacity(scrollOffset > 50 ? 0.03 : 0), radius: 3, x: 0, y: 1)
+                            
+                            // 导航栏内容
+                            HStack(spacing: 16) {
+                                // 返回按钮 - 扁平化设计
+                                Button(action: { dismiss() }) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Material.ultraThinMaterial)
+                                            .frame(width: 34, height: 34)
+                                        
+                                        Image(systemName: "chevron.left")
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                                .contentShape(Circle())
+                            
+                            Spacer()
+                            
+                                // 标题区域 - 更现代的设计
+                                if let current = currentIndex, let total = totalCount {
+                                    // 帖子计数显示
+                                    Text("\(current)/\(total)")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(Color.primary.opacity(0.75))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 3)
+                                        .background(
+                                            Capsule()
+                                                .fill(Material.ultraThinMaterial)
+                                                .opacity(scrollOffset > 20 ? 1.0 : 0.5)
+                                        )
+                                        .animation(.easeOut(duration: 0.2), value: scrollOffset)
+                                } else {
+                                    // 标题文本
+                                    Text("动态详情")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(Color.primary)
+                                        .opacity(scrollOffset > 30 ? 1.0 : 0.0)
+                                        .animation(.easeOut(duration: 0.25), value: scrollOffset > 30)
+                                }
+                            
+                            Spacer()
+                            
+                                // 分享按钮 - 更简洁的设计
+                                Button(action: {
+                                    // 使用showShareSheet状态变量
+                                    showShareSheet = true
+                                    
+                                    let localFeedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+                                    localFeedbackGenerator.impactOccurred(intensity: 0.5)
+                                }) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Material.ultraThinMaterial)
+                                            .frame(width: 34, height: 34)
+                                        
+                                        Image(systemName: "square.and.arrow.up")
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                                .contentShape(Circle())
+                        }
+                        .padding(.horizontal, 16)
+                            .frame(height: 48) // 略微减小高度
+                        }
+                        .frame(height: 48) // 保持一致的高度
+                        .opacity(showNavBar ? 1 : 0)
+                        .animation(.easeInOut(duration: 0.2), value: showNavBar)
+                        // 添加系统分享表单
+                        .sheet(isPresented: $showShareSheet) {
+                            if #available(iOS 16.0, *) {
+                                ShareSheet(activityItems: [post.content])
+                                    .presentationDetents([.medium, .large])
+                            } else {
+                                ShareSheet(activityItems: [post.content])
+                            }
+                        }
+                        
+                        // 主内容区域 - 为评论输入栏增加适当的底部边距
+                        mainContentArea
+                            .padding(.bottom, 45)
+                    }
+                }
+            }
+            
+            // 评论输入框 - 仅在非全屏模式下显示
+            if !isFullImmersiveMode {
+                CommentInputBar(
+                    commentText: $commentText,
+                    replyingTo: $replyingTo,
+                    onSendComment: { comment in
+                        addComment(content: comment, replyToID: replyingTo?.id)
+                        replyingTo = nil
+                    }
+                )
+                .shadow(color: Color.black.opacity(0.04), radius: 2, y: -1) // 减轻阴影效果，使其更精细
+                .onChange(of: replyingTo) { newValue in
+                    // 当replyingTo更改时，更新输入框的聚焦状态
+                    if newValue != nil {
+                        scrollToCommentSection = true
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            NotificationCenter.default.post(
+                                name: Notification.Name("FocusCommentInput"),
+                                object: nil
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .statusBar(hidden: isFullImmersiveMode)
+        .ignoresSafeArea(.all, edges: .all)
+        .onAppear {
+            // 隐藏TabBar
+            tabBarManager.completelyHide()
+            
+            // 强制隐藏 Home Indicator 以增强沉浸感
+            tabBarManager.setHomeIndicatorAutoHidden(true)
+            
+            // 额外设置
+            DispatchQueue.main.async {
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first,
+                   let rootViewController = window.rootViewController {
+                    let _ = rootViewController.children.map { viewController in
+                        viewController.setNeedsUpdateOfHomeIndicatorAutoHidden()
+                        viewController.setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
+                    }
+                    
+                    window.layoutIfNeeded()
+                }
+            }
+            
+            setupOnAppear()
+            
+            // 配置ScrollView
+            UIScrollView.appearance().contentInsetAdjustmentBehavior = .never
+            UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = false
+            
+            // 手动获取UIWindow并禁用安全区域
+            DispatchQueue.main.async {
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first {
+                    disableSafeAreaInViewHierarchy(window)
+                }
+            }
+        }
+        .onDisappear {
+            // 恢复TabBar显示
+            tabBarManager.show()
+            
+            // 恢复Home Indicator显示
+            tabBarManager.setHomeIndicatorAutoHidden(false)
+            
+            // 还原ScrollView默认设置
+            UIScrollView.appearance().contentInsetAdjustmentBehavior = .automatic
+            UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = true
+        }
+        .onChange(of: scrollOffset) { newValue in
+            // 根据滚动位置更新导航栏显示状态
+            withAnimation(.easeOut(duration: 0.2)) {
+                navBarOpacity = min(1.0, scrollOffset / 200)
+            }
+        }
+        .onChange(of: isFullImmersiveMode) { newValue in
+            UIScrollView.appearance().contentInsetAdjustmentBehavior = .never
+            
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshCommentInputLayout"),
+                    object: nil
+                )
+            }
+        }
+    }
+    
+    // MARK: - 子视图组件
+    
+    // 主内容区域 - 优化滚动体验
+    private var mainContentArea: some View {
+        GeometryReader { geometry in
+            ScrollViewReader { scrollProxy in
+                ScrollView {
+                    // 滚动位置检测
+                    scrollPositionDetector
+                    
+                    // 内容区
+                    VStack(spacing: 0) {
+                        // 帖子内容部分
+                        makePostContentSection(for: post)
+                            .id("postContent")
+                        
+                        // 移除灰色分隔线，使用透明间隔代替
+                        Color.clear
+                            .frame(height: 1)
+                        
+                        // 评论区部分
+                        makeCommentsSection(for: post)
+                            .id("comments")
+                        
+                        // 添加小填充区域确保滚动到底部
+                        Color.clear
+                            .frame(height: 1)
+                                
+                        // 添加柔和的分隔线
+                        Rectangle()
+                            .fill(Color(UIColor.separator).opacity(0.2))
+                            .frame(height: 0.5)
+                    }
+                    .opacity(contentOpacity)
+                    .offset(x: getContentOffset())
+                }
+                .background(Color.clear)
+                .onAppear {
+                        UIScrollView.appearance().contentInsetAdjustmentBehavior = .never
+                    
+                    DispatchQueue.main.async {
+                        UIScrollView.appearance().contentInset = .zero
+                        UIScrollView.appearance().verticalScrollIndicatorInsets = .zero
+                    }
+                }
+                .onDisappear {
+                    UIScrollView.appearance().contentInsetAdjustmentBehavior = .automatic
+                }
+                .coordinateSpace(name: "scrollView")
+                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
+                    handleScrollOffsetChange(offset)
+                }
+                .onChange(of: scrollToCommentSection) { newValue in
+                    if newValue {
+                        withAnimation {
+                            scrollProxy.scrollTo("comments", anchor: .top)
+                        }
+                        scrollToCommentSection = false
+                    }
+                }
+                .onChange(of: post.id) { _ in
+                    withAnimation {
+                        scrollProxy.scrollTo("postContent", anchor: .top)
+                    }
+                }
+                .onChange(of: isFullImmersiveMode) { newValue in
+                    UIScrollView.appearance().contentInsetAdjustmentBehavior = .never
+                    
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("RefreshCommentInputLayout"),
+                            object: nil
+                        )
+                    }
+                }
+            }
+        }
+        .gesture(navigationGesture)
+        .onTapGesture(count: 2) {
+            handleDoubleTap()
+        }
+        .overlay(gestureHintOverlay)
+        .overlay(edgePreviewOverlay)
+        .edgesIgnoringSafeArea(.all)
+        .ignoresSafeArea(.all, edges: .all)
+    }
+    
+    // 生成指定帖子的内容区域 - 采用更现代和简洁的设计
+    private func makePostContentSection(for currentPost: UserPostModel) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 用户信息区域 - 超简洁设计
+            HStack(spacing: 12) {
+                // 头像 - 更精致的设计
+                Image(currentPost.userAvatar)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 36, height: 36)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                    )
+                
+                // 用户名和时间 - 更紧凑
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(currentPost.username)
+                        .font(.system(size: 14, weight: .medium))
+                    
+                    Text(currentPost.getFormattedTimeAgo())
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary.opacity(0.8))
+                }
+                
+                Spacer()
+                
+                // 简洁关注按钮
+                Button(action: {
+                    let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+                    feedbackGenerator.impactOccurred(intensity: 0.4)
+                }) {
+                    Text("关注")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(DesignSystem.Colors.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .stroke(DesignSystem.Colors.primary.opacity(0.8), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 10)
+            
+            // 正文内容 - 优化阅读体验
+            Text(currentPost.content)
+                .font(.system(size: 15))
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
+            
+            // 图片内容 - 优化布局和圆角
+            if !currentPost.images.isEmpty {
+                if currentPost.images.count == 1 {
+                    // 单图显示 - 更自然的高度
+                    Image(currentPost.images[0])
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxHeight: 230)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 10)
+                } else {
+                    // 多图网格 - 更紧凑的布局
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                        ForEach(currentPost.images, id: \.self) { image in
+                            Image(image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(height: 150)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+                }
+            }
+            
+            // 互动按钮区 - 现代化设计
+            HStack(spacing: 20) {
+                // 点赞按钮 - 视觉效果增强
+        Button(action: {
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred(intensity: 0.4)
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: currentPost.isLikedByCurrentUser ? "heart.fill" : "heart")
+                            .font(.system(size: 16))
+                            .foregroundColor(currentPost.isLikedByCurrentUser ? .red : .secondary)
+                        
+                        Text("\(currentPost.likes)")
+                            .font(.system(size: 13))
+                            .foregroundColor(currentPost.isLikedByCurrentUser ? .red.opacity(0.8) : .secondary)
+                    }
+                }
+                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                
+                // 评论按钮 - 改进交互
+                Button(action: {
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred(intensity: 0.4)
+                    scrollToCommentSection = true
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "bubble.left")
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                        
+                        Text("\(currentPost.comments.count)")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                
+                // 收藏按钮 - 增强视觉效果
+                Button(action: {
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred(intensity: 0.4)
+                }) {
+                    Image(systemName: currentPost.isBookmarkedByCurrentUser ? "bookmark.fill" : "bookmark")
+                        .font(.system(size: 15))
+                        .foregroundColor(currentPost.isBookmarkedByCurrentUser ? DesignSystem.Colors.primary : .secondary)
+                }
+                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                
+                    Spacer()
+                    
+                // 分享按钮 - 使用状态变量
+                Button(action: {
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred(intensity: 0.4)
+                    showShareSheet = true
+                }) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+            }
+                    .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+            
+            // 更细的分隔线
+            Divider()
+                            .padding(.horizontal, 16)
+                .opacity(0.6)
+        }
+        .background(Color(UIColor.systemBackground))
+    }
+    
+    // 生成指定帖子的评论区域 - 简洁风格
+    private func makeCommentsSection(for currentPost: UserPostModel) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 评论区标题 - 更现代的设计
+            HStack {
+                Text("评论")
+                    .font(.system(size: 15, weight: .medium))
+                
+                Text("(\(currentPost.comments.count))")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                        
+                        Spacer()
+                
+                // 排序按钮 - 更轻量的设计
+                Button(action: {}) {
+                    HStack(spacing: 4) {
+                        Text("最新")
+                            .font(.system(size: 13))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.secondary.opacity(0.05))
+                    .cornerRadius(12)
+                }
+            }
+                        .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            
+            // 细线分隔符
+            Rectangle()
+                .fill(Color.gray.opacity(0.08))
+                .frame(height: 1)
+                .padding(.horizontal, 16)
+            
+            // 评论列表
+            if currentPost.comments.isEmpty {
+                // 无评论状态 - 更友好的空状态
+                VStack(spacing: 10) {
+                    // 空状态图标
+                    ZStack {
+                        Circle()
+                            .fill(Color.gray.opacity(0.05))
+                            .frame(width: 50, height: 50)
+                        
+                        Image(systemName: "bubble.left")
+                            .font(.system(size: 20))
+                            .foregroundColor(.secondary.opacity(0.4))
+                    }
+                    .padding(.bottom, 4)
+                    
+                    // 空状态文字
+                    Text("还没有人发表评论")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.primary.opacity(0.8))
+                    
+                    Text("来做第一个评论的人吧")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary.opacity(0.8))
+                        .padding(.top, 2)
+                    
+                    // 添加评论按钮
+                    Button(action: {
+                        // 触发评论框焦点
+                        NotificationCenter.default.post(
+                            name: Notification.Name("FocusCommentInput"),
+                            object: nil
+                        )
+                    }) {
+                        Text("写评论")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                            .padding(.vertical, 6)
+                            .background(DesignSystem.Colors.primary)
+                            .cornerRadius(14)
+                    }
+                    .buttonStyle(ScaleButtonStyle())
+                    .padding(.top, 8)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 25)
+            } else {
+                // 有评论时显示列表 - 更现代的设计
+                ForEach(currentPost.comments) { comment in
+                    CommentCell(
+                        comment: comment,
+                        isLiked: likedComments.contains(comment.id),
+                        onLike: {
+                            onLike?(comment)
+                        },
+                        onReply: {
+                            self.replyingTo = comment
+                        }
+                    )
+                }
+            }
+        }
+        .background(Color(UIColor.systemBackground))
+    }
+    
+    // MARK: - 事件处理方法
+    
+    // 处理滚动偏移变化
+    private func handleScrollOffsetChange(_ offset: CGFloat) {
+        withAnimation(.easeOut) {
+            scrollOffset = -offset
+            
+            // 向下滚动时隐藏导航栏
+            if scrollOffset > 20 && offset < 0 {
+                showNavBar = false
+            } else if offset > 0 || scrollOffset < 10 {
+                // 回到顶部或微小滚动时显示导航栏
+                showNavBar = true
+            }
+        }
+    }
+    
+    // 初始设置
+    private func setupOnAppear() {
+        // 准备触觉反馈
+        feedbackGenerator.prepare()
+        
+        // 重置评论框状态
+        commentText = ""
+        replyingTo = nil
+        
+        // 设置初始滚动位置
+        scrollOffset = 0
+        
+        // 显示手势提示，然后自动隐藏
+        showGestureTip = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            withAnimation {
+                showGestureTip = false
+            }
+        }
+        
+        // 确保在初始化时输入框可见
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // 发送布局刷新通知
+            NotificationCenter.default.post(
+                name: NSNotification.Name("RefreshCommentInputLayout"),
+                object: nil
+            )
+        }
+    }
+    
+    // 处理双击
+    private func handleDoubleTap() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            isFullImmersiveMode.toggle()
+            
+            // 全屏模式时需要立即隐藏状态栏及底部安全区域
+            if isFullImmersiveMode {
+                // 更改ScrollView的contentInsetAdjustmentBehavior以忽略安全区域
+                UIScrollView.appearance().contentInsetAdjustmentBehavior = .never
+            } else {
+                // 恢复默认行为
+                UIScrollView.appearance().contentInsetAdjustmentBehavior = .automatic
+            }
+        }
+        
+        // 触觉反馈
+        let feedbackType: UIImpactFeedbackGenerator.FeedbackStyle = isFullImmersiveMode ? .rigid : .light
+        let feedback = UIImpactFeedbackGenerator(style: feedbackType)
+        feedback.impactOccurred()
+    }
+    
+    // 处理拖动手势变化
+    private func handleDragGestureChange(_ value: DragGesture.Value) {
+        // 计算拖动的方向和距离
+        dragOffset = value.translation
+        
+        // 仅在水平拖动时显示边缘预览
+        if abs(dragOffset.width) > abs(dragOffset.height) && abs(dragOffset.width) > 50 {
+            if !showEdgePreview {
+                showEdgePreview = true
+                
+                // 轻微触觉反馈
+                let lighterFeedback = UIImpactFeedbackGenerator(style: .light)
+                lighterFeedback.impactOccurred(intensity: 0.5)
+            }
+        } else {
+            showEdgePreview = false
+        }
+    }
+    
+    // 处理拖动手势结束
+    private func handleDragGestureEnd(_ value: DragGesture.Value) {
+        let translation = value.translation
+        let velocity = value.predictedEndTranslation.width - translation.width
+        
+        // 如果拖动不够，或者垂直拖动大于水平拖动，则复位
+        if abs(translation.width) < 60 && abs(velocity) < 300 || abs(translation.width) < abs(translation.height) {
+            // 复位动画
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                dragOffset = .zero
+                showEdgePreview = false
+            }
+            return
+        }
+        
+        // 触觉反馈
+        let feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
+        feedbackGenerator.impactOccurred()
+        
+        // 存储导航动作
+        var targetPostAction: (() -> Void)? = nil
+        
+        if translation.width > 0 {
+            // 向右滑动查看上一篇帖子或关闭
+            // 如果没有显示任何上一篇帖子的回调，则关闭视图
+            if onPreviousPost == nil {
+                // 关闭当前视图
+                onDismiss()
+                return
+            }
+            
+            if let previousPostCallback = onPreviousPost {
+                // 从父视图获取上一篇
+                targetPostAction = previousPostCallback
+            } else {
+                return // 无上一篇
+            }
+        } else {
+            // 向左滑动查看下一篇帖子
+            if let nextPostCallback = onNextPost {
+                // 从父视图获取下一篇
+                targetPostAction = nextPostCallback
+            } else {
+                return // 无下一篇
+            }
+        }
+        
+        // 执行目标帖子变更（在父视图中切换到上一篇/下一篇）
+        targetPostAction?()
+        
+        // 动画滑动到新位置
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            dragOffset = .zero
+        }
+        
+        // 动画完成后重置状态
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            self.scrollOffset = 0
+            self.showEdgePreview = false
+        }
+    }
+    
+    // 关闭视图
+    private func dismiss() {
+        // 触发关闭回调
+        onDismiss()
+    }
+    
+    // 发送评论
+    private func handleSendComment() {
+        let trimmedText = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedText.isEmpty else { return }
+        
+        // 触发评论回调
+        onAddComment?(post, trimmedText, replyingTo?.id)
+        
+        // 触觉反馈 - 使用成功类型
+        let feedback = UINotificationFeedbackGenerator()
+        feedback.notificationOccurred(.success)
+        
+        // 清空输入
+        commentText = ""
+        // 重置回复状态
+        replyingTo = nil
+        // 关闭表情选择器
+        showEmojiPicker = false
+    }
+    
+    // 计算内容偏移量 - 用于滑动切换动画
+    private func getContentOffset() -> CGFloat {
+        return dragOffset.width
+    }
+    
+    // 当前应显示的帖子 - 根据过渡状态决定显示内容
+    private var currentDisplayPost: UserPostModel {
+        // 默认显示当前帖子
+        return post
+    }
+    
+    // 评论栏透明度 - 根据状态决定是否显示
+    private var commentBarOpacity: Double {
+        // 全屏模式下，隐藏评论栏
+        if isFullImmersiveMode {
+            return 0
+        }
+        
+        // 拖动时，也隐藏评论栏
+        if abs(dragOffset.width) > 20 {
+            return 0
+        }
+        
+        // 默认显示
+        return 1
+    }
+    
+    // 内容透明度 - 用于切换动画
+    private var contentOpacity: Double {
+        // 在拖动切换时，根据拖动距离动态调整透明度
+        if abs(dragOffset.width) > 0 {
+            // 最多降低到0.7
+            return max(1.0 - Double(abs(dragOffset.width)) / 500.0, 0.7)
+        }
+        return 1
+    }
+    
+    // MARK: - 新增的安全区域处理方法
+    
+    /**
+     * 递归禁用视图层级中的安全区域
+     */
+    private func disableSafeAreaInViewHierarchy(_ view: UIView) {
+        if let scrollView = view as? UIScrollView {
+            scrollView.contentInsetAdjustmentBehavior = .never
+        }
+        
+        for subview in view.subviews {
+            disableSafeAreaInViewHierarchy(subview)
+        }
+    }
+    
+    // 判断是否为系统图片名称
+    private func isSystemImageName(_ name: String) -> Bool {
+        // 系统图片名称通常不包含文件扩展名或路径分隔符
+        return !name.contains(".") && !name.contains("/")
+    }
+    
+    /**
+     * 格式化日期为相对时间描述
+     * @param from - 要格式化的日期
+     * @return 格式化后的时间字符串，如"3小时前"
+     */
+    private func getFormattedDate(from date: Date) -> String {
+        let now = Date()
+        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date, to: now)
+        
+        if let year = components.year, year > 0 {
+            return "\(year)年前"
+        } else if let month = components.month, month > 0 {
+            return "\(month)个月前"
+        } else if let day = components.day, day > 0 {
+            return "\(day)天前"
+        } else if let hour = components.hour, hour > 0 {
+            return "\(hour)小时前"
+        } else if let minute = components.minute, minute > 0 {
+            return "\(minute)分钟前"
+        } else {
+            return "刚刚"
+        }
+    }
+    
+    // MARK: - 处理评论相关功能
+    
+    // 添加评论
+    private func addComment(content: String, replyToID: UUID? = nil) {
+        guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        
+        // 创建新评论
+        _ = UserCommentModel(
+            username: "当前用户", // 应替换为实际用户名
+            userAvatar: "current_user_avatar", // 应替换为实际头像
+            content: content,
+            datePosted: Date(),
+            likes: 0,
+            isLikedByCurrentUser: false,
+            isVirtualCharacter: false,
+            characterID: nil
+        )
+        
+        // 使用post的addComment方法创建新的post对象
+        if let onAddCommentHandler = onAddComment {
+            onAddCommentHandler(post, content, replyToID)
+        }
+        
+        // 添加成功后给予触觉反馈
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+    }
+}
+
+/**
+ * 滚动偏移量首选项键
+ */
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+/**
+ * 水平滑动模态呈现修饰符
+ * 用于替换默认的从下往上的模态呈现方式
+ */
+struct PostDetailHorizontalModalTransition: ViewModifier {
+    let isPresented: Binding<Bool>
+    let onDismiss: (() -> Void)?
+    let content: () -> AnyView
+    let direction: ModalDirection
+    
+    enum ModalDirection {
+        case fromRight
+        case fromLeft
+    }
+    
+    @State private var internalIsPresented = false
+    @State private var slideInPosition = CGSize.zero
+    
+    init<V: View>(isPresented: Binding<Bool>, direction: ModalDirection = .fromRight, onDismiss: (() -> Void)? = nil, @ViewBuilder content: @escaping () -> V) {
+        self.isPresented = isPresented
+        self.onDismiss = onDismiss
+        self.content = { AnyView(content()) }
+        self.direction = direction
+    }
+    
+    func body(content: Content) -> some View {
+        ZStack {
+            content
+                .onChange(of: isPresented.wrappedValue) { newValue in
+                    if newValue && !internalIsPresented {
+                        // 根据方向从侧面滑入
+                        let screenWidth = UIScreen.main.bounds.width
+                        slideInPosition = CGSize(
+                            width: direction == .fromRight ? screenWidth : -screenWidth, 
+                            height: 0
+                        )
+                        withAnimation(.linear(duration: 0.01)) {
+                            internalIsPresented = true
+                        }
+                        
+                        // 在下一帧执行滑入动画
+                        DispatchQueue.main.async {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                slideInPosition = .zero
+                            }
+                        }
+                    } else if !newValue && internalIsPresented {
+                        // 向侧面滑出
+                        let screenWidth = UIScreen.main.bounds.width
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            slideInPosition = CGSize(
+                                width: direction == .fromRight ? screenWidth : -screenWidth, 
+                                height: 0
+                            )
+                        }
+                        
+                        // 动画完成后关闭
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                            internalIsPresented = false
+                            onDismiss?()
+                        }
+                    }
+                }
+            
+            if internalIsPresented {
+                self.content()
+                    .edgesIgnoringSafeArea(.all)
+                    .offset(x: slideInPosition.width, y: 0)
+                    .transition(.identity)
+                    .zIndex(999)
+            }
+        }
+    }
+}
+
+// 扩展 View 以添加自定义模态呈现修饰符
+extension View {
+    func postDetailHorizontalModal<Content: View>(
+        isPresented: Binding<Bool>,
+        direction: PostDetailHorizontalModalTransition.ModalDirection = .fromRight,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        modifier(PostDetailHorizontalModalTransition(isPresented: isPresented, direction: direction, onDismiss: onDismiss, content: content))
+    }
+}
+
+/**
+ * 预览
+ */
+struct FullscreenPostDetailView_Previews: PreviewProvider {
+    static var previews: some View {
+        FullscreenPostDetailView(
+            post: UserPostModel.samplePosts[0],
+            currentIndex: 1,
+            totalCount: 5,
+            onLikeComment: { _, _ in },
+            onAddComment: { _, _, _ in }
+        )
+    }
+}
+
+/**
+ * 全屏内容视图 - 使用UIKit实现真正的全屏效果
+ * 完全绕过SwiftUI的安全区域限制
+ */
+struct FullscreenContentView: UIViewControllerRepresentable {
+    let post: UserPostModel
+    @Binding var scrollOffset: CGFloat
+    @Binding var scrollToCommentSection: Bool
+    @Binding var dragOffset: CGSize
+    let contentOpacity: Double
+    let onLike: (UserCommentModel) -> Void
+    let onReply: (UserCommentModel) -> Void
+    let onTapGesture: () -> Void
+    
+    // 添加isFullImmersiveMode绑定变量
+    @Binding var isFullImmersiveMode: Bool
+    
+    // 添加replyingTo绑定属性
+    @Binding var replyingTo: UserCommentModel?
+    
+    func makeUIViewController(context: Context) -> UIHostingController<FullscreenContent> {
+        let hostingController = UIHostingController(
+            rootView: FullscreenContent(
+                post: post,
+                scrollOffset: $scrollOffset,
+                scrollToCommentSection: $scrollToCommentSection,
+                dragOffset: $dragOffset,
+                contentOpacity: contentOpacity,
+                onLike: { comment in
+                    self.onLike(comment)
+                },
+                onReply: { comment in
+                    self.onReply(comment)
+                },
+                onTapGesture: onTapGesture,
+                isFullImmersiveMode: $isFullImmersiveMode,
+                replyingTo: $replyingTo
+            )
+        )
+        
+        // 关键设置：禁用安全区域调整
+        hostingController.view.backgroundColor = .clear
+        
+        // 使用我们之前创建的扩展彻底禁用安全区域
+        hostingController.disableSafeAreaEnhanced()
+        
+        // 额外的设置，确保内容延伸到边缘
+        hostingController.additionalSafeAreaInsets = .zero
+
+        // 设置 Home Indicator 自动隐藏 - 提高沉浸感
+        hostingController.setupPrefersHomeIndicatorAutoHidden() // 首先设置子类化
+        hostingController.enableHomeIndicatorAutoHiding() // 然后启用自动隐藏
+        
+        // 更新获取window的方式，兼容iOS 15+
+        if #available(iOS 15.0, *) {
+            // 使用UIWindowScene.windows
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first {
+                // 获取最底层的ViewController，确保它不受安全区域限制
+                if var topController = window.rootViewController {
+                    while let presentedViewController = topController.presentedViewController {
+                        topController = presentedViewController
+                    }
+                    // 将禁用安全区域的设置应用到顶层控制器
+                    topController.additionalSafeAreaInsets = .zero
+                    topController.view.insetsLayoutMarginsFromSafeArea = false
+                }
+            }
+        } else {
+            // iOS 15以下使用旧API
+            if let window = UIApplication.shared.windows.first {
+                // 获取最底层的ViewController，确保它不受安全区域限制
+                if var topController = window.rootViewController {
+                    while let presentedViewController = topController.presentedViewController {
+                        topController = presentedViewController
+                    }
+                    // 将禁用安全区域的设置应用到顶层控制器
+                    topController.additionalSafeAreaInsets = .zero
+                    topController.view.insetsLayoutMarginsFromSafeArea = false
+                }
+            }
+        }
+        
+        return hostingController
+    }
+    
+    func updateUIViewController(_ uiViewController: UIHostingController<FullscreenContent>, context: Context) {
+        uiViewController.rootView = FullscreenContent(
+            post: post,
+            scrollOffset: $scrollOffset,
+            scrollToCommentSection: $scrollToCommentSection,
+            dragOffset: $dragOffset,
+            contentOpacity: contentOpacity,
+            onLike: { comment in
+                self.onLike(comment)
+            },
+            onReply: { comment in
+                self.onReply(comment)
+            },
+            onTapGesture: onTapGesture,
+            isFullImmersiveMode: $isFullImmersiveMode,
+            replyingTo: $replyingTo
+        )
+        
+        // 确保每次更新都应用设置
+        uiViewController.disableSafeAreaEnhanced()
+    }
+    
+    // 内部内容视图 - 复用现有视图内容
+    struct FullscreenContent: View {
+        let post: UserPostModel
+        @Binding var scrollOffset: CGFloat
+        @Binding var scrollToCommentSection: Bool
+        @Binding var dragOffset: CGSize
+        let contentOpacity: Double
+        let onLike: ((UserCommentModel) -> Void)?
+        let onReply: ((UserCommentModel) -> Void)?
+        let onTapGesture: () -> Void
+        
+        // 添加isFullImmersiveMode绑定变量
+        @Binding var isFullImmersiveMode: Bool
+        
+        // 添加replyingTo绑定属性
+        @Binding var replyingTo: UserCommentModel?
+        
+        // 添加likedComments状态变量
+        @State private var likedComments: Set<UUID> = []
+        // 添加分享表单状态变量
+        @State private var showShareSheet: Bool = false
+        
+        // 获取设备颜色模式
+        @Environment(\.colorScheme) var colorScheme
+        
+        var body: some View {
+            GeometryReader { geometry in
+                ScrollViewReader { scrollProxy in
+                    ScrollView {
+                        // 滚动位置检测
+                        scrollPositionDetector
+                        
+                        // 内容区
+                        VStack(spacing: 0) {
+                            // 帖子内容部分
+                            makePostContentSection(for: post)
+                                .id("postContent")
+                            
+                            // 移除灰色分隔线，使用透明间隔代替
+                            Color.clear
+                                .frame(height: 1)
+                            
+                            // 评论区部分
+                            makeCommentsSection(for: post)
+                                .id("comments")
+                                
+                            // 额外添加一个超小的填充区域，以确保ScrollView完全滚动到底部
+                            Color.clear
+                                .frame(height: 1)
+                                
+                            // 添加柔和的分隔线
+                            Rectangle()
+                                .fill(Color(UIColor.separator).opacity(0.2))
+                                .frame(height: 0.5)
+                        }
+                        .opacity(contentOpacity)
+                        .offset(x: dragOffset.width)
+                        .onTapGesture(count: 2) {
+                            onTapGesture()
+                        }
+                    }
+                    // 使用这些修饰符确保滚动视图真正全屏
+                    .ignoresSafeArea(.all)
+                    .edgesIgnoringSafeArea(.all)
+                    .padding(.bottom, 0) // 确保没有底部内边距
+                    .padding(.top, 0) // 确保没有顶部内边距
+                    .background(Color.clear) // 使用透明背景代替白色
+                    .coordinateSpace(name: "scrollView")
+                    .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
+                        withAnimation(.easeOut) {
+                            scrollOffset = -offset
+                        }
+                    }
+                    .onChange(of: scrollToCommentSection) { newValue in
+                        if newValue {
+                            withAnimation {
+                                scrollProxy.scrollTo("comments", anchor: .top)
+                            }
+                            scrollToCommentSection = false
+                        }
+                    }
+                }
+            }
+            // 确保所有边缘都被忽略
+            .ignoresSafeArea(edges: .all)
+        }
+        
+        // 滚动位置检测器
+        private var scrollPositionDetector: some View {
+            GeometryReader { innerGeometry in
+                Color.clear.preference(
+                    key: ScrollOffsetPreferenceKey.self,
+                    value: innerGeometry.frame(in: .named("scrollView")).minY
+                )
+            }
+            .frame(height: 0)
+        }
+        
+        // 生成指定帖子的内容区域 (复用现有实现)
+        private func makePostContentSection(for currentPost: UserPostModel) -> some View {
+            VStack(alignment: .leading, spacing: 0) {
+                // 用户信息区域 - 超简洁设计
+                HStack(spacing: 12) {
+                    // 头像 - 更精致的设计
+                    Image(currentPost.userAvatar)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 36, height: 36)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                        )
+                    
+                    // 用户名和时间 - 更紧凑
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(currentPost.username)
+                            .font(.system(size: 14, weight: .medium))
+                        
+                        Text(currentPost.getFormattedTimeAgo())
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary.opacity(0.8))
+                    }
+                    
+                    Spacer()
+                    
+                    // 简洁关注按钮
+                    Button(action: {
+                        let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+                        feedbackGenerator.impactOccurred(intensity: 0.4)
+                    }) {
+                        Text("关注")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(DesignSystem.Colors.primary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 3)
+                            .background(
+                                Capsule()
+                                    .stroke(DesignSystem.Colors.primary.opacity(0.8), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 10)
+                
+                // 正文内容 - 优化阅读体验
+                Text(currentPost.content)
+                    .font(.system(size: 15))
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+                
+                // 图片内容 - 优化布局和圆角
+                if !currentPost.images.isEmpty {
+                    if currentPost.images.count == 1 {
+                        // 单图显示 - 更自然的高度
+                        Image(currentPost.images[0])
+                            .resizable()
+                            .scaledToFill()
+                            .frame(maxHeight: 230)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 10)
+                    } else {
+                        // 多图网格 - 更紧凑的布局
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                        ForEach(currentPost.images, id: \.self) { image in
+                            Image(image)
+                                .resizable()
+                                .scaledToFill()
+                                    .frame(height: 150)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 10)
+                    }
+                }
+                
+                // 互动按钮区 - 现代化设计
+                HStack(spacing: 20) {
+                    // 点赞按钮 - 视觉效果增强
+                    Button(action: {
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred(intensity: 0.4)
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: currentPost.isLikedByCurrentUser ? "heart.fill" : "heart")
+                                .font(.system(size: 16))
+                                .foregroundColor(currentPost.isLikedByCurrentUser ? .red : .secondary)
+                            
+                            Text("\(currentPost.likes)")
+                                .font(.system(size: 13))
+                                .foregroundColor(currentPost.isLikedByCurrentUser ? .red.opacity(0.8) : .secondary)
+                        }
+                    }
+                    .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                    
+                    // 评论按钮 - 改进交互
+                    Button(action: {
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred(intensity: 0.4)
+                        scrollToCommentSection = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bubble.left")
+                                .font(.system(size: 15))
+                                .foregroundColor(.secondary)
+                            
+                            Text("\(currentPost.comments.count)")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                    
+                    // 收藏按钮 - 增强视觉效果
+                    Button(action: {
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred(intensity: 0.4)
+                    }) {
+                        Image(systemName: currentPost.isBookmarkedByCurrentUser ? "bookmark.fill" : "bookmark")
+                            .font(.system(size: 15))
+                            .foregroundColor(currentPost.isBookmarkedByCurrentUser ? DesignSystem.Colors.primary : .secondary)
+                    }
+                    .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                    
+                    Spacer()
+                    
+                    // 分享按钮 - 使用状态变量
+                    Button(action: {
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred(intensity: 0.4)
+                        showShareSheet = true
+                    }) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+                
+                // 更细的分隔线
+                Divider()
+                    .padding(.horizontal, 16)
+                    .opacity(0.6)
+            }
+            .background(Color(UIColor.systemBackground))
+        }
+        
+        // 生成指定帖子的评论区域 (复用现有实现)
+        private func makeCommentsSection(for currentPost: UserPostModel) -> some View {
+            VStack(alignment: .leading, spacing: 0) {
+                // 评论区标题 - 更现代的设计
+                HStack {
+                    Text("评论")
+                        .font(.system(size: 15, weight: .medium))
+                    
+                    Text("(\(currentPost.comments.count))")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    // 排序按钮 - 更轻量的设计
+                    Button(action: {}) {
+                        HStack(spacing: 4) {
+                            Text("最新")
+                                .font(.system(size: 13))
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10))
+                        }
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.secondary.opacity(0.05))
+                        .cornerRadius(12)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                
+                // 细线分隔符
+                Rectangle()
+                    .fill(Color.gray.opacity(0.08))
+                    .frame(height: 1)
+                    .padding(.horizontal, 16)
+                
+                // 评论列表
+                if currentPost.comments.isEmpty {
+                    // 无评论状态 - 更友好的空状态
+                    VStack(spacing: 10) {
+                        // 空状态图标
+                        ZStack {
+                            Circle()
+                                .fill(Color.gray.opacity(0.05))
+                                .frame(width: 50, height: 50)
+                            
+                        Image(systemName: "bubble.left")
+                                .font(.system(size: 20))
+                                .foregroundColor(.secondary.opacity(0.4))
+                        }
+                        .padding(.bottom, 4)
+                        
+                        // 空状态文字
+                        Text("还没有人发表评论")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.primary.opacity(0.8))
+                        
+                        Text("来做第一个评论的人吧")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary.opacity(0.8))
+                            .padding(.top, 2)
+                        
+                        // 添加评论按钮
+                        Button(action: {
+                            // 触发评论框焦点
+                            NotificationCenter.default.post(
+                                name: Notification.Name("FocusCommentInput"),
+                                object: nil
+                            )
+                        }) {
+                            Text("写评论")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 6)
+                                .background(DesignSystem.Colors.primary)
+                                .cornerRadius(14)
+                        }
+                        .buttonStyle(ScaleButtonStyle())
+                        .padding(.top, 8)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 25)
+                } else {
+                    // 有评论时显示列表 - 更现代的设计
+                    ForEach(currentPost.comments) { comment in
+                        CommentCell(
+                            comment: comment,
+                            isLiked: likedComments.contains(comment.id),
+                            onLike: {
+                                onLike?(comment)
+                            },
+                            onReply: {
+                                self.replyingTo = comment
+                            }
+                        )
+                    }
+                }
+            }
+            .background(Color(UIColor.systemBackground))
+        }
+        
+        // 格式化时间的辅助方法
+        private func getFormattedDate(from date: Date) -> String {
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .short
+            return formatter.localizedString(for: date, relativeTo: Date())
+        }
+    }
+}
+
+/**
+ * 增强评论列表视图
+ * 提供更美观的评论列表显示效果
+ */
+struct EnhancedCommentsListView: View {
+    let comments: [UserCommentModel]
+    let onReply: ((UserCommentModel) -> Void)?
+    let onLike: ((UserCommentModel) -> Void)?
+    let likedComments: Set<UUID>
+    
+    // 将评论分为历史人物评论和用户评论
+    private var historicalComments: [UserCommentModel] {
+        return comments.filter { $0.isVirtualCharacter }
+    }
+    
+    private var userComments: [UserCommentModel] {
+        return comments.filter { !$0.isVirtualCharacter }
+    }
+    
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: 0) {
+            // 评论区标题
+                HStack {
+                Text("评论")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text("(\(comments.count))")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    
+                    Spacer()
+                
+                // 排序选项
+                Menu {
+                    Button(action: {}) {
+                        Label("最新", systemImage: "arrow.up")
+                    }
+                    Button(action: {}) {
+                        Label("热度", systemImage: "flame")
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("最新")
+                            .font(.system(size: 14))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12))
+                    }
+                    .foregroundColor(.secondary)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            
+            // 历史人物评论区 - 如果有历史人物评论则显示
+            if !historicalComments.isEmpty {
+                HistoricalCommentsBlock(
+                    comments: historicalComments,
+                    onReply: onReply,
+                    onLike: onLike,
+                    likedComments: likedComments
+                )
+                
+                Divider()
+                    .padding(.vertical, 8)
+            }
+            
+            // 用户评论区
+            if userComments.isEmpty && historicalComments.isEmpty {
+                // 完全没有评论时显示空状态
+                EmptyCommentsView()
+            } else if !userComments.isEmpty {
+                UserCommentsBlock(
+                    comments: userComments,
+                    onReply: onReply,
+                    onLike: onLike,
+                    likedComments: likedComments
+                )
+            }
+        }
+        // 移除底部的内边距，确保没有额外空间
+        .padding(.bottom, 0)
+    }
+}
+
+/**
+ * 历史人物评论区块
+ * 显示历史人物评论，带有特殊样式
+ */
+private struct HistoricalCommentsBlock: View {
+    let comments: [UserCommentModel]
+    let onReply: ((UserCommentModel) -> Void)?
+    let onLike: ((UserCommentModel) -> Void)?
+    let likedComments: Set<UUID>
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 历史人物标题
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14))
+                    .foregroundColor(DesignSystem.Colors.primary)
+                
+                Text("历史人物见解")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+                
+                if comments.count > 1 {
+                    Text("(\(comments.count))")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(DesignSystem.Colors.primary.opacity(0.03))
+            
+            // 历史人物评论列表
+            ForEach(comments) { comment in
+                HistoricalCommentCell(
+                    comment: comment,
+                    onReply: { 
+                        if let replyAction = onReply {
+                            replyAction(comment)
+                        }
+                    },
+                    onLike: { 
+                        if let likeAction = onLike {
+                            likeAction(comment)
+                        }
+                    },
+                    isLiked: likedComments.contains(comment.id)
+                )
+                
+                if comment.id != comments.last?.id {
+                    Divider()
+                        .padding(.vertical, 2)
+                        .padding(.leading, 56)
+                        .padding(.trailing, 16)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 用户评论区块
+ * 显示普通用户评论
+ */
+private struct UserCommentsBlock: View {
+    let comments: [UserCommentModel]
+    let onReply: ((UserCommentModel) -> Void)?
+    let onLike: ((UserCommentModel) -> Void)?
+    let likedComments: Set<UUID>
+    
+    // 分组评论 - 处理回复关系
+    private var groupedComments: [(parent: UserCommentModel, replies: [UserCommentModel])] {
+        // 这里模拟回复关系，实际项目中需要根据实际数据模型调整
+        // 简单实现：每第三条评论为前一条的回复
+        var result: [(parent: UserCommentModel, replies: [UserCommentModel])] = []
+        var current: [UserCommentModel] = []
+        
+        for (index, comment) in comments.enumerated() {
+            if index % 3 == 0 {
+                // 作为主评论
+                if !current.isEmpty {
+                    if current.count > 1 {
+                        result.append((parent: current[0], replies: Array(current[1...])))
+                } else {
+                        result.append((parent: current[0], replies: []))
+                    }
+                    current = []
+                }
+                current.append(comment)
+            } else {
+                // 作为回复
+                current.append(comment)
+            }
+        }
+        
+        // 处理最后一组
+        if !current.isEmpty {
+            if current.count > 1 {
+                result.append((parent: current[0], replies: Array(current[1...])))
+            } else {
+                result.append((parent: current[0], replies: []))
+            }
+        }
+        
+        return result
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(groupedComments, id: \.parent.id) { group in
+                VStack(alignment: .leading, spacing: 0) {
+                    // 主评论
+                    CommentCell(
+                        comment: group.parent,
+                        isLiked: likedComments.contains(group.parent.id),
+                        onLike: {
+                            if let likeAction = onLike {
+                                likeAction(group.parent)
+                            }
+                        },
+                        onReply: {
+                            if let replyAction = onReply {
+                                replyAction(group.parent)
+                            }
+                        }
+                    )
+                    
+                    // 回复评论
+                    if !group.replies.isEmpty {
+                        ForEach(group.replies) { reply in
+                            Divider()
+                                .padding(.vertical, 1)
+                                .padding(.leading, 56)
+                                .padding(.trailing, 16)
+                            
+                            ReplyCommentCell(
+                                comment: reply,
+                                replyToUsername: group.parent.username,
+                                onReply: { 
+                                    if let replyAction = onReply {
+                                        replyAction(reply)
+                                    }
+                                },
+                                onLike: { 
+                                    if let likeAction = onLike {
+                                        likeAction(reply)
+                                    }
+                                },
+                                isLiked: likedComments.contains(reply.id)
+                            )
+                        }
+                    }
+                }
+                
+                // 组间分隔线
+                if group.parent.id != groupedComments.last?.parent.id {
+                    Divider()
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 4)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 历史人物评论单元格
+ * 显示历史人物评论
+ */
+private struct HistoricalCommentCell: View {
+    let comment: UserCommentModel
+    let onReply: () -> Void
+    let onLike: () -> Void
+    let isLiked: Bool
+    
+    // 获取角色颜色 - 更新颜色值使其与紫色主题协调
+    private var characterColor: Color {
+        switch comment.characterID?.lowercased() {
+        case "einstein": return Color(hex: "5B7AC9") // 软蓝色
+        case "shakespeare": return Color(hex: "8C699E") // 主紫色
+        case "davinci": return Color(hex: "5C9A73") // 柔和绿色
+        case "confucius": return Color(hex: "A77C4D") // 温暖棕色
+        case "curie": return Color(hex: "C25B7A") // 柔和粉色
+        case "libai": return Color(hex: "D07C3C") // 温暖橙色
+        case "newton": return Color(hex: "B94D3F") // 柔和红色
+        case "goku", "naruto": return Color(hex: "E78B30") // 鲜亮橙色
+        case "holmes": return Color(hex: "546E97") // 深蓝色
+        default: return DesignSystem.Colors.primary
+        }
+    }
+    
+    // 获取角色领域
+    private var characterField: String {
+        switch comment.characterID?.lowercased() {
+        case "einstein": return "科学家"
+        case "shakespeare": return "文学家"
+        case "davinci": return "艺术家"
+        case "confucius": return "哲学家"
+        case "curie": return "科学家"
+        case "libai": return "诗人"
+        case "newton": return "物理学家"
+        case "goku", "naruto": return "动漫角色"
+        case "holmes": return "侦探"
+        default: return "历史人物"
+        }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                // 历史人物头像
+                ZStack {
+                    Circle()
+                        .fill(characterColor.opacity(0.15))
+                        .frame(width: 40, height: 40)
+                    
+                    Image(comment.userAvatar)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 36, height: 36)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(characterColor.opacity(0.3), lineWidth: 1.5)
+                        )
+                }
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    // 角色信息
+                    HStack(spacing: 6) {
+                        Text(comment.username)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(DesignSystem.Colors.primaryText)
+                        
+                        // 领域标签
+                        Text(characterField)
+                            .font(.system(size: 11))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(characterColor.opacity(0.12))
+                            .foregroundColor(characterColor)
+                            .cornerRadius(6)
+                    }
+                    
+                    // 评论内容
+                    Text(comment.content)
+                        .font(.system(size: 15))
+                        .lineSpacing(5)
+                        .foregroundColor(DesignSystem.Colors.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 1)
+                    
+                    // 互动区
+                    HStack(spacing: 16) {
+                        // 评论时间
+                        Text(getFormattedTimeAgo(from: comment.datePosted))
+                            .font(.system(size: 12))
+                            .foregroundColor(DesignSystem.Colors.tertiaryText)
+                        
+                        // 认同按钮
+                        Button(action: onLike) {
+                            HStack(spacing: 4) {
+                                Image(systemName: isLiked ? "heart.fill" : "heart")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(isLiked ? DesignSystem.Colors.like : DesignSystem.Colors.tertiaryText)
+                                
+                                Text("\(comment.likes)")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(isLiked ? DesignSystem.Colors.like : DesignSystem.Colors.tertiaryText)
+                            }
+                        }
+                        .buttonStyle(ScaleButtonStyle(scaleAmount: 0.95))
+                        
+                        // 回复按钮
+                        Button(action: onReply) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrowshape.turn.up.left")
+                                    .font(.system(size: 10))
+                                Text("回复")
+                                    .font(.system(size: 12))
+                            }
+                            .foregroundColor(DesignSystem.Colors.secondary)
+                        }
+                        .buttonStyle(ScaleButtonStyle(scaleAmount: 0.95))
+                    }
+                    .padding(.top, 6)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(characterColor.opacity(0.04))
+                    .padding(.horizontal, 8)
+            )
+        }
+    }
+}
+
+/**
+ * 评论单元格 - 更轻量化的设计
+ * 用于显示单个评论项
+ */
+private struct CommentCell: View {
+    let comment: UserCommentModel
+    let isLiked: Bool
+    let onLike: () -> Void
+    let onReply: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 10) {
+                // 头像
+                Image(comment.userAvatar)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 32, height: 32)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                    )
+                
+                VStack(alignment: .leading, spacing: 3) {
+                    // 用户信息行
+                    HStack(alignment: .center, spacing: 6) {
+                        // 用户名
+                        Text(comment.username)
+                            .font(.system(size: 13, weight: .medium))
+                        
+                        // 角色标签 - 如果是历史人物
+                        if comment.isVirtualCharacter {
+                            Text("历史人物")
+                                .font(.system(size: 10))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(DesignSystem.Colors.primary.opacity(0.1))
+                                .foregroundColor(DesignSystem.Colors.primary)
+                                .cornerRadius(4)
+                        }
+                        
+                        Spacer()
+                        
+                        // 评论时间
+                        Text(getFormattedDate(from: comment.datePosted))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary.opacity(0.8))
+                    }
+                    
+                    // 评论内容
+                    Text(comment.content)
+                        .font(.system(size: 14))
+                        .lineSpacing(3)
+                        .padding(.top, 2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    // 互动按钮
+                    HStack(spacing: 14) {
+                        // 点赞按钮
+                        Button(action: onLike) {
+                            HStack(spacing: 3) {
+                                Image(systemName: isLiked ? "heart.fill" : "heart")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(isLiked ? .red : .secondary)
+                                
+                                Text("\(comment.likes)")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(isLiked ? .red : .secondary)
+                            }
+                        }
+                        .buttonStyle(ScaleButtonStyle(scaleAmount: 0.9))
+                        
+                        // 回复按钮
+                        Button(action: onReply) {
+                            Text("回复")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(ScaleButtonStyle(scaleAmount: 0.9))
+                    }
+                    .padding(.top, 5)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            
+            // 分隔线
+            Divider()
+                .padding(.leading, 58)
+                .opacity(0.6)
+        }
+    }
+}
+
+/**
+ * 回复评论单元格
+ * 显示回复评论的视图
+ */
+private struct ReplyCommentCell: View {
+    let comment: UserCommentModel
+    let replyToUsername: String
+    let onReply: () -> Void
+    let onLike: () -> Void
+    let isLiked: Bool
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            // 用户头像
+            Image(comment.userAvatar)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 32, height: 32)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                )
+            
+            VStack(alignment: .leading, spacing: 4) {
+                // 用户信息区
+                HStack(spacing: 4) {
+                    // 用户名
+                    Text(comment.username)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.primary)
+                    
+                    // 回复关系
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 10))
+                        .foregroundColor(.gray)
+                    
+                    Text(replyToUsername)
+                        .font(.system(size: 13))
+                        .foregroundColor(.gray)
+                }
+                
+                // 评论内容
+                Text(comment.content)
+                    .font(.system(size: 15))
+                    .lineSpacing(3)
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                // 互动区
+                HStack(spacing: 12) {
+                    // 评论时间
+                    Text(getFormattedTimeAgo(from: comment.datePosted))
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    
+                    // 点赞按钮
+                    Button(action: onLike) {
+                        HStack(spacing: 3) {
+                            Image(systemName: isLiked ? "heart.fill" : "heart")
+                                .font(.system(size: 12))
+                                .foregroundColor(isLiked ? .red : .secondary)
+                            
+                            Text("\(comment.likes)")
+                                .font(.system(size: 12))
+                                .foregroundColor(isLiked ? .red : .secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    
+                    // 回复按钮
+                    Button(action: onReply) {
+                        Text("回复")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 2)
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+}
+
+/**
+ * 空评论状态视图
+ * 显示无评论时的状态
+ */
+private struct EmptyCommentsView: View {
+    var body: some View {
+        VStack(spacing: 14) {
+            // 图标
+            ZStack {
+                Circle()
+                    .fill(Color.gray.opacity(0.05))
+                    .frame(width: 56, height: 56)
+                
+                Image(systemName: "bubble.left.and.text.bubble.right")
+                    .font(.system(size: 22))
+                    .foregroundColor(Color.gray.opacity(0.3))
+            }
+            
+            // 文本提示
+            VStack(spacing: 4) {
+                Text("暂无评论")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.primary)
+                
+                Text("成为第一个参与讨论的人吧")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            
+            // 评论按钮
+            Button(action: {
+                // 触发评论输入框聚焦通知
+                NotificationCenter.default.post(
+                    name: Notification.Name("FocusCommentInput"),
+                    object: nil
+                )
+            }) {
+                HStack {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13))
+                    
+                    Text("写评论")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 8)
+                .background(DesignSystem.Colors.primary)
+                .foregroundColor(.white)
+                .cornerRadius(16)
+            }
+            .buttonStyle(ScaleButtonStyle())
+        }
+        .padding(.vertical, 22)
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// 格式化时间的辅助方法
+private func getFormattedTimeAgo(from date: Date) -> String {
+    let formatter = RelativeDateTimeFormatter()
+    formatter.unitsStyle = .short
+    return formatter.localizedString(for: date, relativeTo: Date())
+}
+
+// 辅助函数：检查是否为系统图标名称
+private func isSystemImageName(_ name: String) -> Bool {
+    // 系统图标名称通常不会包含文件扩展名或特定路径
+    return !name.contains(".") && !name.contains("/")
+} 
+
+/**
+ * 格式化日期为相对时间描述
+ * @param from - 要格式化的日期
+ * @return 格式化后的时间字符串，如"3小时前"
+ */
+private func getFormattedDate(from date: Date) -> String {
+    let now = Date()
+    let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date, to: now)
+    
+    if let year = components.year, year > 0 {
+        return "\(year)年前"
+    } else if let month = components.month, month > 0 {
+        return "\(month)个月前"
+    } else if let day = components.day, day > 0 {
+        return "\(day)天前"
+    } else if let hour = components.hour, hour > 0 {
+        return "\(hour)小时前"
+    } else if let minute = components.minute, minute > 0 {
+        return "\(minute)分钟前"
+    } else {
+        return "刚刚"
+    }
+}
+
+/**
+ * 分享表单包装器
+ * 包装UIActivityViewController以在SwiftUI中使用
+ */
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    let applicationActivities: [UIActivity]? = nil
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: applicationActivities
+        )
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+

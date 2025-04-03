@@ -1,0 +1,1 @@
+@FocusState private var isInputFocused: Bool // 添加焦点状态控制

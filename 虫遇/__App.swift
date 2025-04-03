@@ -7,25 +7,36 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
+
+// AppDelegate已经存在，不再重复声明
 
 @main
-struct __App: App {
+struct ChongYuApp: App {
+    // 添加AppDelegate
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Character.self,
+            User.self,
+            Message.self,
+            Conversation.self,
+            Post.self,
+            Comment.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            fatalError("无法创建ModelContainer: \(error)")
         }
     }()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppTabView()
         }
         .modelContainer(sharedModelContainer)
     }

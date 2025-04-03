@@ -1,0 +1,210 @@
+import SwiftUI
+
+/**
+ * 评论按钮组件
+ * 封装了评论按钮及其点击后的操作菜单
+ */
+struct CommentButton: View {
+    // 评论数量
+    let commentCount: Int
+    
+    // 帖子对象
+    @Binding var post: UserPostModel
+    
+    // 回调函数
+    var onAddComment: () -> Void
+    var onViewAllComments: () -> Void
+    var onInviteCharacter: () -> Void
+    
+    // 状态
+    @State private var showCommentManager: Bool = false
+    
+    // 构造函数 - 支持非绑定版本
+    init(commentCount: Int, post: UserPostModel, onAddComment: @escaping () -> Void, onViewAllComments: @escaping () -> Void, onInviteCharacter: @escaping () -> Void) {
+        self.commentCount = commentCount
+        self._post = Binding.constant(post)
+        self.onAddComment = onAddComment
+        self.onViewAllComments = onViewAllComments
+        self.onInviteCharacter = onInviteCharacter
+    }
+    
+    // 构造函数 - 支持绑定版本
+    init(commentCount: Int, post: Binding<UserPostModel>, onAddComment: @escaping () -> Void = {}, onViewAllComments: @escaping () -> Void = {}, onInviteCharacter: @escaping () -> Void = {}) {
+        self.commentCount = commentCount
+        self._post = post
+        self.onAddComment = onAddComment
+        self.onViewAllComments = onViewAllComments
+        self.onInviteCharacter = onInviteCharacter
+    }
+    
+    var body: some View {
+        Button(action: {
+            // 使用新的评论管理器
+            showCommentManager = true
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: "bubble.left")
+                    .font(.system(size: 18))
+                    .foregroundColor(.gray)
+                
+                Text("\(commentCount)")
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
+            }
+        }
+        .sheet(isPresented: $showCommentManager) {
+            CommentManager(post: $post)
+        }
+    }
+    
+    /**
+     * 显示原生操作表单
+     * 使用UIKit实现更可靠的操作表单
+     */
+    private func showNativeActionSheet() {
+        // 生成触感反馈
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
+        // 创建操作表单
+        let actionSheet = UIAlertController(
+            title: "评论操作",
+            message: "请选择您想要的操作",
+            preferredStyle: .actionSheet
+        )
+        
+        // 添加评论选项
+        actionSheet.addAction(UIAlertAction(
+            title: "发表评论",
+            style: .default,
+            handler: { _ in
+                onAddComment()
+            }
+        ))
+        
+        // 查看所有评论
+        actionSheet.addAction(UIAlertAction(
+            title: "查看全部评论(\(commentCount))",
+            style: .default,
+            handler: { _ in
+                onViewAllComments()
+            }
+        ))
+        
+        // 邀请历史人物
+        actionSheet.addAction(UIAlertAction(
+            title: "邀请历史人物参与",
+            style: .default,
+            handler: { _ in
+                onInviteCharacter()
+            }
+        ))
+        
+        // 取消选项
+        actionSheet.addAction(UIAlertAction(
+            title: "取消",
+            style: .cancel,
+            handler: nil
+        ))
+        
+        // 获取当前控制器并显示操作表单
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+            var currentController = rootViewController
+            while let presented = currentController.presentedViewController {
+                currentController = presented
+            }
+            currentController.present(actionSheet, animated: true)
+        }
+    }
+}
+
+/**
+ * 评论按钮(底部操作栏版本)
+ * 样式与底部操作栏一致
+ */
+struct BottomBarCommentButton: View {
+    // 评论数量
+    let commentCount: Int
+    
+    // 帖子对象
+    @Binding var post: UserPostModel
+    
+    // 回调函数
+    var onAddComment: () -> Void
+    var onViewAllComments: () -> Void
+    var onInviteCharacter: () -> Void
+    
+    // 状态
+    @State private var showCommentManager: Bool = false
+    
+    // 构造函数 - 支持非绑定版本
+    init(commentCount: Int, post: UserPostModel, onAddComment: @escaping () -> Void, onViewAllComments: @escaping () -> Void, onInviteCharacter: @escaping () -> Void) {
+        self.commentCount = commentCount
+        self._post = Binding.constant(post)
+        self.onAddComment = onAddComment
+        self.onViewAllComments = onViewAllComments
+        self.onInviteCharacter = onInviteCharacter
+    }
+    
+    // 构造函数 - 支持绑定版本
+    init(commentCount: Int, post: Binding<UserPostModel>, onAddComment: @escaping () -> Void = {}, onViewAllComments: @escaping () -> Void = {}, onInviteCharacter: @escaping () -> Void = {}) {
+        self.commentCount = commentCount
+        self._post = post
+        self.onAddComment = onAddComment
+        self.onViewAllComments = onViewAllComments
+        self.onInviteCharacter = onInviteCharacter
+    }
+    
+    var body: some View {
+        Button(action: {
+            // 使用新的评论管理器
+            showCommentManager = true
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: "bubble.right")
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+                
+                Text("\(commentCount)")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(Color.gray.opacity(0.05))
+            .cornerRadius(16)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .sheet(isPresented: $showCommentManager) {
+            CommentManager(post: $post)
+        }
+    }
+}
+
+/**
+ * 预览
+ */
+struct CommentButton_Previews: PreviewProvider {
+    static var previews: some View {
+        VStack(spacing: 20) {
+            CommentButton(
+                commentCount: 42,
+                post: UserPostModel.samplePosts[0],
+                onAddComment: {},
+                onViewAllComments: {},
+                onInviteCharacter: {}
+            )
+            
+            BottomBarCommentButton(
+                commentCount: 42,
+                post: UserPostModel.samplePosts[0],
+                onAddComment: {},
+                onViewAllComments: {},
+                onInviteCharacter: {}
+            )
+        }
+        .padding()
+        .previewLayout(.sizeThatFits)
+    }
+}
