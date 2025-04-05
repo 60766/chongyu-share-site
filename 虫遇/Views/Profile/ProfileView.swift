@@ -31,6 +31,16 @@ struct ProfileView: View {
         TimelineEvent(date: "2024-03-05", title: "哲学之旅", icon: "questionmark.circle", description: "向苏格拉底请教人生智慧")
     ]
     
+    @State private var selectedTab = 0
+    @State private var isSettingsPresented = false
+    @State private var isFollowListPresented = false
+    @State private var followListType: FollowListType = .following
+    
+    // 添加调试菜单状态
+    @State private var isDebugMenuPresented = false
+    @State private var debugTapCount = 0
+    @State private var lastTapTime: Date? = nil
+    
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 16) {
@@ -138,6 +148,33 @@ struct ProfileView: View {
                             Text("历史探索者")
                                 .font(.system(size: 22, weight: .bold))
                                 .foregroundColor(.primary)
+                                .onTapGesture {
+                                    // 检测连续点击以触发调试菜单
+                                    let now = Date()
+                                    if let lastTime = lastTapTime, now.timeIntervalSince(lastTime) < 0.8 {
+                                        // 在800毫秒内的点击算作连续点击
+                                        debugTapCount += 1
+                                        if debugTapCount >= 7 { // 需要连续点击7次
+                                            debugTapCount = 0
+                                            isDebugMenuPresented = true
+                                            
+                                            // 震动反馈
+                                            let generator = UINotificationFeedbackGenerator()
+                                            generator.notificationOccurred(.success)
+                                        }
+                                    } else {
+                                        // 重置计数器
+                                        debugTapCount = 1
+                                    }
+                                    lastTapTime = now
+                                }
+                                .onLongPressGesture(minimumDuration: 2.0) { // 长按2秒
+                                    isDebugMenuPresented = true
+                                    
+                                    // 震动反馈
+                                    let generator = UINotificationFeedbackGenerator()
+                                    generator.notificationOccurred(.success)
+                                }
                             
                             // 等级标签 - 可点击查看详情
                             Button(action: { showLevelDetails.toggle() }) {
@@ -478,6 +515,15 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showLevelDetails) {
             levelDetailsView()
+        }
+        .sheet(isPresented: $isSettingsPresented) {
+            SettingsView()
+        }
+        .sheet(isPresented: $isFollowListPresented) {
+            FollowListView(type: followListType)
+        }
+        .sheet(isPresented: $isDebugMenuPresented) {
+            DebugMenu()
         }
         .edgesIgnoringSafeArea(.bottom)
     }
