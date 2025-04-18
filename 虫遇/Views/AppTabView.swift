@@ -11,6 +11,8 @@ struct AppTabView: View {
     // 用于控制发布面板显示
     @State private var isPublishButtonPressed = false
     @State private var showPublishPanel = false
+    // 调试模式
+    @State private var showDebugView = false
     // TabBar可见性管理器
     @ObservedObject private var tabBarManager = TabBarManager.shared
     
@@ -91,7 +93,27 @@ struct AppTabView: View {
         .overlay(
             PublishPanelView(isVisible: $showPublishPanel)
                 .ignoresSafeArea(.all, edges: .bottom)
+                .environment(\.colorScheme, .light) // 显式设置亮色模式
         )
+        // 调试入口 - 长按顶部区域可以打开调试视图
+        .overlay(alignment: .top) {
+            Color.clear
+                .frame(height: 60)
+                .contentShape(Rectangle())
+                .onLongPressGesture(minimumDuration: 2) {
+                    showDebugView = true
+                }
+        }
+        // 调试视图弹窗
+        .sheet(isPresented: $showDebugView) {
+            NavigationView {
+                DebugTestView()
+                    .navigationTitle("调试")
+                    .navigationBarItems(trailing: Button("关闭") {
+                        showDebugView = false
+                    })
+            }
+        }
         // 不再需要手动更新安全区域高度，TabBarManager现在会自动计算
         .edgesIgnoringSafeArea(.bottom) // 确保视图能延伸到屏幕底部
         .environmentObject(tabBarManager) // 确保TabBarManager在所有子视图中可用

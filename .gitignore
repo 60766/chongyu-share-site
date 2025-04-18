@@ -1,0 +1,52 @@
+# Xcode
+#
+# .gitignore文件 - 虫遇项目
+
+## 用户设置
+xcuserdata/
+*.xcuserstate
+
+## 兼容性
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+## 构建生成的文件
+build/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## 测试相关
+*.xccheckout
+*.xctest
+
+## 其他
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+.DS_Store
+
+## 备份文件
+*.bak
+*.swp
+*~.nib
+
+## 临时文件和目录
+temp_*
+tmp/
+.tmp/
+*.tmp
+
+## CocoaPods和Swift Package Manager
+Pods/
+*.xcworkspace
+.build/ 
