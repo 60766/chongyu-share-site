@@ -142,6 +142,10 @@ struct PublishPanelView: View {
                     // 更新角色概率
                     updateCharacterProbabilities()
                 }
+                .presentationDetents([.fraction(0.75)]) // 将高度限制为屏幕的75%
+                .presentationDragIndicator(.visible) // 显示拖动指示器
+                .presentationBackground(Material.regularMaterial) // 使用磨砂背景
+                .presentationCornerRadius(25) // 设置圆角
         }
         .sheet(isPresented: $showingImagePicker) {
             ImagePicker(selectedImages: $selectedImages, maxSelections: 9)
@@ -908,109 +912,92 @@ struct PublishCharacterRecommendationView: View {
         let historicalScore = keywordsMatchScore(contentText, keywords: historicalKeywords)
         
         // 3. 根据类别匹配度过滤角色
-        let filtered = allCharacters.filter { character in
-            // 如果是已选择的角色则排除
-            if isCharacterAlreadySelected(character, in: selectedCharacters) {
-                return false
-            }
-            
-            // 同时满足时代匹配和内容匹配条件
-            let eraMatch = doesCharacterEraMatch(character.era, selectedEra: selectedEra)
-            
-            // 根据角色类别和内容匹配度评分
-            var contentMatch = false
-            switch character.category {
-            case .scientist:
-                contentMatch = scienceScore > 0 || contentText.contains(character.name) || contentText.contains(character.profession)
-            case .artist:
-                contentMatch = artScore > 0 || contentText.contains(character.name) || contentText.contains(character.profession)
-            case .philosopher:
-                contentMatch = philosophyScore > 0 || contentText.contains(character.name) || contentText.contains(character.profession)
-            case .writer:
-                contentMatch = literatureScore > 0 || contentText.contains(character.name) || contentText.contains(character.profession)
-            default:
-                contentMatch = historicalScore > 0 || contentText.contains(character.name) || contentText.contains(character.profession)
-            }
-            
-            return eraMatch && contentMatch
-        }
+        var matchedCharacters: [CharacterModel] = []
+        let allScores: [(CharacterCategory, Double)] = [
+            (.scientist, scienceScore),
+            (.artist, artScore),
+            (.philosopher, philosophyScore),
+            (.writer, literatureScore),
+            (.all, historicalScore)
+        ].sorted { $0.1 > $1.1 }  // 按分数从高到低排序
         
-        // 如果没有匹配结果，降低要求只按时代匹配
-        if filtered.isEmpty {
-            return allCharacters.filter { character in
+        // 从每个高分类别中选择角色
+        for (category, score) in allScores {
+            // 只考虑分数大于0的类别
+            if score <= 0 {
+                continue
+            }
+            
+            // 从该类别中找出符合条件的角色
+            let filteredCharacters = allCharacters.filter { character in
+                // 必须是该类别
+                guard character.category == category else { return false }
+                
+                // 排除已选角色
                 if isCharacterAlreadySelected(character, in: selectedCharacters) {
                     return false
                 }
+                
+                // 时代匹配（如果不是跨时代角色，则需匹配所选时代）
                 return doesCharacterEraMatch(character.era, selectedEra: selectedEra)
-            }.prefix(3).map { $0 }
-        }
-        
-        // 限制数量
-        return Array(filtered.prefix(5))
-    }
-    
-    /// 计算关键词匹配分数
-    private static func keywordsMatchScore(_ text: String, keywords: [String]) -> Int {
-        var score = 0
-        for keyword in keywords {
-            if text.contains(keyword) {
-                score += 1
+            }
+            
+            // 在该类别中最多选两个角色
+            let categoryCharacters = filteredCharacters.prefix(2)
+            matchedCharacters.append(contentsOf: categoryCharacters)
+            
+            // 如果已经有足够的角色，可以提前退出
+            if matchedCharacters.count >= 3 {
+                break
             }
         }
+        
+        // 如果没有找到足够的匹配角色，返回随机角色
+        if matchedCharacters.isEmpty {
+            return getRecommendedCharacters(contentText: "", selectedEra: selectedEra, selectedCharacters: selectedCharacters)
+        }
+        
+        return Array(matchedCharacters.prefix(3))  // 最多返回3个角色
+    }
+    
+    // 辅助方法：计算文本与关键词的匹配度
+    private static func keywordsMatchScore(_ text: String, keywords: [String]) -> Double {
+        var score = 0.0
+        let textLower = text.lowercased()
+        
+        for keyword in keywords {
+            if textLower.contains(keyword.lowercased()) {
+                score += 1.0
+            }
+        }
+        
         return score
     }
     
-    /// 检查角色是否已被选择
+    // 辅助方法：检查角色是否已被选中
     private static func isCharacterAlreadySelected(_ character: CharacterModel, in selectedCharacters: [CharacterModel]) -> Bool {
-        return selectedCharacters.contains(where: { $0.id == character.id })
+        return selectedCharacters.contains { $0.id == character.id }
     }
     
-    /// 检查角色所属时代是否匹配
+    // 辅助方法：检查角色时代是否匹配
     private static func doesCharacterEraMatch(_ characterEra: String, selectedEra: String) -> Bool {
-        // 如果选择的是现代，所有角色都可以
-        if selectedEra == "现代" {
+        if characterEra == "跨时代" {
             return true
         }
-        
-        // 特殊处理一些模糊匹配
-        switch selectedEra {
-        case "古代":
-            return characterEra.contains("古") || 
-                   characterEra.contains("公元前") || 
-                   characterEra.contains("BC") || 
-                   characterEra.contains("朝") || 
-                   characterEra.contains("汉") || 
-                   characterEra.contains("唐") || 
-                   characterEra.contains("宋")
-        case "中世纪":
-            return characterEra.contains("世纪") || 
-                   characterEra.contains("中古") || 
-                   characterEra.contains("Medieval") || 
-                   (Int(characterEra.prefix(4)) ?? 3000) < 1500 && 
-                   (Int(characterEra.prefix(4)) ?? 0) > 500
-        case "文艺复兴":
-            return characterEra.contains("复兴") || 
-                   characterEra.contains("Renaissance") || 
-                   (Int(characterEra.prefix(4)) ?? 3000) < 1700 && 
-                   (Int(characterEra.prefix(4)) ?? 0) > 1300
-        case "启蒙运动":
-            return characterEra.contains("启蒙") || 
-                   characterEra.contains("Enlightenment") || 
-                   (Int(characterEra.prefix(4)) ?? 3000) < 1800 && 
-                   (Int(characterEra.prefix(4)) ?? 0) > 1600
-        case "未来":
-            return characterEra.contains("未来") || 
-                   characterEra.contains("现代") || 
-                   characterEra.contains("当代") || 
-                   (Int(characterEra.prefix(4)) ?? 0) > 1900
-        default:
-            return characterEra.contains(selectedEra)
-        }
+        return characterEra == selectedEra
     }
     
+    // 视觉效果控制
+    @State private var isAnimating = false
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        VStack(alignment: .leading, spacing: 10) {
+            // 标题区域
+            HStack(spacing: 6) {
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 15))
+                    .foregroundColor(Color.primaryColor)
+                
                 Text("推荐角色")
                     .font(.system(size: 14, weight: .medium))
                 
@@ -1019,77 +1006,141 @@ struct PublishCharacterRecommendationView: View {
                 Button(action: {
                     // 显示角色选择器
                 }) {
-                    Text("更多 >")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color.primaryColor)
+                    HStack(spacing: 4) {
+                        Text("更多")
+                            .font(.system(size: 12))
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9))
+                    }
+                    .foregroundColor(Color.primaryColor)
                 }
+                .buttonStyle(PlainButtonStyle())
             }
+            .padding(.bottom, 4)
             
             if recommendedCharacters.isEmpty {
+                // 空状态提示
                 Text("没有匹配的推荐角色")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 6)
+                    .background(Color.gray.opacity(0.05))
+                    .cornerRadius(12)
             } else {
+                // 角色推荐卡片滚动视图
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(recommendedCharacters) { character in
-                            compactRecommendedCharacterCell(
-                                character: character,
-                                isSelected: selectedCharacters.contains { $0.id == character.id },
-                                onSelect: { isSelected in
-                                    if isSelected {
-                                        selectedCharacters.append(character)
-                                    } else {
-                                        selectedCharacters.removeAll { $0.id == character.id }
-                                    }
-                                }
-                            )
+                    HStack(spacing: 10) {
+                        ForEach(Array(recommendedCharacters.enumerated()), id: \.element.id) { index, character in
+                            characterCard(character: character, index: index)
+                                // 移除依赖hover状态的动画
+                                // .scaleEffect(hoverIndex == index ? 1.05 : 1.0)
+                                // .animation(.spring(response: 0.3, dampingFraction: 0.6), value: hoverIndex)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .frame(height: 80)
+                .onAppear {
+                    // 添加微妙的动画效果
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            isAnimating = true
                         }
                     }
                 }
-                .frame(height: 70)
             }
         }
     }
     
-    // 紧凑型推荐角色单元格
-    private func compactRecommendedCharacterCell(
-        character: CharacterModel,
-        isSelected: Bool,
-        onSelect: @escaping (Bool) -> Void
-    ) -> some View {
-        Button(action: {
-            onSelect(!isSelected)
+    // 角色卡片视图
+    private func characterCard(character: CharacterModel, index: Int) -> some View {
+        let isSelected = selectedCharacters.contains { $0.id == character.id }
+        
+        return Button(action: {
             // 触感反馈
             let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
             feedbackGenerator.impactOccurred()
+            
+            // 切换选择状态
+            if isSelected {
+                selectedCharacters.removeAll { $0.id == character.id }
+            } else {
+                selectedCharacters.append(character)
+            }
         }) {
-            VStack(spacing: 4) {
-                // 头像
-                Circle()
-                    .fill(character.category.color.opacity(0.2))
-                    .frame(width: 36, height: 36)
-                    .overlay(
-                        Text(String(character.name.prefix(1)))
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(character.category.color)
-                    )
-                    .overlay(
+            VStack(spacing: 6) {
+                // 角色头像
+                ZStack {
+                    // 背景圆形
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    character.category.color.opacity(0.15),
+                                    character.category.color.opacity(0.25)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 48, height: 48)
+                    
+                    // 角色首字
+                    Text(String(character.name.prefix(1)))
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(character.category.color)
+                    
+                    // 选中状态边框
+                    if isSelected {
                         Circle()
-                            .stroke(isSelected ? character.category.color : Color.clear, lineWidth: 2)
-                    )
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        character.category.color,
+                                        character.category.color.opacity(0.6)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2
+                            )
+                        .frame(width: 48, height: 48)
+                    }
+                    
+                    // 时代指示器 - 小标签
+                    if character.era != "跨时代" && character.era == selectedEra {
+                        Text("同期")
+                            .font(.system(size: 8, weight: .medium))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.primaryColor.opacity(0.9))
+                            .foregroundColor(.white)
+                            .cornerRadius(4)
+                            .offset(y: 24)
+                    }
+                }
+                .offset(y: isAnimating ? 0 : 10)
+                .opacity(isAnimating ? 1 : 0)
+                .animation(
+                    .spring(response: 0.5, dampingFraction: 0.7)
+                    .delay(Double(index) * 0.1),
+                    value: isAnimating
+                )
                 
-                // 名称
+                // 角色名称
                 Text(character.name)
                     .font(.system(size: 12))
-                    .lineLimit(1)
+                    .fontWeight(isSelected ? .medium : .regular)
                     .foregroundColor(isSelected ? character.category.color : .primary)
+                    .lineLimit(1)
             }
-            .frame(width: 50)
-            .padding(.vertical, 4)
-            .padding(.horizontal, 2)
+            .frame(width: 60)
+            .contentShape(Rectangle())
+            // 添加触摸时的动画效果，而不是依赖hover
+            .scaleEffect(isSelected ? 1.05 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -1104,81 +1155,377 @@ struct CharacterSelectorView: View {
     @Binding var selectedCharacters: [CharacterModel]
     @State private var searchText = ""
     @State private var localSelectedCharacters: [CharacterModel] = []
+    @State private var selectedCategory: CharacterCategory? = .all
+    @State private var showSearchCancelButton = false
+    @State private var isSearchFocused: Bool = false
+    
+    // 动画效果控制
+    @State private var isAnimating = false
+    
+    // 常量定义 - 提高复用性和一致性
+    private let cornerRadius: CGFloat = 12
+    private let primaryPadding: CGFloat = 16
+    private let secondaryPadding: CGFloat = 8
     
     var body: some View {
-        NavigationView {
-            VStack {
-                // 搜索栏
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.gray)
+        ZStack {
+            // 全屏透明背景，用于点击收起键盘
+            if isSearchFocused {
+                Color.black.opacity(0.001) // 几乎完全透明
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onTapGesture {
+                        hideKeyboard()
+                        isSearchFocused = false
+                    }
+                    .ignoresSafeArea()
+            }
+            
+            VStack(spacing: 0) {
+                // 重新设计顶部区域 - 移除取消按钮，优化布局
+                VStack(spacing: 12) { // 增加间距
+                    // 标题与确定按钮
+                    HStack {
+                        Spacer()
+                        
+                        Text("选择角色")
+                            .font(.system(size: 17, weight: .semibold))
+                        
+                        Spacer()
+                        
+                        // 确定按钮移到右侧
+                        Button(localSelectedCharacters.isEmpty ? "确定" : "确定(\(localSelectedCharacters.count))") {
+                            selectedCharacters = localSelectedCharacters
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                        .fontWeight(.bold)
+                        .foregroundColor(localSelectedCharacters.isEmpty ? .gray : .primaryColor)
+                        .disabled(localSelectedCharacters.isEmpty)
+                    }
+                    .padding(.top, 8) // 顶部增加间距
                     
-                    TextField("搜索角色", text: $searchText)
-                        .font(.system(size: 16))
-                }
-                .padding(8)
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(10)
-                .padding(.horizontal)
-                
-                // 角色网格
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                        ForEach(filteredCharacters) { character in
-                            CharacterSelectionCell(
-                                character: character,
-                                isSelected: isSelected(character),
-                                onToggle: { toggleCharacter(character) }
-                            )
+                    // 搜索栏 - 独立成一行，不再与按钮共行
+                    HStack(spacing: 4) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                            .padding(.leading, 8)
+                        
+                        TextField("搜索角色", text: $searchText, onEditingChanged: { isEditing in
+                            withAnimation {
+                                isSearchFocused = isEditing
+                            }
+                        })
+                        .font(.system(size: 15))
+                        
+                        if !searchText.isEmpty {
+                            Button(action: {
+                                searchText = ""
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.gray)
+                                    .padding(.trailing, 8)
+                            }
                         }
                     }
-                    .padding()
+                    .padding(8)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(cornerRadius)
                 }
-            }
-            .navigationTitle("选择角色")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") {
-                        presentationMode.wrappedValue.dismiss()
-                    }
+                .padding(.horizontal, primaryPadding)
+                .padding(.top, 10)
+                .padding(.bottom, secondaryPadding)
+                
+                // 已选角色预览 - 保持不变，仍然需要良好的视觉区分
+                if !localSelectedCharacters.isEmpty {
+                    selectedCharactersBar
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("确定") {
-                        selectedCharacters = localSelectedCharacters
-                        presentationMode.wrappedValue.dismiss()
-                    }
-                    .fontWeight(.bold)
+                // 分类标签栏 - 更紧凑的设计
+                categoryTabsCompact
+                    .padding(.top, 8)
+                    .padding(.bottom, 6)
+                
+                Divider()
+                    .padding(.horizontal, primaryPadding)
+                
+                // 角色网格 - 更高效的布局
+                characterGridOptimized
+                    .padding(.top, 6)
+            }
+        }
+        .onAppear {
+            localSelectedCharacters = selectedCharacters
+            
+            // 添加动画效果
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    isAnimating = true
                 }
             }
-            .onAppear {
-                localSelectedCharacters = selectedCharacters
+        }
+        .background(Color(.systemBackground))
+    }
+    
+    // 已选角色预览条 - 紧凑版
+    private var selectedCharactersBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(localSelectedCharacters) { character in
+                    selectedCharacterBadge(character: character)
+                }
+                
+                if localSelectedCharacters.count > 1 {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            localSelectedCharacters.removeAll()
+                        }
+                    }) {
+                        Text("清空")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(10)
+                    }
+                }
+            }
+            .padding(.horizontal, primaryPadding)
+            .padding(.vertical, 8)
+        }
+        .background(Color.gray.opacity(0.05))
+    }
+    
+    // 选中角色的小标签 - 紧凑版
+    private func selectedCharacterBadge(character: CharacterModel) -> some View {
+        HStack(spacing: 4) {
+            // 角色头像或首字母
+            Text(String(character.name.prefix(1)))
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white)
+                .frame(width: 22, height: 22)
+                .background(character.category.color)
+                .clipShape(Circle())
+            
+            // 角色名称
+            Text(character.name)
+                .font(.system(size: 13))
+                .lineLimit(1)
+            
+            // 删除按钮
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    localSelectedCharacters.removeAll { $0.id == character.id }
+                }
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(.gray)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(Color.white)
+        .clipShape(Capsule())
+        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+    }
+    
+    // 更紧凑的分类标签设计
+    private var categoryTabsCompact: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                // 全部分类按钮
+                compactCategoryButton(category: .all)
+                
+                // 历史人物分类
+                Group {
+                    compactCategoryButton(category: .scientist)
+                    compactCategoryButton(category: .artist)
+                    compactCategoryButton(category: .philosopher)
+                    compactCategoryButton(category: .writer)
+                }
+                
+                // 虚构角色分类
+                if CharacterCategory.allCases.contains(where: { $0.isVirtual }) {
+                    Group {
+                        compactCategoryButton(category: .animeCharacter)
+                        compactCategoryButton(category: .gameCharacter)
+                        compactCategoryButton(category: .fictionCharacter)
+                    }
+                }
+            }
+            .padding(.horizontal, primaryPadding)
+        }
+    }
+    
+    // 更紧凑的分类按钮
+    private func compactCategoryButton(category: CharacterCategory) -> some View {
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedCategory = (selectedCategory == category) ? .all : category
+            }
+        }) {
+            HStack(spacing: 4) {
+                if category != .all {
+                    Image(systemName: category.icon)
+                        .font(.system(size: 12))
+                }
+                
+                Text(category.displayName)
+                    .font(.system(size: 13))
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(
+                Capsule()
+                    .fill(selectedCategory == category 
+                          ? category.color.opacity(0.15) 
+                          : Color.gray.opacity(0.08))
+            )
+            .foregroundColor(selectedCategory == category 
+                           ? category.color 
+                           : .primary)
+        }
+    }
+    
+    // 优化的角色网格
+    private var characterGridOptimized: some View {
+        ScrollView {
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8)
+                ],
+                spacing: 8 // 进一步减少间距
+            ) {
+                ForEach(filteredCharacters) { character in
+                    CharacterSelectionCell(
+                        character: character,
+                        isSelected: isSelected(character),
+                        onToggle: { toggleCharacter(character) }
+                    )
+                    .opacity(isAnimating ? 1.0 : 0)
+                    .offset(y: isAnimating ? 0 : 15) // 减小动画距离
+                    .animation(
+                        .spring(response: 0.4, dampingFraction: 0.7)
+                        .delay(Double(filteredCharacters.firstIndex(where: { $0.id == character.id }) ?? 0) * 0.02),
+                        value: isAnimating
+                    )
+                }
+            }
+            .padding(12)
+            
+            if filteredCharacters.isEmpty {
+                emptyStateView
             }
         }
     }
     
+    // 空状态视图
+    private var emptyStateView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "person.fill.questionmark")
+                .font(.system(size: 32))
+                .foregroundColor(.gray.opacity(0.5))
+            
+            Text(searchText.isEmpty ? "没有匹配的角色" : "没有找到\"\(searchText)\"相关的角色")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+            
+            Button(action: { createNewCharacter() }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 14))
+                    
+                    Text("创建新角色")
+                        .font(.system(size: 15, weight: .medium))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.primaryColor.opacity(0.8),
+                                    Color.primaryColor
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .foregroundColor(.white)
+                .shadow(color: Color.primaryColor.opacity(0.2), radius: 4, x: 0, y: 2)
+            }
+            .buttonStyle(BouncyButtonStyle())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+    }
+    
+    // 创建新角色的方法
+    private func createNewCharacter() {
+        // 获取搜索词作为默认名称
+        let defaultName = searchText.isEmpty ? "" : searchText
+        
+        // 关闭当前选择器
+        self.presentationMode.wrappedValue.dismiss()
+        
+        // 模拟延迟，然后进行创建角色操作
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            // 这里应该跳转到创建角色的页面或弹出创建角色的表单
+            print("创建新角色: \(defaultName)")
+        }
+    }
+    
+    // 过滤后的角色列表
     private var filteredCharacters: [CharacterModel] {
-        if searchText.isEmpty {
-            return CharacterModel.sampleCharacters
-        } else {
-            return CharacterModel.sampleCharacters.filter { character in
+        var characters = CharacterModel.sampleCharacters
+        
+        // 按分类筛选
+        if selectedCategory != nil && selectedCategory != .all {
+            characters = characters.filter { $0.category == selectedCategory }
+        }
+        
+        // 按搜索文本筛选
+        if !searchText.isEmpty {
+            characters = characters.filter { character in
                 character.name.lowercased().contains(searchText.lowercased()) ||
                 character.profession.lowercased().contains(searchText.lowercased())
             }
         }
+        
+        return characters
     }
     
+    // 检查角色是否已选中
     private func isSelected(_ character: CharacterModel) -> Bool {
         return localSelectedCharacters.contains { $0.id == character.id }
     }
     
+    // 切换角色选中状态
     private func toggleCharacter(_ character: CharacterModel) {
-        if isSelected(character) {
-            localSelectedCharacters.removeAll { $0.id == character.id }
-        } else {
-            localSelectedCharacters.append(character)
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            if isSelected(character) {
+                localSelectedCharacters.removeAll { $0.id == character.id }
+            } else {
+                localSelectedCharacters.append(character)
+            }
         }
+    }
+    
+    // 隐藏键盘
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
@@ -1191,74 +1538,147 @@ struct CharacterSelectionCell: View {
     let isSelected: Bool
     let onToggle: () -> Void
     
+    @State private var isPressed = false
+    
+    // 定义固定尺寸常量
+    private let cardWidth: CGFloat = 100 // 减小宽度适应三列布局
+    private let cardHeight: CGFloat = 120 // 减小高度
+    private let avatarSize: CGFloat = 50 // 减小头像尺寸
+    
     var body: some View {
-        VStack {
-            // 角色头像
-            ZStack {
-                avatarView
-                
-                // 选中指示器
-                if isSelected {
-                    selectionIndicator
+        Button(action: {
+            onToggle()
+            
+            // 添加短暂的按压效果
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = true
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isPressed = false
                 }
             }
-            
-            // 角色名称
-            Text(character.name)
-                .font(.system(size: 14, weight: .medium))
-                .lineLimit(1)
-            
-            // 角色职业
-            Text(character.profession)
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-        }
-        .padding(8)
-        .frame(height: 140)
-        .background(backgroundShape)
-        .onTapGesture {
-            onToggle()
-        }
-    }
-    
-    // 角色头像视图
-    private var avatarView: some View {
-        Group {
-            if UIImage(named: character.avatar) != nil {
-                Image(character.avatar)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 80, height: 80)
-                    .clipShape(Circle())
-            } else {
-                Circle()
-                    .fill(character.category.color.opacity(0.2))
-                    .frame(width: 80, height: 80)
-                    .overlay(
-                        Text(String(character.name.prefix(1)))
-                            .font(.system(size: 30, weight: .bold))
-                            .foregroundColor(character.category.color)
-                    )
+        }) {
+            VStack(spacing: 0) {
+                // 角色头像与选中指示器
+                ZStack {
+                    // 背景圆形
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    character.category.color.opacity(0.1),
+                                    character.category.color.opacity(0.2)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: avatarSize, height: avatarSize)
+                    
+                    // 角色首字
+                    Text(String(character.name.prefix(1)))
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundColor(character.category.color)
+                    
+                    // 右上角显示选中状态
+                    if isSelected {
+                        Circle()
+                            .stroke(character.category.color, lineWidth: 2)
+                            .frame(width: avatarSize + 4, height: avatarSize + 4)
+                        
+                        ZStack {
+                            Circle()
+                                .fill(character.category.color)
+                                .frame(width: 18, height: 18)
+                            
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        .offset(x: 20, y: -20)
+                    }
+                }
+                .padding(.top, 10)
+                
+                // 紧凑的角色信息
+                VStack(spacing: 2) {
+                    // 角色名称
+                    Text(character.name)
+                        .font(.system(size: 13, weight: isSelected ? .medium : .regular))
+                        .foregroundColor(isSelected ? character.category.color : .primary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    // 职业
+                    HStack(spacing: 3) {
+                        Image(systemName: getProfessionIcon(for: character.profession))
+                            .font(.system(size: 9))
+                            .foregroundColor(character.category.color.opacity(0.7))
+                        
+                        Text(character.profession)
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    .padding(.vertical, 1)
+                    
+                    // 时代标签 - 更紧凑的样式
+                    Text(character.era)
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary.opacity(0.8))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.gray.opacity(0.08))
+                        .cornerRadius(3)
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
             }
-        }
-    }
-    
-    // 选中指示器
-    private var selectionIndicator: some View {
-        Circle()
-            .stroke(Color.primaryColor, lineWidth: 3)
-            .frame(width: 86, height: 86)
-    }
-    
-    // 背景形状
-    private var backgroundShape: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(isSelected ? Color.primaryColor.opacity(0.1) : Color.clear)
+            .frame(width: cardWidth, height: cardHeight) // 使用固定尺寸
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white)
+                    .shadow(
+                        color: isSelected ? character.category.color.opacity(0.2) : Color.black.opacity(0.05),
+                        radius: isSelected ? 4 : 2,
+                        x: 0,
+                        y: isSelected ? 2 : 1
+                    )
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.primaryColor : Color.gray.opacity(0.2), lineWidth: 1)
+                    .stroke(
+                        isSelected ? character.category.color.opacity(0.3) : Color.clear,
+                        lineWidth: 1.2
+                    )
             )
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    // 根据职业获取图标
+    private func getProfessionIcon(for profession: String) -> String {
+        let lowercasedProfession = profession.lowercased()
+        
+        if lowercasedProfession.contains("科学") || lowercasedProfession.contains("物理") {
+            return "atom"
+        } else if lowercasedProfession.contains("文学") || lowercasedProfession.contains("作家") || lowercasedProfession.contains("诗人") {
+            return "book.fill"
+        } else if lowercasedProfession.contains("哲学") {
+            return "brain"
+        } else if lowercasedProfession.contains("艺术") || lowercasedProfession.contains("画家") {
+            return "paintbrush.fill"
+        } else if lowercasedProfession.contains("音乐") {
+            return "music.note"
+        } else if lowercasedProfession.contains("政治") || lowercasedProfession.contains("领袖") {
+            return "flag.fill"
+        } else {
+            return "person.fill"
+        }
     }
 }
 
@@ -1315,53 +1735,156 @@ struct WormholeEnergyIndicator: View {
         return max(calculatedPercentage, basePercentage) // 确保不低于基础值
     }
     
+    // 控制粒子动画
+    @State private var animationPhase: CGFloat = 0
+    
+    // 粒子动画计时器
+    let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+    
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
             HStack {
-                Text("穿越能量")
-                    .font(.system(size: 14, weight: .medium))
+                // 标题与图标
+                HStack(spacing: 4) {
+                    Image(systemName: "bolt.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(energyColor)
+                    
+                    Text("穿越能量")
+                        .font(.system(size: 14, weight: .medium))
+                }
                 
                 Spacer()
                 
+                // 能量百分比
                 Text("\(formattedEnergyPercentage)%")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(energyColor)
             }
             
             // 能量条
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    // 底部灰色条
+            ZStack(alignment: .leading) {
+                // 背景
+                energyBarBackground
+                
+                // 填充条
+                energyBarFill
+                    .frame(width: nil)
+                    .mask(
+                        GeometryReader { geometry in
+                            Rectangle()
+                                .frame(width: geometry.size.width * CGFloat(energyPercentage) / 100)
+                        }
+                    )
+                
+                // 粒子效果 - 仅在能量足够时显示
+                if energyPercentage > 20 {
+                    energyParticles
+                }
+            }
+            .frame(height: 10)
+            .clipShape(Capsule())
+            .onReceive(timer) { _ in
+                withAnimation {
+                    animationPhase += 0.05
+                    if animationPhase > 1 {
+                        animationPhase = 0
+                    }
+                }
+            }
+        }
+    }
+    
+    // 能量条背景
+    private var energyBarBackground: some View {
+        ZStack {
+            // 基础背景
+            Capsule()
+                .fill(Color.black.opacity(0.05))
+                .overlay(
                     Capsule()
-                        .fill(Color.gray.opacity(0.2))
+                        .stroke(
+                            Color.gray.opacity(0.2),
+                            lineWidth: 0.5
+                        )
+                )
+            
+            // 刻度线
+            HStack(spacing: 0) {
+                ForEach(0..<5) { i in
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.15))
+                        .frame(width: 1, height: 4)
                     
-                    // 能量填充条
+                    if i < 4 {
+                        Spacer()
+                    }
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+    
+    // 能量条填充
+    private var energyBarFill: some View {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                energyColor.opacity(0.7),
+                energyColor
+            ]),
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .overlay(
+            // 能量波纹效果
+            ZStack {
+                ForEach(0..<3) { i in
                     Capsule()
                         .fill(
                             LinearGradient(
-                                gradient: Gradient(colors: [energyColor.opacity(0.7), energyColor]),
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.0),
+                                    Color.white.opacity(Double(i) * 0.1 + 0.2),
+                                    Color.white.opacity(0.0)
+                                ]),
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: geometry.size.width * CGFloat(energyPercentage) / 100)
+                        .offset(x: CGFloat(i) * 10 - 30 + CGFloat(energyPercentage) * 0.3)
                 }
             }
-            .frame(height: 8)
-        }
+        )
     }
     
-    // 能量颜色 - 更加统一的色彩系统
+    // 能量粒子效果
+    private var energyParticles: some View {
+        ZStack {
+            ForEach(0..<min(energyPercentage/10, 8), id: \.self) { i in
+                Circle()
+                    .fill(Color.white.opacity(0.8))
+                    .frame(width: 2, height: 2)
+                    .offset(
+                        x: CGFloat(i * 12) + CGFloat(animationPhase) * 20,
+                        y: CGFloat.random(in: -3...3)
+                    )
+                    .opacity(Double.random(in: 0.5...1.0))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    // 能量颜色 - 更强的视觉效果
     private var energyColor: Color {
         switch energyLevel {
         case 0:
             return Color.gray
         case 1:
-            return Color.primaryColor.opacity(0.6)
+            return Color.blue.opacity(0.7)
         case 2:
-            return Color.primaryColor.opacity(0.7)
+            return Color.blue.opacity(0.8)
         case 3:
-            return Color.primaryColor.opacity(0.8)
+            return Color.primaryColor.opacity(0.85)
         case 4:
             return Color.primaryColor.opacity(0.9)
         case 5:
