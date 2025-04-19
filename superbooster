@@ -1,0 +1,47 @@
+### 项目结构规则
+
+**项目名称**: superbooster
+
+**根目录**:
+- **apps/**: 应用程序目录，包含主要的前端应用和后端相关应用。
+  - **next-app/**: Next.js 应用，包含应用的主要页面和逻辑。
+    - **api/**: API 路由目录，包含API的路由和处理逻辑。
+    - **auth/**: 身份验证相关的功能，集成了Better-Auth进行身份验证。
+    - **dashboard/**: 用户仪表盘页面，提供用户信息和操作界面。
+    - **components/**: 共享的 React 组件，用于复用的 UI 部件。
+    - **lib/**: 工具函数和配置文件库。
+    - **public/**: 静态资源文件夹，存放图片、CSS、JS等静态文件。
+
+  - **nuxt-app/**: Nuxt.js 应用，包含Vue相关的页面和逻辑。
+    - **components/**: Vue 组件，包含页面使用的UI组件。
+    - **pages/**: 页面目录，包含所有页面的 Vue 文件。
+    - **server/**: 服务端代码，包含API和路由处理。
+    - **public/**: 静态资源文件夹，包含公开访问的静态文件。
+
+- **libs/**: 公用库目录，包含项目中的公用工具或服务。
+  - **database/**: 数据库相关代码，包含数据库操作和迁移文件。
+    - **migrations/**: 数据库迁移脚本。
+    - **schema/**: 数据库模式定义。
+  - **auth/**: 身份验证相关库。
+  - **email/**: 邮件服务库。
+  - **i18n/**: 国际化功能相关库。
+  - **sms/**: 短信服务库。
+  - **validators/**: 数据验证库。
+
+- **docs/**: 项目文档，包含架构、数据库模式和框架设置等相关文档。
+  - **arch.md**: 项目架构文档。
+  - **database-schema.md**: 数据库架构文档。
+  - **framework-setup.md**: 框架设置指南。
+
+- **tests/**: 测试目录，包含单元测试、端到端测试。
+  - **e2e/**: 端到端测试。
+  - **unit/**: 单元测试。
+
+- **public/**: 公共资源文件夹，存放静态资源，如图片、字体等。
+
+- **根配置文件**:
+  - **package.json**: 根目录的包配置文件，定义项目的依赖和脚本。
+  - **pnpm-workspace.yaml**: 项目的PNPM工作区配置。
+  - **tsconfig.json**: TypeScript 配置文件。
+  - **drizzle.config.ts**: Drizzle ORM 配置。
+  - **turbo.json**: Turborepo 配置文件。

@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /**
  * 评论输入视图
@@ -12,6 +13,8 @@ struct CommentInputView: View {
     // 输入框状态
     @FocusState private var isInputFocused: Bool
     @State private var keyboardHeight: CGFloat = 0
+    @State private var keyboardVisible = false
+    @State private var bottomPadding: CGFloat = 0
     
     // @功能状态
     @State private var showMentionPicker = false
@@ -111,9 +114,11 @@ struct CommentInputView: View {
                             // 提交后取消焦点
                             isInputFocused = false
                             
-                            // 只在不是回复时处理@提及
-                            if commentManager.replyingToComment == nil && containsMention(commentManager.commentText) {
-                                processMentions(commentManager.commentText)
+                            // 处理@提及并触发虚拟角色回复
+                            Task {
+                                // 提交后延迟一小段时间再触发虚拟回复，模拟更真实的交互
+                                try? await Task.sleep(nanoseconds: UInt64(0.5 * 1_000_000_000))
+                                await commentManager.generateVirtualReply()
                             }
                         }
                     }) {
@@ -226,71 +231,41 @@ struct CommentInputView: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .onAppear {
-            setupKeyboardObservers()
-        }
-        .onDisappear {
-            removeKeyboardObservers()
+        .keyboardAdaptive(
+            enabled: true, 
+            adjustLayout: false, 
+            dismissOnTap: true
+        ) // 使用增强版KeyboardAdaptive，不调整布局但启用点击关闭功能
+        .onReceive(Publishers.keyboardHeight) { height in
+            keyboardVisible = height > 0
+            keyboardHeight = height
         }
         .animation(.easeInOut(duration: 0.2), value: showMentionPicker)
-    }
-    
-    // 设置键盘观察器
-    private func setupKeyboardObservers() {
-        NotificationCenter.default.addObserver(
-            forName: UIResponder.keyboardWillShowNotification,
-            object: nil,
-            queue: .main
-        ) { notification in
-            if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-                self.keyboardHeight = keyboardFrame.height
-                
-                // 当键盘出现时，确保动画平滑
-                withAnimation(.easeOut(duration: 0.25)) {
-                    // 可以在这里添加额外的显示逻辑，如自动滚动到评论区底部等
-                }
+        // 保留对外部点击的处理
+        .onAppear {
+            // 添加对外部点击的处理
+            NotificationCenter.default.addObserver(
+                forName: UITapGestureRecognizer.dismissKeyboardNotification,
+                object: nil,
+                queue: .main
+            ) { _ in
+                self.isInputFocused = false
             }
         }
-        
-        NotificationCenter.default.addObserver(
-            forName: UIResponder.keyboardWillHideNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            withAnimation(.easeOut(duration: 0.2)) {
-                self.keyboardHeight = 0
-            }
+        .onDisappear {
+            // 移除外部点击观察者
+            NotificationCenter.default.removeObserver(
+                self,
+                name: UITapGestureRecognizer.dismissKeyboardNotification,
+                object: nil
+            )
         }
-        
-        // 添加对外部点击的处理
-        NotificationCenter.default.addObserver(
-            forName: UITapGestureRecognizer.dismissKeyboardNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            self.isInputFocused = false
-        }
-    }
-    
-    // 移除键盘观察器
-    private func removeKeyboardObservers() {
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIResponder.keyboardWillShowNotification,
-            object: nil
-        )
-        
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIResponder.keyboardWillHideNotification,
-            object: nil
-        )
     }
     
     // @虚拟人物相关方法
     
     // 过滤角色列表
-    private func filteredCharacters() -> [Character] {
+    private func filteredCharacters() -> [CommentCharacter] {
         if mentionSearchText.isEmpty {
             return characters
         } else {
@@ -302,7 +277,7 @@ struct CommentInputView: View {
     }
     
     // 插入@提及
-    private func insertMention(_ character: Character) {
+    private func insertMention(_ character: CommentCharacter) {
         // 如果评论框为空，直接添加@用户名，否则添加空格+@用户名
         if commentManager.commentText.isEmpty {
             commentManager.commentText = "@\(character.name) "
@@ -316,118 +291,13 @@ struct CommentInputView: View {
         hapticFeedback(style: .medium)
     }
     
-    // 判断是否包含@提及
+    // 检查输入文本是否包含@提及
     private func containsMention(_ text: String) -> Bool {
         let pattern = "@([\\p{L}\\s]+)"
         let regex = try? NSRegularExpression(pattern: pattern, options: [])
         let nsString = text as NSString
         let matches = regex?.matches(in: text, options: [], range: NSRange(location: 0, length: nsString.length)) ?? []
         return !matches.isEmpty
-    }
-    
-    // 处理@提及
-    private func processMentions(_ text: String) {
-        let mentionedCharacters = extractMentions(from: text)
-        
-        for characterID in mentionedCharacters {
-            // 延迟生成虚拟角色回复
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1...2)) {
-                // 生成回复
-                generateVirtualReply(for: characterID)
-            }
-        }
-    }
-    
-    // 提取@提及的虚拟人物ID
-    private func extractMentions(from text: String) -> [String] {
-        let pattern = "@([\\p{L}\\s]+)"
-        let regex = try? NSRegularExpression(pattern: pattern, options: [])
-        let nsString = text as NSString
-        let matches = regex?.matches(in: text, options: [], range: NSRange(location: 0, length: nsString.length)) ?? []
-        
-        var result = [String]()
-        let nameToID = [
-            "爱因斯坦": "einstein",
-            "莎士比亚": "shakespeare",
-            "达芬奇": "davinci",
-            "孔子": "confucius",
-            "居里夫人": "curie",
-            "牛顿": "newton",
-            "苏格拉底": "socrates",
-            "莫扎特": "mozart",
-            "李白": "libai"
-        ]
-        
-        for match in matches {
-            let nameRange = match.range(at: 1)
-            if nameRange.location != NSNotFound {
-                let name = nsString.substring(with: nameRange).trimmingCharacters(in: .whitespaces)
-                if let id = nameToID[name] {
-                    result.append(id)
-                }
-            }
-        }
-        
-        return result
-    }
-    
-    // 生成虚拟角色回复
-    private func generateVirtualReply(for characterID: String) {
-        // 根据角色生成回复内容
-        let replyContent = getCharacterReply(for: characterID)
-        
-        // 获取被回复评论的ID（如果有）
-        let parentId = commentManager.replyingToComment?.id
-        let replyToUsername = commentManager.replyingToComment?.username
-        
-        // 添加虚拟角色回复
-        commentManager.currentPost.addComment(
-            username: getCharacterName(for: characterID),
-            userAvatar: "avatar_\(characterID)",
-            content: replyContent,
-            parentCommentId: parentId,
-            replyToUsername: replyToUsername,
-            isVirtualCharacter: true,
-            characterID: characterID
-        )
-        
-        // 更新评论列表
-        commentManager.updateCommentLists()
-    }
-    
-    // 获取角色回复内容
-    private func getCharacterReply(for characterID: String) -> String {
-        // 根据不同角色返回不同的回复内容
-        switch characterID {
-        case "einstein":
-            return "从相对论的角度看，你的观点有着有趣的物理意义。时间和空间在高速运动或强引力场中的表现，会让我们对宇宙有全新的理解。"
-        case "shakespeare":
-            return "正如我在作品中所探索的，人性的复杂性往往超出我们的想象。这让我想起了《哈姆雷特》中的一句话：'世上有千百事，是你们学问里所没有的。'"
-        case "davinci":
-            return "艺术与科学的统一是我毕生追求的。你的想法让我想到，真正的创新往往来自不同领域知识的融合与碰撞。"
-        case "confucius":
-            return "子曰：'学而时习之，不亦说乎？'你的思考很有深度，让我想起了学习与实践相结合的重要性。"
-        case "libai":
-            return "人生如梦，一尊还酹江月。你的感悟颇有诗意，不妨举杯邀明月，对影成三人。"
-        default:
-            return "你的观点很有见地，让我从不同角度思考了这个问题。"
-        }
-    }
-    
-    // 获取角色名称
-    private func getCharacterName(for characterID: String) -> String {
-        switch characterID {
-        case "einstein": return "爱因斯坦"
-        case "shakespeare": return "莎士比亚"
-        case "davinci": return "达芬奇"
-        case "confucius": return "孔子"
-        case "curie": return "居里夫人"
-        case "newton": return "牛顿"
-        case "socrates": return "苏格拉底"
-        case "mozart": return "莫扎特"
-        case "libai": return "李白"
-        default: return "历史人物"
-        }
     }
     
     // 触感反馈
@@ -438,18 +308,19 @@ struct CommentInputView: View {
     
     // 虚拟人物数据
     private let characters = [
-        Character(id: "einstein", name: "爱因斯坦", category: "科学家", color: .blue),
-        Character(id: "shakespeare", name: "莎士比亚", category: "文学家", color: .purple),
-        Character(id: "davinci", name: "达芬奇", category: "艺术家", color: .green),
-        Character(id: "confucius", name: "孔子", category: "哲学家", color: .orange),
-        Character(id: "curie", name: "居里夫人", category: "科学家", color: .indigo),
-        Character(id: "newton", name: "牛顿", category: "科学家", color: .blue),
-        Character(id: "socrates", name: "苏格拉底", category: "哲学家", color: .teal),
-        Character(id: "mozart", name: "莫扎特", category: "音乐家", color: .pink),
-        Character(id: "libai", name: "李白", category: "诗人", color: .orange)
+        CommentCharacter(id: "einstein", name: "爱因斯坦", category: "科学家", color: .blue),
+        CommentCharacter(id: "shakespeare", name: "莎士比亚", category: "文学家", color: .purple),
+        CommentCharacter(id: "davinci", name: "达芬奇", category: "艺术家", color: .green),
+        CommentCharacter(id: "confucius", name: "孔子", category: "哲学家", color: .orange),
+        CommentCharacter(id: "curie", name: "居里夫人", category: "科学家", color: .indigo),
+        CommentCharacter(id: "newton", name: "牛顿", category: "科学家", color: .blue),
+        CommentCharacter(id: "socrates", name: "苏格拉底", category: "哲学家", color: .teal),
+        CommentCharacter(id: "mozart", name: "莫扎特", category: "音乐家", color: .pink),
+        CommentCharacter(id: "libai", name: "李白", category: "诗人", color: .orange)
     ]
     
-    struct Character: Identifiable {
+    // 评论角色结构体 - 改名避免与CharacterModel冲突
+    struct CommentCharacter: Identifiable {
         let id: String
         let name: String
         let category: String
@@ -474,10 +345,33 @@ extension UITapGestureRecognizer {
 
 // 扩展View以添加点击空白处关闭键盘的修饰符
 extension View {
-    func dismissKeyboardOnTap() -> some View {
+    /**
+     * 添加点击空白处关闭键盘的功能
+     * - Parameters:
+     *   - notifyObservers: 是否在关闭键盘后发送通知，默认为true
+     *   - hapticFeedback: 是否在点击时产生触感反馈，默认为false
+     *   - feedbackStyle: 触感反馈的强度，默认为light
+     * - Returns: 应用了点击关闭键盘功能的视图
+     */
+    func dismissKeyboardOnTap(
+        notifyObservers: Bool = true,
+        hapticFeedback: Bool = false,
+        feedbackStyle: UIImpactFeedbackGenerator.FeedbackStyle = .light
+    ) -> some View {
         return self.onTapGesture {
+            // 关闭键盘
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            NotificationCenter.default.post(name: UITapGestureRecognizer.dismissKeyboardNotification, object: nil)
+            
+            // 发送通知
+            if notifyObservers {
+                NotificationCenter.default.post(name: UITapGestureRecognizer.dismissKeyboardNotification, object: nil)
+            }
+            
+            // 触感反馈
+            if hapticFeedback {
+                let generator = UIImpactFeedbackGenerator(style: feedbackStyle)
+                generator.impactOccurred()
+            }
         }
     }
 } 

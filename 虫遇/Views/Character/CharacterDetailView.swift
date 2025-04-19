@@ -16,161 +16,35 @@ struct CharacterDetailView: View {
     /// 模拟对话数据
     @State private var conversations: [Conversation] = []
     
+    // TabBar管理器
+    @ObservedObject private var tabBarManager = TabBarManager.shared
+    
+    // 添加状态变量以控制导航
+    @State private var navigateToChatView = false
+    @State private var selectedConversationId: String? = nil
+    
+    // 添加环境变量用于自定义返回按钮
+    @Environment(\.dismiss) private var dismiss
+    
     var body: some View {
+        // 简化主视图结构
         ScrollView {
             VStack(spacing: 0) {
-                // 顶部信息卡
-                VStack(spacing: 16) {
-                    // 角色头像
-                    AsyncImage(url: URL(string: character.avatarUrl)) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Image(systemName: "person.circle.fill")
-                            .resizable()
-                            .foregroundColor(.gray.opacity(0.3))
-                    }
-                    .frame(width: 100, height: 100)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white, lineWidth: 4)
-                    )
-                    .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
-                    
-                    // 角色名称和领域
-                    VStack(spacing: 4) {
-                        Text(character.name)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(.primary)
-                        
-                        Text("\(character.field) | \(character.birthYear)-\(character.deathYear ?? "现在")")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // 角色数据
-                    HStack(spacing: 40) {
-                        VStack {
-                            Text("3,542")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.primary)
-                            
-                            Text("粉丝")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        VStack {
-                            Text("14.2K")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.primary)
-                            
-                            Text("互动量")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        VStack {
-                            Text("4.9")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.primary)
-                            
-                            Text("评分")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    
-                    // 主要标签
-                    HStack(spacing: 8) {
-                        ForEach(character.keyThoughts.prefix(3), id: \.self) { tag in
-                            Text(tag)
-                                .font(.system(size: 12))
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.gray.opacity(0.1))
-                                .foregroundColor(.primary)
-                                .cornerRadius(16)
-                        }
-                    }
-                    
-                    // 操作按钮
-                    HStack(spacing: 20) {
-                        Button(action: {
-                            // 关注操作
-                        }) {
-                            VStack(spacing: 4) {
-                                Image(systemName: "plus.circle")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(.primaryColor)
-                                
-                                Text("关注")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(width: 60)
-                        }
-                        
-                        NavigationLink(destination: ChatView(character: character, conversationId: UUID().uuidString)) {
-                            VStack(spacing: 4) {
-                                Image(systemName: "bubble.left.fill")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(.primaryColor)
-                                
-                                Text("对话")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(width: 60)
-                        }
-                        
-                        Button(action: {
-                            showingShareSheet = true
-                        }) {
-                            VStack(spacing: 4) {
-                                Image(systemName: "square.and.arrow.up")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(.primaryColor)
-                                
-                                Text("分享")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(width: 60)
-                        }
-                    }
-                }
-                .padding(16)
-                .background(Color.white)
+                // 抽取为独立组件
+                CharacterHeaderView(
+                    character: character,
+                    showShareSheet: $showingShareSheet,
+                    selectedConversationId: $selectedConversationId,
+                    navigateToChatView: $navigateToChatView
+                )
                 
-                // 内容标签页
-                HStack(spacing: 0) {
-                    ForEach(0..<tabOptions.count, id: \.self) { index in
-                        Button(action: {
-                            withAnimation {
-                                selectedTabIndex = index
-                            }
-                        }) {
-                            VStack(spacing: 8) {
-                                Text(tabOptions[index])
-                                    .font(.system(size: 16, weight: selectedTabIndex == index ? .semibold : .regular))
-                                    .foregroundColor(selectedTabIndex == index ? .primaryColor : .secondary)
-                                
-                                // 选中指示条
-                                Rectangle()
-                                    .fill(selectedTabIndex == index ? Color.primaryColor : Color.clear)
-                                    .frame(height: 2)
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                }
-                .padding(.vertical, 12)
-                .background(Color.white)
+                // 抽取为独立组件
+                CharacterTabBarView(
+                    tabOptions: tabOptions,
+                    selectedTabIndex: $selectedTabIndex
+                )
                 
-                // 标签页内容
+                // 标签页内容 - 保持不变
                 TabView(selection: $selectedTabIndex) {
                     // 介绍标签页
                     CharacterIntroductionView(character: character)
@@ -181,57 +55,298 @@ struct CharacterDetailView: View {
                         .tag(1)
                     
                     // 互动记录标签页
-                    CharacterInteractionView(character: character, conversations: conversations)
-                        .tag(2)
+                    CharacterInteractionView(
+                        character: character, 
+                        conversations: conversations,
+                        onChatSelected: { conversationId in
+                            print("对话记录点击: \(conversationId)")
+                            selectedConversationId = conversationId
+                            navigateToChatView = true
+                        }
+                    )
+                    .tag(2)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                .frame(height: UIScreen.main.bounds.height * 0.6)
+                .frame(minHeight: 500)
             }
         }
-        .edgesIgnoringSafeArea(.bottom)
+        .background(Color(.systemGroupedBackground))
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: {
-                    showingShareSheet = true
+                    // 手动返回
+                    dismiss()
                 }) {
-                    Image(systemName: "square.and.arrow.up")
-                        .foregroundColor(.primary)
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .medium))
+                        Text("返回")
+                            .font(.system(size: 17, weight: .regular))
+                    }
+                    .foregroundColor(.primaryColor)
                 }
             }
         }
         .sheet(isPresented: $showingShareSheet) {
-            // 分享界面
             Text("分享 \(character.name) 的信息")
         }
+        // 使用新的导航API
+        .navigationDestination(isPresented: $navigateToChatView) {
+            ChatView(
+                character: ChatCharacter(
+                    id: character.id,
+                    name: character.name,
+                    introduction: character.introduction,
+                    field: character.field,
+                    birthYear: character.birthYear,
+                    deathYear: character.deathYear ?? "",
+                    avatarUrl: character.avatarUrl,
+                    eraTag: character.eraTag ?? "",
+                    achievements: character.achievements,
+                    mainWorks: character.mainWorks,
+                    keyThoughts: character.keyThoughts
+                ),
+                conversationId: selectedConversationId ?? UUID().uuidString
+            )
+        }
         .onAppear {
-            loadMockData()
+            // 在视图出现时隐藏TabBar
+            tabBarManager.pushHideState()
+            print("CharacterDetailView出现：TabBar已隐藏")
+            
+            // 加载模拟对话数据
+            loadMockConversations()
+        }
+        .onDisappear {
+            // 在视图消失时重置状态以确保清晰的导航体验
+            tabBarManager.popHideState()
+            print("CharacterDetailView消失：TabBar状态已恢复")
         }
     }
     
     /**
-     * 加载模拟数据
+     * 加载模拟对话数据
      */
-    private func loadMockData() {
-        // 加载模拟对话记录
+    private func loadMockConversations() {
+        // 模拟数据
         conversations = [
-            Conversation(
-                id: UUID().uuidString,
-                characterId: character.id,
-                userId: "currentUser",
-                lastMessageContent: "我很好奇，您在研究相对论时，最初的灵感是从哪里来的？",
-                lastMessageTime: Date().addingTimeInterval(-3600 * 24 * 2),
-                messageCount: 12
-            ),
-            Conversation(
-                id: UUID().uuidString,
-                characterId: character.id,
-                userId: "currentUser",
-                lastMessageContent: "您认为人工智能会在未来取代人类的创造力吗？",
-                lastMessageTime: Date().addingTimeInterval(-3600 * 24 * 5),
-                messageCount: 8
-            )
+            Conversation(id: "1", characterId: character.id, userId: "currentUser", lastMessageContent: "上次我们讨论到了关于您那个时代的生活方式，能继续聊聊吗？", lastMessageTime: Date().addingTimeInterval(-3600 * 24), messageCount: 0),
+            Conversation(id: "2", characterId: character.id, userId: "currentUser", lastMessageContent: "您认为历史和现代的最大区别是什么？", lastMessageTime: Date().addingTimeInterval(-3600 * 24 * 3), messageCount: 1)
         ]
+    }
+}
+
+/**
+ * 角色头部信息视图
+ * 抽取出来减少主视图的复杂度
+ */
+struct CharacterHeaderView: View {
+    let character: Character
+    @Binding var showShareSheet: Bool
+    @Binding var selectedConversationId: String?
+    @Binding var navigateToChatView: Bool
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // 角色头像
+            AsyncImage(url: URL(string: character.avatarUrl)) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } placeholder: {
+                Image(systemName: "person.circle.fill")
+                    .resizable()
+                    .foregroundColor(.gray.opacity(0.3))
+            }
+            .frame(width: 100, height: 100)
+            .clipShape(Circle())
+            .overlay(
+                Circle()
+                    .stroke(Color.white, lineWidth: 4)
+            )
+            .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+            
+            // 角色名称和领域
+            VStack(spacing: 4) {
+                Text(character.name)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Text("\(character.field) | \(character.birthYear)-\(character.deathYear ?? "现在")")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+            
+            // 角色数据
+            CharacterStatsView()
+            
+            // 主要标签
+            CharacterTagsView(keyThoughts: character.keyThoughts)
+            
+            // 操作按钮
+            CharacterActionButtonsView(
+                onFollowTapped: {
+                    print("关注按钮点击")
+                },
+                onChatTapped: {
+                    print("对话按钮点击")
+                    selectedConversationId = UUID().uuidString
+                    navigateToChatView = true
+                },
+                onShareTapped: {
+                    print("分享按钮点击")
+                    showShareSheet = true
+                }
+            )
+        }
+        .padding(16)
+        .background(Color.white)
+    }
+}
+
+/**
+ * 角色统计信息视图
+ */
+struct CharacterStatsView: View {
+    var body: some View {
+        HStack(spacing: 40) {
+            StatItem(value: "3,542", label: "粉丝")
+            StatItem(value: "14.2K", label: "互动量")
+            StatItem(value: "4.9", label: "评分")
+        }
+    }
+    
+    struct StatItem: View {
+        let value: String
+        let label: String
+        
+        var body: some View {
+            VStack {
+                Text(value)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Text(label)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+/**
+ * 角色标签视图
+ */
+struct CharacterTagsView: View {
+    let keyThoughts: [String]
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(keyThoughts.prefix(3), id: \.self) { tag in
+                Text(tag)
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.gray.opacity(0.1))
+                    .foregroundColor(.primary)
+                    .cornerRadius(16)
+            }
+        }
+    }
+}
+
+/**
+ * 角色操作按钮视图
+ */
+struct CharacterActionButtonsView: View {
+    let onFollowTapped: () -> Void
+    let onChatTapped: () -> Void
+    let onShareTapped: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 20) {
+            // 关注按钮
+            ActionButton(
+                iconName: "plus.circle", 
+                label: "关注", 
+                action: onFollowTapped
+            )
+            
+            // 对话按钮
+            ActionButton(
+                iconName: "bubble.left.fill", 
+                label: "对话", 
+                action: onChatTapped
+            )
+            
+            // 分享按钮
+            ActionButton(
+                iconName: "square.and.arrow.up", 
+                label: "分享", 
+                action: onShareTapped
+            )
+        }
+    }
+    
+    struct ActionButton: View {
+        let iconName: String
+        let label: String
+        let action: () -> Void
+        
+        var body: some View {
+            Button(action: action) {
+                VStack(spacing: 4) {
+                    Image(systemName: iconName)
+                        .font(.system(size: 24))
+                        .foregroundColor(.primaryColor)
+                    
+                    Text(label)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .frame(width: 60, height: 60)
+            }
+            .contentShape(Rectangle())
+            .buttonStyle(ScaleButtonStyle())
+        }
+    }
+}
+
+/**
+ * 角色标签栏视图
+ */
+struct CharacterTabBarView: View {
+    let tabOptions: [String]
+    @Binding var selectedTabIndex: Int
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(0..<tabOptions.count, id: \.self) { index in
+                Button {
+                    print("标签选择: \(tabOptions[index])")
+                    withAnimation {
+                        selectedTabIndex = index
+                    }
+                } label: {
+                    VStack(spacing: 8) {
+                        Text(tabOptions[index])
+                            .font(.system(size: 16, weight: selectedTabIndex == index ? .semibold : .regular))
+                            .foregroundColor(selectedTabIndex == index ? .primaryColor : .secondary)
+                        
+                        // 选中指示条
+                        Rectangle()
+                            .fill(selectedTabIndex == index ? Color.primaryColor : Color.clear)
+                            .frame(height: 2)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.97))
+            }
+        }
+        .padding(.vertical, 12)
+        .background(Color.white)
     }
 }
 
@@ -374,11 +489,12 @@ struct CharacterRelatedInfoView: View {
 }
 
 /**
- * 角色互动记录视图
+ * 角色互动记录视图 - 重构为使用回调而非内部导航
  */
 struct CharacterInteractionView: View {
     var character: Character
     var conversations: [Conversation]
+    var onChatSelected: (String) -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -392,8 +508,10 @@ struct CharacterInteractionView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.secondary)
                     
-                    // 开始对话按钮
-                    NavigationLink(destination: ChatView(character: character, conversationId: UUID().uuidString)) {
+                    // 开始对话按钮 - 使用回调而非内部导航
+                    Button {
+                        onChatSelected(UUID().uuidString)
+                    } label: {
                         HStack {
                             Image(systemName: "bubble.left.fill")
                                 .font(.system(size: 16))
@@ -407,12 +525,15 @@ struct CharacterInteractionView: View {
                         .background(Color.primaryColor)
                         .cornerRadius(8)
                     }
+                    .buttonStyle(ScaleButtonStyle())
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 60)
             } else {
                 ForEach(conversations) { conversation in
-                    NavigationLink(destination: ChatView(character: character, conversationId: conversation.id)) {
+                    Button {
+                        onChatSelected(conversation.id)
+                    } label: {
                         HStack(spacing: 12) {
                             // 角色头像
                             AsyncImage(url: URL(string: character.avatarUrl)) { image in

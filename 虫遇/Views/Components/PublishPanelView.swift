@@ -33,6 +33,10 @@ struct PublishPanelView: View {
     @State private var selectedImages: [UIImage] = []
     /// 是否显示图片选择器
     @State private var showingImagePicker: Bool = false
+    /// 是否显示图片全屏预览
+    @State private var showingFullScreenImage: Bool = false
+    /// 当前预览的图片索引
+    @State private var previewingImageIndex: Int = 0
     /// 是否显示发布成功提示
     @State private var isShowingSuccessToast: Bool = false
     /// 潜在回复的角色列表(用于成功提示)
@@ -97,8 +101,9 @@ struct PublishPanelView: View {
                             .padding(.top, 8)
                     }
                     
-                    // 底部工具栏
+                    // 底部工具栏 - 上移适当位置
                     bottomToolbar
+                        .padding(.bottom, 8) // 增加底部边距，防止按钮太靠近屏幕边缘
                 }
                 .padding(.horizontal, 12)
                 .background(
@@ -148,7 +153,22 @@ struct PublishPanelView: View {
                 .presentationCornerRadius(25) // 设置圆角
         }
         .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(selectedImages: $selectedImages, maxSelections: 9)
+            PHImagePicker(selectedImages: $selectedImages, completion: { newImages in
+                // 添加图片时的触感反馈
+                if !newImages.isEmpty {
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.impactOccurred()
+                }
+            }, maxSelectionCount: 9)
+        }
+        
+        // 全屏图片预览
+        .fullScreenCover(isPresented: $showingFullScreenImage) {
+            ImageFullScreenViewer(
+                images: selectedImages,
+                initialIndex: previewingImageIndex,
+                isPresented: $showingFullScreenImage
+            )
         }
         
         // 发布成功提示 - 移到外部ZStack以确保面板关闭后仍然可见
@@ -175,46 +195,50 @@ struct PublishPanelView: View {
     // 内容输入区域
     private var contentInputArea: some View {
         VStack(spacing: 12) {
+            // 输入区域
             VStack {
-                // 直接使用修改后的EnhancedTextDisplayView
                 EnhancedTextDisplayView(
                     text: $contentText,
                     placeholder: "写下你想和历史人物交流的内容...",
                     minHeight: UIScreen.main.bounds.height * 0.15,
                     maxHeight: UIScreen.main.bounds.height * 0.25,
                     cornerRadius: 16,
-                    borderColor: Color.purple,
+                    borderColor: Color.primaryColor,
                     backgroundColor: .white,
-                    showDebugInfo: true
+                    showDebugInfo: false
                 )
-                .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    print("点击EnhancedTextDisplayView")
-                    isTextEditorFocused = true
-                    forceActivateTextInput()
-                }
+                .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
             }
             .frame(height: UIScreen.main.bounds.height * 0.2)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                print("点击内容输入区域外层")
-                forceActivateTextInput()
-            }
             
-            HStack(spacing: 12) {
+            // 功能按钮区 - 极简布局
+            HStack(spacing: 10) {
+                // 图片选择按钮 - 极简化
                 Button(action: { showingImagePicker = true }) {
-                    Label("添加图片", systemImage: "photo")
-                        .font(.system(size: 14, weight: .medium))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                        .background(Color.blue.opacity(0.12))
-                        .cornerRadius(12)
-                        .foregroundColor(Color.blue.opacity(0.9))
+                    HStack(spacing: 4) {
+                        Image(systemName: selectedImages.isEmpty ? "photo" : "photo.fill")
+                            .font(.system(size: 13, weight: .medium))
+                        
+                        if !selectedImages.isEmpty {
+                            Text("\(selectedImages.count)")
+                                .font(.system(size: 13, weight: .medium))
+                        } else {
+                            Text("图片")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.blue.opacity(selectedImages.isEmpty ? 0.08 : 0.12))
+                    )
+                    .foregroundColor(Color.blue.opacity(0.9))
                 }
                 
                 Spacer()
                 
+                // 时代选择按钮 - 极简化
                 Menu {
                     ForEach(eras, id: \.self) { era in
                         Button(era) {
@@ -224,22 +248,86 @@ struct PublishPanelView: View {
                         }
                     }
                 } label: {
-                    Label(selectedEra, systemImage: "clock")
-                        .font(.system(size: 14, weight: .medium))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                        .background(Color.purple.opacity(0.12))
-                        .cornerRadius(12)
-                        .foregroundColor(Color.purple.opacity(0.9))
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 13, weight: .medium))
+                        Text(selectedEra)
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.primaryColor.opacity(0.08))
+                    )
+                    .foregroundColor(Color.primaryColor.opacity(0.9))
                 }
             }
             
+            // 图片预览区域
+            if !selectedImages.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    // 图片预览滚动区 - 极简设计
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(0..<selectedImages.count, id: \.self) { index in
+                                ZStack(alignment: .topTrailing) {
+                                    Image(uiImage: selectedImages[index])
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 55, height: 55)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                                        .onTapGesture {
+                                            previewingImageIndex = index
+                                            showingFullScreenImage = true
+                                        }
+                                    
+                                    // 极简删除按钮
+                                    Button(action: {
+                                        let generator = UIImpactFeedbackGenerator(style: .light)
+                                        generator.impactOccurred()
+                                        
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            selectedImages.remove(at: index)
+                                        }
+                                    }) {
+                                        Circle()
+                                            .fill(Color.black.opacity(0.5))
+                                            .frame(width: 16, height: 16)
+                                            .overlay(
+                                                Image(systemName: "xmark")
+                                                    .font(.system(size: 8, weight: .bold))
+                                                    .foregroundColor(.white)
+                                            )
+                                    }
+                                    .padding(2)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 1)
+                    }
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 4)
+                .transition(
+                    AnyTransition.asymmetric(
+                        insertion: AnyTransition.scale(scale: 0.95, anchor: .center)
+                            .combined(with: AnyTransition.opacity),
+                        removal: AnyTransition.scale(scale: 0.95, anchor: .center)
+                            .combined(with: AnyTransition.opacity)
+                    )
+                )
+            }
+            
             energyIndicatorView
+                .padding(.top, 2)
             
             characterRecommendationView
                 .padding(.top, 2)
         }
         .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedImages.count)
     }
     
     // 强制激活文本输入框
@@ -259,30 +347,29 @@ struct PublishPanelView: View {
         }
     }
     
-    // 底部工具栏
+    // 底部工具栏 - 优化设计
     private var bottomToolbar: some View {
         HStack {
-            // 角色选择按钮
+            // 角色选择按钮 - 增大尺寸
             Button(action: {
                 showingCharacterSelector = true
-                // 添加触感反馈
                 let impactFeedback = UIImpactFeedbackGenerator(style: .light)
                 impactFeedback.impactOccurred()
             }) {
-                HStack(spacing: 6) {
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 15))
-                    Text("选择角色")
-                        .font(.system(size: 14, weight: .medium))
+                HStack(spacing: 5) {
+                    Image(systemName: selectedCharacters.isEmpty ? "person.fill" : "person.2.fill")
+                        .font(.system(size: 15, weight: .medium))
+                    
+                    Text(selectedCharacters.isEmpty ? "角色" : "角色")
+                        .font(.system(size: 15, weight: .medium))
                 }
                 .foregroundColor(Color.primaryColor)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8) 
                 .background(
                     Capsule()
-                        .fill(Color.primaryColor.opacity(0.12))
+                        .fill(Color.primaryColor.opacity(0.1))
                 )
-                // 增加可触控区域
                 .contentShape(Rectangle())
             }
             .buttonStyle(BouncyButtonStyle())
@@ -290,105 +377,118 @@ struct PublishPanelView: View {
             // 选中角色数量
             if !selectedCharacters.isEmpty {
                 Text("\(selectedCharacters.count)")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.white)
-                    .frame(width: 22, height: 22)
+                    .frame(width: 20, height: 20)
                     .background(Color.primaryColor)
                     .clipShape(Circle())
-                    .offset(x: -8)
-                    .shadow(color: Color.primaryColor.opacity(0.3), radius: 2, x: 0, y: 1)
+                    .offset(x: -5)
             }
             
             Spacer()
             
-            // 发布按钮 - 更现代的设计
-            Button(action: {
-                // 触感反馈
-                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                impactFeedback.impactOccurred()
-                
-                // 修改发布条件：文本不为空或者有图片
-                if !contentText.isEmpty || !selectedImages.isEmpty {
-                    // 如果没有选择角色，自动添加推荐角色
-                    if selectedCharacters.isEmpty {
-                        // 获取推荐角色
-                        let recommendedCharacters = PublishCharacterRecommendationView.getRecommendedCharacters(
-                            contentText: contentText,
-                            selectedEra: selectedEra,
-                            selectedCharacters: []
-                        )
-                        
-                        // 如果有推荐角色就使用前3个，否则从所有角色中随机选择3个
-                        if !recommendedCharacters.isEmpty {
-                            selectedCharacters = Array(recommendedCharacters.prefix(3))
-                        } else {
-                            // 随机选择3个不同类型的角色
-                            let allCharacters = CharacterModel.sampleCharacters
-                            var tempSelectedCharacters: [CharacterModel] = []
-                            
-                            // 确保选择来自不同类别的角色
-                            let categories = CharacterCategory.allCases
-                            for category in categories {
-                                if let character = allCharacters.filter({ $0.category == category }).randomElement() {
-                                    tempSelectedCharacters.append(character)
-                                    if tempSelectedCharacters.count >= 3 {
-                                        break
-                                    }
-                                }
-                            }
-                            
-                            // 如果还不足3个，继续随机添加
-                            if tempSelectedCharacters.count < 3 {
-                                let remainingCount = 3 - tempSelectedCharacters.count
-                                let remainingCharacters = allCharacters.filter { character in
-                                    !tempSelectedCharacters.contains { $0.id == character.id }
-                                }
-                                
-                                for _ in 0..<min(remainingCount, remainingCharacters.count) {
-                                    if let character = remainingCharacters.randomElement() {
-                                        tempSelectedCharacters.append(character)
-                                    }
-                                }
-                            }
-                            
-                            selectedCharacters = tempSelectedCharacters
-                        }
-                        
-                        // 更新角色概率
-                        updateCharacterProbabilities()
-                    }
-                    
-                    publishContent()
-                }
-            }) {
-                HStack(spacing: 6) {
+            // 发布按钮 - 增大尺寸
+            Button(action: handlePublishButtonTapped) {
+                HStack(spacing: 8) {
                     Text("发布")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 16, weight: .medium))
                     
-                    Image(systemName: "paperplane.fill")
-                        .font(.system(size: 14))
+                    if hasValidContent {
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 14, weight: .medium))
+                            .offset(x: -1, y: -1)
+                            .rotationEffect(.degrees(15))
+                    }
                 }
-                .foregroundColor(.white)
                 .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                .padding(.vertical, 10)
                 .background(
-                    (!contentText.isEmpty || !selectedImages.isEmpty) 
-                        ? LinearGradient(
-                            gradient: Gradient(colors: [Color.primaryColor, Color.primaryColor.opacity(0.8)]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing)
-                        : LinearGradient(
-                            gradient: Gradient(colors: [Color.gray, Color.gray.opacity(0.8)]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing)
+                    Capsule()
+                        .fill(hasValidContent ? Color.primaryColor : Color.gray.opacity(0.3))
                 )
-                .cornerRadius(24) // 更圆润的圆角
-                .shadow(color: (!contentText.isEmpty || !selectedImages.isEmpty) ? Color.primaryColor.opacity(0.4) : Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                .foregroundColor(.white)
+                .shadow(color: hasValidContent ? Color.primaryColor.opacity(0.2) : Color.clear, radius: 3, x: 0, y: 1)
             }
-            .disabled(contentText.isEmpty && selectedImages.isEmpty)
+            .disabled(!hasValidContent)
+            .buttonStyle(SpringyButtonStyle())
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
+        .padding(.bottom, 4) // 减小底部边距，提高位置
+    }
+    
+    // 发布内容判断 - 文本不为空或有图片
+    private var hasValidContent: Bool {
+        !contentText.isEmpty || !selectedImages.isEmpty
+    }
+    
+    // 处理发布按钮点击
+    private func handlePublishButtonTapped() {
+        // 触感反馈
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        guard hasValidContent else { return }
+        
+        // 如果没有选择角色，自动添加推荐角色
+        if selectedCharacters.isEmpty {
+            autoSelectCharacters()
+        }
+        
+        publishContent()
+    }
+    
+    // 自动选择推荐角色
+    private func autoSelectCharacters() {
+        // 获取推荐角色
+        let recommendedCharacters = PublishCharacterRecommendationView.getRecommendedCharacters(
+            contentText: contentText,
+            selectedEra: selectedEra,
+            selectedCharacters: []
+        )
+        
+        // 如果有推荐角色就使用前3个，否则随机选择
+        if !recommendedCharacters.isEmpty {
+            selectedCharacters = Array(recommendedCharacters.prefix(3))
+        } else {
+            selectedCharacters = selectRandomCharacters()
+        }
+        
+        // 更新角色概率
+        updateCharacterProbabilities()
+    }
+    
+    // 随机选择角色
+    private func selectRandomCharacters() -> [CharacterModel] {
+        let allCharacters = CharacterModel.sampleCharacters
+        var tempSelectedCharacters: [CharacterModel] = []
+        
+        // 确保选择来自不同类别的角色
+        let categories = CharacterCategory.allCases
+        for category in categories {
+            if let character = allCharacters.filter({ $0.category == category }).randomElement() {
+                tempSelectedCharacters.append(character)
+                if tempSelectedCharacters.count >= 3 {
+                    break
+                }
+            }
+        }
+        
+        // 如果还不足3个，继续随机添加
+        if tempSelectedCharacters.count < 3 {
+            let remainingCount = 3 - tempSelectedCharacters.count
+            let remainingCharacters = allCharacters.filter { character in
+                !tempSelectedCharacters.contains { $0.id == character.id }
+            }
+            
+            for _ in 0..<min(remainingCount, remainingCharacters.count) {
+                if let character = remainingCharacters.randomElement() {
+                    tempSelectedCharacters.append(character)
+                }
+            }
+        }
+        
+        return tempSelectedCharacters
     }
     
     // 发布内容
@@ -776,7 +876,10 @@ struct PublishPanelView: View {
             }
         }
         .padding(20)
-        .background(Color.clear)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+        )
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.15), radius: 12, y: 6)
         .padding(.horizontal, 40)
@@ -1185,6 +1288,10 @@ struct CharacterSelectorView: View {
                 VStack(spacing: 12) { // 增加间距
                     // 标题与确定按钮
                     HStack {
+                        // 左侧空间
+                        Spacer()
+                            .frame(width: 50)
+                        
                         Spacer()
                         
                         Text("选择角色")
@@ -1192,16 +1299,19 @@ struct CharacterSelectorView: View {
                         
                         Spacer()
                         
-                        // 确定按钮移到右侧
-                        Button(localSelectedCharacters.isEmpty ? "确定" : "确定(\(localSelectedCharacters.count))") {
+                        // 完全重新设计确定按钮 - 水平布局
+                        Button(action: {
                             selectedCharacters = localSelectedCharacters
                             presentationMode.wrappedValue.dismiss()
+                        }) {
+                            Text(localSelectedCharacters.isEmpty ? "确定" : "确定(\(localSelectedCharacters.count))")
+                                .font(.system(size: 16))
+                                .foregroundColor(localSelectedCharacters.isEmpty ? .gray : .primaryColor)
                         }
-                        .fontWeight(.bold)
-                        .foregroundColor(localSelectedCharacters.isEmpty ? .gray : .primaryColor)
                         .disabled(localSelectedCharacters.isEmpty)
+                        .frame(width: 60, alignment: .trailing)
                     }
-                    .padding(.top, 8) // 顶部增加间距
+                    .padding(.top, 8)
                     
                     // 搜索栏 - 独立成一行，不再与按钮共行
                     HStack(spacing: 4) {
@@ -2705,5 +2815,151 @@ struct NativeTextEditorView: View {
                 }
             }
         }
+    }
+}
+
+/**
+ * 全屏图片查看器
+ * 支持图片缩放和左右滑动切换
+ */
+struct ImageFullScreenViewer: View {
+    let images: [UIImage]
+    @State private var currentIndex: Int
+    @Binding var isPresented: Bool
+    
+    init(images: [UIImage], initialIndex: Int, isPresented: Binding<Bool>) {
+        self.images = images
+        self._currentIndex = State(initialValue: initialIndex)
+        self._isPresented = isPresented
+    }
+    
+    var body: some View {
+        ZStack {
+            // 背景
+            Color.black.edgesIgnoringSafeArea(.all)
+            
+            // 内容
+            VStack(spacing: 0) {
+                // 顶部控制栏
+                HStack {
+                    // 关闭按钮
+                    Button(action: { isPresented = false }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(Color.black.opacity(0.4))
+                            .clipShape(Circle())
+                    }
+                    
+                    Spacer()
+                    
+                    // 页码指示器
+                    Text("\(currentIndex + 1) / \(images.count)")
+                        .foregroundColor(.white)
+                        .font(.system(size: 15))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.black.opacity(0.4))
+                        .cornerRadius(15)
+                }
+                .padding()
+                
+                // 图片显示区域
+                TabView(selection: $currentIndex) {
+                    ForEach(0..<images.count, id: \.self) { index in
+                        ZoomableImage(image: images[index])
+                            .tag(index)
+                    }
+                }
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+            }
+        }
+        .statusBar(hidden: true)
+        .onAppear {
+            // 添加触感反馈
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
+        }
+    }
+}
+
+/**
+ * 可缩放图片视图
+ * 支持双指缩放和拖动
+ */
+struct ZoomableImage: View {
+    let image: UIImage
+    
+    @State private var scale: CGFloat = 1.0
+    @State private var lastScale: CGFloat = 1.0
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
+    
+    var magnificationGesture: some Gesture {
+        MagnificationGesture()
+            .onChanged { value in
+                let delta = value / lastScale
+                lastScale = value
+                scale = min(max(scale * delta, 1), 4)
+            }
+            .onEnded { _ in
+                lastScale = 1.0
+                if scale < 1.1 {
+                    withAnimation {
+                        scale = 1.0
+                        offset = .zero
+                    }
+                }
+            }
+    }
+    
+    var dragGesture: some Gesture {
+        DragGesture()
+            .onChanged { value in
+                let newOffset = CGSize(
+                    width: lastOffset.width + value.translation.width,
+                    height: lastOffset.height + value.translation.height
+                )
+                offset = newOffset
+            }
+            .onEnded { _ in
+                lastOffset = offset
+                if scale < 1.1 {
+                    withAnimation {
+                        offset = .zero
+                    }
+                }
+            }
+    }
+    
+    var doubleTapGesture: some Gesture {
+        TapGesture(count: 2)
+            .onEnded {
+                withAnimation {
+                    if scale > 1.0 {
+                        scale = 1.0
+                        offset = .zero
+                        lastOffset = .zero
+                    } else {
+                        scale = 2.0
+                    }
+                }
+                
+                // 添加触感反馈
+                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                impactFeedback.impactOccurred()
+            }
+    }
+    
+    var body: some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFit()
+            .scaleEffect(scale)
+            .offset(offset)
+            .gesture(SimultaneousGesture(magnificationGesture, dragGesture))
+            .gesture(doubleTapGesture)
+            .edgesIgnoringSafeArea(.all)
     }
 }

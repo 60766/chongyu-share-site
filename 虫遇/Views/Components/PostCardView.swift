@@ -375,15 +375,18 @@ struct PostCardView: View {
             }
             
             // 内容部分
-                    contentSection
+            contentSection
                 
             // 图片部分 - 只在有图片时显示
-                if !post.images.isEmpty {
-                    imageGallerySection
-                }
+            if !post.images.isEmpty {
+                imageGallerySection
+            }
             
-            // 评论预览部分
-            virtualCommentPreviewSection
+            // 评论预览部分 - 调整上方间距，减少空白
+            if !post.comments.isEmpty && (displayMode == .preview || displayMode == .compact) && !isDetailView {
+                virtualCommentPreviewSection
+                    .padding(.top, -4) // 负值内边距，减少与图片区域之间的间距
+            }
             
             // 添加简单分割线
             Divider().opacity(0.4).padding(.vertical, 4.0)
@@ -412,7 +415,7 @@ struct PostCardView: View {
             y: DesignSystem.Shadows.cardShadow.y
         )
         .padding(.horizontal, DesignSystem.Spacing.s)
-        .padding(.vertical, 10.0) // 调整帖子之间的垂直间距
+        .padding(.vertical, 10.0)
         .contentShape(Rectangle()) // 确保整个区域可点击
         .onTapGesture {
             // 仅在预览模式下启用整卡点击，避免在详情模式下重复打开详情页
@@ -421,7 +424,7 @@ struct PostCardView: View {
                 feedbackGenerator.impactOccurred(intensity: 0.5)
                 onPostTap()
             }
-            }
+        }
         .onAppear {
             // 初始化评论加载器
             commentLoader.initialize(with: post.comments)
@@ -553,12 +556,12 @@ struct PostCardView: View {
                 // 单张图片布局
                 singleImageScrollView(post.images[0])
                     .padding(.top, 8.0)
-                    .padding(.bottom, 4.0)
+                    .padding(.bottom, 8.0) // 调整底部间距
             case 2:
                 // 两张图片布局
                 twoImagesLayout
                     .padding(.top, 8.0)
-                    .padding(.bottom, 4.0)
+                    .padding(.bottom, 8.0) // 调整底部间距
             case 3:
                 // 三张图片布局
                 threeImagesLayout
@@ -826,22 +829,37 @@ struct PostCardView: View {
     // 三张图片布局
     private var threeImagesLayout: some View {
         GeometryReader { geometry in
-                HStack(spacing: 4) {
-                // 左侧大图 - 占据左侧2/3空间
+            let totalWidth = geometry.size.width
+            let smallImageSize = (totalWidth * 0.33) - 2 // 右侧小图尺寸
+            let largeImageSize = (totalWidth * 0.67) - 2 // 左侧大图尺寸
+            
+            HStack(spacing: 4) {
+                // 左侧大图 - 占据左侧约2/3空间
                 imageGridItem(post.images[0], index: 0, count: 3)
-                    .frame(width: (geometry.size.width - 4) * 0.66)
+                    .frame(width: largeImageSize, height: largeImageSize)
                     .clipped()
                 
-                // 右侧两张小图垂直排列 - 占据右侧1/3空间
+                // 右侧两张小图垂直排列 - 占据右侧约1/3空间
                 VStack(spacing: 4) {
                     imageGridItem(post.images[1], index: 1, count: 3)
+                        .frame(width: smallImageSize, height: smallImageSize)
+                        .clipped()
+                    
                     imageGridItem(post.images[2], index: 2, count: 3)
+                        .frame(width: smallImageSize, height: smallImageSize)
+                        .clipped()
                 }
-                .frame(width: (geometry.size.width - 4) * 0.34)
             }
-            .frame(height: 240) // 固定整体高度
+            .frame(height: largeImageSize) // 固定整体高度为大图高度
         }
-        .frame(height: 240) // 确保GeometryReader不会扩展
+        .frame(height: getThreeImageLayoutHeight()) // 使用固定高度代替aspectRatio
+    }
+    
+    // 计算三张图片布局的高度
+    private func getThreeImageLayoutHeight() -> CGFloat {
+        let screenWidth = UIScreen.main.bounds.width - 40 // 考虑边距
+        let largeImageSize = (screenWidth * 0.67) - 2 // 左侧大图尺寸
+        return largeImageSize // 返回大图尺寸作为整体高度
     }
     
     // 四张或更多图片布局
@@ -891,7 +909,15 @@ struct PostCardView: View {
         case 2:
             return 160 // 两张图片等高
         case 3:
-            return index == 0 ? 240 : 118 // 三张图片：第一张高，其余两张较矮
+            if index == 0 {
+                // 大图高度，为左侧大正方形
+                let screenWidth = UIScreen.main.bounds.width - 40 // 考虑边距
+                return (screenWidth * 0.67) - 2
+            } else {
+                // 右侧小图高度，为小正方形
+                let screenWidth = UIScreen.main.bounds.width - 40 // 考虑边距
+                return (screenWidth * 0.33) - 2
+            }
         case 4:
             return 120 // 四张图片网格布局
         default:
@@ -908,7 +934,7 @@ struct PostCardView: View {
                     // 评论统计信息
                     HStack {
                         Text("评论")
-                            .font(.system(size: 14))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundColor(DesignSystem.Colors.secondaryText)
                 
                         Text("(\(post.comments.count))")
@@ -937,7 +963,7 @@ struct PostCardView: View {
                             )
                         }
                     }
-                    .padding(.bottom, 4)
+                    .padding(.bottom, 6)
                     
                     // 获取一条精选评论
                     if let featuredComment = getFeaturedComment() {
@@ -978,7 +1004,7 @@ struct PostCardView: View {
                                             .font(.system(size: 10))
                                             .padding(.horizontal, 4)
                                             .padding(.vertical, 1)
-                                            .background(getCharacterColor(for: featuredComment.characterID ?? "").opacity(0.1))
+                                            .background(getCharacterColor(for: featuredComment.characterID ?? "").opacity(0.12))
                                             .foregroundColor(getCharacterColor(for: featuredComment.characterID ?? ""))
                                             .cornerRadius(4)
                                     }
@@ -990,9 +1016,59 @@ struct PostCardView: View {
                                     .foregroundColor(DesignSystem.Colors.primaryText)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .padding(.vertical, 4) // 增加垂直间距，使短评论看起来更美观
+                                
+                                // 添加点赞和回复信息
+                                HStack(spacing: 8) {
+                                    if featuredComment.likes > 0 {
+                                        HStack(spacing: 2) {
+                                            Image(systemName: "heart.fill")
+                                                .font(.system(size: 10))
+                                                .foregroundColor(.red.opacity(0.8))
+                                            
+                                            Text("\(featuredComment.likes)")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    
+                                    if featuredComment.replies.count > 0 {
+                                        HStack(spacing: 2) {
+                                            Image(systemName: "bubble.left.fill")
+                                                .font(.system(size: 10))
+                                                .foregroundColor(.blue.opacity(0.7))
+                                            
+                                            Text("\(featuredComment.replies.count)回复")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    // 历史人物标识图标
+                                    if featuredComment.isVirtualCharacter {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "sparkles")
+                                                .font(.system(size: 9))
+                                                .foregroundColor(getCharacterColor(for: featuredComment.characterID ?? ""))
+                                            
+                                            Text("历史人物")
+                                                .font(.system(size: 10))
+                                                .foregroundColor(getCharacterColor(for: featuredComment.characterID ?? "").opacity(0.8))
+                                        }
+                                    } else {
+                                        Text("点击查看更多")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary.opacity(0.7))
+                                    }
+                                }
+                                .padding(.top, 4)
                             }
                         }
-                        .padding(8)
+                        .padding(10)
+                        .frame(minHeight: 90) // 设置最小高度确保短评论也有足够的高度
                         .background(
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(DesignSystem.Colors.warmNestedBackground.opacity(0.6))
@@ -1003,12 +1079,47 @@ struct PostCardView: View {
                         )
                     } else {
                         // 无精选评论时显示简单文本
-                        Text("\(post.comments.count)条评论").font(.system(size: 14)).foregroundColor(.gray)
+                        VStack(spacing: 8) {
+                            Text("\(post.comments.count)条评论")
+                                .font(.system(size: 14))
+                                .foregroundColor(.gray)
+                            
+                            HStack {
+                                Spacer()
+                                
+                                Text("点击参与讨论")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary.opacity(0.8))
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary.opacity(0.8))
+                            }
+                        }
+                        .frame(minHeight: 60) // 为无评论时设置最小高度
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(DesignSystem.Colors.warmNestedBackground.opacity(0.4))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(DesignSystem.Colors.border, lineWidth: 0.5)
+                        )
                     }
                 }
                 .padding(.horizontal, 4)
+                .padding(.vertical, 0) // 减少垂直间距以消除额外空白
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    // 点击评论区跳转到详情页
+                    onPostTap()
+                }
             }
         }
+        .padding(.top, 0) // 添加顶部0内边距以消除与图片区域之间的空白
     }
     
     // 获取精选评论 - 按照优先级排序
@@ -1529,39 +1640,33 @@ struct PostCardView: View {
     
     // 获取角色颜色
     private func getCharacterColor(for characterID: String) -> Color {
-        switch characterID {
-        case "einstein":
-            return Color(hex: "5B7AC9") // 更柔和的蓝色，与紫色主题协调
-        case "shakespeare":
-            return Color(hex: "8C699E") // 与应用主色调相同的紫色
-        case "davinci":
-            return Color(hex: "5C9A73") // 柔和的绿色，与整体色调和谐
-        case "confucius":
-            return Color(hex: "A77C4D") // 温暖的棕色，与米色背景协调
-        case "curie":
-            return Color(hex: "C25B7A") // 保持原有的柔和粉红色
-        case "libai":
-            return Color(hex: "D07C3C") // 保持原有的温暖橙色
-        case "newton":
-            return Color(hex: "B94D3F") // 保持原有的柔和红色
-        default:
-            return DesignSystem.Colors.secondary // 默认使用次要色
+        switch characterID.lowercased() {
+        case "einstein": return Color(hex: "5B7AC9") // 软蓝色
+        case "shakespeare": return Color(hex: "8C699E") // 主紫色
+        case "davinci": return Color(hex: "5C9A73") // 柔和绿色
+        case "confucius": return Color(hex: "A77C4D") // 温暖棕色
+        case "curie": return Color(hex: "C25B7A") // 柔和粉色
+        case "libai": return Color(hex: "D07C3C") // 温暖橙色
+        case "newton": return Color(hex: "B94D3F") // 柔和红色
+        case "goku", "naruto": return Color(hex: "E78B30") // 鲜亮橙色
+        case "holmes": return Color(hex: "546E97") // 深蓝色
+        default: return DesignSystem.Colors.primary
         }
     }
     
-    // 获取角色类别
+    // 获取角色类别标签
     private func getCharacterCategory(for characterID: String) -> String {
-        switch characterID {
-        case "einstein", "curie", "newton":
-            return "科学家"
-        case "shakespeare", "libai":
-            return "文学家"
-        case "davinci":
-            return "艺术家"
-        case "confucius":
-            return "哲学家"
-        default:
-            return "历史人物"
+        switch characterID.lowercased() {
+        case "einstein": return "科学家"
+        case "shakespeare": return "文学家"
+        case "davinci": return "艺术家"
+        case "confucius": return "哲学家"
+        case "curie": return "科学家"
+        case "libai": return "诗人"
+        case "newton": return "物理学家"
+        case "goku", "naruto": return "动漫角色" 
+        case "holmes": return "侦探"
+        default: return "历史人物"
         }
     }
     

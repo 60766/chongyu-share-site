@@ -1,5 +1,13 @@
 import SwiftUI
 
+// 定义一个具有不同名称的 PreferenceKey 结构体
+private struct FullscreenScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 /**
  * 全屏帖子详情视图
  * 提供帖子的完整内容和交互功能
@@ -188,9 +196,53 @@ struct FullscreenPostDetailView: View {
                         .resizable()
                         .scaledToFill()
                         .frame(maxHeight: 250)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                         .padding(.horizontal, 16)
                         .padding(.bottom, 14)
+                } else if viewModel.post.images.count == 2 {
+                    // 两张图片并排显示
+                    HStack(spacing: 6) {
+                        ForEach(0..<2, id: \.self) { index in
+                            Image(viewModel.post.images[index])
+                                .resizable()
+                                .scaledToFill()
+                                .frame(height: 160)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 14)
+                } else if viewModel.post.images.count == 3 {
+                    // 三张图片布局 - 左侧一张大图，右侧两张小图
+                    let totalWidth = UIScreen.main.bounds.width - 32 // 考虑边距
+                    let smallImageSize = (totalWidth * 0.33) - 2 // 右侧小图尺寸
+                    let largeImageSize = (totalWidth * 0.67) - 2 // 左侧大图尺寸
+                    
+                    HStack(spacing: 6) {
+                        // 左侧大图
+                        Image(viewModel.post.images[0])
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: largeImageSize, height: largeImageSize)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        
+                        // 右侧两张小图垂直排列
+                        VStack(spacing: 6) {
+                            Image(viewModel.post.images[1])
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: smallImageSize, height: smallImageSize)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            
+                            Image(viewModel.post.images[2])
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: smallImageSize, height: smallImageSize)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 14)
                 } else {
                     // 多图网格
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -199,7 +251,7 @@ struct FullscreenPostDetailView: View {
                                 .resizable()
                                 .scaledToFill()
                                 .frame(height: 160)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                     }
                     .padding(.horizontal, 16)
@@ -346,16 +398,6 @@ class FullscreenPostDetailViewModel: ObservableObject {
     init(post: UserPostModel) {
         self.post = post
         self.commentManager = CommentManager(post: post)
-    }
-}
-
-/**
- * 滚动偏移量首选项键
- */
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 
@@ -645,7 +687,7 @@ struct FullscreenContentView: UIViewControllerRepresentable {
                     .padding(.top, 0) // 确保没有顶部内边距
                     .background(Color.clear) // 使用透明背景代替白色
                     .coordinateSpace(name: "scrollView")
-                    .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
+                    .onPreferenceChange(FullscreenScrollOffsetKey.self) { offset in
                         withAnimation(.easeOut) {
                             scrollOffset = -offset
                         }
@@ -688,7 +730,7 @@ struct FullscreenContentView: UIViewControllerRepresentable {
         private var scrollPositionDetector: some View {
             GeometryReader { innerGeometry in
                 Color.clear.preference(
-                    key: ScrollOffsetPreferenceKey.self,
+                    key: FullscreenScrollOffsetKey.self,
                     value: innerGeometry.frame(in: .named("scrollView")).minY
                 )
             }
@@ -760,18 +802,62 @@ struct FullscreenContentView: UIViewControllerRepresentable {
                             .resizable()
                             .scaledToFill()
                             .frame(maxHeight: 230)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                             .padding(.horizontal, 16)
                             .padding(.bottom, 10)
+                    } else if currentPost.images.count == 2 {
+                        // 两张图片并排显示
+                        HStack(spacing: 6) {
+                            ForEach(0..<2, id: \.self) { index in
+                                Image(currentPost.images[index])
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(height: 160)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 10)
+                    } else if currentPost.images.count == 3 {
+                        // 三张图片布局 - 左侧一张大图，右侧两张小图
+                        let totalWidth = UIScreen.main.bounds.width - 32 // 考虑边距
+                        let smallImageSize = (totalWidth * 0.33) - 2 // 右侧小图尺寸
+                        let largeImageSize = (totalWidth * 0.67) - 2 // 左侧大图尺寸
+                        
+                        HStack(spacing: 6) {
+                            // 左侧大图
+                            Image(currentPost.images[0])
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: largeImageSize, height: largeImageSize)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            
+                            // 右侧两张小图垂直排列
+                            VStack(spacing: 6) {
+                                Image(currentPost.images[1])
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: smallImageSize, height: smallImageSize)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                
+                                Image(currentPost.images[2])
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: smallImageSize, height: smallImageSize)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 10)
                     } else {
                         // 多图网格 - 更紧凑的布局
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                        ForEach(currentPost.images, id: \.self) { image in
-                            Image(image)
-                                .resizable()
-                                .scaledToFill()
+                            ForEach(currentPost.images, id: \.self) { image in
+                                Image(image)
+                                    .resizable()
+                                    .scaledToFill()
                                     .frame(height: 150)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
                         }
                         .padding(.horizontal, 16)
@@ -860,21 +946,7 @@ struct FullscreenContentView: UIViewControllerRepresentable {
                 
                 if topLevelComments.isEmpty {
                     // 无评论时的提示视图
-                    VStack(spacing: 16) {
-                        Image(systemName: "bubble.left")
-                            .font(.system(size: 40))
-                            .foregroundColor(.gray.opacity(0.4))
-                        
-                        Text("暂无评论")
-                            .font(.system(size: 15))
-                            .foregroundColor(.gray)
-                        
-                        Text("快来发表第一条评论吧")
-                            .font(.system(size: 13))
-                            .foregroundColor(.gray.opacity(0.7))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 36)
+                    PostEmptyCommentsView()
                 } else {
                     // 评论列表
                     CommentsListView(
@@ -949,7 +1021,7 @@ struct EnhancedCommentsListView: View {
             
             if comments.isEmpty {
                 // 无评论时显示空状态
-                EmptyCommentsView()
+                PostEmptyCommentsView()
             } else {
                 // 微信朋友圈风格的评论列表 - 统一背景
                 VStack(spacing: 0) {
@@ -1162,57 +1234,11 @@ private struct WechatStyleCommentItem: View {
  * 空评论状态视图
  * 显示无评论时的状态
  */
-private struct EmptyCommentsView: View {
+private struct PostEmptyCommentsView: View {
     var body: some View {
-        VStack(spacing: 14) {
-            // 图标
-            ZStack {
-                Circle()
-                    .fill(Color.gray.opacity(0.05))
-                    .frame(width: 56, height: 56)
-                
-                Image(systemName: "bubble.left.and.text.bubble.right")
-                    .font(.system(size: 22))
-                    .foregroundColor(Color.gray.opacity(0.3))
-            }
-            
-            // 文本提示
-            VStack(spacing: 4) {
-                Text("暂无评论")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.primary)
-                
-                Text("成为第一个参与讨论的人吧")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            
-            // 评论按钮
-            Button(action: {
-                // 触发评论输入框聚焦通知
-                NotificationCenter.default.post(
-                    name: Notification.Name("FocusCommentInput"),
-                    object: nil
-                )
-            }) {
-                HStack {
-                    Image(systemName: "pencil")
-                        .font(.system(size: 13))
-                    
-                    Text("写评论")
-                        .font(.system(size: 14, weight: .medium))
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 8)
-                .background(DesignSystem.Colors.primary)
-                .foregroundColor(.white)
-                .cornerRadius(16)
-            }
-            .buttonStyle(ScaleButtonStyle())
-        }
-        .padding(.vertical, 22)
-        .frame(maxWidth: .infinity)
+        // 使用统一的EmptyCommentsView组件
+        EmptyCommentsView()
+            .padding(.vertical, 10)
     }
 }
 

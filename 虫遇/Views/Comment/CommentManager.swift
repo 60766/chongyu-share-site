@@ -67,7 +67,7 @@ class CommentManager: ObservableObject {
         // 将所有回复添加到对应的主评论下
         // 小红书风格：所有回复都作为一级回复，通过replyToUsername标记回复关系
         for comment in currentPost.comments {
-            if let parentId = comment.parentCommentId {
+            if comment.parentCommentId != nil {
                 // 找到顶级父评论
                 if let rootComment = findRootComment(for: comment, in: currentPost.comments) {
                     if let index = topLevelResults.firstIndex(where: { $0.id == rootComment.id }) {
@@ -209,14 +209,27 @@ class CommentManager: ObservableObject {
             return
         }
         
-        // 随机决定是否生成回复 (30%概率)
-        guard Double.random(in: 0...1) < 0.3 else {
-            return
+        // 检查评论中是否包含@特定角色
+        let mentionedCharacter = checkForMentionedCharacter(in: latestComment.content)
+        
+        // 默认回复概率
+        var replyProbability: Double = 0.3
+        var selectedCharacter: String? = nil
+        
+        if let mentioned = mentionedCharacter {
+            // 如果@了特定角色，该角色100%会回复
+            replyProbability = 1.0
+            selectedCharacter = mentioned
+        } else {
+            // 如果没有@特定角色，增加回复概率至50%
+            replyProbability = 0.5
+            // 随机选择一个虚拟角色
+            let characters = ["einstein", "shakespeare", "davinci", "confucius", "curie", "libai"]
+            selectedCharacter = characters.randomElement()
         }
         
-        // 随机选择一个虚拟角色
-        let characters = ["einstein", "shakespeare", "davinci", "confucius", "curie", "libai"]
-        guard let character = characters.randomElement() else {
+        // 决定是否生成回复
+        guard Double.random(in: 0...1) < replyProbability, let character = selectedCharacter else {
             return
         }
         
@@ -230,13 +243,8 @@ class CommentManager: ObservableObject {
             "libai": "李白"
         ]
         
-        // 为选定角色生成随机回复内容
+        // 为选定角色生成回复内容
         let virtualReply = generateReplyForCharacter(character: character, replyTo: latestComment.content)
-        
-        // 添加虚拟角色回复
-        // 如果回复的是顶级评论，则将虚拟角色回复作为该评论的回复
-        // 如果回复的是回复，则将虚拟角色回复作为回复的上级评论的回复
-        let parentId = latestComment.parentCommentId ?? latestComment.id
         
         // 延迟1-3秒，模拟打字时间
         try? await Task.sleep(nanoseconds: UInt64(Double.random(in: 1...3) * 1_000_000_000))
@@ -246,14 +254,38 @@ class CommentManager: ObservableObject {
             username: characterNames[character] ?? character,
             userAvatar: "avatar_\(character)",
             content: virtualReply,
-            parentCommentId: parentId,
-            replyToUsername: latestComment.username,
-            isVirtualCharacter: true,
-            characterID: character
+            parentCommentId: latestComment.id,
+            replyToUsername: latestComment.username
         )
         
         // 更新评论列表
         updateCommentLists()
+    }
+    
+    /**
+     * 检查评论中是否@了特定的虚拟角色
+     * @param content 评论内容
+     * @return 被@的角色ID，如果没有则返回nil
+     */
+    private func checkForMentionedCharacter(in content: String) -> String? {
+        // 角色名称及其ID映射
+        let characterMapping: [String: String] = [
+            "爱因斯坦": "einstein",
+            "莎士比亚": "shakespeare",
+            "达芬奇": "davinci",
+            "孔子": "confucius",
+            "居里夫人": "curie",
+            "李白": "libai"
+        ]
+        
+        // 检查评论中是否包含@角色名
+        for (characterName, characterId) in characterMapping {
+            if content.contains("@\(characterName)") {
+                return characterId
+            }
+        }
+        
+        return nil
     }
     
     /**
@@ -263,23 +295,124 @@ class CommentManager: ObservableObject {
      * @return 生成的回复内容
      */
     private func generateReplyForCharacter(character: String, replyTo: String) -> String {
+        // 检查是否@了该角色，如果是，生成更个性化的回复
+        let isMentioned = replyTo.contains("@\(getCharacterName(for: character))")
+        
         // 根据不同角色特点生成回复
         switch character {
         case "einstein":
-            return getRandomEinsteinReply()
+            return isMentioned ? 
+                getPersonalizedEinsteinReply(content: replyTo) :
+                getRandomEinsteinReply()
         case "shakespeare":
-            return getRandomShakespeareReply()
+            return isMentioned ? 
+                getPersonalizedShakespeareReply(content: replyTo) :
+                getRandomShakespeareReply()
         case "davinci":
-            return getRandomDaVinciReply()
+            return isMentioned ? 
+                getPersonalizedDaVinciReply(content: replyTo) :
+                getRandomDaVinciReply()
         case "confucius":
-            return getRandomConfuciusReply()
+            return isMentioned ? 
+                getPersonalizedConfuciusReply(content: replyTo) :
+                getRandomConfuciusReply()
         case "curie":
-            return getRandomCurieReply()
+            return isMentioned ? 
+                getPersonalizedCurieReply(content: replyTo) :
+                getRandomCurieReply()
         case "libai":
-            return getRandomLibaiReply()
+            return isMentioned ? 
+                getPersonalizedLibaiReply(content: replyTo) :
+                getRandomLibaiReply()
         default:
             return "很有趣的想法！"
         }
+    }
+    
+    // 获取角色名称
+    private func getCharacterName(for characterId: String) -> String {
+        let characterNames: [String: String] = [
+            "einstein": "爱因斯坦",
+            "shakespeare": "莎士比亚",
+            "davinci": "达芬奇",
+            "confucius": "孔子",
+            "curie": "居里夫人",
+            "libai": "李白"
+        ]
+        
+        return characterNames[characterId] ?? characterId
+    }
+    
+    // 针对被@的个性化回复 - 爱因斯坦
+    private func getPersonalizedEinsteinReply(content: String) -> String {
+        let replies = [
+            "感谢你提到我！作为科学家，我认为好奇心是人类最宝贵的品质。你的问题很有深度。",
+            "你的消息提醒了我，相对论告诉我们，时间是相对的，但与有思想的人交流的价值是绝对的。",
+            "听到你提到我很高兴！想象力比知识更重要，你的思考方式很有创造性。",
+            "哦！被你@提到了！科学探索需要勇气质疑权威，包括我的理论。你的观点很有启发性。",
+            "正如我常说，只有两件事是无限的：宇宙和人类的想象力。你的提问展示了后者的魅力。"
+        ]
+        return replies.randomElement() ?? replies[0]
+    }
+    
+    // 针对被@的个性化回复 - 莎士比亚
+    private func getPersonalizedShakespeareReply(content: String) -> String {
+        let replies = [
+            "多谢垂询，亲爱的朋友！正如我在《哈姆雷特》中写道，'存在还是不存在，这是个问题'，而你的思考则是答案的开始。",
+            "啊！如沐春风般的@提及！文字乃心灵之窗，你的表达如舞台上最精彩的独白。",
+            "谢谢提到我！'我们凭借星光而非命运指引我们的未来'，你的思考正如明亮的北极星。",
+            "感谢你的呼唤！如《仲夏夜之梦》所言，'虽然她娇小，却fieree无比'，你的问题虽简短却蕴含深意。",
+            "多谢你的提问！生活舞台需要每个人的精彩演出，而你，正是当代的主角！"
+        ]
+        return replies.randomElement() ?? replies[0]
+    }
+    
+    // 针对被@的个性化回复 - 达芬奇
+    private func getPersonalizedDaVinciReply(content: String) -> String {
+        let replies = [
+            "感谢你的@提及！正如我常说，学习永无止境，你的问题激发了我新的思考。",
+            "多谢提到我！艺术与科学从不分离，就像你的思考融合了理性与创造力。",
+            "谢谢你提到我！细节决定成败，你的观察角度非常独特，让我想起了《蒙娜丽莎》创作时的灵感。",
+            "很高兴收到你的消息！好奇心是人类进步的根源，你的问题展示了这种可贵的品质。",
+            "感谢@我！简单中往往蕴含最深的智慧，你的表达方式让我想起了《最后的晚餐》中的构图原理。"
+        ]
+        return replies.randomElement() ?? replies[0]
+    }
+    
+    // 针对被@的个性化回复 - 孔子
+    private func getPersonalizedConfuciusReply(content: String) -> String {
+        let replies = [
+            "得闻君问，甚感欣慰。正所谓'学而不思则罔，思而不学则殆'，君之问题颇有思考之深度。",
+            "感谢提及老夫！'己所不欲，勿施于人'，你的问题体现了对他人的尊重与关怀。",
+            "多谢垂询！'三人行，必有我师焉'，从你的提问中，我也有所启发。",
+            "谢谢你的@提及！'工欲善其事，必先利其器'，你善于提问的能力将引领你获取更多智慧。",
+            "闻君之言，甚是欣慰。'君子和而不同'，你的独立思考正是修身齐家治国平天下之本。"
+        ]
+        return replies.randomElement() ?? replies[0]
+    }
+    
+    // 针对被@的个性化回复 - 居里夫人
+    private func getPersonalizedCurieReply(content: String) -> String {
+        let replies = [
+            "感谢你提到我！在科学道路上，我们不应害怕任何困难，你的问题展示了勇于探索的精神。",
+            "谢谢你的@提及！'我们必须坚信，自己有才能。在一生中必须挥洒自己的才华'，你的思考很有价值。",
+            "收到你的消息很高兴！正如我所信仰的，科学与生活中，好奇心都是不可或缺的，你的问题反映了这一点。",
+            "多谢提到我！科学研究需要坚持和毅力，就像你一直追求答案的决心一样值得敬佩。",
+            "感谢你的提问！'我们要不断地探索和不断地寻找'，你的问题正是科学精神的体现。"
+        ]
+        return replies.randomElement() ?? replies[0]
+    }
+    
+    // 针对被@的个性化回复 - 李白
+    private func getPersonalizedLibaiReply(content: String) -> String {
+        let replies = [
+            "谢过君提及！'人生得意须尽欢，莫使金樽空对月'，你的问题如明月般照亮了心境。",
+            "多谢垂询！'长风破浪会有时，直挂云帆济沧海'，你的思考展现了远大的志向。",
+            "感谢君之@！'抽刀断水水更流，举杯销愁愁更愁'，你的问题引发了我的诗兴。",
+            "闻君相召，甚是欢喜！'床前明月光，疑是地上霜'，你的表达如明月般清澈明亮。",
+            "谢谢你提到我！'千里江陵一日还，两岸猿声啼不住'，你的思考如奔流江水，生生不息。"
+        ]
+        return replies.randomElement() ?? replies[0]
     }
     
     // 各角色随机回复内容生成函数

@@ -84,7 +84,10 @@ struct EnhancedTextDisplayView: View {
                         }
                     },
                     onLineHeightChange: { height in
-                        currentLineHeight = height
+                        // 使用异步更新避免在视图更新期间直接修改状态
+                        DispatchQueue.main.async {
+                            currentLineHeight = height
+                        }
                     },
                     onTap: {
                         // 使用异步更新避免在视图更新期间修改状态
@@ -135,10 +138,14 @@ struct EnhancedTextDisplayView: View {
             }
             // 同步FocusState和中间状态变量
             .onChange(of: isFocused) { oldValue, newValue in
-                isTextFieldFocused = newValue
+                DispatchQueue.main.async {
+                    isTextFieldFocused = newValue
+                }
             }
             .onChange(of: isTextFieldFocused) { oldValue, newValue in
-                isFocused = newValue
+                DispatchQueue.main.async {
+                    isFocused = newValue
+                }
             }
             // 使用自定义焦点控制
             .focused($isFocused)

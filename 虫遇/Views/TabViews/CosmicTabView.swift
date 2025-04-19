@@ -63,6 +63,23 @@ enum CosmicIconType {
 }
 
 /**
+ * 标签项视图
+ * 用于简化 TabView 中的标签项定义
+ */
+private struct TabItemView: View {
+    let title: String
+    let iconName: String
+    
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: iconName)
+        }
+    }
+}
+
+/**
  * 主标签视图
  * 应用的主要导航结构
  */
@@ -117,67 +134,40 @@ struct CosmicTabView: View {
                 HomeView()
                     .tag(0)
                     .tabItem {
-                        Label {
-                            Text("虫遇")
-                        } icon: {
-                            Image(systemName: "circle.fill")
-                        }
+                        TabItemView(title: "虫遇", iconName: "circle.fill")
                     }
                 
                 // 探索页标签 - 星际探索
                 ExploreView()
                     .tag(1)
                     .tabItem {
-                        Label {
-                            Text("探索")
-                        } icon: {
-                            Image(systemName: "magnifyingglass.circle")
-                        }
+                        TabItemView(title: "探索", iconName: "magnifyingglass.circle")
                     }
                 
                 // 发布标签（占位，实际点击事件由中间的大按钮处理）
                 Color.clear
                     .tag(2)
                     .tabItem {
-                        Label("发布", systemImage: "plus")
+                        TabItemView(title: "发布", iconName: "plus")
                     }
                 
                 // 通知页面标签 - 时空脉动
                 NotificationView()
                     .tag(3)
                     .tabItem {
-                        Label {
-                            Text("动态")
-                        } icon: {
-                            Image(systemName: "sparkles")
-                        }
+                        TabItemView(title: "动态", iconName: "sparkles")
                     }
                 
                 // 个人资料标签 - 星际身份
                 ProfileView()
                     .tag(4)
                     .tabItem {
-                        Label {
-                            Text("空间")
-                        } icon: {
-                            Image(systemName: "person.circle")
-                        }
+                        TabItemView(title: "空间", iconName: "person.circle")
                     }
             }
             .accentColor(Color(red: 0.45, green: 0.45, blue: 0.95)) // 蓝紫色
             .onChange(of: selectedTab) { oldValue, newValue in
-                if newValue == 2 {
-                    // 立即重置为之前的选中标签，因为中间的发布标签只是占位
-                    selectedTab = oldValue == 2 ? previousTab : oldValue
-                    previousTab = selectedTab
-                    // 显示发布页面
-                    if !showQuickPublishMenu {
-                    showPublishView = true
-                    }
-                } else {
-                    // 记录当前标签，用于保持导航状态
-                    previousTab = newValue
-                }
+                handleTabChange(oldValue: oldValue, newValue: newValue)
             }
             
             // 虫洞发布按钮区域
@@ -189,27 +179,7 @@ struct CosmicTabView: View {
                 
                 // 虫洞发布按钮
                 Button(action: {
-                    // 触发触觉反馈
-                    triggerHapticFeedback()
-                    
-                    // 添加虫洞旋转效果动画
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                        isButtonPressed = true
-                        rotationAngle += 360
-                        wormholePhase += 1.0
-                    }
-                    
-                    // 延迟执行以显示动画效果，优化为0.3秒
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        if !showQuickPublishMenu {
-                            showPublishView = true
-                        }
-                        
-                        // 重置按钮状态
-                        withAnimation {
-                            isButtonPressed = false
-                        }
-                    }
+                    handleWormholeButtonTap()
                 }) {
                     // 虫洞按钮设计
                     ZStack {
@@ -233,47 +203,7 @@ struct CosmicTabView: View {
                         radius: 10, x: 0, y: 4)
                 // 启动周期性动画
                 .onAppear {
-                    // 检测设备性能
-                    checkDevicePerformance()
-                    // 初始化触觉引擎
-                    prepareHaptics()
-                    
-                    if !reduceMotion && !isLowPerformanceMode {
-                        // 创建平滑循环动画
-                        withAnimation(Animation.linear(duration: 10).repeatForever(autoreverses: false)) {
-                            rotationAngle = 360
-                            particlePhase = 1.0
-                        }
-                        
-                        // 脉动效果
-                        withAnimation(Animation.easeInOut(duration: 3).repeatForever(autoreverses: true)) {
-                            wormholePhase = 0.5
-                        }
-                    }
-                    
-                    // 设置tabBar的外观
-                    let appearance = UITabBarAppearance()
-                    appearance.configureWithDefaultBackground()
-                    
-                    // 正常状态的图标颜色
-                    let normalAttributes: [NSAttributedString.Key: Any] = [
-                        .foregroundColor: UIColor.gray.withAlphaComponent(0.8)
-                    ]
-                    
-                    // 选中状态的图标颜色
-                    let selectedAttributes: [NSAttributedString.Key: Any] = [
-                        .foregroundColor: UIColor(red: 0.45, green: 0.45, blue: 0.95, alpha: 1.0)
-                    ]
-                    
-                    // 应用颜色设置
-                    appearance.stackedLayoutAppearance.normal.titleTextAttributes = normalAttributes
-                    appearance.stackedLayoutAppearance.selected.titleTextAttributes = selectedAttributes
-                    
-                    // 应用设置到UITabBar
-                    UITabBar.appearance().standardAppearance = appearance
-                    if #available(iOS 15.0, *) {
-                        UITabBar.appearance().scrollEdgeAppearance = appearance
-                    }
+                    setupOnAppear()
                 }
                 // 支持长按手势
                 .simultaneousGesture(
@@ -303,41 +233,16 @@ struct CosmicTabView: View {
         }
         .onReceive(timer) { _ in
             withAnimation(.linear(duration: 0.016)) {
-                // 主旋转
-                rotationDegrees += 0.3
-                if rotationDegrees >= 360 {
-                    rotationDegrees = 0
-                }
-                
-                // 轨道相位
-                orbitPhase += 0.2
-                if orbitPhase >= 360 {
-                    orbitPhase = 0
-                }
-                
-                // 脉冲相位
-                pulsePhase += 0.15
-                if pulsePhase >= 360 {
-                    pulsePhase = 0
-                }
-                
-                // 星体相位
-                starPhase += 0.25
-                if starPhase >= 360 {
-                    starPhase = 0
-                }
+                updateAnimationPhases()
                 
                 // 呼吸动画 - 使用多个正弦波叠加
                 let baseGlow = 0.5
-                let glowVariation = sin(rotationDegrees * .pi / 180) * 0.2 +
-                                 sin(pulsePhase * .pi / 180) * 0.1 +
-                                 cos(orbitPhase * .pi / 180) * 0.15
+                let glowVariation = calculateGlowVariation()
                 glowOpacity = baseGlow + glowVariation
                 
                 // 星尘透明度 - 使用余弦波
                 let baseStardust = 0.8
-                let stardustVariation = cos(starPhase * .pi / 180) * 0.1 +
-                                     sin(pulsePhase * .pi / 180) * 0.05
+                let stardustVariation = calculateStardustVariation()
                 stardustOpacity = baseStardust + stardustVariation
             }
         }
@@ -348,6 +253,77 @@ struct CosmicTabView: View {
         }
         .onDisappear {
             isAnimating = false
+        }
+    }
+    
+    // 处理标签页切换
+    private func handleTabChange(oldValue: Int, newValue: Int) {
+        if newValue == 2 {
+            // 立即重置为之前的选中标签，因为中间的发布标签只是占位
+            selectedTab = oldValue == 2 ? previousTab : oldValue
+            previousTab = selectedTab
+            // 显示发布页面
+            if !showQuickPublishMenu {
+                showPublishView = true
+            }
+        } else {
+            // 记录当前标签，用于保持导航状态
+            previousTab = newValue
+        }
+    }
+    
+    // 计算发光变化
+    private func calculateGlowVariation() -> Double {
+        let sinRotation = sin(rotationDegrees * .pi / 180) * 0.2
+        let sinPulse = sin(pulsePhase * .pi / 180) * 0.1
+        let cosOrbit = cos(orbitPhase * .pi / 180) * 0.15
+        
+        return sinRotation + sinPulse + cosOrbit
+    }
+    
+    // 计算星尘变化
+    private func calculateStardustVariation() -> Double {
+        let cosStarPhase = cos(starPhase * .pi / 180) * 0.1
+        let sinPulsePhase = sin(pulsePhase * .pi / 180) * 0.05
+        
+        return cosStarPhase + sinPulsePhase
+    }
+    
+    // 更新动画相位
+    private func updateAnimationPhases() {
+        // 主旋转
+        rotationDegrees += 0.3
+        if rotationDegrees >= 360 {
+            rotationDegrees = 0
+        }
+        
+        // 更新各种相位
+        updateOrbitPhase()
+        updatePulsePhase()
+        updateStarPhase()
+    }
+    
+    // 更新轨道相位
+    private func updateOrbitPhase() {
+        orbitPhase += 0.2
+        if orbitPhase >= 360 {
+            orbitPhase = 0
+        }
+    }
+    
+    // 更新脉冲相位
+    private func updatePulsePhase() {
+        pulsePhase += 0.15
+        if pulsePhase >= 360 {
+            pulsePhase = 0
+        }
+    }
+    
+    // 更新星体相位
+    private func updateStarPhase() {
+        starPhase += 0.25
+        if starPhase >= 360 {
+            starPhase = 0
         }
     }
     
@@ -431,92 +407,135 @@ struct CosmicTabView: View {
     // 完整版虫洞按钮 - 参考图片的设计风格
     private var fullWormholeButton: some View {
         ZStack {
-            // 主背景渐变
-            Circle()
-                .fill(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.blue.opacity(0.8),
-                            Color.purple.opacity(0.9)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 64, height: 64)
-                .shadow(color: Color.purple.opacity(0.4), radius: 8, x: 0, y: 2)
-                
-            // 外部虚线环 - 参考图二的虚线圆环
-            Circle()
-                .stroke(
-                    style: StrokeStyle(
-                        lineWidth: 2,
-                        lineCap: .round,
-                        dash: [3, 6]
-                    )
-                )
-                .foregroundColor(Color.white.opacity(0.7))
-                .frame(width: 60, height: 60)
-                .rotationEffect(.degrees(particlePhase * 40))
-                
-            // 内部虚线环 - 参考图二的内层虚线圆环
-            Circle()
-                .stroke(
-                    style: StrokeStyle(
-                        lineWidth: 1.5,
-                        lineCap: .round,
-                        dash: [2, 5]
-                    )
-                )
-                .foregroundColor(Color.white.opacity(0.5))
-                .frame(width: 46, height: 46)
-                .rotationEffect(.degrees(-particlePhase * 30))
-                
-            // 中央白色圆点 - 参考图四的中央圆点
-            Circle()
-                .fill(Color.white)
-                .frame(width: 16, height: 16)
-                .shadow(color: .white.opacity(0.8), radius: 4, x: 0, y: 0)
-                
-            // 外部小圆点 - 参考图三和图四的小圆点
-            ForEach(0..<4) { i in
-                let angle = Double.pi * 2 * (Double(i) / 4.0 + particlePhase)
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 4, height: 4)
-                    .offset(
-                        x: cos(angle) * 28,
-                        y: sin(angle) * 28
-                    )
-                    .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 0)
-            }
+            // 主背景
+            wormholeBackground
             
-            // 连接线 - 参考图三的连接线
-            ForEach(0..<4) { i in
-                let angle = Double.pi * 2 * (Double(i) / 4.0 + particlePhase)
-                let centerX = 0
-                let centerY = 0
-                let endX = cos(angle) * 28
-                let endY = sin(angle) * 28
-                
-                Path { path in
-                    path.move(to: CGPoint(x: centerX, y: centerY))
-                    path.addLine(to: CGPoint(x: endX, y: endY))
-                }
-                .stroke(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.white.opacity(0.8),
-                            Color.white.opacity(0.1)
-                        ]),
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    lineWidth: 1
-                )
-            }
+            // 外部虚线环
+            wormholeOuterRing
+            
+            // 内部虚线环
+            wormholeInnerRing
+            
+            // 中央白色圆点
+            wormholeCenterDot
+            
+            // 外部小圆点
+            wormholeOrbitingDots
         }
         .frame(width: 70, height: 70)
+    }
+    
+    // 虫洞背景
+    private var wormholeBackground: some View {
+        Circle()
+            .fill(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.blue.opacity(0.8),
+                        Color.purple.opacity(0.9)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: 64, height: 64)
+            .shadow(color: Color.purple.opacity(0.4), radius: 8, x: 0, y: 2)
+    }
+    
+    // 外部虚线环
+    private var wormholeOuterRing: some View {
+        Circle()
+            .stroke(
+                style: StrokeStyle(
+                    lineWidth: 2,
+                    lineCap: .round,
+                    dash: [3, 6]
+                )
+            )
+            .foregroundColor(Color.white.opacity(0.7))
+            .frame(width: 60, height: 60)
+            .rotationEffect(.degrees(particlePhase * 40))
+    }
+    
+    // 内部虚线环
+    private var wormholeInnerRing: some View {
+        Circle()
+            .stroke(
+                style: StrokeStyle(
+                    lineWidth: 1.5,
+                    lineCap: .round,
+                    dash: [2, 5]
+                )
+            )
+            .foregroundColor(Color.white.opacity(0.5))
+            .frame(width: 46, height: 46)
+            .rotationEffect(.degrees(-particlePhase * 30))
+    }
+    
+    // 中央白色圆点
+    private var wormholeCenterDot: some View {
+        Circle()
+            .fill(Color.white)
+            .frame(width: 16, height: 16)
+            .shadow(color: .white.opacity(0.8), radius: 4, x: 0, y: 0)
+    }
+    
+    // 外部小圆点
+    private var wormholeOrbitingDots: some View {
+        ZStack {
+            // 小圆点
+            ForEach(0..<4) { i in
+                createOrbitingDot(index: i)
+            }
+            
+            // 连接线
+            ForEach(0..<4) { i in
+                createConnectingLine(index: i)
+            }
+        }
+    }
+    
+    // 创建连接线
+    private func createConnectingLine(index: Int) -> some View {
+        let angle = Double.pi * 2 * (Double(index) / 4.0 + particlePhase)
+        let centerX = 0
+        let centerY = 0
+        let endX = cos(angle) * 28
+        let endY = sin(angle) * 28
+        
+        return Path { path in
+            path.move(to: CGPoint(x: centerX, y: centerY))
+            path.addLine(to: CGPoint(x: endX, y: endY))
+        }
+        .stroke(
+            createConnectingLineGradient(),
+            lineWidth: 1
+        )
+    }
+    
+    // 创建连接线渐变
+    private func createConnectingLineGradient() -> LinearGradient {
+        return LinearGradient(
+            gradient: Gradient(colors: [
+                Color.white.opacity(0.8),
+                Color.white.opacity(0.1)
+            ]),
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+    
+    // 创建轨道小圆点
+    private func createOrbitingDot(index: Int) -> some View {
+        let angle = Double.pi * 2 * (Double(index) / 4.0 + particlePhase)
+        let xOffset = cos(angle) * 28
+        let yOffset = sin(angle) * 28
+        
+        return Circle()
+            .fill(Color.white)
+            .frame(width: 4, height: 4)
+            .offset(x: xOffset, y: yOffset)
+            .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 0)
     }
     
     // 简化版虫洞按钮 - 为低性能设备和可访问性设计
@@ -634,6 +653,92 @@ struct CosmicTabView: View {
         // 触发成功触觉反馈
         let notificationFeedback = UINotificationFeedbackGenerator()
         notificationFeedback.notificationOccurred(.success)
+    }
+    
+    // 处理虫洞按钮点击
+    private func handleWormholeButtonTap() {
+        // 触发触觉反馈
+        triggerHapticFeedback()
+        
+        // 添加虫洞旋转效果动画
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+            isButtonPressed = true
+            rotationAngle += 360
+            wormholePhase += 1.0
+        }
+        
+        // 延迟执行以显示动画效果，优化为0.3秒
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            if !showQuickPublishMenu {
+                showPublishView = true
+            }
+            
+            // 重置按钮状态
+            withAnimation {
+                isButtonPressed = false
+            }
+        }
+    }
+    
+    // 设置出现时的初始化
+    private func setupOnAppear() {
+        // 检测设备性能
+        checkDevicePerformance()
+        // 初始化触觉引擎
+        prepareHaptics()
+        
+        setupAnimations()
+        setupTabBarAppearance()
+    }
+    
+    // 设置动画
+    private func setupAnimations() {
+        if !reduceMotion && !isLowPerformanceMode {
+            // 创建平滑循环动画
+            withAnimation(Animation.linear(duration: 10).repeatForever(autoreverses: false)) {
+                rotationAngle = 360
+                particlePhase = 1.0
+            }
+            
+            // 脉动效果
+            withAnimation(Animation.easeInOut(duration: 3).repeatForever(autoreverses: true)) {
+                wormholePhase = 0.5
+            }
+        }
+    }
+    
+    // 设置标签栏外观
+    private func setupTabBarAppearance() {
+        // 设置tabBar的外观
+        let appearance = UITabBarAppearance()
+        appearance.configureWithDefaultBackground()
+        
+        // 设置颜色属性
+        let normalAttributes = createTabBarAttributes(isSelected: false)
+        let selectedAttributes = createTabBarAttributes(isSelected: true)
+        
+        // 应用颜色设置
+        appearance.stackedLayoutAppearance.normal.titleTextAttributes = normalAttributes
+        appearance.stackedLayoutAppearance.selected.titleTextAttributes = selectedAttributes
+        
+        // 应用设置到UITabBar
+        UITabBar.appearance().standardAppearance = appearance
+        if #available(iOS 15.0, *) {
+            UITabBar.appearance().scrollEdgeAppearance = appearance
+        }
+    }
+    
+    // 创建标签栏文本属性
+    private func createTabBarAttributes(isSelected: Bool) -> [NSAttributedString.Key: Any] {
+        if isSelected {
+            return [
+                .foregroundColor: UIColor(red: 0.45, green: 0.45, blue: 0.95, alpha: 1.0)
+            ]
+        } else {
+            return [
+                .foregroundColor: UIColor.gray.withAlphaComponent(0.8)
+            ]
+        }
     }
 }
 

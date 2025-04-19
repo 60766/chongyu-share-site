@@ -4,7 +4,7 @@ import SwiftUI
  * 历史人物角色卡片组件
  * 用于在探索页面显示历史人物信息
  */
-struct CharacterCardView: View {
+struct ExploreCharacterCardView: View {
     let character: CharacterModel
     var action: () -> Void = {}
     
@@ -98,7 +98,7 @@ struct CharacterCardView: View {
 #Preview {
     VStack(spacing: 20) {
         ForEach(CharacterModel.sampleCharacters.prefix(2)) { character in
-            CharacterCardView(character: character)
+            ExploreCharacterCardView(character: character)
         }
     }
     .padding()

@@ -1,5 +1,19 @@
 import SwiftUI
 import Foundation
+import UIKit
+
+// 本地定义触感反馈类，避免导入问题
+fileprivate struct RelationsHapticFeedback {
+    static func light() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+    }
+    
+    static func medium() {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+    }
+}
 
 /**
  * 角色关系视图
@@ -57,7 +71,7 @@ struct CharacterRelationsView: View {
                                         .onTapGesture {
                                             selectedRelation = relation
                                             showRelationDetail = true
-                                            HapticFeedback.light()
+                                            RelationsHapticFeedback.light()
                                         }
                                 }
                                 
@@ -292,7 +306,7 @@ struct AddFriendButton: View {
     var body: some View {
         Button(action: {
             // 添加好友
-            HapticFeedback.medium()
+            RelationsHapticFeedback.medium()
         }) {
             VStack(spacing: 8) {
                 ZStack {
@@ -390,7 +404,7 @@ struct RelationDetailView: View {
                                 
                                 Button("查看全部") {
                                     // 跳转到全部互动记录页面
-                                    HapticFeedback.light()
+                                    RelationsHapticFeedback.light()
                                 }
                                 .font(.system(size: 14))
                                 .foregroundColor(Color(hex: "4371E5"))
@@ -426,7 +440,7 @@ struct RelationDetailView: View {
                                 color: Color(hex: "4371E5")
                             ) {
                                 // 处理发起对话
-                                HapticFeedback.medium()
+                                RelationsHapticFeedback.medium()
                             }
                             
                             ActionButton(
@@ -435,7 +449,7 @@ struct RelationDetailView: View {
                                 color: Color(hex: "FFB347")
                             ) {
                                 // 处理修改关系
-                                HapticFeedback.medium()
+                                RelationsHapticFeedback.medium()
                             }
                         }
                         .padding(.vertical, 24)
@@ -467,7 +481,7 @@ struct RelationDetailView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
                         // 显示菜单
-                        HapticFeedback.light()
+                        RelationsHapticFeedback.light()
                     }) {
                         Image(systemName: "ellipsis")
                             .rotationEffect(.degrees(90))
@@ -546,36 +560,6 @@ struct ActionButton: View {
 }
 
 /**
- * 触觉反馈工具类
- */
-struct HapticFeedback {
-    static func light() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
-    }
-    
-    static func medium() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
-    }
-    
-    static func heavy() {
-        let generator = UIImpactFeedbackGenerator(style: .heavy)
-        generator.impactOccurred()
-    }
-    
-    static func success() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
-    }
-    
-    static func error() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.error)
-    }
-}
-
-/**
  * 为CharacterRelationModel模型添加一些展示用的属性
  */
 extension CharacterRelationModel {
@@ -631,7 +615,7 @@ struct InteractionItem: View {
     var body: some View {
         Button(action: {
             // 查看互动详情
-            HapticFeedback.light()
+            RelationsHapticFeedback.light()
         }) {
             HStack(spacing: 12) {
                 Circle()

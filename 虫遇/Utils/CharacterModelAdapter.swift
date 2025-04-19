@@ -8,9 +8,9 @@ import SwiftUI
 class CharacterModelAdapter {
     
     /**
-     * 将PublishCharacterModel转换为CharacterModel
+     * 将PHCharacterModel转换为CharacterModel
      */
-    static func toCharacterModel(_ publishModel: PublishCharacterModel) -> CharacterModel {
+    static func toCharacterModel(_ publishModel: PHCharacterModel) -> CharacterModel {
         return CharacterModel(
             name: publishModel.name,
             avatar: "character_avatar", // 使用默认头像
@@ -22,14 +22,14 @@ class CharacterModelAdapter {
     }
     
     /**
-     * 将CharacterModel转换为PublishCharacterModel
+     * 将CharacterModel转换为PHCharacterModel
      */
-    static func toPublishCharacterModel(_ characterModel: CharacterModel) -> PublishCharacterModel {
+    static func toPublishCharacterModel(_ characterModel: CharacterModel) -> PHCharacterModel {
         let parts = characterModel.era.split(separator: "-")
         let birthYear = String(parts.first ?? "")
         let deathYear = parts.count > 1 ? String(parts[1]) : nil
         
-        return PublishCharacterModel(
+        return PHCharacterModel(
             name: characterModel.name,
             introduction: characterModel.bio,
             field: characterModel.profession,
@@ -41,9 +41,9 @@ class CharacterModelAdapter {
     }
     
     /**
-     * 将PublishCharacterModel转换为CommentHistoricalFigure
+     * 将PHCharacterModel转换为CommentHistoricalFigure
      */
-    static func toCommentHistoricalFigure(_ character: PublishCharacterModel) -> CommentHistoricalFigure {
+    static func toCommentHistoricalFigure(_ character: PHCharacterModel) -> CommentHistoricalFigure {
         return CommentHistoricalFigure(
             name: character.name,
             introduction: character.introduction,
@@ -56,10 +56,10 @@ class CharacterModelAdapter {
     }
     
     /**
-     * 将CommentHistoricalFigure转换为PublishCharacterModel
+     * 将CommentHistoricalFigure转换为PHCharacterModel
      */
-    static func toPublishCharacterModelFromComment(_ character: CommentHistoricalFigure) -> PublishCharacterModel {
-        return PublishCharacterModel(
+    static func toPublishCharacterModelFromComment(_ character: CommentHistoricalFigure) -> PHCharacterModel {
+        return PHCharacterModel(
             name: character.name,
             introduction: character.introduction,
             field: character.field,

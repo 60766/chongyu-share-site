@@ -223,7 +223,7 @@ class PostViewModel: ObservableObject {
      * @param post 帖子
      * @param character 角色
      */
-    func generateVirtualCharacterComment(for post: UserPostModel, from character: PublishCharacterModel) {
+    func generateVirtualCharacterComment(for post: UserPostModel, from character: PHCharacterModel) {
         // 使用现有方法并基于角色ID调用
         let characterID = character.name.lowercased() // 使用角色名作为ID
         
@@ -313,8 +313,8 @@ class PostViewModel: ObservableObject {
      * 获取历史人物列表
      * @return 历史人物列表
      */
-    func getHistoricalCharacters() -> [PublishCharacterModel] {
-        return PublishCharacterModel.samples
+    func getHistoricalCharacters() -> [PHCharacterModel] {
+        return PHCharacterModel.samples
     }
     
     /**

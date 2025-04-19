@@ -5,7 +5,7 @@ import SwiftUI
  * 发布页面使用的角色模型
  * 用于在发布页面和评论中展示历史人物
  */
-struct PublishCharacterModel: Identifiable {
+struct PHCharacterModel: Identifiable, Equatable {
     let id = UUID()
     let name: String
     let introduction: String
@@ -26,10 +26,15 @@ struct PublishCharacterModel: Identifiable {
         self.eraTag = eraTag
     }
     
+    // 实现 Equatable 协议的 static func ==
+    static func == (lhs: PHCharacterModel, rhs: PHCharacterModel) -> Bool {
+        return lhs.id == rhs.id
+    }
+    
     // 示例数据
-    static var samples: [PublishCharacterModel] {
+    static var samples: [PHCharacterModel] {
         return [
-            PublishCharacterModel(
+            PHCharacterModel(
                 name: "爱因斯坦",
                 introduction: "现代物理学最重要的科学家之一",
                 field: "物理学家",
@@ -38,7 +43,7 @@ struct PublishCharacterModel: Identifiable {
                 avatarUrl: "https://example.com/einstein.jpg",
                 eraTag: "现代"
             ),
-            PublishCharacterModel(
+            PHCharacterModel(
                 name: "莎士比亚",
                 introduction: "英国剧作家、诗人",
                 field: "文艺",
@@ -47,7 +52,7 @@ struct PublishCharacterModel: Identifiable {
                 avatarUrl: "https://example.com/shakespeare.jpg",
                 eraTag: "文艺复兴"
             ),
-            PublishCharacterModel(
+            PHCharacterModel(
                 name: "孔子",
                 introduction: "中国古代思想家、教育家",
                 field: "哲学",
@@ -61,7 +66,7 @@ struct PublishCharacterModel: Identifiable {
 }
 
 // 扩展以兼容CharacterModel接口
-extension PublishCharacterModel {
+extension PHCharacterModel {
     // 模拟CharacterModel的属性
     var avatar: String { return avatarUrl }
     var era: String { return "\(birthYear)-\(deathYear ?? "现在")" }

@@ -47,7 +47,7 @@ struct CharacterModel: Identifiable {
     
     // 示例历史人物数据
     static let sampleCharacters: [CharacterModel] = [
-        CharacterModel(
+        Self(
             name: "爱因斯坦",
             avatar: "avatar_einstein",
             era: "1879-1955",
@@ -56,7 +56,7 @@ struct CharacterModel: Identifiable {
             category: .scientist,
             famousQuotes: ["想象力比知识更重要", "我们不能用制造问题的思维方式来解决问题"]
         ),
-        CharacterModel(
+        Self(
             name: "莎士比亚",
             avatar: "avatar_shakespeare",
             era: "1564-1616",
@@ -65,7 +65,7 @@ struct CharacterModel: Identifiable {
             category: .writer,
             famousQuotes: ["生存还是毁灭，这是一个问题", "我们由梦想构成，我们的小生命被睡眠包围"]
         ),
-        CharacterModel(
+        Self(
             name: "达芬奇",
             avatar: "avatar_davinci",
             era: "1452-1519",
@@ -74,7 +74,7 @@ struct CharacterModel: Identifiable {
             category: .artist,
             famousQuotes: ["简单是最终的复杂", "艺术永远不会完成，只会被放弃"]
         ),
-        CharacterModel(
+        Self(
             name: "苏格拉底",
             avatar: "avatar_socrates",
             era: "公元前469-前399",
@@ -83,7 +83,7 @@ struct CharacterModel: Identifiable {
             category: .philosopher,
             famousQuotes: ["我只知道一件事，那就是我什么都不知道", "未经审视的生活不值得过"]
         ),
-        CharacterModel(
+        Self(
             name: "居里夫人",
             avatar: "avatar_curie",
             era: "1867-1934",
@@ -97,7 +97,7 @@ struct CharacterModel: Identifiable {
     // 示例虚构角色数据
     static let virtualCharacters: [CharacterModel] = [
         // 动漫角色
-        CharacterModel(
+        Self(
             name: "孙悟空",
             avatar: "avatar_goku",
             era: "1984-现在",
@@ -107,7 +107,7 @@ struct CharacterModel: Identifiable {
             universe: "龙珠",
             famousQuotes: ["我要超越超级赛亚人！", "这还不是我的最终形态！"]
         ),
-        CharacterModel(
+        Self(
             name: "漩涡鸣人",
             avatar: "avatar_naruto",
             era: "1999-2014",
@@ -119,7 +119,7 @@ struct CharacterModel: Identifiable {
         ),
         
         // 游戏角色
-        CharacterModel(
+        Self(
             name: "马里奥",
             avatar: "avatar_mario",
             era: "1981-现在",
@@ -129,7 +129,7 @@ struct CharacterModel: Identifiable {
             universe: "超级马里奥",
             famousQuotes: ["It's-a me, Mario!", "Let's-a go!"]
         ),
-        CharacterModel(
+        Self(
             name: "林克",
             avatar: "avatar_link",
             era: "1986-现在",
@@ -141,7 +141,7 @@ struct CharacterModel: Identifiable {
         ),
         
         // 虚构人物
-        CharacterModel(
+        Self(
             name: "福尔摩斯",
             avatar: "avatar_holmes",
             era: "维多利亚时代",
@@ -151,7 +151,7 @@ struct CharacterModel: Identifiable {
             universe: "福尔摩斯系列",
             famousQuotes: ["基本的，我亲爱的华生", "排除所有不可能的，剩下的无论多么难以置信，那就是真相"]
         ),
-        CharacterModel(
+        Self(
             name: "钢铁侠",
             avatar: "avatar_ironman",
             era: "现代",

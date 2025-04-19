@@ -295,7 +295,7 @@ struct CharacterPickerView: View {
                     .lineLimit(1)
                 
                 // 角色职业
-                Text(character.profession)
+                Text(getPrimaryProfession(for: character))
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
@@ -360,6 +360,12 @@ struct CharacterPickerView: View {
         // 默认返回
         return "未知"
     }
+    
+    // 添加获取主要身份的辅助方法
+    private func getPrimaryProfession(for character: CharacterModel) -> String {
+        let professions = character.profession.components(separatedBy: CharacterSet(charactersIn: "，、"))
+        return professions.first?.trimmingCharacters(in: .whitespaces) ?? character.profession
+    }
 }
 
 /**
@@ -380,7 +386,7 @@ struct HomeView: View {
     @State private var replyingTo: UserCommentModel? = nil
     @State private var expandedPostID: UUID? = nil
     @State private var showCharacterSelector: Bool = false
-    @State private var selectedPost: UserPostModel? = nil
+    @State private var selectedPost: UserPostModel?
     /// 滚动位置
     @State private var scrollOffset: CGFloat = 0
     /// 是否显示顶部导航栏
@@ -393,12 +399,6 @@ struct HomeView: View {
     @State private var showPostDetail: Bool = false
     /// 内容动画状态
     @State private var contentAppeared: Bool = false
-    /// 是否显示角色卡片抽屉
-    @State private var isCharacterDrawerVisible: Bool = false
-    /// 是否显示底部弹出抽屉
-    @State private var isDrawerVisible: Bool = false
-    /// 是否隐藏顶部导航栏
-    @State private var isTopBarHidden: Bool = false
     
     /// 首页标签类型
     enum HomeTab: String, CaseIterable {
@@ -407,154 +407,168 @@ struct HomeView: View {
         case trending = "热门"
     }
     
+    // TabBar管理器
+    @ObservedObject private var tabBarManager = TabBarManager.shared
+    
     var body: some View {
-        // 使用ZStack作为顶层容器，强制内容填充全屏
-        ZStack(alignment: .top) {
-            // 背景层 - 强制填充全屏包括底部
-            Rectangle()
-                .fill(Color.white)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .edgesIgnoringSafeArea(.all)
-            
-            // 内容层
-            VStack(spacing: 0) {
-                // 顶部标题区
-                if !isTopBarHidden {
-                    topBarSection
-                        .zIndex(1)
+        NavigationStack {
+            ZStack(alignment: .top) {
+                // 背景色 - 使用微妙的渐变增加空间感
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 246/255, green: 248/255, blue: 252/255),
+                        Color(red: 250/255, green: 250/255, blue: 252/255)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+                
+                // 主滚动视图
+                ScrollView {
+                    // 滚动偏移量监听
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: AppScrollOffsetPreferenceKey.self,
+                            value: geometry.frame(in: .named("scroll")).minY
+                        )
+                    }
+                    .frame(height: 0)
+                    
+                    VStack(spacing: 0) {
+                        // 顶部导航栏
+                        navBar
+                            .opacity(showNavBar ? 1 : 0)
+                            .offset(y: showNavBar ? 0 : -20)
+                            .animation(.easeInOut(duration: 0.3), value: showNavBar)
+                        
+                        // 历史人物横向滚动区
+                        characterScrollSection
+                            .opacity(showNavBar ? 1 : 0)
+                            .offset(y: showNavBar ? 0 : -20)
+                            .animation(.easeInOut(duration: 0.3), value: showNavBar)
+                        
+                        // 内容分类标签
+                        tabSection
+                        
+                        // 内容区域
+                        contentSection
+                    }
+                }
+                .coordinateSpace(name: "scroll")
+                .onPreferenceChange(AppScrollOffsetPreferenceKey.self) { value in
+                    // 根据滚动位置控制导航栏显示
+                    withAnimation {
+                        showNavBar = value < 50
+                    }
                 }
                 
-                // 主内容区 - 帖子流
-                contentSection
-                    .edgesIgnoringSafeArea(.bottom)
-            }
-            .edgesIgnoringSafeArea(.bottom)
-        }
-        // 强制整个视图忽略底部安全区域
-        .edgesIgnoringSafeArea(.bottom)
-        .overlay(
-            // 角色卡片抽屉 - 从下方拉起
-            CharacterDrawer(
-                isVisible: $isCharacterDrawerVisible,
-                selectedCharacter: $selectedCharacter
-            )
-            .edgesIgnoringSafeArea(.all)
-        )
-        .overlay(
-            // 底部弹出抽屉 - 从下方拉起，动画更自然
-            BottomDrawer(
-                isVisible: $isDrawerVisible,
-                height: DrawerConstants.height,
-                backgroundColor: .white,
-                topCornerRadius: DrawerConstants.cornerRadius,
-                shadow: DrawerConstants.shadow
-            ) {
-                // 抽屉内容区
-                VStack {
-                    // 抽屉标题栏
-                    HStack {
-                        Text("使用虫洞")
-                            .font(.headline)
-                            .foregroundColor(.primaryColor)
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            withAnimation(.spring()) {
-                                isDrawerVisible = false
-                            }
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundColor(.gray.opacity(0.6))
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 10)
-                    
-                    // 角色滚动选择区
-                    characterSelectorSection
-                    
-                    // 底部空间 - 确保抽屉内容不被裁剪
-                    Color.clear.frame(height: 20)
+                // 历史人物选择器（全屏模态）
+                if showCharacterPicker {
+                    CharacterPickerView(
+                        characters: characters,
+                        selectedCharacter: $selectedCharacter,
+                        isPresented: $showCharacterPicker
+                    )
+                    .transition(.opacity)
                 }
             }
-            .edgesIgnoringSafeArea(.bottom)
-        )
-        .onAppear {
-            // 加载示例数据
-            loadSampleData()
-            
-            // 延迟显示内容以实现动画效果
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                withAnimation(.easeOut(duration: 0.5)) {
-                    contentAppeared = true
+            .onAppear {
+                loadSampleData()
+                
+                // 内容出现动画
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.easeOut(duration: 0.5)) {
+                        contentAppeared = true
+                    }
+                }
+            }
+            // 使用水平模态过渡代替全屏覆盖
+            .fullscreenHorizontalModal(
+                isPresented: Binding(
+                    get: { selectedPost != nil },
+                    set: { if !$0 { selectedPost = nil } }
+                ),
+                direction: .fromRight
+            ) {
+                if let post = selectedPost {
+                    // 使用全屏沉浸式详情页
+                    FullscreenPostDetailView(
+                        post: post,
+                        onDismiss: {
+                            selectedPost = nil
+                        },
+                        onLike: { comment in
+                            handleLikeComment(post: post, comment: comment)
+                        }
+                    )
                 }
             }
         }
     }
     
-    // MARK: - 顶部导航栏
-    private var topBarSection: some View {
+    // MARK: - 导航栏
+    private var navBar: some View {
         HStack {
-            // 应用标题 - 改用渐变色更醒目
+            // 应用标题 - 使用自定义字体效果
             Text("虫遇")
-                .font(.system(size: 24, weight: .bold))
+                .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [Color.primaryColor, Color.primaryColor.opacity(0.8)],
-                        startPoint: .leading,
-                        endPoint: .trailing
+                        colors: [Color.primaryColor, Color.primaryColor.opacity(0.85)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
                 )
-                .tracking(-0.5) // 紧凑字距
+                .tracking(-0.8) // 更紧凑的字距
             
-            // 应用副标题 - 强化时空穿越主题
+            // 应用副标题 - 优化视觉层次
             Text("·穿越时空的对话")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary)
+                .font(.system(size: 14, weight: .light))
+                .foregroundColor(Color(hex: "A190B2").opacity(0.9))
+                .kerning(0.3)
                 .offset(y: 2)
             
             Spacer()
             
-            // 编辑按钮 - 现代化设计
+            // 编辑按钮 - 增加间距
             Button(action: {
                 // 编辑操作
             }) {
                 Image(systemName: "square.and.pencil")
-                    .font(.system(size: 18))
+                    .font(.system(size: 17, weight: .light))
                     .foregroundColor(.primaryColor)
                     .frame(width: 36, height: 36)
-                    .background(Color.primaryColor.opacity(0.1))
+                    .background(Color.primaryColor.opacity(0.08))
                     .clipShape(Circle())
             }
             .buttonStyle(ScaleButtonStyle())
+            .padding(.trailing, 12) // 增加按钮之间的间距
             
-            // 搜索按钮 - 现代化设计
+            // 搜索按钮 - 更轻盈的设计
             Button(action: {
                 // 搜索操作
             }) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 18))
+                    .font(.system(size: 17, weight: .light))
                     .foregroundColor(.primaryColor)
+                    .rotationEffect(.degrees(5))
                     .frame(width: 36, height: 36)
-                    .background(Color.primaryColor.opacity(0.1))
+                    .background(Color.primaryColor.opacity(0.08))
                     .clipShape(Circle())
             }
             .buttonStyle(ScaleButtonStyle())
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 20) // 增加整体水平内边距
         .padding(.top, 8)
         .padding(.bottom, 8)
         .background(
-            // 导航栏渐变背景
             Rectangle()
                 .fill(
                     LinearGradient(
                         gradient: Gradient(
                             colors: [
-                                Color.white,
+                                Color.white.opacity(0.98),
                                 Color.white.opacity(0.95)
                             ]
                         ),
@@ -562,71 +576,55 @@ struct HomeView: View {
                         endPoint: .bottom
                     )
                 )
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+                .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 3)
                 .ignoresSafeArea(edges: .top)
         )
     }
     
     // MARK: - 历史人物滚动区
     private var characterScrollSection: some View {
-        VStack(spacing: 8) {
-            // 标题栏 - 添加时空穿越主题
-            HStack {
-                Text("历史人物")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.primary)
-                
-                Text("· 穿越对话")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                
-                Spacer()
-                
-                Button(action: {
-                    withAnimation(.spring()) {
-                        showCharacterPicker = true
-                    }
-                }) {
-                    Text("查看全部")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(Color.primaryColor)
-                }
-                .buttonStyle(ScaleButtonStyle())
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
+        VStack(spacing: 2) { // 减少整体垂直间距
+            // 标题栏
+            characterSectionHeader
             
             // 角色滚动区
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(characters) { character in
-                        CharacterAvatarView(
-                            character: character,
-                            size: 70,
-                            onTap: {
-                                selectedCharacter = character
-                                showCharacterPicker = true
-                            }
-                        )
-                        .offset(y: contentAppeared ? 0 : 20)
-                        .opacity(contentAppeared ? 1 : 0)
-                        .animation(
-                            .spring(response: 0.5, dampingFraction: 0.7)
-                            .delay(Double(characters.firstIndex(where: { $0.id == character.id }) ?? 0) * 0.1),
-                            value: contentAppeared
-                        )
+            ScrollViewReader { scrollProxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(characters) { character in
+                            characterCard(for: character)
+                                .id(character.id)
+                                .offset(y: contentAppeared ? 0 : 20)
+                                .opacity(contentAppeared ? 1 : 0)
+                                .animation(
+                                    .spring(response: 0.5, dampingFraction: 0.7)
+                                    .delay(Double(characters.firstIndex(where: { $0.id == character.id }) ?? 0) * 0.05),
+                                    value: contentAppeared
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(
+                                            selectedCharacter?.id == character.id ?
+                                                character.category.color.opacity(0.3) : Color.clear,
+                                            lineWidth: 2
+                                        )
+                                        .padding(-4)
+                                )
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
             }
+            .overlay(scrollIndicator, alignment: .bottom)
         }
-        .background(
-            Rectangle()
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 4)
-        )
     }
+    .background(
+        Rectangle()
+            .fill(Color.white)
+            .shadow(color: Color.black.opacity(0.02), radius: 6, x: 0, y: 3)
+    )
+    .padding(.bottom, 8) // 添加底部间距，减少与下方内容的断裂感
     
     // MARK: - 标签区域
     private var tabSection: some View {
@@ -637,119 +635,96 @@ struct HomeView: View {
                         selectedTab = tab
                     }
                 }) {
-                    VStack(spacing: 8) {
+                    VStack(spacing: 4) { // 减小内部间距
                         Text(tab.rawValue)
-                            .font(.system(size: 16, weight: selectedTab == tab ? .semibold : .regular))
+                            .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .regular)) // 减小字体
                             .foregroundColor(selectedTab == tab ? Color.primary : Color.secondary)
                         
-                        // 选中指示器
+                        // 选中指示器 - 更细更精致
                         Capsule()
                             .fill(selectedTab == tab ? Color.primaryColor : Color.clear)
-                            .frame(width: 20, height: 3)
+                            .frame(width: 16, height: 2) // 减小宽度和高度
                             .opacity(selectedTab == tab ? 1 : 0)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 40)
+                    .frame(height: 34) // 减小整体高度
                 }
                 .buttonStyle(PlainButtonStyle())
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6) // 减小垂直内边距
         .background(
             Rectangle()
                 .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 2)
+                .shadow(color: Color.black.opacity(0.02), radius: 3, x: 0, y: 1) // 减轻阴影
         )
     }
     
     // MARK: - 内容区域
     private var contentSection: some View {
-        // 使用ZStack包装ScrollView，并控制其范围
-        ZStack(alignment: .top) {
-            // 强制扩展的背景层
-            VStack(spacing: 0) {
-                Rectangle()
-                    .fill(Color.white)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .edgesIgnoringSafeArea(.all)
-                
-                // 添加一个额外底部填充，确保内容能滚动到底部
-                Rectangle()
-                    .fill(Color.white)
-                    .frame(maxWidth: .infinity, height: 100)
-                    .edgesIgnoringSafeArea(.all)
-                    .offset(y: 20)
-            }
-            .edgesIgnoringSafeArea(.all)
-            
-            // 实际的滚动内容
-            ScrollView {
-                // 使用LazyVStack提高性能
-                LazyVStack(spacing: 4) {
-                    ForEach(Array(userPosts.enumerated()), id: \.element.id) { index, post in
-                        PostCardView(
-                            post: post,
-                            onPostTap: { post in
-                                // 查看帖子详情
-                                selectedPost = post
+        ScrollView {
+            // 使用LazyVStack提高性能
+            LazyVStack(spacing: 0) {
+                ForEach(Array(userPosts.enumerated()), id: \.element.id) { index, post in
+                    PostCardView(
+                        post: post,
+                        onPostTap: {
+                            // 查看帖子详情
+                            selectedPost = post
+                            showPostDetail = true
+                        },
+                        onLikeToggle: { isLiked in
+                            // 点赞逻辑
+                            if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
+                                var updatedPost = userPosts[index].toggleLike(isLiked: isLiked)
+                                updatedPost = updatedPost.updateLikes(delta: isLiked ? 1 : -1)
+                                userPosts[index] = updatedPost
+                            }
+                        },
+                        onCommentToggle: {
+                            // 在首页中，评论按钮直接跳转到详情页
+                            selectedPost = post
+                            
+                            // 触觉反馈
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                            impactFeedback.impactOccurred()
+                            
+                            // 显示帖子详情
+                            withAnimation(.easeOut(duration: 0.2)) {
                                 showPostDetail = true
-                            },
-                            onLikeToggle: { isLiked in
-                                // 点赞逻辑
-                                if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
-                                    var updatedPost = userPosts[index].toggleLike(isLiked: isLiked)
-                                    updatedPost = updatedPost.updateLikes(delta: isLiked ? 1 : -1)
-                                    userPosts[index] = updatedPost
-                                }
-                            },
-                            onCommentToggle: {
-                                // 在首页中，评论按钮直接跳转到详情页
-                                selectedPost = post
-                                
-                                // 触觉反馈
-                                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                                impactFeedback.impactOccurred()
-                                
-                                // 显示帖子详情
-                                withAnimation(.easeOut(duration: 0.2)) {
-                                    showPostDetail = true
-                                }
-                            },
-                            onBookmarkToggle: { isBookmarked in
-                                // 收藏逻辑
-                                if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
-                                    userPosts[index] = userPosts[index].toggleBookmark(isBookmarked: isBookmarked)
-                                }
-                            },
-                            onShare: {
-                                // 分享逻辑
-                                // 可以在此添加分享功能
-                            },
-                            // 确保使用预览模式显示
-                            displayMode: .preview
-                        )
-                        .offset(y: contentAppeared ? 0 : 50)
-                        .opacity(contentAppeared ? 1 : 0)
-                        .animation(
-                            .easeOut(duration: 0.5)
-                            .delay(0.1 + Double(index % 5) * 0.05), // 使用取模避免延迟过长
-                            value: contentAppeared
-                        )
-                    }
-                    
-                    // 添加额外底部空间，确保最后一个卡片可以完全滚动到视图中间
-                    Color.clear.frame(height: 150)
-                        .frame(maxWidth: .infinity)
+                            }
+                        },
+                        onBookmarkToggle: { isBookmarked in
+                            // 收藏逻辑
+                            if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
+                                userPosts[index] = userPosts[index].toggleBookmark(isBookmarked: isBookmarked)
+                            }
+                        },
+                        onShare: {
+                            // 分享逻辑
+                            // 可以在此添加分享功能
+                        },
+                        // 确保使用预览模式显示
+                        displayMode: .preview
+                    )
+                    .offset(y: contentAppeared ? 0 : 50)
+                    .opacity(contentAppeared ? 1 : 0)
+                    .animation(
+                        .easeOut(duration: 0.5)
+                        .delay(0.1 + Double(index % 5) * 0.05), // 使用取模避免延迟过长
+                        value: contentAppeared
+                    )
                 }
-                .padding(.vertical, 0)
+                
+                // 底部安全区域填充 - 使用极小值，避免多余的空白
+                Color.clear
+                    .frame(height: max(0, tabBarManager.fullBottomAreaHeight - (tabBarManager.bottomSafeAreaHeight)))
+                    .id("bottomSpacer")
             }
-            .scrollIndicators(.hidden)
-            .ignoresSafeArea(edges: .bottom)
-            // 使用我们新添加的扩展方法
-            .removeBottomSpace()
+            .padding(.vertical, 8)
         }
-        .ignoresSafeArea(edges: .bottom)
+        .background(Color.clear) // 使用透明背景而不是白色背景
         .refreshable {
             // 下拉刷新逻辑
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -759,6 +734,8 @@ struct HomeView: View {
             try? await Task.sleep(nanoseconds: 800_000_000)
             loadSampleData()
         }
+        .ignoresSafeArea(.all, edges: .bottom) // 确保内容可以延伸到底部安全区域
+        .edgesIgnoringSafeArea(.bottom) // 进一步确保内容延伸到底部边缘
     }
     
     // MARK: - 历史人物邀请区域
@@ -789,40 +766,52 @@ struct HomeView: View {
                     }
                 }
             }
-            .padding(.horizontal)
             
-            // 历史人物列表滚动视图
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 20) {
-                    // 生成历史人物项
-                    ForEach(characters.prefix(5)) { character in
-                        Button(action: {
-                            // 点击后选择角色
-                            selectedCharacter = character
-                        }) {
-                            VStack {
-                                // 角色头像
-                                Image(character.avatar)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 60, height: 60)
-                                    .clipShape(Circle())
-                                    .overlay(
-                                        Circle()
-                                            .strokeBorder(character.category.color, lineWidth: 2)
-                                    )
-                                
-                                // 角色名称
-                                Text(character.name)
-                                    .font(.caption)
-                                    .foregroundColor(.primary)
-                                    .lineLimit(1)
-                            }
-                        }
-                        .buttonStyle(ScaleButtonStyle())
-                    }
+            // 历史人物列表 - 简化表达式
+            charactersHorizontalList
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+    
+    // 提取复杂的历史人物列表为单独的计算属性
+    private var charactersHorizontalList: some View {
+        // 精选历史人物头像列表
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 16) {
+                let displayedCharacters = characters.prefix(5)
+                ForEach(Array(displayedCharacters), id: \.id) { character in
+                    // 提取角色单元格为独立表达式
+                    characterInviteCell(for: character)
                 }
-                .padding(.horizontal)
+            }
+            .padding(.vertical, 8)
+        }
+    }
+    
+    // 提取每个角色单元格为单独的方法
+    private func characterInviteCell(for character: CharacterModel) -> some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                addVirtualCharacterComment(character: character)
+            }
+        }) {
+            VStack(spacing: 6) {
+                // 角色头像
+                ZStack {
+                    Circle()
+                        .fill(character.category.color.opacity(0.2))
+                        .frame(width: 60, height: 60)
+                    
+                    Image(systemName: character.category.icon)
+                        .font(.system(size: 30))
+                        .foregroundColor(character.category.color)
+                }
+                
+                // 角色名称
+                Text(character.name)
+                    .font(.caption)
+                    .foregroundColor(.primary)
             }
         }
     }
@@ -860,7 +849,7 @@ struct HomeView: View {
             
             // 评论文本框
             HStack {
-                TextField("发表评论...", text: $commentText)
+                TextField("跨越时空的对话...", text: $commentText)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                 
@@ -886,7 +875,7 @@ struct HomeView: View {
         guard !commentText.isEmpty, let post = selectedPost else { return }
         
         // 创建新评论
-        let newComment = UserCommentModel(
+        let _ = UserCommentModel(
             username: "我",
             userAvatar: "person.circle.fill",
             content: commentText,
@@ -898,7 +887,13 @@ struct HomeView: View {
         
         // 更新帖子评论
         if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
-            userPosts[index] = userPosts[index].addComment(newComment)
+            userPosts[index].addComment(
+                username: "我",
+                userAvatar: "person.circle.fill",
+                content: commentText,
+                isVirtualCharacter: false,
+                characterID: nil
+            )
             selectedPost = userPosts[index]
         }
         
@@ -907,38 +902,32 @@ struct HomeView: View {
         replyingTo = nil
     }
     
-    // MARK: - 虚拟角色评论功能
     private func addVirtualCharacterComment(character: CharacterModel) {
-        // 在实际应用中，这里会实现基于AI的角色互动逻辑
-        // 现在仅添加一个示例评论
+        guard let post = selectedPost else { return }
         
-        // 确保有选中的帖子
-        guard let post = selectedPost,
-              let index = userPosts.firstIndex(where: { $0.id == post.id }) else {
-            return
-        }
+        // 创建虚拟角色评论内容（实际应用中可通过AI生成）
+        let contentMap: [String: String] = [
+            "爱因斯坦": "从相对论的角度来看，时间确实是一个相对的概念。在高速运动的情况下，时间会变慢，这就是著名的钟慢效应。",
+            "莎士比亚": "啊，时间！你是最伟大的魔术师，让一切都在你的魔法中流转。让我们珍惜每一刻，因为时间就像沙漏中的沙，一去不复返。",
+            "达芬奇": "观察是艺术与科学的起点。通过细致的观察，我们能发现自然界中最美妙的规律。",
+            "孔子": "学而不思则罔，思而不学则殆。我们应当在学习中思考，在思考中学习。"
+        ]
         
-        // 创建一个角色评论
-        let newComment = UserCommentModel(
-            username: character.name,
-            userAvatar: character.avatar,
-            content: "这是来自\(character.name)的评论...",
-            datePosted: Date(),
-            likes: 0,
-            isVirtualCharacter: true,
-            characterID: character.id.uuidString
-        )
+        let content = contentMap[character.name] ?? "这是一条来自\(character.name)的虚拟评论，实际应用中应通过AI生成。"
         
-        // 添加评论到帖子
-        userPosts[index] = userPosts[index].addComment(newComment)
-        
-        // 如果当前有选中的帖子，更新它
-        if selectedPost?.id == post.id {
+        // 更新帖子评论
+        if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
+            userPosts[index].addComment(
+                username: character.name,
+                userAvatar: character.avatar,
+                content: content,
+                isVirtualCharacter: true,
+                characterID: "\(character.id)"
+            )
+            
+            // 如果正在查看的是同一帖子，也更新 selectedPost
             selectedPost = userPosts[index]
         }
-        
-        // 提供触觉反馈
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
     
     // MARK: - 评论功能
@@ -952,27 +941,39 @@ struct HomeView: View {
         guard !trimmedContent.isEmpty else { return }
         
         // 创建新评论
-        let newComment = UserCommentModel(
+        let _ = UserCommentModel(
             username: "当前用户",  // 应该使用实际的当前用户名
             userAvatar: "person.circle.fill",  // 应该使用实际的当前用户头像
             content: trimmedContent,
             datePosted: Date(),
             likes: 0,
-            isLikedByCurrentUser: false,
             isVirtualCharacter: false,
             characterID: nil
         )
         
         // 更新帖子的评论列表 - 使用帖子模型自带的 addComment 方法
         if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
-            // 使用 addComment 方法来添加新评论，这会返回更新后的帖子
-            let updatedPost = userPosts[index].addComment(newComment)
-            // 更新帖子列表中的帖子
-            userPosts[index] = updatedPost
+            // 如果是回复评论
+            if let replyID = replyingTo {
+                userPosts[index].addComment(
+                    username: "当前用户",
+                    userAvatar: "person.circle.fill",
+                    content: trimmedContent,
+                    parentCommentId: replyID.id,
+                    replyToUsername: replyID.username // 使用被回复评论的用户名
+                )
+            } else {
+                // 直接添加评论
+                userPosts[index].addComment(
+                    username: "当前用户",
+                    userAvatar: "person.circle.fill",
+                    content: trimmedContent
+                )
+            }
             
             // 如果正在查看的是同一帖子，也更新 selectedPost
             if selectedPost?.id == post.id {
-                selectedPost = updatedPost
+                selectedPost = userPosts[index]
             }
         }
     }
@@ -1046,12 +1047,11 @@ struct HomeView: View {
         // 查找评论所属的帖子
         if let postIndex = userPosts.firstIndex(where: { $0.id == post.id }) {
             // 更新点赞状态
-            let updatedPost = userPosts[postIndex].likeComment(comment.id)
-            userPosts[postIndex] = updatedPost
+            userPosts[postIndex].likeComment(commentId: comment.id)
             
             // 如果是当前选中的帖子，也更新selectedPost
             if selectedPost?.id == post.id {
-                selectedPost = updatedPost
+                selectedPost = userPosts[postIndex]
             }
         }
     }
@@ -1108,33 +1108,135 @@ struct HomeView: View {
         ]
         
         // 加载用户帖子
-        userPosts = UserPostModel.samplePosts
+        userPosts = ModelData.samplePosts
     }
     
-    // MARK: - 角色选择器部分
-    private var characterSelectorSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 16) {
-                ForEach(characters) { character in
-                    CharacterAvatarView(
-                        character: character,
-                        size: 60,
-                        onTap: {
-                            selectedCharacter = character
-                            withAnimation {
-                                isCharacterDrawerVisible = true
-                                isDrawerVisible = false
-                            }
-                        }
-                    )
+    // MARK: - Helper Methods
+    private func getPrimaryProfession(for character: CharacterModel) -> String {
+        let professions = character.profession.components(separatedBy: CharacterSet(charactersIn: "，、"))
+        return professions.first?.trimmingCharacters(in: .whitespaces) ?? character.profession
+    }
+    
+    /**
+     * 将 CharacterModel 转换为 Character
+     */
+    private func convertToCharacter(_ model: CharacterModel) -> Character {
+        return Character(
+            id: model.id.uuidString,
+            name: model.name,
+            introduction: model.bio,
+            field: model.profession,
+            birthYear: model.era.components(separatedBy: "-").first ?? "",
+            deathYear: model.era.components(separatedBy: "-").last,
+            avatarUrl: model.avatar,
+            eraTag: model.era,
+            achievements: [],  // 这些数据可以根据需要添加
+            mainWorks: [],
+            keyThoughts: [],
+            followerCount: 0,
+            interactionCount: 0,
+            rating: 4.5,
+            createdAt: Date()
+        )
+    }
+
+    // MARK: - Character Card View
+    private func characterCard(for character: CharacterModel) -> some View {
+        NavigationLink(destination: CharacterDetailView(character: convertToCharacter(character))) {
+            VStack(spacing: 6) {
+                // 头像部分
+                ZStack {
+                    // 背景圆圈
+                    Circle()
+                        .fill(character.category.color.opacity(0.1))
+                        .frame(width: 52, height: 52)
+                    
+                    // 图标
+                    Image(systemName: character.category.icon)
+                        .font(.system(size: 20))
+                        .foregroundColor(character.category.color)
+                        .frame(width: 46, height: 46)
+                        .background(Color.white)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(character.category.color.opacity(0.3), lineWidth: 1)
+                        )
                 }
+                
+                // 名字和职业的容器
+                VStack(spacing: 2) {
+                    Text(character.name)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.primary)
+                    
+                    Text(getPrimaryProfession(for: character))
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "A190B2"))
+                }
+                .frame(width: 60)
+                .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .frame(width: 70)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(PlainButtonStyle())
+        .tint(.primary)
+    }
+    
+    // MARK: - UI Components
+    private var characterSectionHeader: some View {
+        HStack {
+            // 为增强与历史人物卡片的视觉关联，添加一个简单提示文本
+            Text("历史人物")
+                .font(.system(size: 14, weight: .regular))
+                .foregroundColor(.secondary)
+                .opacity(0.7)
+            
+            Spacer()
+            
+            // 查看全部按钮 - 优化设计，增加视觉关联
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    showCharacterPicker = true
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Text("查看全部")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.primaryColor.opacity(0.05))
+                .cornerRadius(15)
+            }
+            .padding(.trailing, 16)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+    
+    private var scrollIndicator: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<min(5, characters.count), id: \.self) { index in
+                Circle()
+                    .fill(Color.primaryColor.opacity(0.3))
+                    .frame(width: 4, height: 4)
+            }
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .background(Color.white.opacity(0.8))
+        .cornerRadius(10)
+        .padding(.bottom, 4)
     }
 }
 
 #Preview("首页") {
     HomeView()
-} 
+}

@@ -55,23 +55,10 @@ struct CommentsListView: View {
             // 评论列表 - 移除重复的评论区头部
             LazyVStack(alignment: .leading, spacing: 0) {
                 if comments.isEmpty {
-                    // 无评论时显示提示
-                    VStack(spacing: 8) {
-                        Image(systemName: "bubble.left")
-                            .font(.system(size: 32))
-                            .foregroundColor(.gray.opacity(0.5))
-                        
-                        Text("暂无评论")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
-                        
-                        Text("成为第一个评论的人吧")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray.opacity(0.7))
-                            .padding(.top, 4)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 32)
+                    // 无评论时使用统一的EmptyCommentsView组件
+                    EmptyCommentsView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
                 } else {
                     // 显示所有顶级评论
                     ForEach(comments) { comment in
