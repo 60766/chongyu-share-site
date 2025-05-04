@@ -989,32 +989,26 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题 - 使用绝对定位确保与返回按钮精确对齐
-                        GeometryReader { geometry in
-                            ZStack(alignment: .top) {
-                                // 空容器，确保ZStack占满整个区域
-                                Color.clear
-                                
-                                // 占位空间 - 与系统返回按钮布局匹配
-                                HStack {
-                                    // 空占位符，保持布局参考
-                                    Color.clear
-                                        .frame(width: 32, height: 32)
-                                        .padding(.leading, 16)
-                                    
-                                    Spacer()
-                                }
-                                .padding(.top, getSafeAreaTop() + 10)
-                                
-                                // 标题层 - 精确控制垂直位置
-                                Text("探索虫洞深处")
-                                    .font(.system(size: 17, weight: .medium))
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                                    .padding(.top, getSafeAreaTop() + 16) // 微调垂直位置，确保视觉上与返回按钮完全居中对齐
-                            }
+                        // 顶部区域 - 完全重构以确保精确对齐
+                        HStack {
+                            // 左侧占位 - 与系统返回按钮保持相同宽度
+                            Color.clear
+                                .frame(width: 32, height: 32)
+                            
+                            // 中间标题 - 确保居中对齐
+                            Spacer()
+                            Text("探索虫洞深处")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(.white)
+                            Spacer()
+                            
+                            // 右侧占位 - 保持对称
+                            Color.clear
+                                .frame(width: 32, height: 32)
                         }
-                        .frame(height: 44 + getSafeAreaTop()) // 确保足够的高度包含安全区域
+                        .padding(.horizontal, 16) // 与返回按钮左边距保持一致
+                        .frame(height: 32) // 确保与返回按钮高度相同
+                        .padding(.top, getSafeAreaTop() + 10) // 与返回按钮顶部边距保持一致
                         
                         // 黑洞主视觉
                         BlackHoleView()
