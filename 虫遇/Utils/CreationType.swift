@@ -353,39 +353,14 @@ public struct CreationTypeButtonsView: View {
     @State private var animateButtons = false
     
     public var body: some View {
-        VStack(spacing: 0) {
-            // 顶部四个按钮排成一排
-            HStack(spacing: 24) {  // 增加按钮间距
-                // 四个按钮水平排列
-                ForEach(1...4, id: \.self) { index in
-                    categoryButton(index: index)
-                }
+        // 水平排列四个分类按钮，去掉随机漫游按钮
+        HStack(spacing: 24) {  // 按钮间距设置为24
+            // 只展示四个分类按钮（不显示随机漫游）
+            ForEach(1...4, id: \.self) { index in
+                categoryButton(index: index)
             }
-            .padding(.horizontal, 16)  // 增加水平边距
-            .padding(.bottom, 34)  // 增加与分隔线的间距
-            
-            // 半透明分隔线，创造层次感
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.white.opacity(0),
-                            Color.white.opacity(0.35),  // 增加不透明度
-                            Color.white.opacity(0)
-                        ]),
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .frame(width: 280, height: 1)
-                .padding(.bottom, 34)  // 增加与下方按钮的间距
-                .scaleEffect(x: animateButtons ? 1 : 0.3, y: 1)
-                .opacity(animateButtons ? 1 : 0)
-            
-            // 底部"随机漫游"主按钮 - 尺寸适中
-            featuredRandomButton()
-                .padding(.bottom, 15)
         }
+        .padding(.horizontal, 16)  // 水平边距
         .onAppear {
             // 添加出现动画
             DispatchQueue.main.async {
@@ -400,7 +375,7 @@ public struct CreationTypeButtonsView: View {
     private func categoryButton(index: Int) -> some View {
         let isSelected = typeManager.selectedIndex == index
         
-        return VStack(spacing: 7) {  // 增加按钮内部间距
+        return VStack(spacing: 7) {  // 垂直布局，间距7
             // 按钮圆形部分
             ZStack {
                 // 背景圆形
@@ -415,7 +390,7 @@ public struct CreationTypeButtonsView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 55, height: 55)  // 增大按钮尺寸
+                    .frame(width: 55, height: 55)  // 按钮尺寸为55x55
                 
                 // 内部阴影效果
                 if isSelected {
@@ -438,7 +413,7 @@ public struct CreationTypeButtonsView: View {
                 
                 // 图标
                 Image(systemName: typeManager.icons[index])
-                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))  // 增大图标
+                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))  // 图标大小20
                     .foregroundColor(isSelected ? .black : .white)
                     .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
             }
@@ -447,13 +422,13 @@ public struct CreationTypeButtonsView: View {
             
             // 按钮文字
             Text(typeManager.types[index])
-                .font(.system(size: 12, weight: isSelected ? .medium : .regular))  // 增大文字尺寸
+                .font(.system(size: 12, weight: isSelected ? .medium : .regular))  // 文字大小12
                 .foregroundColor(.white)
                 .opacity(isSelected ? 1.0 : 0.7)
                 .lineLimit(1)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(width: 65)  // 增大按钮整体宽度
+        .frame(width: 65)  // 整体宽度65
         .offset(y: animateButtons ? 0 : 30)
         .opacity(animateButtons ? 1 : 0)
         .animation(
@@ -468,79 +443,6 @@ public struct CreationTypeButtonsView: View {
             
             // 更新选中状态
             typeManager.selectType(at: index)
-        }
-        .modifier(PulseEffect(isSelected: isSelected))
-    }
-    
-    // 主"随机漫游"按钮
-    private func featuredRandomButton() -> some View {
-        let isSelected = typeManager.selectedIndex == 0
-        
-        return VStack(spacing: 10) {  // 增加垂直间距
-            ZStack {
-                // 外部发光效果
-                if isSelected {
-                    Circle()
-                        .fill(Color.clear)
-                        .frame(width: 75, height: 75)  // 增大外圈尺寸
-                        .overlay(
-                            Circle()
-                                .stroke(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [.white.opacity(0.8), .white.opacity(0.2)]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 2
-                                )
-                        )
-                        .shadow(color: Color.white.opacity(0.3), radius: 8, x: 0, y: 0)
-                }
-                
-                // 主背景圆形
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                isSelected ? Color.white.opacity(1) : Color.white.opacity(0.08),
-                                isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.16)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 65, height: 65)  // 增大中心圆形尺寸
-                    .shadow(color: isSelected ? Color.white.opacity(0.4) : Color.black.opacity(0.2), radius: isSelected ? 8 : 4, x: 0, y: 0)
-                
-                // 图标
-                Image(systemName: typeManager.icons[0])
-                    .font(.system(size: 26, weight: isSelected ? .semibold : .regular))  // 增大图标尺寸
-                    .foregroundColor(isSelected ? .black : .white)
-                    .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
-            }
-            .scaleEffect(isSelected ? 1.1 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
-            
-            // 按钮文字
-            Text(typeManager.types[0])
-                .font(.system(size: 14, weight: isSelected ? .medium : .regular))  // 增大文字尺寸
-                .foregroundColor(.white)
-                .opacity(isSelected ? 1.0 : 0.8)
-        }
-        .offset(y: animateButtons ? 0 : 40)
-        .opacity(animateButtons ? 1 : 0)
-        .animation(
-            .spring(response: 0.5, dampingFraction: 0.7)
-            .delay(0.3),
-            value: animateButtons
-        )
-        .onTapGesture {
-            // 触发触觉反馈
-            let impactMed = UIImpactFeedbackGenerator(style: .medium)
-            impactMed.impactOccurred()
-            
-            // 更新选中状态
-            typeManager.selectType(at: 0)
         }
         .modifier(PulseEffect(isSelected: isSelected))
     }
