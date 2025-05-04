@@ -221,6 +221,9 @@ public struct BlackHoleView: View {
     @State private var outerRotation: Double = 0
     @State private var innerRotation: Double = 0
     @State private var pulseScale: CGFloat = 1.0
+    @State private var centerButtonScale: CGFloat = 1.0
+    
+    @EnvironmentObject private var typeManager: CreationTypeManager
     
     public var body: some View {
         ZStack {
@@ -324,6 +327,16 @@ public struct BlackHoleView: View {
                             .rotationEffect(.degrees(innerRotation * 1.2))
                     }
                 )
+            
+            // 添加随机漫游按钮到中心位置
+            randomButton()
+                .scaleEffect(centerButtonScale)
+                .onAppear {
+                    // 添加缓慢脉动动画
+                    withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
+                        centerButtonScale = 1.05
+                    }
+                }
         }
         .onAppear {
             // 添加旋转和脉冲动画
@@ -341,6 +354,77 @@ public struct BlackHoleView: View {
         }
     }
     
+    // 随机漫游按钮 - 用于放置在黑洞中心
+    private func randomButton() -> some View {
+        let isSelected = typeManager.selectedIndex == 0
+        
+        return Button(action: {
+            // 触发触觉反馈
+            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+            impactMed.impactOccurred()
+            
+            // 更新选中状态
+            typeManager.selectType(at: 0)
+        }) {
+            ZStack {
+                // 外环光晕效果
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 80, height: 80)
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.white.opacity(0.6),
+                                        Color.white.opacity(0.2)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
+                    .opacity(isSelected ? 1 : 0.5)
+                
+                // 主按钮背景
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                isSelected ? Color.white.opacity(1) : Color.white.opacity(0.12),
+                                isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.08)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 70, height: 70)
+                    .shadow(color: isSelected ? Color.white.opacity(0.5) : Color.white.opacity(0.1), radius: 8)
+                
+                // 图标
+                Image(systemName: "shuffle")
+                    .font(.system(size: 26, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? .black : .white)
+                    .opacity(isSelected ? 1 : 0.8)
+                
+                // 添加半透明文字标签
+                Text("随机漫游")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(isSelected ? .black : .white)
+                    .opacity(isSelected ? 0.9 : 0.7)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule()
+                            .fill(isSelected ? Color.white.opacity(0.8) : Color.black.opacity(0.4))
+                    )
+                    .offset(y: 40)
+            }
+        }
+        .buttonStyle(PlainButtonStyle()) // 使用Plain样式避免默认按钮效果
+    }
+    
     public init() {}
 }
 
@@ -353,26 +437,14 @@ public struct CreationTypeButtonsView: View {
     @State private var animateButtons = false
     
     public var body: some View {
-        VStack(spacing: 24) {
-            // 顶部四个分类按钮排成一排
-            HStack(spacing: 24) {  // 按钮间距设置为24
-                // 四个分类按钮水平排列
-                ForEach(1...4, id: \.self) { index in
-                    categoryButton(index: index)
-                }
+        // 水平排列四个分类按钮
+        HStack(spacing: 24) {  // 按钮间距设置为24
+            // 四个分类按钮水平排列
+            ForEach(1...4, id: \.self) { index in
+                categoryButton(index: index)
             }
-            .padding(.horizontal, 16)  // 水平边距
-
-            // 随机漫游按钮 - 放在下方居中
-            randomButton()
-                .scaleEffect(animateButtons ? 1 : 0.8)
-                .opacity(animateButtons ? 1 : 0)
-                .animation(
-                    .spring(response: 0.5, dampingFraction: 0.7)
-                    .delay(0.3),
-                    value: animateButtons
-                )
         }
+        .padding(.horizontal, 16)  // 水平边距
         .onAppear {
             // 添加出现动画
             DispatchQueue.main.async {
@@ -455,47 +527,6 @@ public struct CreationTypeButtonsView: View {
             
             // 更新选中状态
             typeManager.selectType(at: index)
-        }
-        .modifier(PulseEffect(isSelected: isSelected))
-    }
-    
-    // 随机漫游按钮 - 特殊样式
-    private func randomButton() -> some View {
-        let isSelected = typeManager.selectedIndex == 0
-        
-        return VStack(spacing: 8) {
-            ZStack {
-                // 外发光效果
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 70, height: 70)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
-                    )
-                
-                // 主按钮
-                Circle()
-                    .fill(isSelected ? Color.white : Color.white.opacity(0.12))
-                    .frame(width: 60, height: 60)
-                    .shadow(color: isSelected ? Color.white.opacity(0.5) : Color.white.opacity(0.1), radius: 8)
-                
-                // 图标
-                Image(systemName: "shuffle")
-                    .font(.system(size: 22, weight: isSelected ? .semibold : .regular))
-                    .foregroundColor(isSelected ? .black : .white)
-            }
-            
-            // 文字
-            Text("随机漫游")
-                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
-                .foregroundColor(.white)
-                .opacity(isSelected ? 1 : 0.8)
-        }
-        .onTapGesture {
-            let impactMed = UIImpactFeedbackGenerator(style: .medium)
-            impactMed.impactOccurred()
-            typeManager.selectType(at: 0)
         }
         .modifier(PulseEffect(isSelected: isSelected))
     }
