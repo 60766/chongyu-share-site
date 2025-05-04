@@ -37,6 +37,7 @@ struct ChongYuApp: App {
     var body: some Scene {
         WindowGroup {
             AppTabView()
+                .environmentObject(CreationTypeManager.shared)
         }
         .modelContainer(sharedModelContainer)
     }
