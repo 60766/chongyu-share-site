@@ -517,18 +517,15 @@ public struct CreationTypeButtonsView: View {
     @EnvironmentObject private var typeManager: CreationTypeManager
     @State private var animateButtons = false
     
+    // 固定显示的按钮索引（不包括随机漫游，它在黑洞中心显示）
+    private let fixedButtonIndices = [1, 2, 3, 4] // 日常心情、古今对望、奇思妙想、时空记事
+    
     public var body: some View {
-        // 水平排列四个未被选中的按钮
+        // 水平排列固定的四个按钮
         HStack(spacing: 24) {
-            // 获取当前未被选中的按钮索引
-            let unselectedIndices = getUnselectedIndices()
-            
-            // 显示4个未被选中的按钮
-            ForEach(0..<4, id: \.self) { position in
-                if position < unselectedIndices.count {
-                    let buttonIndex = unselectedIndices[position]
-                    categoryButton(index: buttonIndex)
-                }
+            // 显示固定位置的四个按钮
+            ForEach(fixedButtonIndices, id: \.self) { index in
+                categoryButton(index: index)
             }
         }
         .padding(.horizontal, 16)
@@ -540,18 +537,6 @@ public struct CreationTypeButtonsView: View {
                 }
             }
         }
-    }
-    
-    // 获取未被选中的按钮索引列表（按原始顺序）
-    private func getUnselectedIndices() -> [Int] {
-        // 所有可用的索引 (0-4)
-        let allIndices = Array(0...4) 
-        
-        // 过滤掉当前选中的索引
-        let filtered = allIndices.filter { $0 != typeManager.selectedIndex }
-        
-        // 返回前4个未选中的索引
-        return Array(filtered.prefix(4))
     }
     
     // 普通分类按钮
@@ -631,7 +616,7 @@ public struct CreationTypeButtonsView: View {
         }
         .modifier(PulseEffect(isSelected: isSelected))
         // 添加id确保视图在按钮变化时正确重建
-        .id("button-\(index)-\(isSelected)")
+        .id("button-\(index)")
     }
     
     public init() {}
