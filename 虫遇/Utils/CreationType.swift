@@ -517,15 +517,18 @@ public struct CreationTypeButtonsView: View {
     @EnvironmentObject private var typeManager: CreationTypeManager
     @State private var animateButtons = false
     
-    // 固定显示的按钮索引（不包括随机漫游，它在黑洞中心显示）
-    private let fixedButtonIndices = [1, 2, 3, 4] // 日常心情、古今对望、奇思妙想、时空记事
+    // 固定的按钮顺序配置
+    private let fixedButtonIndices = [1, 2, 3, 4] // 不包含随机漫游(0)，固定布局顺序
     
     public var body: some View {
-        // 水平排列固定的四个按钮
+        // 使用固定排列的按钮布局，稳定性更高
         HStack(spacing: 24) {
-            // 显示固定位置的四个按钮
+            // 固定顺序显示四个按钮，避免位置变化
             ForEach(fixedButtonIndices, id: \.self) { index in
+                // 显示所有按钮，但当按钮被选中时将其淡出效果降低
                 categoryButton(index: index)
+                    .opacity(typeManager.selectedIndex == index ? 0.0 : 1.0) // 被选中时完全透明
+                    .animation(.easeInOut(duration: 0.3), value: typeManager.selectedIndex)
             }
         }
         .padding(.horizontal, 16)
@@ -615,8 +618,6 @@ public struct CreationTypeButtonsView: View {
             }
         }
         .modifier(PulseEffect(isSelected: isSelected))
-        // 添加id确保视图在按钮变化时正确重建
-        .id("button-\(index)")
     }
     
     public init() {}
