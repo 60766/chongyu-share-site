@@ -991,10 +991,20 @@ struct FullscreenPostDetailView: View {
                     VStack(spacing: 0) {
                         // 顶部标题
                         Text("探索虫洞深处")
-                            .font(.system(size: 24, weight: .bold))
+                            .font(.system(size: 28, weight: .bold))
                             .foregroundColor(.white)
-                            .padding(.top, 50)  // 减少顶部空间
-                            .padding(.bottom, 15)  // 减少底部空间
+                            .tracking(2) // 增加字符间距
+                            .shadow(color: Color.white.opacity(0.7), radius: 8, x: 0, y: 0) // 添加发光效果
+                            .padding(.top, 30) // 减少顶部空间，向上移动
+                            .padding(.bottom, 20) // 增加底部间距
+                            .overlay( // 添加微妙的光晕效果
+                                Text("探索虫洞深处")
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(.white.opacity(0.3))
+                                    .tracking(2)
+                                    .blur(radius: 3)
+                                    .offset(y: 1)
+                            )
                         
                         // 黑洞主视觉
                         BlackHoleView()
@@ -1004,20 +1014,24 @@ struct FullscreenPostDetailView: View {
                         
                         // 提示文本 - 移到黑洞下方
                         Text("连接不同时代的声音，体验跨越时空的社交互动")
-                            .font(.system(size: 16, weight: .medium))  // 增大字体并增加粗细
-                            .foregroundColor(.white.opacity(0.8))  // 增加文字不透明度
-                            .padding(.top, 0)
-                            .padding(.bottom, 8)  // 增加段落间距
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.white.opacity(0.9))
+                            .tracking(0.5) // 增加字符间距
+                            .shadow(color: Color.white.opacity(0.3), radius: 3, x: 0, y: 0) // 添加轻微发光
+                            .padding(.top, 5)
+                            .padding(.bottom, 10)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)  // 减少水平内边距
+                            .padding(.horizontal, 35)
                         
                         // 辅助说明
                         Text("每种内容类型将带你进入不同的时空交流维度")
-                            .font(.system(size: 14))  // 增大字体
-                            .foregroundColor(.white.opacity(0.6))  // 增加对比度
-                            .padding(.bottom, 28)  // 增加与按钮之间的间距
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundColor(.white.opacity(0.7))
+                            .tracking(0.3) // 增加字符间距
+                            .padding(.bottom, 30)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
+                            .padding(.horizontal, 35)
+                            .shadow(color: Color.white.opacity(0.1), radius: 1, x: 0, y: 0) // 非常轻微的发光
                         
                         // 创作类型按钮 - 移到文字下方
                         CreationTypeButtonsView()
