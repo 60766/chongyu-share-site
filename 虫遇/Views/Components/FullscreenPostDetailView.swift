@@ -990,27 +990,31 @@ struct FullscreenPostDetailView: View {
                     
                     VStack(spacing: 0) {
                         // 顶部标题 - 修改为与导航栏一致的风格
-                        HStack(spacing: 16) {
-                            // 左侧空间，保持与返回按钮相似的间距
-                            Color.clear
-                                .frame(width: 16, height: 16)
+                        ZStack(alignment: .center) {
+                            // 标题层
+                            HStack {
+                                Spacer()
+                                
+                                // 标题 - 使用与其他页面相同的样式
+                                Text("探索虫洞深处")
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                            }
                             
-                            Spacer()
-                            
-                            // 标题 - 使用与其他页面相同的样式
-                            Text("探索虫洞深处")
-                                .font(.system(size: 17, weight: .medium))
-                                .foregroundColor(.white)
-                            
-                            Spacer()
-                            
-                            // 右侧空间，保持对称
-                            Color.clear
-                                .frame(width: 16, height: 16)
+                            // 占位空间 - 保持与左侧返回按钮的对齐
+                            HStack {
+                                // 空占位符，与系统返回按钮布局匹配
+                                Color.clear
+                                    .frame(width: 32, height: 32)
+                                    .padding(.leading, 16)
+                                
+                                Spacer()
+                            }
                         }
-                        .padding(.horizontal, 16)
                         .frame(height: 44)
-                        .padding(.top, getSafeAreaTop())
+                        .padding(.top, getSafeAreaTop() + 10) // 与系统返回按钮垂直对齐
                         
                         // 黑洞主视觉
                         BlackHoleView()
