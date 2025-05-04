@@ -367,59 +367,105 @@ public struct BlackHoleView: View {
             typeManager.selectType(at: 0)
         }) {
             ZStack {
-                // 外环光晕效果
+                // 外部发光环 - 更柔和的发光效果
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 80, height: 80)
+                    .frame(width: 85, height: 85)
                     .overlay(
                         Circle()
                             .stroke(
                                 LinearGradient(
                                     gradient: Gradient(colors: [
-                                        Color.white.opacity(0.6),
-                                        Color.white.opacity(0.2)
+                                        Color.white.opacity(isSelected ? 0.65 : 0.4),
+                                        Color.white.opacity(isSelected ? 0.3 : 0.15)
                                     ]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
-                                lineWidth: 1.5
+                                lineWidth: isSelected ? 2 : 1.5
                             )
+                            .blur(radius: 1)
                     )
-                    .opacity(isSelected ? 1 : 0.5)
                 
-                // 主按钮背景
+                // 主按钮背景 - 使用更加透明的背景，更好融入黑洞
                 Circle()
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                isSelected ? Color.white.opacity(1) : Color.white.opacity(0.12),
-                                isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.08)
+                                isSelected ? Color.white.opacity(0.95) : Color.white.opacity(0.18),
+                                isSelected ? Color.white.opacity(0.85) : Color.white.opacity(0.12)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .frame(width: 70, height: 70)
-                    .shadow(color: isSelected ? Color.white.opacity(0.5) : Color.white.opacity(0.1), radius: 8)
+                    .shadow(color: isSelected ? Color.white.opacity(0.5) : Color.white.opacity(0.15), radius: 8)
                 
-                // 图标
+                // 星空效果 - 在按钮内部添加微妙的星空，提升宇宙感
+                if !isSelected {
+                    ZStack {
+                        // 内部星星点缀 - 仅在未选中状态显示
+                        ForEach(0..<8) { _ in
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: CGFloat.random(in: 0.8...1.5), 
+                                      height: CGFloat.random(in: 0.8...1.5))
+                                .position(
+                                    x: CGFloat.random(in: 25...45),
+                                    y: CGFloat.random(in: 25...45)
+                                )
+                                .opacity(Double.random(in: 0.5...0.9))
+                                .blur(radius: 0.2)
+                        }
+                    }
+                    .frame(width: 70, height: 70)
+                    .mask(Circle().frame(width: 70, height: 70))
+                }
+                
+                // 图标 - 调整大小和权重
                 Image(systemName: "shuffle")
-                    .font(.system(size: 26, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 26, weight: isSelected ? .bold : .semibold))
                     .foregroundColor(isSelected ? .black : .white)
-                    .opacity(isSelected ? 1 : 0.8)
+                    .opacity(isSelected ? 1 : 0.9)
+                    .shadow(color: isSelected ? .clear : Color.white.opacity(0.2), radius: 1, x: 0, y: 0)
                 
-                // 添加半透明文字标签
-                Text("随机漫游")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(isSelected ? .black : .white)
-                    .opacity(isSelected ? 0.9 : 0.7)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(isSelected ? Color.white.opacity(0.8) : Color.black.opacity(0.4))
-                    )
-                    .offset(y: 40)
+                // 文字标签 - 完全重新设计，更好融入黑洞氛围
+                ZStack {
+                    // 使用同心圆环设计，像星系光晕一样展现文字
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(isSelected ? 0.6 : 0.3),
+                                    Color.white.opacity(isSelected ? 0.2 : 0.05)
+                                ]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            lineWidth: 1
+                        )
+                        .frame(width: 130, height: 130)
+                    
+                    // 文字沿着圆环布置
+                    ForEach(0..<"随机漫游".count, id: \.self) { index in
+                        let character = Array("随机漫游")[index]
+                        let angle = Double(index) * (360.0 / Double("随机漫游".count)) - 90
+                        let radius = 65.0 // 环形半径
+                        
+                        Text(String(character))
+                            .font(.system(size: 12, weight: isSelected ? .medium : .regular))
+                            .foregroundColor(isSelected ? .black : .white)
+                            .opacity(isSelected ? 0.9 : 0.7)
+                            .rotationEffect(.degrees(angle + 90))
+                            .offset(
+                                x: CGFloat(cos(angle * .pi / 180) * radius),
+                                y: CGFloat(sin(angle * .pi / 180) * radius)
+                            )
+                    }
+                }
+                .rotationEffect(.degrees(isSelected ? 5 : 0))
+                .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isSelected)
             }
         }
         .buttonStyle(PlainButtonStyle()) // 使用Plain样式避免默认按钮效果
