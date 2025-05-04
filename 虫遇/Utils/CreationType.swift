@@ -223,130 +223,107 @@ public struct BlackHoleView: View {
     @State private var pulseScale: CGFloat = 1.0
     
     public var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // 最外层光晕
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            gradient: Gradient(colors: [Color.black, Color.black.opacity(0)]),
-                            center: .center,
-                            startRadius: geometry.size.width * 0.25,
-                            endRadius: geometry.size.width * 0.7
-                        )
+        ZStack {
+            // 最外层光晕
+            Circle()
+                .fill(
+                    RadialGradient(
+                        gradient: Gradient(colors: [Color.black, Color.black.opacity(0)]),
+                        center: .center,
+                        startRadius: UIScreen.main.bounds.width * 0.3,
+                        endRadius: UIScreen.main.bounds.width * 0.8
                     )
-                    .frame(width: geometry.size.width * 1.4, height: geometry.size.width * 1.4)
-                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                    .shadow(color: Color.white.opacity(0.05), radius: 50, x: 0, y: 0)
-                
-                // 最外层星空
-                StarfieldView()
-                    .frame(width: geometry.size.width * 1.1, height: geometry.size.width * 1.1)
-                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                    .opacity(0.7)
-                    .rotationEffect(.degrees(outerRotation))
-                
-                // 黑洞外围光环效果 - 最外层
-                Circle()
-                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                    .frame(width: geometry.size.width * 0.8, height: geometry.size.width * 0.8)
-                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                    .blur(radius: 1)
-                
-                // 黑洞外围光环效果 - 中间层
-                Circle()
-                    .stroke(Color.white.opacity(0.25), lineWidth: 2)
-                    .frame(width: geometry.size.width * 0.65, height: geometry.size.width * 0.65)
-                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                
-                // 黑洞外围粒子层
-                ParticleRingView(
-                    count: 200, 
-                    minSize: 1.0, 
-                    maxSize: 2.5, 
-                    radius: geometry.size.width * 0.3, 
-                    innerRadius: geometry.size.width * 0.25, 
-                    rotationDuration: 240
                 )
-                .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                
-                // 辉光圆环
-                Circle()
-                    .stroke(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color.white.opacity(0.8),
-                                Color.white.opacity(0.4),
-                                Color.white.opacity(0.1)
-                            ]),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        lineWidth: 2
-                    )
-                    .frame(width: geometry.size.width * 0.4, height: geometry.size.width * 0.4)
-                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                    .blur(radius: 0.5)
-                    .rotationEffect(.degrees(innerRotation * -0.5))
-                
-                // 黑洞内环
-                Circle()
-                    .stroke(Color.white.opacity(0.5), lineWidth: 1)
-                    .frame(width: geometry.size.width * 0.3, height: geometry.size.width * 0.3)
-                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                    .rotationEffect(.degrees(innerRotation))
-                
-                // 脉冲效果
-                Circle()
-                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                    .frame(width: geometry.size.width * 0.25, height: geometry.size.width * 0.25)
-                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                    .scaleEffect(pulseScale)
-                
-                // 黑洞中心
-                Circle()
-                    .fill(Color.black)
-                    .frame(width: geometry.size.width * 0.22, height: geometry.size.width * 0.22)
-                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                    .overlay(
+                .frame(width: UIScreen.main.bounds.width * 1.6, height: UIScreen.main.bounds.width * 1.6)
+                .shadow(color: Color.white.opacity(0.05), radius: 50, x: 0, y: 0)
+            
+            // 最外层星空
+            StarfieldView()
+                .frame(width: UIScreen.main.bounds.width * 1.2, height: UIScreen.main.bounds.width * 1.2)
+                .opacity(0.7)
+                .rotationEffect(.degrees(outerRotation))
+            
+            // 黑洞外围光环效果 - 最外层
+            Circle()
+                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                .frame(width: UIScreen.main.bounds.width * 0.85, height: UIScreen.main.bounds.width * 0.85)
+                .blur(radius: 1)
+            
+            // 黑洞外围光环效果 - 中间层
+            Circle()
+                .stroke(Color.white.opacity(0.25), lineWidth: 2)
+                .frame(width: UIScreen.main.bounds.width * 0.7, height: UIScreen.main.bounds.width * 0.7)
+            
+            // 黑洞外围粒子层
+            ParticleRingView(count: 200, minSize: 1.0, maxSize: 2.5, radius: UIScreen.main.bounds.width * 0.32, innerRadius: UIScreen.main.bounds.width * 0.28, rotationDuration: 240)
+            
+            // 辉光圆环
+            Circle()
+                .stroke(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.white.opacity(0.8),
+                            Color.white.opacity(0.4),
+                            Color.white.opacity(0.1)
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    lineWidth: 2
+                )
+                .frame(width: UIScreen.main.bounds.width * 0.44, height: UIScreen.main.bounds.width * 0.44)
+                .blur(radius: 0.5)
+                .rotationEffect(.degrees(innerRotation * -0.5))
+            
+            // 黑洞内环
+            Circle()
+                .stroke(Color.white.opacity(0.5), lineWidth: 1)
+                .frame(width: UIScreen.main.bounds.width * 0.34, height: UIScreen.main.bounds.width * 0.34)
+                .rotationEffect(.degrees(innerRotation))
+            
+            // 脉冲效果
+            Circle()
+                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                .frame(width: UIScreen.main.bounds.width * 0.3, height: UIScreen.main.bounds.width * 0.3)
+                .scaleEffect(pulseScale)
+            
+            // 黑洞中心
+            Circle()
+                .fill(Color.black)
+                .frame(width: UIScreen.main.bounds.width * 0.28, height: UIScreen.main.bounds.width * 0.28)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.7), lineWidth: 1)
+                        .blur(radius: 1)
+                )
+                .overlay(
+                    // 中心光晕效果
+                    ZStack {
                         Circle()
-                            .stroke(Color.white.opacity(0.7), lineWidth: 1)
-                            .blur(radius: 1)
-                            .frame(width: geometry.size.width * 0.22, height: geometry.size.width * 0.22)
-                            .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                    )
-                    .overlay(
-                        // 中心光晕效果
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    RadialGradient(
-                                        gradient: Gradient(colors: [Color.white.opacity(0.4), Color.clear]),
-                                        center: .center,
-                                        startRadius: 0,
-                                        endRadius: geometry.size.width * 0.12
-                                    )
+                            .fill(
+                                RadialGradient(
+                                    gradient: Gradient(colors: [Color.white.opacity(0.4), Color.clear]),
+                                    center: .center,
+                                    startRadius: 0,
+                                    endRadius: UIScreen.main.bounds.width * 0.15
                                 )
-                                .frame(width: geometry.size.width * 0.22, height: geometry.size.width * 0.22)
-                                .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                                .blur(radius: 5)
-                            
-                            // 内部星空效果
-                            StarfieldView()
-                                .frame(width: geometry.size.width * 0.2, height: geometry.size.width * 0.2)
-                                .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                                .mask(
-                                    Circle()
-                                        .fill(Color.white)
-                                        .frame(width: geometry.size.width * 0.2, height: geometry.size.width * 0.2)
-                                        .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                                )
-                                .opacity(0.9)
-                                .blur(radius: 0.5)
-                                .rotationEffect(.degrees(innerRotation * 1.2))
-                        }
-                    )
-            }
+                            )
+                            .frame(width: UIScreen.main.bounds.width * 0.26, height: UIScreen.main.bounds.width * 0.26)
+                            .blur(radius: 5)
+                        
+                        // 内部星空效果
+                        StarfieldView()
+                            .frame(width: UIScreen.main.bounds.width * 0.25, height: UIScreen.main.bounds.width * 0.25)
+                            .mask(
+                                Circle()
+                                    .fill(Color.white)
+                                    .frame(width: UIScreen.main.bounds.width * 0.25, height: UIScreen.main.bounds.width * 0.25)
+                            )
+                            .opacity(0.9)
+                            .blur(radius: 0.5)
+                            .rotationEffect(.degrees(innerRotation * 1.2))
+                    }
+                )
         }
         .onAppear {
             // 添加旋转和脉冲动画
@@ -369,127 +346,48 @@ public struct BlackHoleView: View {
 
 /**
  * 创作类型按钮视图组
- * 将创作类型按钮排列成环绕式布局，呼应黑洞结构
+ * 将创作类型按钮排列成更美观的布局
  */
 public struct CreationTypeButtonsView: View {
     @EnvironmentObject private var typeManager: CreationTypeManager
     @State private var animateButtons = false
     
     public var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // 中心随机漫游按钮
-                randomButton()
-                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                    .opacity(animateButtons ? 1 : 0)
-                    .scaleEffect(animateButtons ? 1 : 0.5)
-                    .animation(
-                        .spring(response: 0.5, dampingFraction: 0.7)
-                        .delay(0.05),
-                        value: animateButtons
-                    )
-                
-                // 四个分类按钮围绕中心按钮环形排列
+        VStack(spacing: 24) {
+            // 顶部四个分类按钮排成一排
+            HStack(spacing: 24) {  // 按钮间距设置为24
+                // 四个分类按钮水平排列
                 ForEach(1...4, id: \.self) { index in
-                    let angle = Double(index-1) * (360/4) + 45 // 从右上方开始，45度偏移
-                    let radius: CGFloat = min(geometry.size.width, geometry.size.height) * 0.32
-                    let xPos = cos(angle * .pi / 180) * radius + geometry.size.width/2
-                    let yPos = sin(angle * .pi / 180) * radius + geometry.size.height/2
-                    
                     categoryButton(index: index)
-                        .position(x: xPos, y: yPos)
-                        .opacity(animateButtons ? 1 : 0)
-                        .scaleEffect(animateButtons ? 1 : 0.5)
-                        .animation(
-                            .spring(response: 0.5, dampingFraction: 0.7)
-                            .delay(0.1 + Double(index) * 0.05),
-                            value: animateButtons
-                        )
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .onAppear {
-                // 添加出现动画
-                DispatchQueue.main.async {
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
-                        animateButtons = true
-                    }
+            .padding(.horizontal, 16)  // 水平边距
+
+            // 随机漫游按钮 - 放在下方居中
+            randomButton()
+                .scaleEffect(animateButtons ? 1 : 0.8)
+                .opacity(animateButtons ? 1 : 0)
+                .animation(
+                    .spring(response: 0.5, dampingFraction: 0.7)
+                    .delay(0.3),
+                    value: animateButtons
+                )
+        }
+        .onAppear {
+            // 添加出现动画
+            DispatchQueue.main.async {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
+                    animateButtons = true
                 }
             }
         }
     }
     
-    // 随机漫游中心按钮
-    private func randomButton() -> some View {
-        let isSelected = typeManager.selectedIndex == 0
-        
-        return VStack(spacing: 8) {
-            ZStack {
-                // 外部发光效果
-                if isSelected {
-                    Circle()
-                        .fill(Color.clear)
-                        .frame(width: 75, height: 75)
-                        .overlay(
-                            Circle()
-                                .stroke(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [.white.opacity(0.8), .white.opacity(0.2)]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 2
-                                )
-                        )
-                        .shadow(color: Color.white.opacity(0.3), radius: 8, x: 0, y: 0)
-                }
-                
-                // 主背景圆形
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                isSelected ? Color.white.opacity(1) : Color.white.opacity(0.12),
-                                isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.18)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 65, height: 65)
-                    .shadow(color: isSelected ? Color.white.opacity(0.4) : Color.black.opacity(0.2), radius: isSelected ? 8 : 4, x: 0, y: 0)
-                
-                // 图标
-                Image(systemName: typeManager.icons[0])
-                    .font(.system(size: 26, weight: isSelected ? .semibold : .regular))
-                    .foregroundColor(isSelected ? .black : .white)
-                    .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
-            }
-            .scaleEffect(isSelected ? 1.1 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
-            
-            // 按钮文字
-            Text(typeManager.types[0])
-                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
-                .foregroundColor(.white)
-                .opacity(isSelected ? 1.0 : 0.8)
-        }
-        .onTapGesture {
-            // 触发触觉反馈
-            let impactMed = UIImpactFeedbackGenerator(style: .medium)
-            impactMed.impactOccurred()
-            
-            // 更新选中状态
-            typeManager.selectType(at: 0)
-        }
-        .modifier(PulseEffect(isSelected: isSelected))
-    }
-    
-    // 围绕分类按钮
+    // 普通分类按钮
     private func categoryButton(index: Int) -> some View {
         let isSelected = typeManager.selectedIndex == index
         
-        return VStack(spacing: 6) {
+        return VStack(spacing: 7) {  // 垂直布局，间距7
             // 按钮圆形部分
             ZStack {
                 // 背景圆形
@@ -504,13 +402,13 @@ public struct CreationTypeButtonsView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 50, height: 50)
+                    .frame(width: 55, height: 55)  // 按钮尺寸为55x55
                 
                 // 内部阴影效果
                 if isSelected {
                     Circle()
                         .fill(Color.clear)
-                        .frame(width: 50, height: 50)
+                        .frame(width: 55, height: 55)
                         .overlay(
                             Circle()
                                 .stroke(
@@ -527,7 +425,7 @@ public struct CreationTypeButtonsView: View {
                 
                 // 图标
                 Image(systemName: typeManager.icons[index])
-                    .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))  // 图标大小20
                     .foregroundColor(isSelected ? .black : .white)
                     .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
             }
@@ -536,13 +434,20 @@ public struct CreationTypeButtonsView: View {
             
             // 按钮文字
             Text(typeManager.types[index])
-                .font(.system(size: 12, weight: isSelected ? .medium : .regular))
+                .font(.system(size: 12, weight: isSelected ? .medium : .regular))  // 文字大小12
                 .foregroundColor(.white)
                 .opacity(isSelected ? 1.0 : 0.7)
                 .lineLimit(1)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(width: 60)
+        .frame(width: 65)  // 整体宽度65
+        .offset(y: animateButtons ? 0 : 30)
+        .opacity(animateButtons ? 1 : 0)
+        .animation(
+            .spring(response: 0.5, dampingFraction: 0.7)
+            .delay(0.05 + Double(index) * 0.05),
+            value: animateButtons
+        )
         .onTapGesture {
             // 触发触觉反馈
             let impactMed = UIImpactFeedbackGenerator(style: .medium)
@@ -550,6 +455,47 @@ public struct CreationTypeButtonsView: View {
             
             // 更新选中状态
             typeManager.selectType(at: index)
+        }
+        .modifier(PulseEffect(isSelected: isSelected))
+    }
+    
+    // 随机漫游按钮 - 特殊样式
+    private func randomButton() -> some View {
+        let isSelected = typeManager.selectedIndex == 0
+        
+        return VStack(spacing: 8) {
+            ZStack {
+                // 外发光效果
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 70, height: 70)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
+                    )
+                
+                // 主按钮
+                Circle()
+                    .fill(isSelected ? Color.white : Color.white.opacity(0.12))
+                    .frame(width: 60, height: 60)
+                    .shadow(color: isSelected ? Color.white.opacity(0.5) : Color.white.opacity(0.1), radius: 8)
+                
+                // 图标
+                Image(systemName: "shuffle")
+                    .font(.system(size: 22, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? .black : .white)
+            }
+            
+            // 文字
+            Text("随机漫游")
+                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
+                .foregroundColor(.white)
+                .opacity(isSelected ? 1 : 0.8)
+        }
+        .onTapGesture {
+            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+            impactMed.impactOccurred()
+            typeManager.selectType(at: 0)
         }
         .modifier(PulseEffect(isSelected: isSelected))
     }
