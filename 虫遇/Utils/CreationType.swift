@@ -346,52 +346,63 @@ public struct BlackHoleView: View {
 
 /**
  * 创作类型按钮视图组
- * 将创作类型按钮排列成更美观的布局
+ * 将创作类型按钮排列成环绕式布局，呼应黑洞结构
  */
 public struct CreationTypeButtonsView: View {
     @EnvironmentObject private var typeManager: CreationTypeManager
     @State private var animateButtons = false
     
     public var body: some View {
-        VStack(spacing: 20) {
-            // 顶部四个分类按钮，水平排列
-            HStack(spacing: 24) {
-                // 左侧两个按钮
-                categoryButton(index: 1)
-                categoryButton(index: 2)
+        GeometryReader { geometry in
+            ZStack {
+                // 中心随机漫游按钮
+                randomButton()
+                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                    .opacity(animateButtons ? 1 : 0)
+                    .scaleEffect(animateButtons ? 1 : 0.5)
+                    .animation(
+                        .spring(response: 0.5, dampingFraction: 0.7)
+                        .delay(0.05),
+                        value: animateButtons
+                    )
                 
-                // 中间放置随机漫游按钮的空位
-                Spacer()
-                    .frame(width: 20)
-                
-                // 右侧两个按钮
-                categoryButton(index: 3)
-                categoryButton(index: 4)
+                // 四个分类按钮围绕中心按钮环形排列
+                ForEach(1...4, id: \.self) { index in
+                    let angle = Double(index-1) * (360/4) + 45 // 从右上方开始，45度偏移
+                    let radius: CGFloat = min(geometry.size.width, geometry.size.height) * 0.32
+                    let xPos = cos(angle * .pi / 180) * radius + geometry.size.width/2
+                    let yPos = sin(angle * .pi / 180) * radius + geometry.size.height/2
+                    
+                    categoryButton(index: index)
+                        .position(x: xPos, y: yPos)
+                        .opacity(animateButtons ? 1 : 0)
+                        .scaleEffect(animateButtons ? 1 : 0.5)
+                        .animation(
+                            .spring(response: 0.5, dampingFraction: 0.7)
+                            .delay(0.1 + Double(index) * 0.05),
+                            value: animateButtons
+                        )
+                }
             }
-            .padding(.horizontal, 16)
-            
-            // 中央随机漫游按钮 - 单独放置，视觉上更突出
-            randomButton()
-                .offset(y: -5) // 稍微上移，创造重叠效果
-        }
-        .onAppear {
-            // 添加出现动画
-            DispatchQueue.main.async {
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
-                    animateButtons = true
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onAppear {
+                // 添加出现动画
+                DispatchQueue.main.async {
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
+                        animateButtons = true
+                    }
                 }
             }
         }
     }
     
-    // 随机漫游按钮 - 尺寸更大，视觉上更突出
+    // 随机漫游中心按钮
     private func randomButton() -> some View {
         let isSelected = typeManager.selectedIndex == 0
         
         return VStack(spacing: 8) {
-            // 按钮圆形部分
             ZStack {
-                // 外部光环效果
+                // 外部发光效果
                 if isSelected {
                     Circle()
                         .fill(Color.clear)
@@ -410,13 +421,13 @@ public struct CreationTypeButtonsView: View {
                         .shadow(color: Color.white.opacity(0.3), radius: 8, x: 0, y: 0)
                 }
                 
-                // 背景圆形
+                // 主背景圆形
                 Circle()
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                isSelected ? Color.white : Color.white.opacity(0.08),
-                                isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.15)
+                                isSelected ? Color.white.opacity(1) : Color.white.opacity(0.12),
+                                isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.18)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -440,13 +451,6 @@ public struct CreationTypeButtonsView: View {
                 .foregroundColor(.white)
                 .opacity(isSelected ? 1.0 : 0.8)
         }
-        .offset(y: animateButtons ? 0 : 30)
-        .opacity(animateButtons ? 1 : 0)
-        .animation(
-            .spring(response: 0.5, dampingFraction: 0.7)
-            .delay(0.2),
-            value: animateButtons
-        )
         .onTapGesture {
             // 触发触觉反馈
             let impactMed = UIImpactFeedbackGenerator(style: .medium)
@@ -458,11 +462,11 @@ public struct CreationTypeButtonsView: View {
         .modifier(PulseEffect(isSelected: isSelected))
     }
     
-    // 普通分类按钮
+    // 围绕分类按钮
     private func categoryButton(index: Int) -> some View {
         let isSelected = typeManager.selectedIndex == index
         
-        return VStack(spacing: 7) {
+        return VStack(spacing: 6) {
             // 按钮圆形部分
             ZStack {
                 // 背景圆形
@@ -477,13 +481,13 @@ public struct CreationTypeButtonsView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 55, height: 55)
+                    .frame(width: 50, height: 50)
                 
                 // 内部阴影效果
                 if isSelected {
                     Circle()
                         .fill(Color.clear)
-                        .frame(width: 55, height: 55)
+                        .frame(width: 50, height: 50)
                         .overlay(
                             Circle()
                                 .stroke(
@@ -500,7 +504,7 @@ public struct CreationTypeButtonsView: View {
                 
                 // 图标
                 Image(systemName: typeManager.icons[index])
-                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
                     .foregroundColor(isSelected ? .black : .white)
                     .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
             }
@@ -515,14 +519,7 @@ public struct CreationTypeButtonsView: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(width: 65)
-        .offset(y: animateButtons ? 0 : 30)
-        .opacity(animateButtons ? 1 : 0)
-        .animation(
-            .spring(response: 0.5, dampingFraction: 0.7)
-            .delay(0.05 + Double(index) * 0.05),
-            value: animateButtons
-        )
+        .frame(width: 60)
         .onTapGesture {
             // 触发触觉反馈
             let impactMed = UIImpactFeedbackGenerator(style: .medium)
@@ -535,4 +532,4 @@ public struct CreationTypeButtonsView: View {
     }
     
     public init() {}
-}
+} 

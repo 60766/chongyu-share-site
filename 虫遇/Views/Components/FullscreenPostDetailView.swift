@@ -1022,7 +1022,7 @@ struct FullscreenPostDetailView: View {
                         // 创作类型按钮 - 移到文字下方
                         CreationTypeButtonsView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: 140)  // 增加按钮区域高度，适应两行按钮布局
+                            .frame(height: 180)  // 调整高度适应环绕式布局
                             .padding(.bottom, 30)  // 增加与主按钮之间的间距
                         
                         // 主按钮 - 开启时空对话
