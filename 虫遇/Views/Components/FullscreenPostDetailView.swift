@@ -989,92 +989,95 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题 - 修改为与导航栏一致的风格，确保与返回按钮精确对齐
-                        ZStack(alignment: .center) {
-                            // 标题层 - 精确控制位置
-                            Text("探索虫洞深处")
-                                .font(.system(size: 17, weight: .medium))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity, alignment: .center)
+                        // 空白区域 - 替代之前的标题区域，为顶部覆盖层预留空间
+                        Rectangle()
+                            .fill(Color.clear)
+                            .frame(height: getSafeAreaTop() + 44)
+                        
+                        // 内容区域
+                        VStack(spacing: 0) {
+                            // 黑洞主视觉
+                            BlackHoleView()
+                                .environmentObject(CreationTypeManager.shared)
+                                .frame(height: UIScreen.main.bounds.height * 0.38)
+                                .padding(.bottom, 16)
                             
-                            // 占位空间 - 保持与左侧返回按钮的对齐，仅用于布局参考
-                            HStack {
-                                // 空占位符，与系统返回按钮布局匹配
-                                Color.clear
-                                    .frame(width: 32, height: 32)
-                                    .padding(.leading, 16)
+                            // 提示文本 - 移到黑洞下方
+                            Text("连接不同时代的声音，体验跨越时空的社交互动")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                                .padding(.top, 0)
+                                .padding(.bottom, 8)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                            
+                            // 辅助说明
+                            Text("每种内容类型将带你进入不同的时空交流维度")
+                                .font(.system(size: 14))
+                                .foregroundColor(.white.opacity(0.6))
+                                .padding(.bottom, 28)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                            
+                            // 创作类型按钮 - 移到文字下方
+                            CreationTypeButtonsView()
+                                .environmentObject(CreationTypeManager.shared)
+                                .frame(height: 80)
+                                .padding(.bottom, 30)
+                            
+                            // 主按钮 - 开启时空对话
+                            Button(action: {
+                                // 这里添加AI生成内容的逻辑
+                                withAnimation {
+                                    showAddContentView = false
+                                }
                                 
+                                // 关闭详情页面
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    onDismiss?()
+                                }
+                            }) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "antenna.radiowaves.left.and.right")
+                                        .font(.system(size: 18))
+                                    
+                                    Text("启动虫洞捕捉")
+                                        .font(.system(size: 18, weight: .semibold))
+                                }
+                                .foregroundColor(.black)
+                                .frame(height: 56)
+                                .frame(width: UIScreen.main.bounds.width * 0.6)
+                                .background(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.white, .white.opacity(0.92)]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .cornerRadius(28)
+                                .shadow(color: Color.white.opacity(0.4), radius: 10, x: 0, y: 0)
+                            }
+                            .padding(.bottom, 60)
+                        }
+                    }
+                    
+                    // 顶部标题 - 作为遮盖层放在最顶层，确保与返回按钮对齐
+                    VStack {
+                        // 标题容器 - 精确放置在返回按钮位置
+                        ZStack {
+                            HStack {
+                                Spacer()
+                                Text("探索虫洞深处")
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .offset(y: 2) // 微调至完全对齐
                                 Spacer()
                             }
                         }
                         .frame(height: 44)
-                        .padding(.top, getSafeAreaTop() + 10) // 精确匹配系统返回按钮位置
+                        .padding(.top, getSafeAreaTop() + 10) // 与系统返回按钮顶部对齐
                         
-                        // 黑洞主视觉
-                        BlackHoleView()
-                            .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 进一步减小黑洞视图高度
-                            .padding(.bottom, 16)  // 增加底部间距
-                        
-                        // 提示文本 - 移到黑洞下方
-                        Text("连接不同时代的声音，体验跨越时空的社交互动")
-                            .font(.system(size: 16, weight: .medium))  // 增大字体并增加粗细
-                            .foregroundColor(.white.opacity(0.8))  // 增加文字不透明度
-                            .padding(.top, 0)
-                            .padding(.bottom, 8)  // 增加段落间距
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)  // 减少水平内边距
-                        
-                        // 辅助说明
-                        Text("每种内容类型将带你进入不同的时空交流维度")
-                            .font(.system(size: 14))  // 增大字体
-                            .foregroundColor(.white.opacity(0.6))  // 增加对比度
-                            .padding(.bottom, 28)  // 增加与按钮之间的间距
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                        
-                        // 创作类型按钮 - 移到文字下方
-                        CreationTypeButtonsView()
-                            .environmentObject(CreationTypeManager.shared)
-                            .frame(height: 80)  // 减小按钮区域高度，适应单行按钮
-                            .padding(.bottom, 30)  // 增加与主按钮之间的间距
-                        
-                        // 主按钮 - 开启时空对话
-                        Button(action: {
-                            // 这里添加AI生成内容的逻辑
-                            withAnimation {
-                                showAddContentView = false
-                            }
-                            
-                            // 关闭详情页面
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                onDismiss?()
-                            }
-                        }) {
-                            HStack(spacing: 10) {  // 增加图标与文字间距
-                                Image(systemName: "antenna.radiowaves.left.and.right")
-                                    .font(.system(size: 18))  // 增大图标尺寸
-                                
-                                Text("启动虫洞捕捉")
-                                    .font(.system(size: 18, weight: .semibold))  // 增大文字尺寸
-                            }
-                            .foregroundColor(.black)
-                            .frame(height: 56)  // 增加按钮高度
-                            .frame(width: UIScreen.main.bounds.width * 0.6)  // 增加按钮宽度
-                            .background(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [.white, .white.opacity(0.92)]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )  // 添加微妙渐变
-                            .cornerRadius(28)  // 圆角随高度增加
-                            .shadow(color: Color.white.opacity(0.4), radius: 10, x: 0, y: 0)  // 增强发光效果
-                        }
-                        .padding(.bottom, 60)  // 调整与底部的距离
-                        
-                        // 移除Spacer，防止按钮被推到底部
-                        // Spacer()
+                        Spacer()
                     }
                 }
                 .zIndex(300)
