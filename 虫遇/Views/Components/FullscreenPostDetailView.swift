@@ -991,42 +991,39 @@ struct FullscreenPostDetailView: View {
                     VStack(spacing: 0) {
                         // 顶部标题
                         Text("探索虫洞深处")
-                            .font(.system(size: 24, weight: .heavy)) // 增大字号并加粗
+                            .font(.system(size: 24, weight: .bold))
                             .foregroundColor(.white)
-                            .padding(.top, 60)
-                            .padding(.bottom, 24) // 增加间距
-                            .shadow(color: Color.white.opacity(0.25), radius: 3, x: 0, y: 0) // 添加微妙光晕
+                            .padding(.top, 50)  // 减少顶部空间
+                            .padding(.bottom, 15)  // 减少底部空间
                         
                         // 黑洞主视觉
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.38) // 调整为38%高度
-                            .padding(.bottom, 16) // 调整间距
+                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 进一步减小黑洞视图高度
+                            .padding(.bottom, 16)  // 增加底部间距
                         
                         // 提示文本 - 移到黑洞下方
                         Text("连接不同时代的声音，体验跨越时空的社交互动")
-                            .font(.system(size: 16)) // 增大字号
-                            .foregroundColor(.white.opacity(0.9)) // 提高不透明度
+                            .font(.system(size: 16, weight: .medium))  // 增大字体并增加粗细
+                            .foregroundColor(.white.opacity(0.8))  // 增加文字不透明度
                             .padding(.top, 0)
-                            .padding(.bottom, 10) // 增加底部间距
-                            .lineSpacing(6) // 增加行间距
+                            .padding(.bottom, 8)  // 增加段落间距
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 42)
+                            .padding(.horizontal, 40)  // 减少水平内边距
                         
                         // 辅助说明
                         Text("每种内容类型将带你进入不同的时空交流维度")
-                            .font(.system(size: 14)) // 增大字号
-                            .foregroundColor(.white.opacity(0.6)) // 降低透明度区分层次
-                            .padding(.bottom, 26) // 调整间距
-                            .lineSpacing(5) // 增加行间距
+                            .font(.system(size: 14))  // 增大字体
+                            .foregroundColor(.white.opacity(0.6))  // 增加对比度
+                            .padding(.bottom, 28)  // 增加与按钮之间的间距
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 45)
+                            .padding(.horizontal, 40)
                         
                         // 创作类型按钮 - 移到文字下方
                         CreationTypeButtonsView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: 200) // 调整高度以适应2×2布局
-                            .padding(.bottom, 20)
+                            .frame(height: 160)  // 减小按钮区域高度
+                            .padding(.bottom, 30)  // 增加与主按钮之间的间距
                         
                         // 主按钮 - 开启时空对话
                         Button(action: {
@@ -1040,34 +1037,27 @@ struct FullscreenPostDetailView: View {
                                 onDismiss?()
                             }
                         }) {
-                            HStack(spacing: 10) {
+                            HStack(spacing: 10) {  // 增加图标与文字间距
                                 Image(systemName: "antenna.radiowaves.left.and.right")
-                                    .font(.system(size: 18))
+                                    .font(.system(size: 18))  // 增大图标尺寸
                                 
                                 Text("启动虫洞捕捉")
-                                    .font(.system(size: 17, weight: .semibold))
+                                    .font(.system(size: 18, weight: .semibold))  // 增大文字尺寸
                             }
-                            .foregroundColor(.white) // 修改为白色文字
-                            .frame(height: 52)
-                            .frame(width: UIScreen.main.bounds.width * 0.65) // 增加宽度
+                            .foregroundColor(.black)
+                            .frame(height: 56)  // 增加按钮高度
+                            .frame(width: UIScreen.main.bounds.width * 0.6)  // 增加按钮宽度
                             .background(
                                 LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color(red: 0.1, green: 0.1, blue: 0.3),
-                                        Color(red: 0.2, green: 0.2, blue: 0.5)
-                                    ]),
-                                    startPoint: .leading,
-                                    endPoint: .trailing
+                                    gradient: Gradient(colors: [.white, .white.opacity(0.92)]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
                                 )
-                            ) // 添加渐变背景
-                            .cornerRadius(26)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 26)
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                            ) // 添加边框
-                            .shadow(color: Color(red: 0.1, green: 0.1, blue: 0.3, opacity: 0.6), radius: 10, x: 0, y: 3)
+                            )  // 添加微妙渐变
+                            .cornerRadius(28)  // 圆角随高度增加
+                            .shadow(color: Color.white.opacity(0.4), radius: 10, x: 0, y: 0)  // 增强发光效果
                         }
-                        .padding(.bottom, 80)
+                        .padding(.bottom, 60)  // 调整与底部的距离
                         
                         // 移除Spacer，防止按钮被推到底部
                         // Spacer()
