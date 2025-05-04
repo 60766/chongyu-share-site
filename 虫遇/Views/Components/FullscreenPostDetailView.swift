@@ -991,14 +991,28 @@ struct FullscreenPostDetailView: View {
                     VStack(spacing: 0) {
                         // 顶部标题
                         HStack {
+                            // 左侧占位，与返回按钮宽度一致
+                            Color.clear
+                                .frame(width: 32, height: 32)
+                                .padding(.leading, 16)
+                            
                             Spacer()
+                            
                             Text("探索虫洞深处")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundColor(.white)
+                                .lineLimit(1)
+                            
                             Spacer()
+                            
+                            // 右侧占位，保持对称
+                            Color.clear
+                                .frame(width: 32, height: 32)
+                                .padding(.trailing, 16)
                         }
-                        .padding(.top, getSafeAreaTop() + 10)  // 与返回按钮高度一致
-                        .padding(.bottom, 12)  // 减少底部空间
+                        .frame(height: 44)  // 与顶部导航栏高度一致
+                        .padding(.top, getSafeAreaTop())  // 直接使用安全区域高度
+                        .padding(.bottom, 8)  // 减少底部空间
                         
                         // 黑洞主视觉
                         BlackHoleView()
