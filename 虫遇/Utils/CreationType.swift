@@ -241,98 +241,136 @@ public struct BlackHoleView: View {
             typeManager.selectType(at: selectedIndex)
         }) {
             ZStack {
-                // 外部光晕环 - 更像黑洞的吸积盘
+                // 主要光环效果 - 更强的黑洞边缘效果
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 85, height: 85)
+                    .frame(width: 90, height: 90)
                     .overlay(
-                        Circle()
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.blue.opacity(0.6),
-                                        Color.purple.opacity(0.4),
-                                        Color.white.opacity(0.3)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 3
-                            )
-                            .blur(radius: 2)
+                        ZStack {
+                            // 外圈模糊光环 - 黑洞边缘光晕
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0.7),
+                                            Color.white.opacity(0.3),
+                                            Color.white.opacity(0.1)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1.5
+                                )
+                                .blur(radius: 2)
+                            
+                            // 内圈更强光环
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0.9),
+                                            Color.white.opacity(0.6)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                                .blur(radius: 0.5)
+                                .scaleEffect(0.95)
+                        }
                     )
-                    .rotationEffect(.degrees(innerRotation * 0.2))
                 
-                // 主按钮背景 - 使用暗色调半透明渐变，更好融入黑洞
+                // 半透明背景圆环 - 类似黑洞的事件视界
                 Circle()
                     .fill(
                         RadialGradient(
                             gradient: Gradient(colors: [
-                                Color.black.opacity(0.6),
-                                Color.black.opacity(0.8)
+                                Color.white.opacity(0.2),
+                                Color.white.opacity(0.15),
+                                Color.white.opacity(0.05)
                             ]),
                             center: .center,
-                            startRadius: 5,
+                            startRadius: 10,
                             endRadius: 35
                         )
                     )
                     .frame(width: 70, height: 70)
-                    .overlay(
-                        Circle()
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.white.opacity(0.6),
-                                        Color.blue.opacity(0.3),
-                                        Color.purple.opacity(0.2),
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.5
-                            )
-                    )
-                    .shadow(color: Color.blue.opacity(0.3), radius: 8)
                 
-                // 星空效果 - 更明显的宇宙感
+                // 星空光晕内部效果 - 更密集的星尘
                 ZStack {
-                    // 内部星星点缀
-                    ForEach(0..<20) { _ in
+                    // 旋转的星尘背景
+                    ForEach(0..<25) { _ in
                         Circle()
                             .fill(Color.white)
-                            .frame(width: CGFloat.random(in: 0.5...1.5), 
-                                  height: CGFloat.random(in: 0.5...1.5))
+                            .frame(width: CGFloat.random(in: 0.5...1.8), 
+                                  height: CGFloat.random(in: 0.5...1.8))
                             .position(
-                                x: CGFloat.random(in: 20...50),
-                                y: CGFloat.random(in: 20...50)
+                                x: CGFloat.random(in: 15...55),
+                                y: CGFloat.random(in: 15...55)
                             )
-                            .opacity(Double.random(in: 0.5...1.0))
+                            .opacity(Double.random(in: 0.4...1.0))
                             .blur(radius: 0.2)
+                            .rotationEffect(.degrees(Double.random(in: 0...360)))
                     }
+                    
+                    // 内部模糊光晕 - 提供深度感
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.3),
+                                    Color.clear
+                                ]),
+                                center: .center,
+                                startRadius: 5,
+                                endRadius: 25
+                            )
+                        )
+                        .frame(width: 50, height: 50)
+                        .blur(radius: 3)
                 }
                 .frame(width: 70, height: 70)
                 .mask(Circle().frame(width: 70, height: 70))
-                .opacity(0.5)
-                .rotationEffect(.degrees(innerRotation * -0.1))
                 
-                // 图标 - 根据当前选中类型动态显示，调整为更明亮的颜色增强可见度
-                Image(systemName: iconName)
-                    .font(.system(size: 25, weight: .medium))
-                    .foregroundColor(.white)
-                    .opacity(0.9)
-                    .shadow(color: Color.blue.opacity(0.8), radius: 5, x: 0, y: 0)
-                    .transition(.scale.combined(with: .opacity))
+                // 中心图标区域
+                VStack(spacing: 0) {
+                    // 图标周围的微光环
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.5),
+                                    Color.white.opacity(0.2),
+                                    Color.clear
+                                ]),
+                                center: .center,
+                                startRadius: 1,
+                                endRadius: 18
+                            )
+                        )
+                        .frame(width: 36, height: 36)
+                        .blur(radius: 1)
+                    
+                    // 图标 - 根据当前选中类型动态显示
+                    Image(systemName: iconName)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                        .shadow(color: .white.opacity(0.8), radius: 2, x: 0, y: 0)
+                        .offset(y: -28) // 置于光环中心
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
         }
         .buttonStyle(PlainButtonStyle()) // 使用Plain样式避免默认按钮效果
         .overlay(
-            // 类型文字 - 放置在按钮下方，设计更加科幻
+            // 类型文字 - 放置在按钮下方
             Text(typeName)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.white)
                 .opacity(0.95)
-                .shadow(color: Color.blue.opacity(0.8), radius: 2, x: 0, y: 0)
+                .shadow(color: .black, radius: 2, x: 0, y: 0)
                 .offset(y: 45) // 将文字放在按钮下方
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
         )
