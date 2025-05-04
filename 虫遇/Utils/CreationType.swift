@@ -353,14 +353,27 @@ public struct CreationTypeButtonsView: View {
     @State private var animateButtons = false
     
     public var body: some View {
-        // 水平排列四个分类按钮，去掉随机漫游按钮
-        HStack(spacing: 24) {  // 按钮间距设置为24
-            // 只展示四个分类按钮（不显示随机漫游）
-            ForEach(1...4, id: \.self) { index in
-                categoryButton(index: index)
+        VStack(spacing: 20) {
+            // 顶部四个分类按钮，水平排列
+            HStack(spacing: 24) {
+                // 左侧两个按钮
+                categoryButton(index: 1)
+                categoryButton(index: 2)
+                
+                // 中间放置随机漫游按钮的空位
+                Spacer()
+                    .frame(width: 20)
+                
+                // 右侧两个按钮
+                categoryButton(index: 3)
+                categoryButton(index: 4)
             }
+            .padding(.horizontal, 16)
+            
+            // 中央随机漫游按钮 - 单独放置，视觉上更突出
+            randomButton()
+                .offset(y: -5) // 稍微上移，创造重叠效果
         }
-        .padding(.horizontal, 16)  // 水平边距
         .onAppear {
             // 添加出现动画
             DispatchQueue.main.async {
@@ -371,11 +384,85 @@ public struct CreationTypeButtonsView: View {
         }
     }
     
+    // 随机漫游按钮 - 尺寸更大，视觉上更突出
+    private func randomButton() -> some View {
+        let isSelected = typeManager.selectedIndex == 0
+        
+        return VStack(spacing: 8) {
+            // 按钮圆形部分
+            ZStack {
+                // 外部光环效果
+                if isSelected {
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: 75, height: 75)
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.white.opacity(0.8), .white.opacity(0.2)]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 2
+                                )
+                        )
+                        .shadow(color: Color.white.opacity(0.3), radius: 8, x: 0, y: 0)
+                }
+                
+                // 背景圆形
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                isSelected ? Color.white : Color.white.opacity(0.08),
+                                isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.15)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 65, height: 65)
+                    .shadow(color: isSelected ? Color.white.opacity(0.4) : Color.black.opacity(0.2), radius: isSelected ? 8 : 4, x: 0, y: 0)
+                
+                // 图标
+                Image(systemName: typeManager.icons[0])
+                    .font(.system(size: 26, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? .black : .white)
+                    .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
+            }
+            .scaleEffect(isSelected ? 1.1 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+            
+            // 按钮文字
+            Text(typeManager.types[0])
+                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
+                .foregroundColor(.white)
+                .opacity(isSelected ? 1.0 : 0.8)
+        }
+        .offset(y: animateButtons ? 0 : 30)
+        .opacity(animateButtons ? 1 : 0)
+        .animation(
+            .spring(response: 0.5, dampingFraction: 0.7)
+            .delay(0.2),
+            value: animateButtons
+        )
+        .onTapGesture {
+            // 触发触觉反馈
+            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+            impactMed.impactOccurred()
+            
+            // 更新选中状态
+            typeManager.selectType(at: 0)
+        }
+        .modifier(PulseEffect(isSelected: isSelected))
+    }
+    
     // 普通分类按钮
     private func categoryButton(index: Int) -> some View {
         let isSelected = typeManager.selectedIndex == index
         
-        return VStack(spacing: 7) {  // 垂直布局，间距7
+        return VStack(spacing: 7) {
             // 按钮圆形部分
             ZStack {
                 // 背景圆形
@@ -390,7 +477,7 @@ public struct CreationTypeButtonsView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 55, height: 55)  // 按钮尺寸为55x55
+                    .frame(width: 55, height: 55)
                 
                 // 内部阴影效果
                 if isSelected {
@@ -413,7 +500,7 @@ public struct CreationTypeButtonsView: View {
                 
                 // 图标
                 Image(systemName: typeManager.icons[index])
-                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))  // 图标大小20
+                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
                     .foregroundColor(isSelected ? .black : .white)
                     .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
             }
@@ -422,13 +509,13 @@ public struct CreationTypeButtonsView: View {
             
             // 按钮文字
             Text(typeManager.types[index])
-                .font(.system(size: 12, weight: isSelected ? .medium : .regular))  // 文字大小12
+                .font(.system(size: 12, weight: isSelected ? .medium : .regular))
                 .foregroundColor(.white)
                 .opacity(isSelected ? 1.0 : 0.7)
                 .lineLimit(1)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(width: 65)  // 整体宽度65
+        .frame(width: 65)
         .offset(y: animateButtons ? 0 : 30)
         .opacity(animateButtons ? 1 : 0)
         .animation(
@@ -448,4 +535,4 @@ public struct CreationTypeButtonsView: View {
     }
     
     public init() {}
-} 
+}
