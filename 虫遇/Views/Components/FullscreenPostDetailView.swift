@@ -1000,21 +1000,28 @@ struct FullscreenPostDetailView: View {
                         // 整合黑洞和按钮布局
                         GeometryReader { geometry in
                             ZStack {
-                                // 黑洞主视觉
+                                // 黑洞主视觉 - 调整大小让黑洞更明显
                                 BlackHoleView()
                                     .environmentObject(CreationTypeManager.shared)
-                                    .frame(height: UIScreen.main.bounds.height * 0.4)
+                                    .frame(height: UIScreen.main.bounds.height * 0.45)
+                                    .offset(y: -10) // 轻微上移黑洞，使整体视觉更平衡
                                 
                                 // 中心随机漫游按钮
-                                let centralPosition = CGPoint(x: geometry.size.width/2, y: geometry.size.height/2)
+                                let centralPosition = CGPoint(x: geometry.size.width/2, y: geometry.size.height/2 - 10) // 调整中心点位置
                                 
                                 centralButton(isSelected: creationTypeManager.selectedIndex == 0, creationTypeManager: creationTypeManager)
                                     .position(x: centralPosition.x, y: centralPosition.y)
                                 
                                 // 四个分类按钮围绕在黑洞周围
                                 ForEach(1...4, id: \.self) { index in
-                                    let angle = Double(index-1) * (360/4) + 45 // 从右上方开始，45度偏移
-                                    let radius: CGFloat = min(geometry.size.width, geometry.size.height) * 0.32
+                                    // 计算每个按钮的角度位置
+                                    let buttonAngles: [Double] = [45, 135, 225, 315] // 更精确地定位每个按钮
+                                    let angle = buttonAngles[index-1]
+                                    
+                                    // 使用屏幕宽度的比例来计算半径，确保适应不同屏幕大小
+                                    let radius: CGFloat = min(geometry.size.width, geometry.size.height) * 0.36
+                                    
+                                    // 计算按钮位置
                                     let xPos = cos(angle * .pi / 180) * radius + centralPosition.x
                                     let yPos = sin(angle * .pi / 180) * radius + centralPosition.y
                                     
@@ -1023,7 +1030,7 @@ struct FullscreenPostDetailView: View {
                                 }
                             }
                         }
-                        .frame(height: UIScreen.main.bounds.height * 0.4)
+                        .frame(height: UIScreen.main.bounds.height * 0.45) // 调整整体高度与黑洞视图一致
                         
                         // 提示文本 - 移到黑洞下方
                         Text("连接不同时代的声音，体验跨越时空的社交互动")
@@ -2225,19 +2232,19 @@ private func centralButton(isSelected: Bool, creationTypeManager: CreationTypeMa
             if isSelected {
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 75, height: 75)
+                    .frame(width: 80, height: 80)
                     .overlay(
                         Circle()
                             .stroke(
                                 LinearGradient(
-                                    gradient: Gradient(colors: [.white.opacity(0.8), .white.opacity(0.2)]),
+                                    gradient: Gradient(colors: [.white.opacity(0.8), .white.opacity(0.3)]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
-                                lineWidth: 2
+                                lineWidth: 2.5
                             )
                     )
-                    .shadow(color: Color.white.opacity(0.3), radius: 8, x: 0, y: 0)
+                    .shadow(color: Color.white.opacity(0.4), radius: 10, x: 0, y: 0)
             }
             
             // 主背景圆形
@@ -2245,19 +2252,19 @@ private func centralButton(isSelected: Bool, creationTypeManager: CreationTypeMa
                 .fill(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            isSelected ? Color.white.opacity(1) : Color.white.opacity(0.12),
-                            isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.18)
+                            isSelected ? Color.white.opacity(1) : Color.white.opacity(0.15),
+                            isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.2)
                         ]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
-                .frame(width: 65, height: 65)
-                .shadow(color: isSelected ? Color.white.opacity(0.4) : Color.black.opacity(0.2), radius: isSelected ? 8 : 4, x: 0, y: 0)
+                .frame(width: 70, height: 70)
+                .shadow(color: isSelected ? Color.white.opacity(0.5) : Color.black.opacity(0.2), radius: isSelected ? 8 : 4, x: 0, y: 0)
             
             // 图标
             Image(systemName: "shuffle")
-                .font(.system(size: 26, weight: isSelected ? .semibold : .regular))
+                .font(.system(size: 28, weight: isSelected ? .semibold : .regular))
                 .foregroundColor(isSelected ? .black : .white)
                 .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
         }
@@ -2266,7 +2273,7 @@ private func centralButton(isSelected: Bool, creationTypeManager: CreationTypeMa
         
         // 按钮文字
         Text("随机漫游")
-            .font(.system(size: 14, weight: isSelected ? .medium : .regular))
+            .font(.system(size: 16, weight: isSelected ? .medium : .regular))
             .foregroundColor(.white)
             .opacity(isSelected ? 1.0 : 0.8)
     }
@@ -2290,37 +2297,37 @@ private func categoryButton(index: Int, isSelected: Bool, creationTypeManager: C
                 .fill(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            isSelected ? Color.white : Color.white.opacity(0.05),
-                            isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.1)
+                            isSelected ? Color.white : Color.white.opacity(0.08),
+                            isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.15)
                         ]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
-                .frame(width: 50, height: 50)
+                .frame(width: 55, height: 55)
             
             // 内部阴影效果
             if isSelected {
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 50, height: 50)
+                    .frame(width: 55, height: 55)
                     .overlay(
                         Circle()
                             .stroke(
                                 LinearGradient(
-                                    gradient: Gradient(colors: [.white.opacity(0.8), .white.opacity(0.2)]),
+                                    gradient: Gradient(colors: [.white.opacity(0.8), .white.opacity(0.3)]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
                                 lineWidth: 2
                             )
                     )
-                    .shadow(color: Color.white.opacity(0.3), radius: 6, x: 0, y: 0)
+                    .shadow(color: Color.white.opacity(0.4), radius: 8, x: 0, y: 0)
             }
             
             // 图标
             Image(systemName: creationTypeManager.icons[index])
-                .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
+                .font(.system(size: 22, weight: isSelected ? .semibold : .regular))
                 .foregroundColor(isSelected ? .black : .white)
                 .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
         }
@@ -2329,13 +2336,13 @@ private func categoryButton(index: Int, isSelected: Bool, creationTypeManager: C
         
         // 按钮文字
         Text(creationTypeManager.types[index])
-            .font(.system(size: 12, weight: isSelected ? .medium : .regular))
+            .font(.system(size: 14, weight: isSelected ? .medium : .regular))
             .foregroundColor(.white)
             .opacity(isSelected ? 1.0 : 0.7)
             .lineLimit(1)
             .fixedSize(horizontal: false, vertical: true)
     }
-    .frame(width: 60)
+    .frame(width: 65)
     .onTapGesture {
         // 触发触觉反馈
         let impactMed = UIImpactFeedbackGenerator(style: .medium)
