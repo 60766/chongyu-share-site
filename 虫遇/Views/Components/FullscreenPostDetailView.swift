@@ -1014,7 +1014,7 @@ struct FullscreenPostDetailView: View {
                             }
                         }
                         .frame(height: 44)
-                        .padding(.top, getSafeAreaTop() + 10) // 与系统返回按钮垂直对齐
+                        .padding(.top, getSafeAreaTop() + 15) // 与系统返回按钮垂直对齐，进一步下移5点
                         
                         // 黑洞主视觉
                         BlackHoleView()
