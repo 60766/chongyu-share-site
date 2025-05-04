@@ -298,50 +298,18 @@ public struct BlackHoleView: View {
                 
                 // 图标 - 根据当前选中类型动态显示
                 Image(systemName: iconName)
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.black)
                     .opacity(1)
                     .transition(.scale.combined(with: .opacity))
                 
-                // 文字标签 - 完全重新设计，更好融入黑洞氛围
-                ZStack {
-                    // 使用同心圆环设计，像星系光晕一样展现文字
-                    Circle()
-                        .stroke(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    Color.white.opacity(0.6),
-                                    Color.white.opacity(0.2)
-                                ]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ),
-                            lineWidth: 1
-                        )
-                        .frame(width: 130, height: 130)
-                    
-                    // 文字沿着圆环布置 - 根据当前选中类型动态显示
-                    ForEach(0..<typeName.count, id: \.self) { index in
-                        let character = Array(typeName)[index]
-                        // 计算每个字符的位置角度，根据字符数量均匀分布
-                        let angle = Double(index) * (360.0 / Double(typeName.count)) - 90
-                        let radius = 65.0 // 环形半径
-                        
-                        Text(String(character))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.black)
-                            .opacity(0.9)
-                            .rotationEffect(.degrees(angle + 90))
-                            .offset(
-                                x: CGFloat(cos(angle * .pi / 180) * radius),
-                                y: CGFloat(sin(angle * .pi / 180) * radius)
-                            )
-                    }
+                // 类型文字 - 直接在中心按钮底部显示，不再使用环形设计
+                Text(typeName)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.black)
+                    .opacity(0.9)
+                    .offset(y: 1) // 微调位置到图标正下方
                 }
-                .rotationEffect(.degrees(5))
-                .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: true)
-                .id("label-\(selectedIndex)") // 强制在选中索引变化时重建视图，产生过渡动画
-            }
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
         }
         .buttonStyle(PlainButtonStyle()) // 使用Plain样式避免默认按钮效果
@@ -488,14 +456,20 @@ public struct CreationTypeButtonsView: View {
     @State private var animateButtons = false
     
     public var body: some View {
-        // 水平排列四个分类按钮
-        HStack(spacing: 24) {  // 按钮间距设置为24
-            // 四个分类按钮水平排列
-            ForEach(1...4, id: \.self) { index in
-                categoryButton(index: index)
+        // 水平排列四个未被选中的按钮
+        HStack(spacing: 24) {
+            // 获取当前未被选中的按钮索引
+            let unselectedIndices = getUnselectedIndices()
+            
+            // 显示4个未被选中的按钮
+            ForEach(0..<4, id: \.self) { position in
+                if position < unselectedIndices.count {
+                    let buttonIndex = unselectedIndices[position]
+                    categoryButton(index: buttonIndex)
+                }
             }
         }
-        .padding(.horizontal, 16)  // 水平边距
+        .padding(.horizontal, 16)
         .onAppear {
             // 添加出现动画
             DispatchQueue.main.async {
@@ -504,6 +478,18 @@ public struct CreationTypeButtonsView: View {
                 }
             }
         }
+    }
+    
+    // 获取未被选中的按钮索引列表（按原始顺序）
+    private func getUnselectedIndices() -> [Int] {
+        // 所有可用的索引 (0-4)
+        let allIndices = Array(0...4) 
+        
+        // 过滤掉当前选中的索引
+        let filtered = allIndices.filter { $0 != typeManager.selectedIndex }
+        
+        // 返回前4个未选中的索引
+        return Array(filtered.prefix(4))
     }
     
     // 普通分类按钮
@@ -568,7 +554,7 @@ public struct CreationTypeButtonsView: View {
         .opacity(animateButtons ? 1 : 0)
         .animation(
             .spring(response: 0.5, dampingFraction: 0.7)
-            .delay(0.05 + Double(index) * 0.05),
+            .delay(0.05 + Double(index % 5) * 0.05), // 使用取模确保延迟不会过大
             value: animateButtons
         )
         .onTapGesture {
@@ -577,9 +563,13 @@ public struct CreationTypeButtonsView: View {
             impactMed.impactOccurred()
             
             // 更新选中状态
-            typeManager.selectType(at: index)
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                typeManager.selectType(at: index)
+            }
         }
         .modifier(PulseEffect(isSelected: isSelected))
+        // 添加id确保视图在按钮变化时正确重建
+        .id("button-\(index)-\(isSelected)")
     }
     
     public init() {}
