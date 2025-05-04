@@ -1022,7 +1022,7 @@ struct FullscreenPostDetailView: View {
                         // 创作类型按钮 - 移到文字下方
                         CreationTypeButtonsView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: 120)
+                            .frame(height: 240)
                             .padding(.bottom, 20)
                         
                         // 主按钮 - 开启时空对话

@@ -346,122 +346,207 @@ public struct BlackHoleView: View {
 
 /**
  * 创作类型按钮视图组
- * 将创作类型按钮排列成与黑洞呼应的环形结构
+ * 将创作类型按钮排列成更美观的布局
  */
 public struct CreationTypeButtonsView: View {
     @EnvironmentObject private var typeManager: CreationTypeManager
+    @State private var animateButtons = false
     
     public var body: some View {
-        ZStack {
-            // 中央的随机漫游按钮
-            CreationTypeButton(
-                index: 0,
-                isSelected: typeManager.selectedIndex == 0,
-                size: 80, // 中央按钮更大
-                fontSize: 14
-            )
-            .onTapGesture {
-                // 触发触觉反馈
-                let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                impactMed.impactOccurred()
+        VStack(spacing: 0) {
+            // 顶部四个按钮以网格形式排列
+            HStack(spacing: 30) {
+                // 左侧两个按钮
+                VStack(spacing: 20) {
+                    categoryButton(index: 1)
+                    categoryButton(index: 2)
+                }
                 
-                // 更新选中状态
-                typeManager.selectType(at: 0)
+                // 右侧两个按钮
+                VStack(spacing: 20) {
+                    categoryButton(index: 3)
+                    categoryButton(index: 4)
+                }
             }
-            .overlay(
-                // 发光效果
-                Circle()
-                    .stroke(
-                        LinearGradient(
-                            gradient: Gradient(colors: [.white.opacity(0.5), .white.opacity(0.1)]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 2
-                    )
-                    .scaleEffect(1.15)
-                    .opacity(typeManager.selectedIndex == 0 ? 1 : 0)
-            )
-            .overlay(
-                // 第二层发光效果
-                Circle()
-                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                    .scaleEffect(1.3)
-                    .opacity(typeManager.selectedIndex == 0 ? 1 : 0)
-            )
-            .modifier(PulseEffect(isSelected: typeManager.selectedIndex == 0))
-            .zIndex(1) // 确保中央按钮位于最上层
+            .padding(.bottom, 40)
             
-            // 围绕中央的四个按钮
-            ForEach(1..<typeManager.types.count, id: \.self) { index in
-                OrbitingButton(
-                    index: index,
-                    totalButtons: typeManager.types.count - 1,
-                    distance: 140, // 距离中心点的半径
-                    isSelected: typeManager.selectedIndex == index,
-                    onTap: {
-                        // 触发触觉反馈
-                        let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                        impactMed.impactOccurred()
-                        
-                        // 更新选中状态
-                        typeManager.selectType(at: index)
-                    }
+            // 半透明分隔线，创造层次感
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.white.opacity(0),
+                            Color.white.opacity(0.3),
+                            Color.white.opacity(0)
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
                 )
+                .frame(width: 240, height: 1)
+                .padding(.bottom, 40)
+                .scaleEffect(x: animateButtons ? 1 : 0.3, y: 1)
+                .opacity(animateButtons ? 1 : 0)
+            
+            // 底部"随机漫游"主按钮
+            featuredRandomButton()
+                .padding(.bottom, 10)
+        }
+        .onAppear {
+            // 添加出现动画
+            DispatchQueue.main.async {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
+                    animateButtons = true
+                }
             }
         }
-        .frame(height: 300) // 提供足够的空间容纳环形布局
-        .padding(.bottom, 20)
     }
     
-    public init() {}
-}
-
-/**
- * 环绕式按钮
- * 计算位置围绕中心点排列
- */
-public struct OrbitingButton: View {
-    @EnvironmentObject private var typeManager: CreationTypeManager
-    
-    let index: Int
-    let totalButtons: Int
-    let distance: CGFloat
-    let isSelected: Bool
-    let onTap: () -> Void
-    
-    public var body: some View {
-        // 计算按钮在环上的位置
-        // 从顶部开始顺时针排列(-90度开始)
-        let angle = -90.0 + (360.0 / Double(totalButtons)) * Double(index - 1)
-        let radians = angle * .pi / 180.0
+    // 普通分类按钮
+    private func categoryButton(index: Int) -> some View {
+        let isSelected = typeManager.selectedIndex == index
         
-        let xOffset = cos(radians) * distance
-        let yOffset = sin(radians) * distance
-        
-        return CreationTypeButton(
-            index: index,
-            isSelected: isSelected,
-            size: isSelected ? 60 : 54, // 选中时稍大
-            fontSize: 12
+        return VStack(spacing: 6) {
+            // 按钮圆形部分
+            ZStack {
+                // 背景圆形
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                isSelected ? Color.white : Color.white.opacity(0.05),
+                                isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.1)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 52, height: 52)
+                
+                // 内部阴影效果
+                if isSelected {
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: 52, height: 52)
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.white.opacity(0.8), .white.opacity(0.2)]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 2
+                                )
+                        )
+                        .shadow(color: Color.white.opacity(0.3), radius: 6, x: 0, y: 0)
+                }
+                
+                // 图标
+                Image(systemName: typeManager.icons[index])
+                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? .black : .white)
+                    .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
+            }
+            .scaleEffect(isSelected ? 1.08 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+            
+            // 按钮文字
+            Text(typeManager.types[index])
+                .font(.system(size: 11, weight: isSelected ? .medium : .regular))
+                .foregroundColor(.white)
+                .opacity(isSelected ? 1.0 : 0.7)
+        }
+        .offset(y: animateButtons ? 0 : 30)
+        .opacity(animateButtons ? 1 : 0)
+        .animation(
+            .spring(response: 0.5, dampingFraction: 0.7)
+            .delay(0.05 + Double(index) * 0.05),
+            value: animateButtons
         )
-        .offset(x: xOffset, y: yOffset)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
-        .onTapGesture(perform: onTap)
-        .overlay(
-            Circle()
-                .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                .scaleEffect(1.2)
-                .opacity(isSelected ? 0.8 : 0)
-        )
+        .onTapGesture {
+            // 触发触觉反馈
+            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+            impactMed.impactOccurred()
+            
+            // 更新选中状态
+            typeManager.selectType(at: index)
+        }
         .modifier(PulseEffect(isSelected: isSelected))
     }
     
-    public init(index: Int, totalButtons: Int, distance: CGFloat, isSelected: Bool, onTap: @escaping () -> Void) {
-        self.index = index
-        self.totalButtons = totalButtons
-        self.distance = distance
-        self.isSelected = isSelected
-        self.onTap = onTap
+    // 主"随机漫游"按钮
+    private func featuredRandomButton() -> some View {
+        let isSelected = typeManager.selectedIndex == 0
+        
+        return VStack(spacing: 8) {
+            ZStack {
+                // 外部发光效果
+                if isSelected {
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: 85, height: 85)
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.white.opacity(0.8), .white.opacity(0.2)]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 2
+                                )
+                        )
+                        .shadow(color: Color.white.opacity(0.3), radius: 8, x: 0, y: 0)
+                }
+                
+                // 主背景圆形
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                isSelected ? Color.white.opacity(1) : Color.white.opacity(0.07),
+                                isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.15)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 72, height: 72)
+                    .shadow(color: isSelected ? Color.white.opacity(0.4) : Color.black.opacity(0.2), radius: isSelected ? 8 : 4, x: 0, y: 0)
+                
+                // 图标
+                Image(systemName: typeManager.icons[0])
+                    .font(.system(size: 28, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? .black : .white)
+                    .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
+            }
+            .scaleEffect(isSelected ? 1.1 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+            
+            // 按钮文字
+            Text(typeManager.types[0])
+                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
+                .foregroundColor(.white)
+                .opacity(isSelected ? 1.0 : 0.8)
+        }
+        .offset(y: animateButtons ? 0 : 40)
+        .opacity(animateButtons ? 1 : 0)
+        .animation(
+            .spring(response: 0.5, dampingFraction: 0.7)
+            .delay(0.3),
+            value: animateButtons
+        )
+        .onTapGesture {
+            // 触发触觉反馈
+            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+            impactMed.impactOccurred()
+            
+            // 更新选中状态
+            typeManager.selectType(at: 0)
+        }
+        .modifier(PulseEffect(isSelected: isSelected))
     }
+    
+    public init() {}
 } 
