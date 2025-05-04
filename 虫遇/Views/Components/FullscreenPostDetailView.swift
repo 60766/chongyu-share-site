@@ -999,15 +999,15 @@ struct FullscreenPostDetailView: View {
                         // 黑洞主视觉
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.45)
-                            .padding(.bottom, 20)
+                            .frame(height: UIScreen.main.bounds.height * 0.42) // 略微减小黑洞视图高度
+                            .padding(.bottom, 10) // 减小底部间距
                         
                         // 提示文本 - 移到黑洞下方
                         Text("连接不同时代的声音，体验跨越时空的社交互动")
                             .font(.system(size: 15))
                             .foregroundColor(.white.opacity(0.7))
-                            .padding(.top, 5)
-                            .padding(.bottom, 8)
+                            .padding(.top, 0) // 减小顶部间距
+                            .padding(.bottom, 6) // 减小底部间距
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 45)
                         
@@ -1015,7 +1015,7 @@ struct FullscreenPostDetailView: View {
                         Text("每种内容类型将带你进入不同的时空交流维度")
                             .font(.system(size: 13))
                             .foregroundColor(.white.opacity(0.5))
-                            .padding(.bottom, 25)
+                            .padding(.bottom, 20) // 减小底部间距
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 45)
                         
@@ -1051,9 +1051,10 @@ struct FullscreenPostDetailView: View {
                             .cornerRadius(26)
                             .shadow(color: Color.white.opacity(0.3), radius: 8, x: 0, y: 0)
                         }
-                        .padding(.bottom, 16)
+                        .padding(.bottom, 80)
                         
-                        Spacer()
+                        // 移除Spacer，防止按钮被推到底部
+                        // Spacer()
                     }
                 }
                 .zIndex(300)
