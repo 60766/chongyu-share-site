@@ -223,107 +223,130 @@ public struct BlackHoleView: View {
     @State private var pulseScale: CGFloat = 1.0
     
     public var body: some View {
-        ZStack {
-            // 最外层光晕
-            Circle()
-                .fill(
-                    RadialGradient(
-                        gradient: Gradient(colors: [Color.black, Color.black.opacity(0)]),
-                        center: .center,
-                        startRadius: UIScreen.main.bounds.width * 0.3,
-                        endRadius: UIScreen.main.bounds.width * 0.8
+        GeometryReader { geometry in
+            ZStack {
+                // 最外层光晕
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(colors: [Color.black, Color.black.opacity(0)]),
+                            center: .center,
+                            startRadius: geometry.size.width * 0.25,
+                            endRadius: geometry.size.width * 0.7
+                        )
                     )
+                    .frame(width: geometry.size.width * 1.4, height: geometry.size.width * 1.4)
+                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                    .shadow(color: Color.white.opacity(0.05), radius: 50, x: 0, y: 0)
+                
+                // 最外层星空
+                StarfieldView()
+                    .frame(width: geometry.size.width * 1.1, height: geometry.size.width * 1.1)
+                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                    .opacity(0.7)
+                    .rotationEffect(.degrees(outerRotation))
+                
+                // 黑洞外围光环效果 - 最外层
+                Circle()
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    .frame(width: geometry.size.width * 0.8, height: geometry.size.width * 0.8)
+                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                    .blur(radius: 1)
+                
+                // 黑洞外围光环效果 - 中间层
+                Circle()
+                    .stroke(Color.white.opacity(0.25), lineWidth: 2)
+                    .frame(width: geometry.size.width * 0.65, height: geometry.size.width * 0.65)
+                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                
+                // 黑洞外围粒子层
+                ParticleRingView(
+                    count: 200, 
+                    minSize: 1.0, 
+                    maxSize: 2.5, 
+                    radius: geometry.size.width * 0.3, 
+                    innerRadius: geometry.size.width * 0.25, 
+                    rotationDuration: 240
                 )
-                .frame(width: UIScreen.main.bounds.width * 1.6, height: UIScreen.main.bounds.width * 1.6)
-                .shadow(color: Color.white.opacity(0.05), radius: 50, x: 0, y: 0)
-            
-            // 最外层星空
-            StarfieldView()
-                .frame(width: UIScreen.main.bounds.width * 1.2, height: UIScreen.main.bounds.width * 1.2)
-                .opacity(0.7)
-                .rotationEffect(.degrees(outerRotation))
-            
-            // 黑洞外围光环效果 - 最外层
-            Circle()
-                .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                .frame(width: UIScreen.main.bounds.width * 0.85, height: UIScreen.main.bounds.width * 0.85)
-                .blur(radius: 1)
-            
-            // 黑洞外围光环效果 - 中间层
-            Circle()
-                .stroke(Color.white.opacity(0.25), lineWidth: 2)
-                .frame(width: UIScreen.main.bounds.width * 0.7, height: UIScreen.main.bounds.width * 0.7)
-            
-            // 黑洞外围粒子层
-            ParticleRingView(count: 200, minSize: 1.0, maxSize: 2.5, radius: UIScreen.main.bounds.width * 0.32, innerRadius: UIScreen.main.bounds.width * 0.28, rotationDuration: 240)
-            
-            // 辉光圆环
-            Circle()
-                .stroke(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.white.opacity(0.8),
-                            Color.white.opacity(0.4),
-                            Color.white.opacity(0.1)
-                        ]),
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    lineWidth: 2
-                )
-                .frame(width: UIScreen.main.bounds.width * 0.44, height: UIScreen.main.bounds.width * 0.44)
-                .blur(radius: 0.5)
-                .rotationEffect(.degrees(innerRotation * -0.5))
-            
-            // 黑洞内环
-            Circle()
-                .stroke(Color.white.opacity(0.5), lineWidth: 1)
-                .frame(width: UIScreen.main.bounds.width * 0.34, height: UIScreen.main.bounds.width * 0.34)
-                .rotationEffect(.degrees(innerRotation))
-            
-            // 脉冲效果
-            Circle()
-                .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                .frame(width: UIScreen.main.bounds.width * 0.3, height: UIScreen.main.bounds.width * 0.3)
-                .scaleEffect(pulseScale)
-            
-            // 黑洞中心
-            Circle()
-                .fill(Color.black)
-                .frame(width: UIScreen.main.bounds.width * 0.28, height: UIScreen.main.bounds.width * 0.28)
-                .overlay(
-                    Circle()
-                        .stroke(Color.white.opacity(0.7), lineWidth: 1)
-                        .blur(radius: 1)
-                )
-                .overlay(
-                    // 中心光晕效果
-                    ZStack {
+                .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                
+                // 辉光圆环
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.white.opacity(0.8),
+                                Color.white.opacity(0.4),
+                                Color.white.opacity(0.1)
+                            ]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        lineWidth: 2
+                    )
+                    .frame(width: geometry.size.width * 0.4, height: geometry.size.width * 0.4)
+                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                    .blur(radius: 0.5)
+                    .rotationEffect(.degrees(innerRotation * -0.5))
+                
+                // 黑洞内环
+                Circle()
+                    .stroke(Color.white.opacity(0.5), lineWidth: 1)
+                    .frame(width: geometry.size.width * 0.3, height: geometry.size.width * 0.3)
+                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                    .rotationEffect(.degrees(innerRotation))
+                
+                // 脉冲效果
+                Circle()
+                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                    .frame(width: geometry.size.width * 0.25, height: geometry.size.width * 0.25)
+                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                    .scaleEffect(pulseScale)
+                
+                // 黑洞中心
+                Circle()
+                    .fill(Color.black)
+                    .frame(width: geometry.size.width * 0.22, height: geometry.size.width * 0.22)
+                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                    .overlay(
                         Circle()
-                            .fill(
-                                RadialGradient(
-                                    gradient: Gradient(colors: [Color.white.opacity(0.4), Color.clear]),
-                                    center: .center,
-                                    startRadius: 0,
-                                    endRadius: UIScreen.main.bounds.width * 0.15
+                            .stroke(Color.white.opacity(0.7), lineWidth: 1)
+                            .blur(radius: 1)
+                            .frame(width: geometry.size.width * 0.22, height: geometry.size.width * 0.22)
+                            .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                    )
+                    .overlay(
+                        // 中心光晕效果
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        gradient: Gradient(colors: [Color.white.opacity(0.4), Color.clear]),
+                                        center: .center,
+                                        startRadius: 0,
+                                        endRadius: geometry.size.width * 0.12
+                                    )
                                 )
-                            )
-                            .frame(width: UIScreen.main.bounds.width * 0.26, height: UIScreen.main.bounds.width * 0.26)
-                            .blur(radius: 5)
-                        
-                        // 内部星空效果
-                        StarfieldView()
-                            .frame(width: UIScreen.main.bounds.width * 0.25, height: UIScreen.main.bounds.width * 0.25)
-                            .mask(
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: UIScreen.main.bounds.width * 0.25, height: UIScreen.main.bounds.width * 0.25)
-                            )
-                            .opacity(0.9)
-                            .blur(radius: 0.5)
-                            .rotationEffect(.degrees(innerRotation * 1.2))
-                    }
-                )
+                                .frame(width: geometry.size.width * 0.22, height: geometry.size.width * 0.22)
+                                .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                                .blur(radius: 5)
+                            
+                            // 内部星空效果
+                            StarfieldView()
+                                .frame(width: geometry.size.width * 0.2, height: geometry.size.width * 0.2)
+                                .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                                .mask(
+                                    Circle()
+                                        .fill(Color.white)
+                                        .frame(width: geometry.size.width * 0.2, height: geometry.size.width * 0.2)
+                                        .position(x: geometry.size.width/2, y: geometry.size.height/2)
+                                )
+                                .opacity(0.9)
+                                .blur(radius: 0.5)
+                                .rotationEffect(.degrees(innerRotation * 1.2))
+                        }
+                    )
+            }
         }
         .onAppear {
             // 添加旋转和脉冲动画
