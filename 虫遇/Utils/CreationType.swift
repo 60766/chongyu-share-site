@@ -240,76 +240,86 @@ public struct BlackHoleView: View {
             // 按钮动作保持不变 - 确保选中当前类型
             typeManager.selectType(at: selectedIndex)
         }) {
-            ZStack {
-                // 外部发光环 - 更柔和的发光效果
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 85, height: 85)
-                    .overlay(
-                        Circle()
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.white.opacity(0.65),
-                                        Color.white.opacity(0.3)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 2
-                            )
-                            .blur(radius: 1)
-                    )
-                
-                // 主按钮背景 - 使用更加透明的背景，更好融入黑洞
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color.white.opacity(0.95),
-                                Color.white.opacity(0.85)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 70, height: 70)
-                    .shadow(color: Color.white.opacity(0.5), radius: 8)
-                
-                // 星空效果 - 在按钮内部添加微妙的星空，提升宇宙感（在选中状态变化时有过渡效果）
+            VStack(spacing: 8) {
+                // 主按钮部分
                 ZStack {
-                    // 内部星星点缀
-                    ForEach(0..<12) { _ in
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: CGFloat.random(in: 0.8...1.5), 
-                                  height: CGFloat.random(in: 0.8...1.5))
-                            .position(
-                                x: CGFloat.random(in: 20...50),
-                                y: CGFloat.random(in: 20...50)
+                    // 外部发光环 - 更柔和的发光效果
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: 85, height: 85)
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0.65),
+                                            Color.white.opacity(0.3)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 2
+                                )
+                                .blur(radius: 1)
+                        )
+                    
+                    // 主按钮背景 - 使用更加透明的背景，更好融入黑洞
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.95),
+                                    Color.white.opacity(0.85)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                            .opacity(Double.random(in: 0.5...0.9))
-                            .blur(radius: 0.2)
+                        )
+                        .frame(width: 70, height: 70)
+                        .shadow(color: Color.white.opacity(0.5), radius: 8)
+                    
+                    // 星空效果 - 在按钮内部添加微妙的星空，提升宇宙感（在选中状态变化时有过渡效果）
+                    ZStack {
+                        // 内部星星点缀
+                        ForEach(0..<12) { _ in
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: CGFloat.random(in: 0.8...1.5), 
+                                      height: CGFloat.random(in: 0.8...1.5))
+                                .position(
+                                    x: CGFloat.random(in: 20...50),
+                                    y: CGFloat.random(in: 20...50)
+                                )
+                                .opacity(Double.random(in: 0.5...0.9))
+                                .blur(radius: 0.2)
+                        }
                     }
+                    .frame(width: 70, height: 70)
+                    .mask(Circle().frame(width: 70, height: 70))
+                    .opacity(0.3) // 保持低不透明度，即使在选中状态也可见
+                    
+                    // 图标 - 根据当前选中类型动态显示
+                    Image(systemName: iconName)
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.black)
+                        .opacity(1)
+                        .transition(.scale.combined(with: .opacity))
                 }
-                .frame(width: 70, height: 70)
-                .mask(Circle().frame(width: 70, height: 70))
-                .opacity(0.3) // 保持低不透明度，即使在选中状态也可见
                 
-                // 图标 - 根据当前选中类型动态显示
-                Image(systemName: iconName)
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.black)
-                    .opacity(1)
-                    .transition(.scale.combined(with: .opacity))
-                
-                // 类型文字 - 直接在中心按钮底部显示，不再使用环形设计
+                // 类型文字 - 移到按钮下方显示，提高可读性
                 Text(typeName)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.black)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
                     .opacity(0.9)
-                    .offset(y: 1) // 微调位置到图标正下方
-                }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(Color.black.opacity(0.5))
+                            .blur(radius: 0.5)
+                    )
+                    .shadow(color: Color.white.opacity(0.3), radius: 2, x: 0, y: 0)
+            }
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
         }
         .buttonStyle(PlainButtonStyle()) // 使用Plain样式避免默认按钮效果
