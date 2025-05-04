@@ -989,21 +989,15 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题 - 修改为与导航栏一致的风格
+                        // 顶部标题 - 修改为与导航栏一致的风格，确保与返回按钮精确对齐
                         ZStack(alignment: .center) {
-                            // 标题层
-                            HStack {
-                                Spacer()
-                                
-                                // 标题 - 使用与其他页面相同的样式
-                                Text("探索虫洞深处")
-                                    .font(.system(size: 17, weight: .medium))
-                                    .foregroundColor(.white)
-                                
-                                Spacer()
-                            }
+                            // 标题层 - 精确控制位置
+                            Text("探索虫洞深处")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity, alignment: .center)
                             
-                            // 占位空间 - 保持与左侧返回按钮的对齐
+                            // 占位空间 - 保持与左侧返回按钮的对齐，仅用于布局参考
                             HStack {
                                 // 空占位符，与系统返回按钮布局匹配
                                 Color.clear
@@ -1014,7 +1008,7 @@ struct FullscreenPostDetailView: View {
                             }
                         }
                         .frame(height: 44)
-                        .padding(.top, getSafeAreaTop() + 15) // 与系统返回按钮垂直对齐，进一步下移5点
+                        .padding(.top, getSafeAreaTop() + 10) // 精确匹配系统返回按钮位置
                         
                         // 黑洞主视觉
                         BlackHoleView()
