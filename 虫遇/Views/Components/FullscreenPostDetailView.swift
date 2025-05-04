@@ -206,6 +206,9 @@ struct FullscreenPostDetailView: View {
     // 使用ViewModel管理数据
     @StateObject private var viewModel: FullscreenPostDetailViewModel
     
+    // 创建类型管理器引用
+    @EnvironmentObject var creationTypeManager: CreationTypeManager
+    
     // 回调函数
     var onDismiss: (() -> Void)?
     var onLike: ((UserCommentModel) -> Void)?
@@ -277,8 +280,6 @@ struct FullscreenPostDetailView: View {
         self.onNextPost = onNextPost
         self.onPrevPost = onPrevPost
     }
-    
-    @EnvironmentObject var creationTypeManager: CreationTypeManager
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -1007,7 +1008,7 @@ struct FullscreenPostDetailView: View {
                                 // 中心随机漫游按钮
                                 let centralPosition = CGPoint(x: geometry.size.width/2, y: geometry.size.height/2)
                                 
-                                centralButton(isSelected: creationTypeManager.selectedIndex == 0)
+                                centralButton(isSelected: creationTypeManager.selectedIndex == 0, creationTypeManager: creationTypeManager)
                                     .position(x: centralPosition.x, y: centralPosition.y)
                                 
                                 // 四个分类按钮围绕在黑洞周围
@@ -1017,7 +1018,7 @@ struct FullscreenPostDetailView: View {
                                     let xPos = cos(angle * .pi / 180) * radius + centralPosition.x
                                     let yPos = sin(angle * .pi / 180) * radius + centralPosition.y
                                     
-                                    categoryButton(index: index, isSelected: creationTypeManager.selectedIndex == index)
+                                    categoryButton(index: index, isSelected: creationTypeManager.selectedIndex == index, creationTypeManager: creationTypeManager)
                                         .position(x: xPos, y: yPos)
                                 }
                             }
@@ -2217,7 +2218,7 @@ struct BlackHoleParticleRing: View {
 // 添加新的辅助方法到FullscreenPostDetailView结构体内
 
 // 中央随机漫游按钮
-private func centralButton(isSelected: Bool) -> some View {
+private func centralButton(isSelected: Bool, creationTypeManager: CreationTypeManager) -> some View {
     VStack(spacing: 8) {
         ZStack {
             // 外部发光效果
@@ -2280,7 +2281,7 @@ private func centralButton(isSelected: Bool) -> some View {
 }
 
 // 围绕分类按钮
-private func categoryButton(index: Int, isSelected: Bool) -> some View {
+private func categoryButton(index: Int, isSelected: Bool, creationTypeManager: CreationTypeManager) -> some View {
     VStack(spacing: 6) {
         // 按钮圆形部分
         ZStack {
