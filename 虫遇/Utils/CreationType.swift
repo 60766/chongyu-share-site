@@ -516,23 +516,27 @@ public struct BlackHoleView: View {
 public struct CreationTypeButtonsView: View {
     @EnvironmentObject private var typeManager: CreationTypeManager
     @State private var animateButtons = false
-    
-    // 固定的按钮顺序配置
-    private let fixedButtonIndices = [1, 2, 3, 4] // 不包含随机漫游(0)，固定布局顺序
+    // 记录上一个选中的按钮索引
+    @State private var previousSelectedIndex: Int = 0
+    // 记录当前显示在底部的四个按钮索引
+    @State private var bottomButtonIndices: [Int] = [1, 2, 3, 4]
+    // 按钮位置映射，用于保持未点击按钮的位置稳定
+    @State private var buttonPositions: [Int: Int] = [:]
     
     public var body: some View {
-        // 使用固定排列的按钮布局，稳定性更高
+        // 水平排列四个按钮
         HStack(spacing: 24) {
-            // 固定顺序显示四个按钮，避免位置变化
-            ForEach(fixedButtonIndices, id: \.self) { index in
-                // 显示所有按钮，但当按钮被选中时将其淡出效果降低
-                categoryButton(index: index)
-                    .opacity(typeManager.selectedIndex == index ? 0.0 : 1.0) // 被选中时完全透明
-                    .animation(.easeInOut(duration: 0.3), value: typeManager.selectedIndex)
+            // 显示底部的4个按钮
+            ForEach(0..<4, id: \.self) { position in
+                let buttonIndex = bottomButtonIndices[position]
+                categoryButton(index: buttonIndex, position: position)
             }
         }
         .padding(.horizontal, 16)
         .onAppear {
+            // 初始化
+            initializeButtonLayout()
+            
             // 添加出现动画
             DispatchQueue.main.async {
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
@@ -540,10 +544,50 @@ public struct CreationTypeButtonsView: View {
                 }
             }
         }
+        .onChange(of: typeManager.selectedIndex) { oldValue, newValue in
+            updateButtonLayout(oldValue: oldValue, newValue: newValue)
+        }
+    }
+    
+    // 初始化按钮布局
+    private func initializeButtonLayout() {
+        // 初始状态：如果黑洞中心按钮是0(随机漫游)，那么底部显示1,2,3,4
+        // 否则，底部显示除当前选中以外的四个按钮
+        let selectedIndex = typeManager.selectedIndex
+        previousSelectedIndex = selectedIndex
+        
+        // 设置初始底部按钮
+        bottomButtonIndices = Array(0...4).filter { $0 != selectedIndex }.prefix(4).map { $0 }
+        
+        // 初始化按钮位置映射
+        for (index, buttonIndex) in bottomButtonIndices.enumerated() {
+            buttonPositions[buttonIndex] = index
+        }
+    }
+    
+    // 更新按钮布局 - 实现点击交换效果
+    private func updateButtonLayout(oldValue: Int, newValue: Int) {
+        // 先检查新值是否已经在底部按钮中
+        if let positionIndex = bottomButtonIndices.firstIndex(of: newValue) {
+            // 用户点击了底部的按钮，需要与中心按钮交换
+            
+            // 保存点击的按钮的位置索引
+            let clickedPosition = positionIndex
+            
+            // 将原中心按钮放到被点击按钮的位置
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                bottomButtonIndices[clickedPosition] = oldValue
+                // 更新按钮位置映射
+                buttonPositions[oldValue] = clickedPosition
+            }
+        }
+        
+        // 更新上一个选中索引
+        previousSelectedIndex = newValue
     }
     
     // 普通分类按钮
-    private func categoryButton(index: Int) -> some View {
+    private func categoryButton(index: Int, position: Int) -> some View {
         let isSelected = typeManager.selectedIndex == index
         
         return VStack(spacing: 7) {  // 垂直布局，间距7
@@ -604,7 +648,7 @@ public struct CreationTypeButtonsView: View {
         .opacity(animateButtons ? 1 : 0)
         .animation(
             .spring(response: 0.5, dampingFraction: 0.7)
-            .delay(0.05 + Double(index % 5) * 0.05), // 使用取模确保延迟不会过大
+            .delay(0.05 + Double(position) * 0.05), // 使用位置索引确保动画延迟合理
             value: animateButtons
         )
         .onTapGesture {
@@ -618,6 +662,8 @@ public struct CreationTypeButtonsView: View {
             }
         }
         .modifier(PulseEffect(isSelected: isSelected))
+        // 添加id确保视图在按钮变化时正确重建
+        .id("button-\(index)-\(position)-\(isSelected)")
     }
     
     public init() {}
