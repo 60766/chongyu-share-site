@@ -989,23 +989,37 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题
-                        HStack {
+                        // 顶部标题和返回按钮 - 使用与导航栏相同的布局
+                        HStack(spacing: 16) {
+                            // 返回按钮样式（不可点击，仅为视觉效果）
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 16, height: 16)
+                            
                             Spacer()
+                            
+                            // 标题 - 居中
                             Text("探索虫洞深处")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundColor(.white)
+                            
                             Spacer()
+                            
+                            // 占位空间保持对称
+                            Color.clear
+                                .frame(width: 16, height: 16)
                         }
-                        .padding(.top, getSafeAreaTop() + 10)  // 直接匹配返回按钮位置 (backButton.frame = CGRect(x: 16, y: topPadding + 10, width: 32, height: 32))
-                        .frame(height: 32)  // 匹配返回按钮高度
-                        .padding(.bottom, 16)  // 调整与下方黑洞视图的间距
+                        .padding(.horizontal, 16)
+                        .frame(height: 44)
+                        .padding(.top, getSafeAreaTop())
                         
                         // 黑洞主视觉
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 进一步减小黑洞视图高度
-                            .padding(.bottom, 16)  // 增加底部间距
+                            .frame(height: UIScreen.main.bounds.height * 0.38)
+                            .padding(.top, 15)  // 增加顶部间距
+                            .padding(.bottom, 16)  // 保持底部间距
                         
                         // 提示文本 - 移到黑洞下方
                         Text("连接不同时代的声音，体验跨越时空的社交互动")
