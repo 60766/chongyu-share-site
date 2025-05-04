@@ -989,24 +989,22 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题和返回按钮 - 使用与导航栏相同的布局
+                        // 顶部标题 - 修改为与导航栏一致的风格
                         HStack(spacing: 16) {
-                            // 返回按钮样式（不可点击，仅为视觉效果）
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.white)
+                            // 左侧空间，保持与返回按钮相似的间距
+                            Color.clear
                                 .frame(width: 16, height: 16)
                             
                             Spacer()
                             
-                            // 标题 - 居中
+                            // 标题 - 使用与其他页面相同的样式
                             Text("探索虫洞深处")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundColor(.white)
                             
                             Spacer()
                             
-                            // 占位空间保持对称
+                            // 右侧空间，保持对称
                             Color.clear
                                 .frame(width: 16, height: 16)
                         }
@@ -1017,9 +1015,8 @@ struct FullscreenPostDetailView: View {
                         // 黑洞主视觉
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.38)
-                            .padding(.top, 15)  // 增加顶部间距
-                            .padding(.bottom, 16)  // 保持底部间距
+                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 进一步减小黑洞视图高度
+                            .padding(.bottom, 16)  // 增加底部间距
                         
                         // 提示文本 - 移到黑洞下方
                         Text("连接不同时代的声音，体验跨越时空的社交互动")
