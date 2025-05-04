@@ -354,21 +354,15 @@ public struct CreationTypeButtonsView: View {
     
     public var body: some View {
         VStack(spacing: 0) {
-            // 顶部四个按钮以网格形式排列
-            HStack(spacing: 30) {
-                // 左侧两个按钮
-                VStack(spacing: 20) {
-                    categoryButton(index: 1)
-                    categoryButton(index: 2)
-                }
-                
-                // 右侧两个按钮
-                VStack(spacing: 20) {
-                    categoryButton(index: 3)
-                    categoryButton(index: 4)
+            // 顶部四个按钮排成一排
+            HStack(spacing: 20) {
+                // 四个按钮水平排列
+                ForEach(1...4, id: \.self) { index in
+                    categoryButton(index: index)
                 }
             }
-            .padding(.bottom, 40)
+            .padding(.horizontal, 10)
+            .padding(.bottom, 30)
             
             // 半透明分隔线，创造层次感
             Rectangle()
@@ -383,14 +377,14 @@ public struct CreationTypeButtonsView: View {
                         endPoint: .trailing
                     )
                 )
-                .frame(width: 240, height: 1)
-                .padding(.bottom, 40)
+                .frame(width: 280, height: 1)
+                .padding(.bottom, 30)
                 .scaleEffect(x: animateButtons ? 1 : 0.3, y: 1)
                 .opacity(animateButtons ? 1 : 0)
             
-            // 底部"随机漫游"主按钮
+            // 底部"随机漫游"主按钮 - 尺寸适中
             featuredRandomButton()
-                .padding(.bottom, 10)
+                .padding(.bottom, 15)
         }
         .onAppear {
             // 添加出现动画
@@ -421,13 +415,13 @@ public struct CreationTypeButtonsView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 52, height: 52)
+                    .frame(width: 50, height: 50)
                 
                 // 内部阴影效果
                 if isSelected {
                     Circle()
                         .fill(Color.clear)
-                        .frame(width: 52, height: 52)
+                        .frame(width: 50, height: 50)
                         .overlay(
                             Circle()
                                 .stroke(
@@ -444,7 +438,7 @@ public struct CreationTypeButtonsView: View {
                 
                 // 图标
                 Image(systemName: typeManager.icons[index])
-                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
                     .foregroundColor(isSelected ? .black : .white)
                     .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
             }
@@ -453,10 +447,13 @@ public struct CreationTypeButtonsView: View {
             
             // 按钮文字
             Text(typeManager.types[index])
-                .font(.system(size: 11, weight: isSelected ? .medium : .regular))
+                .font(.system(size: 10, weight: isSelected ? .medium : .regular))
                 .foregroundColor(.white)
                 .opacity(isSelected ? 1.0 : 0.7)
+                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(width: 60)
         .offset(y: animateButtons ? 0 : 30)
         .opacity(animateButtons ? 1 : 0)
         .animation(
@@ -485,7 +482,7 @@ public struct CreationTypeButtonsView: View {
                 if isSelected {
                     Circle()
                         .fill(Color.clear)
-                        .frame(width: 85, height: 85)
+                        .frame(width: 70, height: 70)
                         .overlay(
                             Circle()
                                 .stroke(
@@ -512,12 +509,12 @@ public struct CreationTypeButtonsView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 72, height: 72)
+                    .frame(width: 60, height: 60)
                     .shadow(color: isSelected ? Color.white.opacity(0.4) : Color.black.opacity(0.2), radius: isSelected ? 8 : 4, x: 0, y: 0)
                 
                 // 图标
                 Image(systemName: typeManager.icons[0])
-                    .font(.system(size: 28, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 24, weight: isSelected ? .semibold : .regular))
                     .foregroundColor(isSelected ? .black : .white)
                     .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
             }
@@ -526,7 +523,7 @@ public struct CreationTypeButtonsView: View {
             
             // 按钮文字
             Text(typeManager.types[0])
-                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
+                .font(.system(size: 13, weight: isSelected ? .medium : .regular))
                 .foregroundColor(.white)
                 .opacity(isSelected ? 1.0 : 0.8)
         }
