@@ -989,18 +989,16 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题 - 确保与返回按钮完全对齐
+                        // 顶部标题 - 与返回按钮完全对齐
                         HStack {
                             Spacer()
                             Text("探索虫洞深处")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundColor(.white)
-                                .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 0) // 添加阴影提高可读性
                             Spacer()
                         }
-                        .padding(.top, getSafeAreaTop() + 10)  // 与返回按钮高度精确对齐，返回按钮Y坐标为topPadding + 10
-                        .padding(.bottom, 12)  // 减少底部空间
-                        .background(Color.clear) // 确保背景透明，不影响布局
+                        .padding(.top, getSafeAreaTop() - 10)  // 与返回按钮精确对齐，返回按钮位置是topPadding + 10
+                        .padding(.bottom, 16)  // 调整底部空间
                         
                         // 黑洞主视觉
                         BlackHoleView()
