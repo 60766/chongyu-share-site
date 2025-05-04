@@ -993,37 +993,53 @@ struct FullscreenPostDetailView: View {
                         Text("探索虫洞深处")
                             .font(.system(size: 24, weight: .bold))
                             .foregroundColor(.white)
-                            .padding(.top, 50)  // 减少顶部空间
-                            .padding(.bottom, 15)  // 减少底部空间
+                            .padding(.top, 50)  
+                            .padding(.bottom, 15)  
                         
-                        // 黑洞主视觉
-                        BlackHoleView()
-                            .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 进一步减小黑洞视图高度
-                            .padding(.bottom, 16)  // 增加底部间距
+                        // 整合黑洞和按钮布局
+                        GeometryReader { geometry in
+                            ZStack {
+                                // 黑洞主视觉
+                                BlackHoleView()
+                                    .environmentObject(CreationTypeManager.shared)
+                                    .frame(height: UIScreen.main.bounds.height * 0.4)
+                                
+                                // 中心随机漫游按钮
+                                let centralPosition = CGPoint(x: geometry.size.width/2, y: geometry.size.height/2)
+                                
+                                centralButton(isSelected: creationTypeManager.selectedIndex == 0)
+                                    .position(x: centralPosition.x, y: centralPosition.y)
+                                
+                                // 四个分类按钮围绕在黑洞周围
+                                ForEach(1...4, id: \.self) { index in
+                                    let angle = Double(index-1) * (360/4) + 45 // 从右上方开始，45度偏移
+                                    let radius: CGFloat = min(geometry.size.width, geometry.size.height) * 0.32
+                                    let xPos = cos(angle * .pi / 180) * radius + centralPosition.x
+                                    let yPos = sin(angle * .pi / 180) * radius + centralPosition.y
+                                    
+                                    categoryButton(index: index, isSelected: creationTypeManager.selectedIndex == index)
+                                        .position(x: xPos, y: yPos)
+                                }
+                            }
+                        }
+                        .frame(height: UIScreen.main.bounds.height * 0.4)
                         
                         // 提示文本 - 移到黑洞下方
                         Text("连接不同时代的声音，体验跨越时空的社交互动")
-                            .font(.system(size: 16, weight: .medium))  // 增大字体并增加粗细
-                            .foregroundColor(.white.opacity(0.8))  // 增加文字不透明度
-                            .padding(.top, 0)
-                            .padding(.bottom, 8)  // 增加段落间距
+                            .font(.system(size: 16, weight: .medium))  
+                            .foregroundColor(.white.opacity(0.8))  
+                            .padding(.top, 16)
+                            .padding(.bottom, 8)  
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)  // 减少水平内边距
+                            .padding(.horizontal, 40)  
                         
                         // 辅助说明
                         Text("每种内容类型将带你进入不同的时空交流维度")
-                            .font(.system(size: 14))  // 增大字体
-                            .foregroundColor(.white.opacity(0.6))  // 增加对比度
-                            .padding(.bottom, 28)  // 增加与按钮之间的间距
+                            .font(.system(size: 14))  
+                            .foregroundColor(.white.opacity(0.6))  
+                            .padding(.bottom, 40)  
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 40)
-                        
-                        // 创作类型按钮 - 移到文字下方
-                        CreationTypeButtonsView()
-                            .environmentObject(CreationTypeManager.shared)
-                            .frame(height: 180)  // 调整高度适应环绕式布局
-                            .padding(.bottom, 30)  // 增加与主按钮之间的间距
                         
                         // 主按钮 - 开启时空对话
                         Button(action: {
@@ -1037,34 +1053,31 @@ struct FullscreenPostDetailView: View {
                                 onDismiss?()
                             }
                         }) {
-                            HStack(spacing: 10) {  // 增加图标与文字间距
+                            HStack(spacing: 10) {  
                                 Image(systemName: "antenna.radiowaves.left.and.right")
-                                    .font(.system(size: 18))  // 增大图标尺寸
+                                    .font(.system(size: 18))  
                                 
                                 Text("启动虫洞捕捉")
-                                    .font(.system(size: 18, weight: .semibold))  // 增大文字尺寸
+                                    .font(.system(size: 18, weight: .semibold))  
                             }
                             .foregroundColor(.black)
-                            .frame(height: 56)  // 增加按钮高度
-                            .frame(width: UIScreen.main.bounds.width * 0.6)  // 增加按钮宽度
+                            .frame(height: 56)  
+                            .frame(width: UIScreen.main.bounds.width * 0.6)  
                             .background(
                                 LinearGradient(
                                     gradient: Gradient(colors: [.white, .white.opacity(0.92)]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
-                            )  // 添加微妙渐变
-                            .cornerRadius(28)  // 圆角随高度增加
-                            .shadow(color: Color.white.opacity(0.4), radius: 10, x: 0, y: 0)  // 增强发光效果
+                            )  
+                            .cornerRadius(28)  
+                            .shadow(color: Color.white.opacity(0.4), radius: 10, x: 0, y: 0)  
                         }
-                        .padding(.bottom, 60)  // 调整与底部的距离
-                        
-                        // 移除Spacer，防止按钮被推到底部
-                        // Spacer()
+                        .padding(.bottom, 60)  
                     }
                 }
                 .zIndex(300)
-                .transition(.opacity) // 仅保留简单过渡动画
+                .transition(.opacity) 
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
                 .environmentObject(CreationTypeManager.shared)
@@ -2198,5 +2211,136 @@ struct BlackHoleParticleRing: View {
     
     private func getFrame() -> CGRect {
         return CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width * 0.65, height: UIScreen.main.bounds.width * 0.65)
+    }
+}
+
+// 添加新的辅助方法到FullscreenPostDetailView结构体内
+
+// 中央随机漫游按钮
+private func centralButton(isSelected: Bool) -> some View {
+    VStack(spacing: 8) {
+        ZStack {
+            // 外部发光效果
+            if isSelected {
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 75, height: 75)
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [.white.opacity(0.8), .white.opacity(0.2)]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2
+                            )
+                    )
+                    .shadow(color: Color.white.opacity(0.3), radius: 8, x: 0, y: 0)
+            }
+            
+            // 主背景圆形
+            Circle()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            isSelected ? Color.white.opacity(1) : Color.white.opacity(0.12),
+                            isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.18)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 65, height: 65)
+                .shadow(color: isSelected ? Color.white.opacity(0.4) : Color.black.opacity(0.2), radius: isSelected ? 8 : 4, x: 0, y: 0)
+            
+            // 图标
+            Image(systemName: "shuffle")
+                .font(.system(size: 26, weight: isSelected ? .semibold : .regular))
+                .foregroundColor(isSelected ? .black : .white)
+                .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
+        }
+        .scaleEffect(isSelected ? 1.1 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        
+        // 按钮文字
+        Text("随机漫游")
+            .font(.system(size: 14, weight: isSelected ? .medium : .regular))
+            .foregroundColor(.white)
+            .opacity(isSelected ? 1.0 : 0.8)
+    }
+    .onTapGesture {
+        // 触发触觉反馈
+        let impactMed = UIImpactFeedbackGenerator(style: .medium)
+        impactMed.impactOccurred()
+        
+        // 更新选中状态
+        creationTypeManager.selectType(at: 0)
+    }
+}
+
+// 围绕分类按钮
+private func categoryButton(index: Int, isSelected: Bool) -> some View {
+    VStack(spacing: 6) {
+        // 按钮圆形部分
+        ZStack {
+            // 背景圆形
+            Circle()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            isSelected ? Color.white : Color.white.opacity(0.05),
+                            isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.1)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 50, height: 50)
+            
+            // 内部阴影效果
+            if isSelected {
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 50, height: 50)
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [.white.opacity(0.8), .white.opacity(0.2)]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2
+                            )
+                    )
+                    .shadow(color: Color.white.opacity(0.3), radius: 6, x: 0, y: 0)
+            }
+            
+            // 图标
+            Image(systemName: creationTypeManager.icons[index])
+                .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
+                .foregroundColor(isSelected ? .black : .white)
+                .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
+        }
+        .scaleEffect(isSelected ? 1.08 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        
+        // 按钮文字
+        Text(creationTypeManager.types[index])
+            .font(.system(size: 12, weight: isSelected ? .medium : .regular))
+            .foregroundColor(.white)
+            .opacity(isSelected ? 1.0 : 0.7)
+            .lineLimit(1)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+    .frame(width: 60)
+    .onTapGesture {
+        // 触发触觉反馈
+        let impactMed = UIImpactFeedbackGenerator(style: .medium)
+        impactMed.impactOccurred()
+        
+        // 更新选中状态
+        creationTypeManager.selectType(at: index)
     }
 }
