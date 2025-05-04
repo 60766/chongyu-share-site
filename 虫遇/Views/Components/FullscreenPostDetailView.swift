@@ -999,32 +999,8 @@ struct FullscreenPostDetailView: View {
                         
                         // 整合黑洞和按钮布局
                         GeometryReader { geometry in
-                            ZStack(alignment: .center) {
-                                // 黑洞主视觉 - 更好地居中定位
-                                BlackHoleView()
-                                    .environmentObject(CreationTypeManager.shared)
-                                    .frame(width: min(geometry.size.width * 0.9, geometry.size.height * 0.8))
-                                    .frame(height: geometry.size.height * 0.8) // 占据高度的80%
-                                    .position(x: geometry.size.width/2, y: geometry.size.height/2)
-                                
-                                // 中心随机漫游按钮
-                                let centralPosition = CGPoint(x: geometry.size.width/2, y: geometry.size.height/2)
-                                
-                                centralButton(isSelected: creationTypeManager.selectedIndex == 0, creationTypeManager: creationTypeManager)
-                                    .position(x: centralPosition.x, y: centralPosition.y)
-                                
-                                // 四个分类按钮围绕在黑洞周围 - 优化布局参数
-                                ForEach(1...4, id: \.self) { index in
-                                    let angle = Double(index-1) * (360/4) + 45 // 从右上方开始，45度偏移
-                                    let radius: CGFloat = min(geometry.size.width, geometry.size.height) * 0.28 // 调整为更合适的半径
-                                    let xPos = cos(angle * .pi / 180) * radius + centralPosition.x
-                                    let yPos = sin(angle * .pi / 180) * radius + centralPosition.y
-                                    
-                                    categoryButton(index: index, isSelected: creationTypeManager.selectedIndex == index, creationTypeManager: creationTypeManager)
-                                        .position(x: xPos, y: yPos)
-                                }
-                            }
-                            .frame(width: geometry.size.width, height: geometry.size.height)
+                            // 将ZStack提取出来以减少嵌套深度
+                            buttonLayoutWithBlackHole(geometry: geometry)
                         }
                         .frame(height: UIScreen.main.bounds.height * 0.42)
                         .background(Color.black.opacity(0.6)) // 增加一个半透明背景增强视觉效果
@@ -2349,4 +2325,61 @@ private func categoryButton(index: Int, isSelected: Bool, creationTypeManager: C
         // 更新选中状态
         creationTypeManager.selectType(at: index)
     }
+}
+
+// 添加到FullscreenPostDetailView结构体内的辅助方法
+// 拆分复杂布局成独立函数以减轻编译器负担
+private func buttonLayoutWithBlackHole(geometry: GeometryProxy) -> some View {
+    // 计算位置变量
+    let centralPosition = CGPoint(x: geometry.size.width/2, y: geometry.size.height/2)
+    let blackHoleWidth = min(geometry.size.width * 0.9, geometry.size.height * 0.8)
+    let blackHoleHeight = geometry.size.height * 0.8
+    
+    return ZStack(alignment: .center) {
+        // 黑洞主视觉 - 更好地居中定位
+        BlackHoleView()
+            .environmentObject(CreationTypeManager.shared)
+            .frame(width: blackHoleWidth)
+            .frame(height: blackHoleHeight)
+            .position(x: centralPosition.x, y: centralPosition.y)
+        
+        // 中心随机漫游按钮
+        centralButton(
+            isSelected: creationTypeManager.selectedIndex == 0,
+            creationTypeManager: creationTypeManager
+        )
+        .position(x: centralPosition.x, y: centralPosition.y)
+        
+        // 四个分类按钮围绕在黑洞周围
+        ForEach(1...4, id: \.self) { index in
+            // 计算每个按钮的位置
+            categoryButtonView(
+                index: index,
+                isSelected: creationTypeManager.selectedIndex == index,
+                centralPosition: centralPosition,
+                geometry: geometry
+            )
+        }
+    }
+    .frame(width: geometry.size.width, height: geometry.size.height)
+}
+
+// 拆分计算按钮位置的逻辑为单独的函数
+private func categoryButtonView(index: Int, isSelected: Bool, centralPosition: CGPoint, geometry: GeometryProxy) -> some View {
+    // 角度计算
+    let angle = Double(index-1) * (360/4) + 45 // 从右上方开始，45度偏移
+    
+    // 半径计算
+    let radius: CGFloat = min(geometry.size.width, geometry.size.height) * 0.28
+    
+    // 位置计算
+    let xPos = cos(angle * .pi / 180) * radius + centralPosition.x
+    let yPos = sin(angle * .pi / 180) * radius + centralPosition.y
+    
+    return categoryButton(
+        index: index,
+        isSelected: isSelected,
+        creationTypeManager: creationTypeManager
+    )
+    .position(x: xPos, y: yPos)
 }
