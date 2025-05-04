@@ -354,15 +354,15 @@ public struct CreationTypeButtonsView: View {
     
     public var body: some View {
         VStack(spacing: 0) {
-            // 顶部四个按钮排成一排
-            HStack(spacing: 20) {
+            // 顶部四个按钮排成一排，增加间距
+            HStack(spacing: 28) {
                 // 四个按钮水平排列
                 ForEach(1...4, id: \.self) { index in
                     categoryButton(index: index)
                 }
             }
             .padding(.horizontal, 10)
-            .padding(.bottom, 30)
+            .padding(.bottom, 32)
             
             // 半透明分隔线，创造层次感
             Rectangle()
@@ -370,19 +370,19 @@ public struct CreationTypeButtonsView: View {
                     LinearGradient(
                         gradient: Gradient(colors: [
                             Color.white.opacity(0),
-                            Color.white.opacity(0.3),
+                            Color.white.opacity(0.35),
                             Color.white.opacity(0)
                         ]),
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
-                .frame(width: 280, height: 1)
-                .padding(.bottom, 30)
+                .frame(width: 300, height: 1)
+                .padding(.bottom, 32)
                 .scaleEffect(x: animateButtons ? 1 : 0.3, y: 1)
                 .opacity(animateButtons ? 1 : 0)
             
-            // 底部"随机漫游"主按钮 - 尺寸适中
+            // 底部"随机漫游"主按钮 - 增加尺寸，强化主要地位
             featuredRandomButton()
                 .padding(.bottom, 15)
         }
@@ -400,7 +400,7 @@ public struct CreationTypeButtonsView: View {
     private func categoryButton(index: Int) -> some View {
         let isSelected = typeManager.selectedIndex == index
         
-        return VStack(spacing: 6) {
+        return VStack(spacing: 8) {
             // 按钮圆形部分
             ZStack {
                 // 背景圆形
@@ -409,19 +409,19 @@ public struct CreationTypeButtonsView: View {
                         LinearGradient(
                             gradient: Gradient(colors: [
                                 isSelected ? Color.white : Color.white.opacity(0.05),
-                                isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.1)
+                                isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.12)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 50, height: 50)
+                    .frame(width: 55, height: 55)
                 
                 // 内部阴影效果
                 if isSelected {
                     Circle()
                         .fill(Color.clear)
-                        .frame(width: 50, height: 50)
+                        .frame(width: 55, height: 55)
                         .overlay(
                             Circle()
                                 .stroke(
@@ -433,27 +433,27 @@ public struct CreationTypeButtonsView: View {
                                     lineWidth: 2
                                 )
                         )
-                        .shadow(color: Color.white.opacity(0.3), radius: 6, x: 0, y: 0)
+                        .shadow(color: Color.white.opacity(0.4), radius: 7, x: 0, y: 0)
                 }
                 
                 // 图标
                 Image(systemName: typeManager.icons[index])
-                    .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
                     .foregroundColor(isSelected ? .black : .white)
-                    .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
+                    .shadow(color: isSelected ? Color.black.opacity(0.3) : Color.clear, radius: 1, x: 0, y: 1)
             }
-            .scaleEffect(isSelected ? 1.08 : 1.0)
+            .scaleEffect(isSelected ? 1.1 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
             
             // 按钮文字
             Text(typeManager.types[index])
-                .font(.system(size: 10, weight: isSelected ? .medium : .regular))
+                .font(.system(size: 12, weight: isSelected ? .medium : .regular))
                 .foregroundColor(.white)
                 .opacity(isSelected ? 1.0 : 0.7)
                 .lineLimit(1)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(width: 60)
+        .frame(width: 64)
         .offset(y: animateButtons ? 0 : 30)
         .opacity(animateButtons ? 1 : 0)
         .animation(
@@ -476,13 +476,13 @@ public struct CreationTypeButtonsView: View {
     private func featuredRandomButton() -> some View {
         let isSelected = typeManager.selectedIndex == 0
         
-        return VStack(spacing: 8) {
+        return VStack(spacing: 10) {
             ZStack {
                 // 外部发光效果
                 if isSelected {
                     Circle()
                         .fill(Color.clear)
-                        .frame(width: 70, height: 70)
+                        .frame(width: 80, height: 80)
                         .overlay(
                             Circle()
                                 .stroke(
@@ -494,7 +494,7 @@ public struct CreationTypeButtonsView: View {
                                     lineWidth: 2
                                 )
                         )
-                        .shadow(color: Color.white.opacity(0.3), radius: 8, x: 0, y: 0)
+                        .shadow(color: Color.white.opacity(0.4), radius: 10, x: 0, y: 0)
                 }
                 
                 // 主背景圆形
@@ -509,21 +509,25 @@ public struct CreationTypeButtonsView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 60, height: 60)
-                    .shadow(color: isSelected ? Color.white.opacity(0.4) : Color.black.opacity(0.2), radius: isSelected ? 8 : 4, x: 0, y: 0)
+                    .frame(width: 70, height: 70)
+                    .shadow(color: isSelected ? Color.white.opacity(0.5) : Color.black.opacity(0.2), radius: isSelected ? 8 : 4, x: 0, y: 0)
                 
                 // 图标
                 Image(systemName: typeManager.icons[0])
-                    .font(.system(size: 24, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 28, weight: isSelected ? .semibold : .regular))
                     .foregroundColor(isSelected ? .black : .white)
-                    .shadow(color: isSelected ? Color.black.opacity(0.2) : Color.clear, radius: 1, x: 0, y: 1)
+                    .shadow(color: isSelected ? Color.black.opacity(0.3) : Color.clear, radius: 1, x: 0, y: 1)
             }
             .scaleEffect(isSelected ? 1.1 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+            .animation(
+                .spring(response: 0.3, dampingFraction: 0.7)
+                .repeatCount(isSelected ? 1 : 0, autoreverses: false),
+                value: isSelected
+            )
             
             // 按钮文字
             Text(typeManager.types[0])
-                .font(.system(size: 13, weight: isSelected ? .medium : .regular))
+                .font(.system(size: 15, weight: isSelected ? .medium : .regular))
                 .foregroundColor(.white)
                 .opacity(isSelected ? 1.0 : 0.8)
         }

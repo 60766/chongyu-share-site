@@ -991,41 +991,43 @@ struct FullscreenPostDetailView: View {
                     VStack(spacing: 0) {
                         // 顶部标题
                         Text("探索虫洞深处")
-                            .font(.system(size: 22, weight: .bold))
+                            .font(.system(size: 26, weight: .heavy))
                             .foregroundColor(.white)
-                            .padding(.top, 60)
+                            .shadow(color: Color.white.opacity(0.3), radius: 4, x: 0, y: 0)
+                            .padding(.top, 55)
                             .padding(.bottom, 20)
                         
-                        // 黑洞主视觉
+                        // 黑洞主视觉 - 减小高度比例
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.42) // 略微减小黑洞视图高度
-                            .padding(.bottom, 10) // 减小底部间距
+                            .frame(height: UIScreen.main.bounds.height * 0.38)
+                            .padding(.bottom, 15)
                         
-                        // 提示文本 - 移到黑洞下方
+                        // 提示文本 - 增加字体大小及行间距
                         Text("连接不同时代的声音，体验跨越时空的社交互动")
-                            .font(.system(size: 15))
-                            .foregroundColor(.white.opacity(0.7))
-                            .padding(.top, 0) // 减小顶部间距
-                            .padding(.bottom, 6) // 减小底部间距
+                            .font(.system(size: 17))
+                            .foregroundColor(.white.opacity(0.85))
+                            .lineSpacing(7)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 45)
+                            .padding(.bottom, 10)
                         
-                        // 辅助说明
+                        // 辅助说明 - 适当调整大小和透明度
                         Text("每种内容类型将带你进入不同的时空交流维度")
-                            .font(.system(size: 13))
-                            .foregroundColor(.white.opacity(0.5))
-                            .padding(.bottom, 20) // 减小底部间距
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.6))
+                            .lineSpacing(5)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 45)
+                            .padding(.bottom, 22)
                         
-                        // 创作类型按钮 - 移到文字下方
+                        // 创作类型按钮 - 保持原高度
                         CreationTypeButtonsView()
                             .environmentObject(CreationTypeManager.shared)
                             .frame(height: 180)
-                            .padding(.bottom, 20)
+                            .padding(.bottom, 25)
                         
-                        // 主按钮 - 开启时空对话
+                        // 主按钮 - 改进样式为渐变设计
                         Button(action: {
                             // 这里添加AI生成内容的逻辑
                             withAnimation {
@@ -1037,26 +1039,47 @@ struct FullscreenPostDetailView: View {
                                 onDismiss?()
                             }
                         }) {
-                            HStack(spacing: 8) {
+                            HStack(spacing: 10) {
                                 Image(systemName: "antenna.radiowaves.left.and.right")
-                                    .font(.system(size: 16))
+                                    .font(.system(size: 18))
                                 
                                 Text("启动虫洞捕捉")
-                                    .font(.system(size: 16, weight: .semibold))
+                                    .font(.system(size: 18, weight: .semibold))
                             }
-                            .foregroundColor(.black)
-                            .frame(height: 52)
-                            .frame(width: UIScreen.main.bounds.width * 0.55)
-                            .background(Color.white)
-                            .cornerRadius(26)
-                            .shadow(color: Color.white.opacity(0.3), radius: 8, x: 0, y: 0)
+                            .foregroundColor(.white)
+                            .frame(height: 54)
+                            .frame(width: UIScreen.main.bounds.width * 0.65)
+                            .background(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color(red: 0.15, green: 0.15, blue: 0.3),
+                                        Color(red: 0.25, green: 0.2, blue: 0.5)
+                                    ]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 27)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                            .cornerRadius(27)
+                            .shadow(color: Color(red: 0.4, green: 0.3, blue: 0.6).opacity(0.3), radius: 10, x: 0, y: 0)
                         }
                         .padding(.bottom, 80)
-                        
-                        // 移除Spacer，防止按钮被推到底部
-                        // Spacer()
                     }
                 }
+                .background(
+                    // 添加微妙渐变背景替代纯黑色
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.black,
+                            Color(red: 0.05, green: 0.05, blue: 0.1)
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .zIndex(300)
                 .transition(.opacity) // 仅保留简单过渡动画
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -2193,4 +2216,106 @@ struct BlackHoleParticleRing: View {
     private func getFrame() -> CGRect {
         return CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width * 0.65, height: UIScreen.main.bounds.width * 0.65)
     }
+}
+
+// 黑洞探索视图
+private func blackHoleExplorationView() -> some View {
+    VStack(spacing: 0) {
+        // 标题区域 - 增加字体大小和视觉效果
+        Text("虫洞探索")
+            .font(.system(size: 26, weight: .heavy))
+            .foregroundColor(.white)
+            .shadow(color: Color.white.opacity(0.5), radius: 8, x: 0, y: 0)
+            .padding(.top, 20)
+            .padding(.bottom, 20)
+        
+        // 黑洞视觉效果区域 - 减小高度比例
+        BlackHoleView()
+            .frame(height: UIScreen.main.bounds.height * 0.38)
+            .padding(.bottom, 10)
+        
+        // 提示文字 - 增加字体大小和行间距
+        Text("探索宇宙深处的奇妙虫洞")
+            .font(.system(size: 19, weight: .medium))
+            .foregroundColor(.white)
+            .lineSpacing(4)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal)
+            .padding(.top, 0)
+            .padding(.bottom, 6)
+        
+        // 辅助说明文字 - 调整透明度和行间距
+        Text("选择感兴趣的主题，启动虫洞捕捉")
+            .font(.system(size: 14))
+            .foregroundColor(Color.white.opacity(0.7))
+            .lineSpacing(4)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal)
+            .padding(.bottom, 20)
+        
+        // 创建类型按钮视图 - 调整高度和间距
+        CreationTypeButtonsView()
+            .environmentObject(creationTypeManager)
+            .frame(height: 190)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 10)
+        
+        // 启动按钮 - 使用渐变背景
+        Button(action: {
+            self.hapticFeedback(style: .medium)
+            self.creationAction?()
+        }) {
+            ZStack {
+                // 渐变背景
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(hex: 0x3D85C6).opacity(0.95),
+                                Color(hex: 0x0B5394)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(height: 56)
+                    .shadow(color: Color(hex: 0x0B5394).opacity(0.6), radius: 8, x: 0, y: 4)
+                
+                HStack {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                    
+                    Text("启动虫洞捕捉")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+            }
+            .padding(.horizontal, 40)
+        }
+        .buttonStyle(ScaleButtonStyle())
+        .padding(.bottom, 80)
+        
+        // 移除底部Spacer，防止按钮被推到太低
+        // Spacer()
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(
+        ZStack {
+            // 宇宙背景
+            Color.black
+            
+            // 星星效果
+            ForEach(0..<100, id: \.self) { _ in
+                Circle()
+                    .fill(Color.white.opacity(Double.random(in: 0.1...0.9)))
+                    .frame(width: Double.random(in: 1...2.5), height: Double.random(in: 1...2.5))
+                    .position(
+                        x: Double.random(in: 0...UIScreen.main.bounds.width),
+                        y: Double.random(in: 0...UIScreen.main.bounds.height)
+                    )
+            }
+        }
+        .edgesIgnoringSafeArea(.all)
+    )
 }
