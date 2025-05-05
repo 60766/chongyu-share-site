@@ -95,7 +95,7 @@ struct CharacterDetailView: View {
         // 使用新的导航API
         .navigationDestination(isPresented: $navigateToChatView) {
             ChatView(
-                character: ChatCharacter(
+                character: CYChatCharacter(
                     id: character.id,
                     name: character.name,
                     introduction: character.introduction,

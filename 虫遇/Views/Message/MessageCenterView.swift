@@ -14,8 +14,8 @@ struct MessageCenterView: View {
     private let tabOptions = ["全部对话", "未读消息", "收藏对话"]
     /// 模拟对话数据
     @State private var conversations: [Conversation] = []
-    /// 模拟角色数据 - 修改为ChatCharacter类型
-    @State private var characters: [String: ChatCharacter] = [:]
+    /// 模拟角色数据 - 修改为CYChatCharacter类型
+    @State private var characters: [String: CYChatCharacter] = [:]
     
     var body: some View {
         VStack(spacing: 0) {
@@ -192,8 +192,8 @@ struct MessageCenterView: View {
      * 加载模拟数据
      */
     private func loadMockData() {
-        // 模拟角色数据 - 使用ChatCharacter替代Character
-        let einstein = ChatCharacter(
+        // 模拟角色数据 - 使用CYChatCharacter替代Character
+        let einstein = CYChatCharacter(
             id: "1",
             name: "阿尔伯特·爱因斯坦",
             introduction: "现代物理学最重要的科学家之一，相对论的创立者",
@@ -207,7 +207,7 @@ struct MessageCenterView: View {
             keyThoughts: ["时间和空间是相对的", "质量可以转化为能量"]
         )
         
-        let socrates = ChatCharacter(
+        let socrates = CYChatCharacter(
             id: "2",
             name: "苏格拉底",
             introduction: "古希腊哲学家，西方哲学的奠基人之一",
@@ -221,7 +221,7 @@ struct MessageCenterView: View {
             keyThoughts: ["未经审视的生活不值得过", "认识你自己"]
         )
         
-        let davinci = ChatCharacter(
+        let davinci = CYChatCharacter(
             id: "3",
             name: "伦纳德·达·芬奇",
             introduction: "意大利文艺复兴时期的多才多艺的人，艺术家、发明家、工程师",
@@ -277,10 +277,10 @@ struct MessageCenterView: View {
  */
 struct ConversationRow: View {
     var conversation: Conversation
-    var character: ChatCharacter?
+    var character: CYChatCharacter?
     
     var body: some View {
-        NavigationLink(destination: ChatView(character: character ?? ChatCharacter(
+        NavigationLink(destination: ChatView(character: character ?? CYChatCharacter(
             id: "",
             name: "未知角色",
             introduction: "",

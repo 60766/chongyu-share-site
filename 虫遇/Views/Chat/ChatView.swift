@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 
+// 引入CYChatCharacter
+import Foundation
+
 /**
  * 聊天角色模型
  * 用于ChatView中表示对话角色
@@ -25,7 +28,7 @@ struct ChatCharacter: Identifiable {
  */
 struct ChatView: View {
     /// 聊天角色
-    var character: ChatCharacter
+    var character: CYChatCharacter
     /// 对话ID
     var conversationId: String
     /// 用户消息输入
@@ -705,7 +708,8 @@ struct ChatView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
             ChatView(
-                character: ChatCharacter(
+                character: CYChatCharacter(
+                    id: "preview-id",
                     name: "阿尔伯特·爱因斯坦",
                     introduction: "现代物理学最重要的科学家之一，相对论的创立者",
                     field: "物理学家",
@@ -715,10 +719,13 @@ struct ChatView_Previews: PreviewProvider {
                     eraTag: "1900s",
                     achievements: ["相对论", "光电效应", "质能方程"],
                     mainWorks: ["相对论：广义和狭义"],
-                    keyThoughts: ["时间和空间是相对的", "质量可以转化为能量"]
+                    keyThoughts: ["时间和空间是相对的", "质量可以转化为能量", "自然界的规律是简单而统一的"],
+                    followerCount: 5280,
+                    interactionCount: 18600,
+                    rating: 4.9
                 ),
                 conversationId: "testConversation"
             )
         }
     }
-} 
+}
