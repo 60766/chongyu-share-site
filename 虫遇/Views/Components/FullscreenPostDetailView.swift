@@ -989,26 +989,30 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题 - 修改为与导航栏一致的风格，确保与返回按钮精确对齐
+                        // 顶部标题 - 修改为与导航栏一致的风格，确保水平居中对齐
                         GeometryReader { geometry in
-                            ZStack(alignment: .top) {
-                                // 标题文本 - 精确定位到返回按钮中心线
-                                Text("探索虫洞深处")
-                                    .font(.system(size: 17, weight: .medium))
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                                    .position(x: geometry.size.width / 2, y: getSafeAreaTop() + 10 + 16) // y = topPadding + 10(按钮顶部) + 16(按钮高度一半)
-                                
-                                // 参考位置 - 保持与左侧返回按钮的对齐参考
+                            ZStack {
+                                // 标题文本 - 确保在整个屏幕宽度上水平居中
                                 HStack {
-                                    // 空占位符，与系统返回按钮布局匹配
+                                    // 左侧空白区域 - 与返回按钮宽度相同
                                     Color.clear
-                                        .frame(width: 32, height: 32)
-                                        .padding(.leading, 16)
+                                        .frame(width: 32 + 16) // 按钮宽度 + 左边距
                                     
                                     Spacer()
+                                    
+                                    Text("探索虫洞深处")
+                                        .font(.system(size: 17, weight: .medium))
+                                        .foregroundColor(.white)
+                                    
+                                    Spacer()
+                                    
+                                    // 右侧空白区域 - 与左侧对称
+                                    Color.clear
+                                        .frame(width: 32 + 16)
                                 }
-                                .padding(.top, getSafeAreaTop() + 10) // 精确匹配系统返回按钮位置
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .padding(.top, getSafeAreaTop() + 10)
                             }
                         }
                         .frame(height: getSafeAreaTop() + 44) // 总高度 = 顶部安全区 + 导航栏高度
