@@ -989,33 +989,36 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 标题区域 - 使用与蓝色返回按钮完全相同的位置约束
-                        HStack {
-                            // 左侧留出蓝色返回按钮的空间
-                            Spacer()
-                                .frame(width: 54) // 16(左边距) + 32(按钮宽度) + 6(右侧间距)
-                            
-                            // 标题文本
-                            Spacer()
-                            
-                            Text("探索虫洞深处")
-                                .font(.system(size: 17, weight: .medium))
-                                .foregroundColor(.white)
-                                .offset(y: 4) // 添加向下的偏移量使标题与返回按钮垂直对齐
-                            
-                            Spacer()
-                            
-                            // 右侧对称留白
-                            Spacer()
-                                .frame(width: 54)
+                        // 顶部标题 - 重新设计以严格保持水平对齐
+                        GeometryReader { geo in
+                            ZStack {
+                                // 标题文本 - 居中
+                                Text("探索虫洞深处")
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundColor(.white)
+                                    // 绝对定位到与返回按钮相同的垂直位置
+                                    .position(
+                                        x: geo.size.width / 2,
+                                        y: 16 // 与返回按钮的中心点对齐
+                                    )
+                                
+                                // 左侧占位 - 保持参考但不影响布局
+                                HStack {
+                                    Color.clear
+                                        .frame(width: 32, height: 32)
+                                        .padding(.leading, 16)
+                                    Spacer()
+                                }
+                                .allowsHitTesting(false)
+                            }
                         }
-                        .frame(height: 44) // 增加高度从32到44，与返回按钮容器保持一致
-                        .padding(.top, getSafeAreaTop() + 8) // 从10改为8，与蓝色返回按钮顶部完全对齐
+                        .frame(height: 32) // 与返回按钮高度一致
+                        .padding(.top, getSafeAreaTop() + 10) // 与返回按钮顶部对齐
                         
                         // 黑洞主视觉
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.38)
+                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 进一步减小黑洞视图高度
                             .padding(.bottom, 16)  // 增加底部间距
                         
                         // 提示文本 - 移到黑洞下方
@@ -1241,7 +1244,7 @@ struct FullscreenPostDetailView: View {
         
         // 配置返回按钮
         let backButton = UIButton(type: .system)
-        backButton.frame = CGRect(x: 16, y: topPadding + 8, width: 32, height: 32) // 从10改为8，微调返回按钮位置向上2点
+        backButton.frame = CGRect(x: 16, y: topPadding + 10, width: 32, height: 32)
         
         // 设置按钮图标
         let imageConfig = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
