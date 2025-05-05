@@ -989,27 +989,27 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题 - 修改布局以精确对齐蓝色返回按钮
-                        ZStack {
-                            // 绝对定位标题文字，确保与蓝色返回按钮垂直居中对齐
+                        // 标题区域 - 使用与蓝色返回按钮完全相同的位置约束
+                        HStack {
+                            // 左侧留出蓝色返回按钮的空间
+                            Spacer()
+                                .frame(width: 54) // 16(左边距) + 32(按钮宽度) + 6(右侧间距)
+                            
+                            // 标题文本
+                            Spacer()
+                            
                             Text("探索虫洞深处")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundColor(.white)
-                                .frame(maxWidth: .infinity, alignment: .center)
                             
-                            // 左侧参考空间 - 与蓝色返回按钮大小和位置完全一致
-                            HStack {
-                                // 与蓝色返回按钮完全匹配的尺寸
-                                Color.clear
-                                    .frame(width: 32, height: 32)
-                                    .padding(.leading, 16)
-                                
-                                Spacer()
-                            }
+                            Spacer()
+                            
+                            // 右侧对称留白
+                            Spacer()
+                                .frame(width: 54)
                         }
-                        .frame(height: 32) // 调整为与蓝色返回按钮相同的高度
-                        .padding(.top, getSafeAreaTop() + 10) // 与蓝色返回按钮顶部对齐
-                        .padding(.bottom, 6) // 添加底部间距以保持整体布局平衡
+                        .frame(height: 32) // 确保与蓝色返回按钮高度一致
+                        .padding(.top, getSafeAreaTop() + 10) // 与蓝色返回按钮顶部完全对齐
                         
                         // 黑洞主视觉
                         BlackHoleView()
