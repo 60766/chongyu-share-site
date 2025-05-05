@@ -1009,13 +1009,13 @@ struct FullscreenPostDetailView: View {
                             Spacer()
                                 .frame(width: 54)
                         }
-                        .frame(height: 32) // 确保与蓝色返回按钮高度一致
+                        .frame(height: 44) // 增加高度从32到44，与返回按钮容器保持一致
                         .padding(.top, getSafeAreaTop() + 10) // 与蓝色返回按钮顶部完全对齐
                         
                         // 黑洞主视觉
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 进一步减小黑洞视图高度
+                            .frame(height: UIScreen.main.bounds.height * 0.38)
                             .padding(.bottom, 16)  // 增加底部间距
                         
                         // 提示文本 - 移到黑洞下方
