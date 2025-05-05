@@ -989,58 +989,64 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 精确计算标题位置与返回按钮对齐
-                        HStack {
-                            // 左侧空间，与返回按钮宽度一致 
-                            Spacer().frame(width: 48)
-                            
-                            // 标题居中
+                        // 顶部标题 - 修改为与导航栏一致的风格，确保与返回按钮精确对齐
+                        ZStack(alignment: .center) {
+                            // 标题层 - 精确控制位置
                             Text("探索虫洞深处")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
+                                .frame(maxWidth: .infinity, alignment: .center)
                             
-                            // 右侧空间，保持对称
-                            Spacer().frame(width: 48)
+                            // 占位空间 - 保持与左侧返回按钮的对齐，仅用于布局参考
+                            HStack {
+                                // 空占位符，与系统返回按钮布局匹配
+                                Color.clear
+                                    .frame(width: 32, height: 32)
+                                    .padding(.leading, 16)
+                                
+                                Spacer()
+                            }
                         }
-                        // 关键：精确匹配返回按钮位置
-                        .padding(.top, getSafeAreaTop() + 10)
-                        // 关键：微调垂直位置使文本中心与按钮中心对齐
-                        .offset(y: 2)
-                        // 整体容器高度与返回按钮相同
-                        .frame(height: 32)
+                        .frame(height: 44)
+                        .padding(.top, getSafeAreaTop() + 10) // 精确匹配系统返回按钮位置
+                        .padding(.bottom, 20) // 增加标题与黑洞之间的间距
                         
-                        // 适当的间隔，保持页面布局协调
-                        Spacer().frame(height: 10)
+                        // 添加适当的顶部间距，使视觉更加平衡
+                        Spacer()
+                            .frame(height: UIScreen.main.bounds.height * 0.02)
                         
                         // 黑洞主视觉
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 进一步减小黑洞视图高度
-                            .padding(.bottom, 16)  // 增加底部间距
+                            .frame(height: UIScreen.main.bounds.height * 0.36)  // 调整黑洞视图高度比例
+                            .padding(.horizontal, 16) // 添加水平内边距
+                            .padding(.bottom, 24)  // 增加底部间距
                         
-                        // 提示文本 - 移到黑洞下方
-                        Text("连接不同时代的声音，体验跨越时空的社交互动")
-                            .font(.system(size: 16, weight: .medium))  // 增大字体并增加粗细
-                            .foregroundColor(.white.opacity(0.8))  // 增加文字不透明度
-                            .padding(.top, 0)
-                            .padding(.bottom, 8)  // 增加段落间距
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)  // 减少水平内边距
-                        
-                        // 辅助说明
-                        Text("每种内容类型将带你进入不同的时空交流维度")
-                            .font(.system(size: 14))  // 增大字体
-                            .foregroundColor(.white.opacity(0.6))  // 增加对比度
-                            .padding(.bottom, 28)  // 增加与按钮之间的间距
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
+                        // 提示文本区域
+                        VStack(spacing: 12) { // 调整文本块内部间距
+                            // 主要提示文本
+                            Text("连接不同时代的声音，体验跨越时空的社交互动")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white.opacity(0.85))
+                                .lineSpacing(4) // 增加行间距
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true) // 确保文本显示完整
+                            
+                            // 辅助说明文本
+                            Text("每种内容类型将带你进入不同的时空交流维度")
+                                .font(.system(size: 14))
+                                .foregroundColor(.white.opacity(0.65))
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true) // 确保文本显示完整
+                        }
+                        .padding(.horizontal, 40)
+                        .padding(.bottom, 32) // 增加文本区与按钮区的间距
                         
                         // 创作类型按钮 - 移到文字下方
                         CreationTypeButtonsView()
                             .environmentObject(CreationTypeManager.shared)
                             .frame(height: 80)  // 减小按钮区域高度，适应单行按钮
-                            .padding(.bottom, 30)  // 增加与主按钮之间的间距
+                            .padding(.bottom, 40)  // 增加与主按钮之间的间距
                         
                         // 主按钮 - 开启时空对话
                         Button(action: {
@@ -1054,138 +1060,35 @@ struct FullscreenPostDetailView: View {
                                 onDismiss?()
                             }
                         }) {
-                            HStack(spacing: 10) {  // 增加图标与文字间距
+                            HStack(spacing: 10) {
                                 Image(systemName: "antenna.radiowaves.left.and.right")
-                                    .font(.system(size: 18))  // 增大图标尺寸
+                                    .font(.system(size: 18))
                                 
                                 Text("启动虫洞捕捉")
-                                    .font(.system(size: 18, weight: .semibold))  // 增大文字尺寸
+                                    .font(.system(size: 18, weight: .semibold))
                             }
                             .foregroundColor(.black)
-                            .frame(height: 56)  // 增加按钮高度
-                            .frame(width: UIScreen.main.bounds.width * 0.6)  // 增加按钮宽度
+                            .frame(height: 56)
+                            .frame(width: UIScreen.main.bounds.width * 0.6)
                             .background(
                                 LinearGradient(
                                     gradient: Gradient(colors: [.white, .white.opacity(0.92)]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
-                            )  // 添加微妙渐变
-                            .cornerRadius(28)  // 圆角随高度增加
-                            .shadow(color: Color.white.opacity(0.4), radius: 10, x: 0, y: 0)  // 增强发光效果
+                            )
+                            .cornerRadius(28)
+                            .shadow(color: Color.white.opacity(0.4), radius: 10, x: 0, y: 0)
                         }
                         .padding(.bottom, 60)  // 调整与底部的距离
                         
-                        // 移除Spacer，防止按钮被推到底部
-                        // Spacer()
+                        // 添加底部间距，确保整体视觉平衡
+                        Spacer()
+                            .frame(minHeight: UIScreen.main.bounds.height * 0.06, maxHeight: UIScreen.main.bounds.height * 0.08)
                     }
                 }
                 .zIndex(300)
                 .transition(.opacity) // 仅保留简单过渡动画
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .ignoresSafeArea()
-                .environmentObject(CreationTypeManager.shared)
-            }
-            
-            // 评论输入视图
-            CommentInputView(commentManager: viewModel.commentManager)
-                .background(
-                    // 添加背景和阴影，使其更清晰地与内容分离
-                    Color(.systemBackground)
-                        .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: -2)
-                        .edgesIgnoringSafeArea(.bottom)
-                )
-        }
-        // 禁用用户交互当正在过渡中
-        .disabled(isTransitioning)
-        .background(Color(.systemBackground).edgesIgnoringSafeArea(.all))
-        .onAppear {
-            print("⭐️ FullscreenPostDetailView 显示")
-            // 确保NavigationHelper已初始化
-            _ = NavigationHelper.shared
-            
-            // 激活视图状态
-            isViewActive = true
-            
-            // 隐藏底部标签栏 - 使用pushHideState()彻底物理隐藏底部导航栏
-            tabBarManager.pushHideState()
-            
-            // 添加系统级返回按钮
-            addSystemLevelBackButton()
-            
-            // 检查边界状态前记录当前状态
-            print("⭐️ onAppear开始: 当前帖子ID: \(viewModel.post.id), hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost)")
-            
-            // 检查是否是最后一篇帖子 - 同步执行确保立即更新状态
-            checkBoundaries()
-            
-            // 记录检查后的状态
-            print("⭐️ onAppear检查边界后: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost)")
-            
-            // 预加载下一篇和上一篇动态，实现滑动时的无缝切换
-            preloadAdjacentPosts()
-        }
-        .onDisappear {
-            print("⭐️ FullscreenPostDetailView 消失")
-            // 停止task的循环检查
-            isViewActive = false
-            
-            // 恢复底部标签栏 - 使用popHideState()恢复底部导航栏
-            tabBarManager.popHideState()
-            
-            // 清理返回按钮窗口
-            if let window = systemBackButtonWindow {
-                // 立即隐藏窗口
-                window.isHidden = true
-                window.rootViewController?.view.subviews.forEach { $0.removeFromSuperview() }
-                window.rootViewController = nil
-                
-                // 立即清除引用
-                systemBackButtonWindow = nil
-                
-                // 发送消失通知，通知其他可能持有引用的组件
-                NotificationCenter.default.post(name: NSNotification.Name("ViewWillDisappear"), object: nil)
-            }
-        }
-        // 添加一个任务，确保无论何时都保持TabBar隐藏状态
-        .task {
-            // 视图加载后，确保TabBar物理隐藏
-            tabBarManager.pushHideState()
-            
-            // 每隔一段时间检查一次TabBar状态，确保它始终隐藏
-            while isViewActive {
-                try? await Task.sleep(for: .seconds(2.0)) // 将间隔从0.5秒增加到2秒
-                
-                // 如果视图已不再活跃，停止循环
-                if !isViewActive {
-                    break
-                }
-                
-                // 使用isFullyHidden检查是否完全隐藏，如果不是则重新隐藏
-                if !tabBarManager.isFullyHidden {
-                    print("⭐️ 发现TabBar未完全隐藏，重新隐藏")
-                    tabBarManager.pushHideState()
-                }
-            }
-            
-            // 视图任务结束时确保TabBar可见
-            if !isViewActive {
-                print("⭐️ 视图任务结束，确保TabBar可见")
-                tabBarManager.popHideState()
-            }
-        }
-        // 使用更稳定的滑动指示器实现
-        .overlay(
-            ZStack {
-                // 左侧指示器（向右滑）- 完全平滑过渡
-                HStack {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(12)
-                        .background(Circle().fill(Color.black.opacity(0.15)))
-                        .padding(.leading, 20)
-                    Spacer()
                 }
                 // 关键改进：使用平滑连续的不透明度函数
                 .opacity(max(0, min(dragOffset * 0.01, 0.7)))
