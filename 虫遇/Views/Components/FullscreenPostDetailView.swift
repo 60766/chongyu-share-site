@@ -989,7 +989,7 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题 - 修改为与导航栏一致的风格
+                        // 顶部标题 - 更精确地与返回按钮对齐
                         HStack(spacing: 16) {
                             // 左侧空间，保持与返回按钮相似的间距
                             Color.clear
@@ -997,10 +997,11 @@ struct FullscreenPostDetailView: View {
                             
                             Spacer()
                             
-                            // 标题 - 使用与其他页面相同的样式
+                            // 标题 - 使用与其他页面相同的样式，但微调垂直位置
                             Text("探索虫洞深处")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundColor(.white)
+                                .offset(y: -1) // 微调文本垂直位置，使其在视觉上居中
                             
                             Spacer()
                             
@@ -1009,8 +1010,8 @@ struct FullscreenPostDetailView: View {
                                 .frame(width: 16, height: 16)
                         }
                         .padding(.horizontal, 16)
-                        .frame(height: 32) // 与返回按钮高度一致
-                        .padding(.top, getSafeAreaTop() + 10) // 保持与返回按钮相同的顶部偏移
+                        .frame(height: 30) // 调整容器高度
+                        .padding(.top, getSafeAreaTop() + 11) // 微调顶部偏移，使标题视觉上与返回按钮对齐
                         
                         // 黑洞主视觉
                         BlackHoleView()
