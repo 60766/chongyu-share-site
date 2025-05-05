@@ -990,28 +990,30 @@ struct FullscreenPostDetailView: View {
                     
                     VStack(spacing: 0) {
                         // 顶部标题 - 修改为完全与系统返回按钮对齐的布局
-                        HStack(spacing: 0) {
-                            // 左边空白占位，模拟返回按钮位置
-                            Color.clear
-                                .frame(width: 32, height: 32)
-                                .padding(.leading, 16)
-                            
-                            Spacer()
-                            
-                            // 标题文本 - 保持居中
-                            Text("探索虫洞深处")
-                                .font(.system(size: 17, weight: .medium))
-                                .foregroundColor(.white)
-                            
-                            Spacer()
-                            
-                            // 右边对称空白占位
-                            Color.clear
-                                .frame(width: 32, height: 32)
-                                .padding(.trailing, 16)
+                        GeometryReader { geometry in
+                            // 标题和返回按钮容器
+                            ZStack(alignment: .center) {
+                                // 1. 标题居中
+                                Text("探索虫洞深处")
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .offset(y: 5) // 向下微调5个像素，与返回按钮对齐
+                                
+                                // 2. 左侧占位 - 用于调试参考
+                                HStack {
+                                    // 返回按钮大小的参考区域
+                                    Color.clear
+                                        .frame(width: 32, height: 32)
+                                        .padding(.leading, 16)
+                                    
+                                    Spacer()
+                                }
+                            }
+                            .frame(width: geometry.size.width, height: 44) // 保持标准导航栏高度
                         }
-                        .frame(height: 32) // 与返回按钮保持相同高度
-                        .padding(.top, getSafeAreaTop() + 10) // 精确匹配系统返回按钮位置
+                        .frame(height: 44) // 固定高度与系统导航栏一致
+                        .padding(.top, getSafeAreaTop() + 10) // 匹配系统返回按钮位置
                         
                         // 黑洞主视觉
                         BlackHoleView()
