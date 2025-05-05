@@ -989,13 +989,28 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题栏 - 使用UIViewRepresentable确保精确对齐
-                        ZStack {
-                            // 使用自定义UILabel视图确保垂直完美居中
-                            CenterAlignedTitleView(title: "探索虫洞深处", fontSize: 17)
+                        // 顶部标题 - 修改为与导航栏一致的风格
+                        HStack(spacing: 16) {
+                            // 左侧空间，保持与返回按钮相似的间距
+                            Color.clear
+                                .frame(width: 16, height: 16)
+                            
+                            Spacer()
+                            
+                            // 标题 - 使用与其他页面相同的样式
+                            Text("探索虫洞深处")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(.white)
+                            
+                            Spacer()
+                            
+                            // 右侧空间，保持对称
+                            Color.clear
+                                .frame(width: 16, height: 16)
                         }
-                        .frame(height: 32) // 与返回按钮保持相同高度
-                        .padding(.top, getSafeAreaTop() + 10) // 精确匹配系统返回按钮位置
+                        .padding(.horizontal, 16)
+                        .frame(height: 32) // 与返回按钮高度一致
+                        .padding(.top, getSafeAreaTop() + 10) // 保持与返回按钮相同的顶部偏移
                         
                         // 黑洞主视觉
                         BlackHoleView()
@@ -2199,33 +2214,5 @@ struct BlackHoleParticleRing: View {
     
     private func getFrame() -> CGRect {
         return CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width * 0.65, height: UIScreen.main.bounds.width * 0.65)
-    }
-}
-
-// 在文件末尾添加自定义UIViewRepresentable实现
-struct CenterAlignedTitleView: UIViewRepresentable {
-    let title: String
-    let fontSize: CGFloat
-    
-    func makeUIView(context: Context) -> UILabel {
-        let label = UILabel()
-        label.text = title
-        label.textColor = .white
-        label.font = UIFont.systemFont(ofSize: fontSize, weight: .medium)
-        label.textAlignment = .center
-        
-        // 确保label的内容垂直居中
-        label.baselineAdjustment = .alignCenters
-        label.adjustsFontSizeToFitWidth = false
-        label.numberOfLines = 1
-        
-        // 解决垂直对齐问题
-        label.translatesAutoresizingMaskIntoConstraints = false
-        
-        return label
-    }
-    
-    func updateUIView(_ uiView: UILabel, context: Context) {
-        uiView.text = title
     }
 }
