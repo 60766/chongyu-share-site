@@ -25,7 +25,7 @@ fileprivate class FPDVNavigationHelper {
             // 查找顶层视图控制器
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                let window = windowScene.windows.first,
-               let topVC = window.rootViewController?.topMostViewController {
+               let topVC = window.rootViewController?.fpContextTopViewController {
                 
                 // 如果是导航控制器，尝试弹出
                 if let navigationController = topVC.navigationController {
@@ -41,25 +41,25 @@ fileprivate class FPDVNavigationHelper {
 
 // MARK: - UIViewController扩展 - 用于FullscreenPostDetailView内部
 extension UIViewController {
-    /// 获取最顶层的视图控制器
-    fileprivate var topMostViewController: UIViewController {
+    /// 获取最顶层的视图控制器 - 用于FullscreenPostDetailView内部
+    fileprivate var fpContextTopViewController: UIViewController {
         if let presented = presentedViewController {
-            return presented.topMostViewController
+            return presented.fpContextTopViewController
         }
         
         if let navigationController = self as? UINavigationController {
-            return navigationController.visibleViewController?.topMostViewController ?? self
+            return navigationController.visibleViewController?.fpContextTopViewController ?? self
         }
         
         if let tabBarController = self as? UITabBarController {
-            return tabBarController.selectedViewController?.topMostViewController ?? self
+            return tabBarController.selectedViewController?.fpContextTopViewController ?? self
         }
         
         return self
     }
     
     /// 关闭当前视图控制器 - 用于FullscreenPostDetailView内部
-    fileprivate func dismissVC(animated: Bool = true, completion: (() -> Void)? = nil) {
+    fileprivate func fpContextDismissVC(animated: Bool = true, completion: (() -> Void)? = nil) {
         if let navigationController = navigationController {
             navigationController.popViewController(animated: animated)
             completion?()
