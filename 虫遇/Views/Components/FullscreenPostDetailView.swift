@@ -1089,8 +1089,6 @@ struct FullscreenPostDetailView: View {
                 }
                 .zIndex(300)
                 .transition(.opacity) // 仅保留简单过渡动画
-                }
-                // 关键改进：使用平滑连续的不透明度函数
                 .opacity(max(0, min(dragOffset * 0.01, 0.7)))
                 
                 // 右侧指示器（向左滑）- 完全平滑过渡
@@ -1103,7 +1101,6 @@ struct FullscreenPostDetailView: View {
                         .background(Circle().fill(Color.black.opacity(0.15)))
                         .padding(.trailing, 20)
                 }
-                // 关键改进：使用平滑连续的不透明度函数
                 .opacity(max(0, min(dragOffset * -0.01, 0.7)))
             }
             // 无需额外动画，跟随拖动实时更新
