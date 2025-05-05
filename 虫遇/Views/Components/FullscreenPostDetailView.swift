@@ -989,17 +989,17 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题 - 修改为与导航栏一致的风格，确保与返回按钮精确对齐
-                        ZStack(alignment: .center) {
-                            // 标题层 - 精确控制位置
+                        // 顶部标题 - 修改布局以精确对齐蓝色返回按钮
+                        ZStack {
+                            // 绝对定位标题文字，确保与蓝色返回按钮垂直居中对齐
                             Text("探索虫洞深处")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity, alignment: .center)
                             
-                            // 占位空间 - 保持与左侧返回按钮的对齐，仅用于布局参考
+                            // 左侧参考空间 - 与蓝色返回按钮大小和位置完全一致
                             HStack {
-                                // 空占位符，与系统返回按钮布局匹配
+                                // 与蓝色返回按钮完全匹配的尺寸
                                 Color.clear
                                     .frame(width: 32, height: 32)
                                     .padding(.leading, 16)
@@ -1007,21 +1007,22 @@ struct FullscreenPostDetailView: View {
                                 Spacer()
                             }
                         }
-                        .frame(height: 44)
-                        .padding(.top, getSafeAreaTop() + 10) // 精确匹配系统返回按钮位置
+                        .frame(height: 32) // 调整为与蓝色返回按钮相同的高度
+                        .padding(.top, getSafeAreaTop() + 10) // 与蓝色返回按钮顶部对齐
+                        .padding(.bottom, 6) // 添加底部间距以保持整体布局平衡
                         
                         // 黑洞主视觉
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.36)  // 调整黑洞高度，使中心按钮文字与底部按钮视觉上水平一致
-                            .padding(.bottom, 20)  // 调整底部间距，确保整体视觉协调
+                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 进一步减小黑洞视图高度
+                            .padding(.bottom, 16)  // 增加底部间距
                         
                         // 提示文本 - 移到黑洞下方
                         Text("连接不同时代的声音，体验跨越时空的社交互动")
                             .font(.system(size: 16, weight: .medium))  // 增大字体并增加粗细
                             .foregroundColor(.white.opacity(0.8))  // 增加文字不透明度
-                            .padding(.top, 5)  // 微调顶部间距
-                            .padding(.bottom, 8)  // 微调底部间距
+                            .padding(.top, 0)
+                            .padding(.bottom, 8)  // 增加段落间距
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 40)  // 减少水平内边距
                         
@@ -1029,16 +1030,15 @@ struct FullscreenPostDetailView: View {
                         Text("每种内容类型将带你进入不同的时空交流维度")
                             .font(.system(size: 14))  // 增大字体
                             .foregroundColor(.white.opacity(0.6))  // 增加对比度
-                            .padding(.bottom, 25)  // 调整与按钮之间的间距
+                            .padding(.bottom, 28)  // 增加与按钮之间的间距
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 40)
                         
                         // 创作类型按钮 - 移到文字下方
                         CreationTypeButtonsView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: 80)  // 保持按钮区域高度
-                            .padding(.bottom, 35)  // 调整与主按钮之间的间距
-                            .padding(.top, 5)  // 添加顶部间距，确保视觉平衡
+                            .frame(height: 80)  // 减小按钮区域高度，适应单行按钮
+                            .padding(.bottom, 30)  // 增加与主按钮之间的间距
                         
                         // 主按钮 - 开启时空对话
                         Button(action: {
