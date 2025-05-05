@@ -989,31 +989,13 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题 - 修改为完全与系统返回按钮对齐的布局
-                        GeometryReader { geometry in
-                            // 标题和返回按钮容器
-                            ZStack(alignment: .center) {
-                                // 1. 标题居中
-                                Text("探索虫洞深处")
-                                    .font(.system(size: 17, weight: .medium))
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .offset(y: 5) // 向下微调5个像素，与返回按钮对齐
-                                
-                                // 2. 左侧占位 - 用于调试参考
-                                HStack {
-                                    // 返回按钮大小的参考区域
-                                    Color.clear
-                                        .frame(width: 32, height: 32)
-                                        .padding(.leading, 16)
-                                    
-                                    Spacer()
-                                }
-                            }
-                            .frame(width: geometry.size.width, height: 44) // 保持标准导航栏高度
+                        // 顶部标题栏 - 使用UIViewRepresentable确保精确对齐
+                        ZStack {
+                            // 使用自定义UILabel视图确保垂直完美居中
+                            CenterAlignedTitleView(title: "探索虫洞深处", fontSize: 17)
                         }
-                        .frame(height: 44) // 固定高度与系统导航栏一致
-                        .padding(.top, getSafeAreaTop() + 10) // 匹配系统返回按钮位置
+                        .frame(height: 32) // 与返回按钮保持相同高度
+                        .padding(.top, getSafeAreaTop() + 10) // 精确匹配系统返回按钮位置
                         
                         // 黑洞主视觉
                         BlackHoleView()
@@ -2217,5 +2199,33 @@ struct BlackHoleParticleRing: View {
     
     private func getFrame() -> CGRect {
         return CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width * 0.65, height: UIScreen.main.bounds.width * 0.65)
+    }
+}
+
+// 在文件末尾添加自定义UIViewRepresentable实现
+struct CenterAlignedTitleView: UIViewRepresentable {
+    let title: String
+    let fontSize: CGFloat
+    
+    func makeUIView(context: Context) -> UILabel {
+        let label = UILabel()
+        label.text = title
+        label.textColor = .white
+        label.font = UIFont.systemFont(ofSize: fontSize, weight: .medium)
+        label.textAlignment = .center
+        
+        // 确保label的内容垂直居中
+        label.baselineAdjustment = .alignCenters
+        label.adjustsFontSizeToFitWidth = false
+        label.numberOfLines = 1
+        
+        // 解决垂直对齐问题
+        label.translatesAutoresizingMaskIntoConstraints = false
+        
+        return label
+    }
+    
+    func updateUIView(_ uiView: UILabel, context: Context) {
+        uiView.text = title
     }
 }
