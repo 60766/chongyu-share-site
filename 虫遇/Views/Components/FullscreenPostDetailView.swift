@@ -3,12 +3,103 @@ import Combine
 import UIKit // 如果还没有导入
 // 使用ColorExtensions提供的Color(hex:)方法
 
+// 导入NavigationHelper
+// 由于无法直接导入Utils模块，我们在此处定义所需的辅助类
+
+/**
+ * 导航助手类
+ * 提供全局导航控制和支持
+ */
+public class NavigationHelper {
+    /// 单例实例
+    public static let shared = NavigationHelper()
+    
+    /// 私有初始化方法
+    private init() {
+        print("NavigationHelper初始化")
+    }
+    
+    /// 强制返回上一级页面
+    public func forceGoBack() {
+        DispatchQueue.main.async {
+            // 查找顶层视图控制器
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first,
+               let topVC = window.rootViewController?.topMostViewController {
+                
+                // 如果是导航控制器，尝试弹出
+                if let navigationController = topVC.navigationController {
+                    navigationController.popViewController(animated: true)
+                } else {
+                    // 否则尝试dismiss
+                    topVC.dismiss(animated: true)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - UIViewController扩展
+extension UIViewController {
+    /// 获取最顶层的视图控制器
+    var topMostViewController: UIViewController {
+        if let presented = presentedViewController {
+            return presented.topMostViewController
+        }
+        
+        if let navigationController = self as? UINavigationController {
+            return navigationController.visibleViewController?.topMostViewController ?? self
+        }
+        
+        if let tabBarController = self as? UITabBarController {
+            return tabBarController.selectedViewController?.topMostViewController ?? self
+        }
+        
+        return self
+    }
+    
+    /// 关闭当前视图控制器
+    func dismissVC(animated: Bool = true, completion: (() -> Void)? = nil) {
+        if let navigationController = navigationController {
+            navigationController.popViewController(animated: animated)
+            completion?()
+        } else {
+            dismiss(animated: animated, completion: completion)
+        }
+    }
+}
+
 // 导入工程内其他模块，确保正确引用
 // 全文件使用到的类型都正确导入
+
+/**
+ * 通用缩放按钮样式
+ * 提供轻微的缩放效果，用于创建有触感的按钮交互
+ */
+struct ScaleButtonStyle: ButtonStyle {
+    var scaleAmount: CGFloat = 0.95
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scaleAmount : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
 
 // 移除了本地CustomScaleButtonStyle的定义
 // 直接使用Utils包中定义的CustomScaleButtonStyle
 
+/**
+ * 设计系统颜色定义
+ * 统一程序界面的颜色方案
+ */
+struct DesignSystem {
+    struct Colors {
+        // 主题色 - 使用适合虫遇风格的紫色作为主题色
+        static let primary = Color(red: 149/255, green: 138/255, blue: 177/255)
+        static let secondary = Color(red: 191/255, green: 186/255, blue: 204/255)
+    }
+}
 
 private struct FullscreenScrollOffsetKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
