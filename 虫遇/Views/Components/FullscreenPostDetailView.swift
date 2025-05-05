@@ -1001,6 +1001,7 @@ struct FullscreenPostDetailView: View {
                             Text("探索虫洞深处")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundColor(.white)
+                                .offset(y: 4) // 添加向下的偏移量使标题与返回按钮垂直对齐
                             
                             Spacer()
                             
