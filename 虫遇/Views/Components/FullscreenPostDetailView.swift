@@ -989,33 +989,45 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题 - 修改为与导航栏一致的风格，确保水平居中对齐
-                        GeometryReader { geometry in
+                        // 顶部标题区域 - 完全重新设计，使用iOS导航栏标准样式
+                        VStack(spacing: 0) {
+                            // 状态栏区域填充
+                            Color.clear
+                                .frame(height: getSafeAreaTop())
+                            
+                            // 导航栏
                             ZStack {
-                                // 标题文本 - 确保在整个屏幕宽度上水平居中
+                                // 左侧返回按钮区域
                                 HStack {
-                                    // 左侧空白区域 - 与返回按钮宽度相同
+                                    // 预留返回按钮位置
                                     Color.clear
-                                        .frame(width: 32 + 16) // 按钮宽度 + 左边距
+                                        .frame(width: 32, height: 32)
+                                        .padding(.leading, 16)
                                     
                                     Spacer()
-                                    
-                                    Text("探索虫洞深处")
-                                        .font(.system(size: 17, weight: .medium))
-                                        .foregroundColor(.white)
-                                    
-                                    Spacer()
-                                    
-                                    // 右侧空白区域 - 与左侧对称
-                                    Color.clear
-                                        .frame(width: 32 + 16)
                                 }
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .padding(.top, getSafeAreaTop() + 10)
+                                
+                                // 中间标题区域 - 强制居中且不受两侧按钮影响
+                                Text("探索虫洞深处")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    // 限制最大宽度，确保不会挤压两侧按钮
+                                    .frame(maxWidth: UIScreen.main.bounds.width / 2)
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                
+                                // 右侧占位区域 - 保持对称
+                                HStack {
+                                    Spacer()
+                                    
+                                    Color.clear
+                                        .frame(width: 32, height: 32)
+                                        .padding(.trailing, 16)
+                                }
                             }
+                            .frame(height: 44)
                         }
-                        .frame(height: getSafeAreaTop() + 44) // 总高度 = 顶部安全区 + 导航栏高度
+                        .frame(maxWidth: .infinity)
                         
                         // 黑洞主视觉
                         BlackHoleView()
