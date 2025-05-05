@@ -366,13 +366,13 @@ public struct BlackHoleView: View {
         }
         .buttonStyle(PlainButtonStyle()) // 使用Plain样式避免默认按钮效果
         .overlay(
-            // 类型文字 - 放置在按钮下方
+            // 类型文字 - 放置在按钮中间
             Text(typeName)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.white)
                 .opacity(0.95)
                 .shadow(color: .black, radius: 2, x: 0, y: 0)
-                .offset(y: 35) // 将文字位置从45调高到35，更靠近按钮
+                .offset(y: 0) // 将文字放置在按钮中间
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
         )
     }
