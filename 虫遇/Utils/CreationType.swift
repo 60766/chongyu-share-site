@@ -372,7 +372,7 @@ public struct BlackHoleView: View {
                 .foregroundColor(.white)
                 .opacity(0.95)
                 .shadow(color: .black, radius: 2, x: 0, y: 0)
-                .offset(y: 45) // 将文字放在按钮下方
+                .offset(y: 55) // 调整垂直位置，使其与底部按钮文字视觉上水平一致
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
         )
     }
@@ -525,7 +525,7 @@ public struct CreationTypeButtonsView: View {
     
     public var body: some View {
         // 水平排列四个按钮
-        HStack(spacing: 24) {
+        HStack(spacing: 20) { // 调整间距为视觉上更平衡的值
             // 显示底部的4个按钮
             ForEach(0..<4, id: \.self) { position in
                 let buttonIndex = bottomButtonIndices[position]
@@ -590,7 +590,7 @@ public struct CreationTypeButtonsView: View {
     private func categoryButton(index: Int, position: Int) -> some View {
         let isSelected = typeManager.selectedIndex == index
         
-        return VStack(spacing: 7) {  // 垂直布局，间距7
+        return VStack(spacing: 8) {  // 调整垂直间距为8，使布局更平衡
             // 按钮圆形部分
             ZStack {
                 // 背景圆形
