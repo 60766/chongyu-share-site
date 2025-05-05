@@ -1010,7 +1010,7 @@ struct FullscreenPostDetailView: View {
                                 .frame(width: 54)
                         }
                         .frame(height: 44) // 增加高度从32到44，与返回按钮容器保持一致
-                        .padding(.top, getSafeAreaTop() + 10) // 与蓝色返回按钮顶部完全对齐
+                        .padding(.top, getSafeAreaTop() + 8) // 从10改为8，与蓝色返回按钮顶部完全对齐
                         
                         // 黑洞主视觉
                         BlackHoleView()
@@ -1241,7 +1241,7 @@ struct FullscreenPostDetailView: View {
         
         // 配置返回按钮
         let backButton = UIButton(type: .system)
-        backButton.frame = CGRect(x: 16, y: topPadding + 10, width: 32, height: 32)
+        backButton.frame = CGRect(x: 16, y: topPadding + 8, width: 32, height: 32) // 从10改为8，微调返回按钮位置向上2点
         
         // 设置按钮图标
         let imageConfig = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
