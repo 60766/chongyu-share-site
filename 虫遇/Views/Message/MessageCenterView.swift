@@ -13,9 +13,9 @@ struct MessageCenterView: View {
     /// 标签选项
     private let tabOptions = ["全部对话", "未读消息", "收藏对话"]
     /// 模拟对话数据
-    @State private var conversations: [Conversation] = []
-    /// 模拟角色数据 - 修改为ChatCharacter类型
-    @State private var characters: [String: ChatCharacter] = [:]
+    @State private var conversations: [SDConversation] = []
+    /// 模拟角色数据 - 修改为CYChatCharacter类型
+    @State private var characters: [String: CYChatCharacter] = [:]
     
     var body: some View {
         VStack(spacing: 0) {
@@ -142,7 +142,7 @@ struct MessageCenterView: View {
     }
     
     /// 过滤后的对话列表
-    private var filteredConversations: [Conversation] {
+    private var filteredConversations: [SDConversation] {
         var result = conversations
         
         // 根据标签过滤
@@ -170,21 +170,21 @@ struct MessageCenterView: View {
     }
     
     /// 删除对话
-    private func deleteConversation(_ conversation: Conversation) {
+    private func deleteConversation(_ conversation: SDConversation) {
         if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
             conversations.remove(at: index)
         }
     }
     
     /// 切换已读/未读状态
-    private func toggleReadStatus(_ conversation: Conversation) {
+    private func toggleReadStatus(_ conversation: SDConversation) {
         if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
             conversations[index].messageCount = conversations[index].messageCount > 0 ? 0 : 1
         }
     }
     
     /// 切换收藏状态
-    private func toggleFavorite(_ conversation: Conversation) {
+    private func toggleFavorite(_ conversation: SDConversation) {
         // 实际项目中应该实现收藏功能
     }
     
@@ -192,8 +192,8 @@ struct MessageCenterView: View {
      * 加载模拟数据
      */
     private func loadMockData() {
-        // 模拟角色数据 - 使用ChatCharacter替代Character
-        let einstein = ChatCharacter(
+        // 模拟角色数据 - 使用CYChatCharacter替代Character
+        let einstein = CYChatCharacter(
             id: "1",
             name: "阿尔伯特·爱因斯坦",
             introduction: "现代物理学最重要的科学家之一，相对论的创立者",
@@ -207,7 +207,7 @@ struct MessageCenterView: View {
             keyThoughts: ["时间和空间是相对的", "质量可以转化为能量"]
         )
         
-        let socrates = ChatCharacter(
+        let socrates = CYChatCharacter(
             id: "2",
             name: "苏格拉底",
             introduction: "古希腊哲学家，西方哲学的奠基人之一",
@@ -221,7 +221,7 @@ struct MessageCenterView: View {
             keyThoughts: ["未经审视的生活不值得过", "认识你自己"]
         )
         
-        let davinci = ChatCharacter(
+        let davinci = CYChatCharacter(
             id: "3",
             name: "伦纳德·达·芬奇",
             introduction: "意大利文艺复兴时期的多才多艺的人，艺术家、发明家、工程师",
@@ -244,7 +244,7 @@ struct MessageCenterView: View {
         
         // 模拟对话数据
         conversations = [
-            Conversation(
+            SDConversation(
                 id: "1",
                 characterId: einstein.id,
                 userId: "currentUser",
@@ -252,7 +252,7 @@ struct MessageCenterView: View {
                 lastMessageTime: Date().addingTimeInterval(-3600 * 2),
                 messageCount: 3
             ),
-            Conversation(
+            SDConversation(
                 id: "2",
                 characterId: socrates.id,
                 userId: "currentUser",
@@ -260,7 +260,7 @@ struct MessageCenterView: View {
                 lastMessageTime: Date().addingTimeInterval(-3600 * 24),
                 messageCount: 0
             ),
-            Conversation(
+            SDConversation(
                 id: "3",
                 characterId: davinci.id,
                 userId: "currentUser",
@@ -276,11 +276,11 @@ struct MessageCenterView: View {
  * 对话行项目
  */
 struct ConversationRow: View {
-    var conversation: Conversation
-    var character: ChatCharacter?
+    var conversation: SDConversation
+    var character: CYChatCharacter?
     
     var body: some View {
-        NavigationLink(destination: ChatView(character: character ?? ChatCharacter(
+        NavigationLink(destination: ChatView(character: character ?? CYChatCharacter(
             id: "",
             name: "未知角色",
             introduction: "",

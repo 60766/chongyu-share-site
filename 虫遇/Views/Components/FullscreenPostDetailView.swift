@@ -3,12 +3,100 @@ import Combine
 import UIKit // 如果还没有导入
 // 使用ColorExtensions提供的Color(hex:)方法
 
+// 导入NavigationHelper
+// 由于无法直接导入Utils模块，我们在此处定义所需的辅助类
+
+/**
+ * 导航助手类 - 用于FullscreenPostDetailView内部
+ * 提供全局导航控制和支持
+ */
+fileprivate class FPDVNavigationHelper {
+    /// 单例实例
+    static let shared = FPDVNavigationHelper()
+    
+    /// 私有初始化方法
+    private init() {
+        print("FPDVNavigationHelper初始化")
+    }
+    
+    /// 强制返回上一级页面
+    func forceGoBack() {
+        DispatchQueue.main.async {
+            // 查找顶层视图控制器
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first,
+               let topVC = window.rootViewController?.fpContextTopViewController {
+                
+                // 如果是导航控制器，尝试弹出
+                if let navigationController = topVC.navigationController {
+                    navigationController.popViewController(animated: true)
+                } else {
+                    // 否则尝试dismiss
+                    topVC.dismiss(animated: true)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - UIViewController扩展 - 用于FullscreenPostDetailView内部
+extension UIViewController {
+    /// 获取最顶层的视图控制器 - 用于FullscreenPostDetailView内部
+    fileprivate var fpContextTopViewController: UIViewController {
+        if let presented = presentedViewController {
+            return presented.fpContextTopViewController
+        }
+        
+        if let navigationController = self as? UINavigationController {
+            return navigationController.visibleViewController?.fpContextTopViewController ?? self
+        }
+        
+        if let tabBarController = self as? UITabBarController {
+            return tabBarController.selectedViewController?.fpContextTopViewController ?? self
+        }
+        
+        return self
+    }
+    
+    /// 关闭当前视图控制器 - 用于FullscreenPostDetailView内部
+    fileprivate func fpContextDismissVC(animated: Bool = true, completion: (() -> Void)? = nil) {
+        if let navigationController = navigationController {
+            navigationController.popViewController(animated: animated)
+            completion?()
+        } else {
+            dismiss(animated: animated, completion: completion)
+        }
+    }
+}
+
 // 导入工程内其他模块，确保正确引用
 // 全文件使用到的类型都正确导入
 
-// 移除了本地CustomScaleButtonStyle的定义
-// 直接使用Utils包中定义的CustomScaleButtonStyle
+/**
+ * 通用缩放按钮样式 - 用于FullscreenPostDetailView内部
+ * 提供轻微的缩放效果，用于创建有触感的按钮交互
+ */
+fileprivate struct FPDVScaleButtonStyle: ButtonStyle {
+    var scaleAmount: CGFloat = 0.95
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scaleAmount : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
 
+/**
+ * 设计系统颜色定义 - 用于FullscreenPostDetailView内部
+ * 统一程序界面的颜色方案
+ */
+fileprivate struct FPDVDesignSystem {
+    struct Colors {
+        // 主题色 - 使用适合虫遇风格的紫色作为主题色
+        static let primary = Color(red: 149/255, green: 138/255, blue: 177/255)
+        static let secondary = Color(red: 191/255, green: 186/255, blue: 204/255)
+    }
+}
 
 private struct FullscreenScrollOffsetKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
@@ -355,13 +443,13 @@ struct FullscreenPostDetailView: View {
                                     Button(action: {}) {
                                         Text("关注")
                                             .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(DesignSystem.Colors.primary)
+                                            .foregroundColor(FPDVDesignSystem.Colors.primary)
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 5)
                                             .background(
                                                 Capsule()
-                                                    .stroke(DesignSystem.Colors.primary.opacity(0.8), lineWidth: 1)
-                                                    .background(Capsule().fill(DesignSystem.Colors.primary.opacity(0.05)))
+                                                    .stroke(FPDVDesignSystem.Colors.primary.opacity(0.8), lineWidth: 1)
+                                                    .background(Capsule().fill(FPDVDesignSystem.Colors.primary.opacity(0.05)))
                                             )
                                     }
                                 }
@@ -503,7 +591,7 @@ struct FullscreenPostDetailView: View {
                                 // 收藏按钮
                                 Image(systemName: nextPost.isBookmarkedByCurrentUser ? "bookmark.fill" : "bookmark")
                                     .font(.system(size: 15))
-                                    .foregroundColor(nextPost.isBookmarkedByCurrentUser ? DesignSystem.Colors.primary : .secondary)
+                                    .foregroundColor(nextPost.isBookmarkedByCurrentUser ? FPDVDesignSystem.Colors.primary : .secondary)
                                 
                                 Spacer()
                             }
@@ -1102,7 +1190,7 @@ struct FullscreenPostDetailView: View {
         .onAppear {
             print("⭐️ FullscreenPostDetailView 显示")
             // 确保NavigationHelper已初始化
-            _ = NavigationHelper.shared
+            _ = FPDVNavigationHelper.shared
             
             // 激活视图状态
             isViewActive = true
@@ -1304,7 +1392,7 @@ struct FullscreenPostDetailView: View {
             } else {
                 // 返回策略
                 // 1. 尝试使用NavigationHelper返回
-                NavigationHelper.shared.forceGoBack()
+                FPDVNavigationHelper.shared.forceGoBack()
                 
                 // 2. 发送通知
                 NotificationCenter.default.post(name: NSNotification.Name("DismissCurrentViewController"), object: nil)
@@ -1362,7 +1450,7 @@ struct FullscreenPostDetailView: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.clear) // 使按钮不可见
             }
-            // 使用更安全的轻量级替代方案，避免引用ScaleButtonStyle
+            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
             .scaleEffect(1.0) // 默认比例，按下时会自动变化
             .contentShape(Circle()) // 确保点击区域正确
             .disabled(true) // 禁用按钮
@@ -1372,7 +1460,7 @@ struct FullscreenPostDetailView: View {
             // 标题 - 改进版本
             Text("动态详情")
                 .font(.system(size: 17, weight: .medium))
-                .foregroundColor(Color.primary)
+                .foregroundColor(FPDVDesignSystem.Colors.primary)
                             
             Spacer()
                             
@@ -1429,13 +1517,13 @@ struct FullscreenPostDetailView: View {
                 }) {
                     Text("关注")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(DesignSystem.Colors.primary)
+                        .foregroundColor(FPDVDesignSystem.Colors.primary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 5)
                         .background(
                             Capsule()
-                                .stroke(DesignSystem.Colors.primary.opacity(0.8), lineWidth: 1)
-                                .background(Capsule().fill(DesignSystem.Colors.primary.opacity(0.05)))
+                                .stroke(FPDVDesignSystem.Colors.primary.opacity(0.8), lineWidth: 1)
+                                .background(Capsule().fill(FPDVDesignSystem.Colors.primary.opacity(0.05)))
                         )
                 }
             }
@@ -1569,7 +1657,7 @@ struct FullscreenPostDetailView: View {
                         .foregroundColor(viewModel.post.isLikedByCurrentUser ? .red.opacity(0.8) : .secondary)
                 }
             }
-            // 使用更安全的轻量级替代方案，避免引用ScaleButtonStyle
+            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
             .scaleEffect(1.0) // 默认比例，按下时会自动变化
             .contentShape(Capsule()) // 确保点击区域正确
             
@@ -1588,7 +1676,7 @@ struct FullscreenPostDetailView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            // 使用更安全的轻量级替代方案，避免引用ScaleButtonStyle
+            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
             .scaleEffect(1.0) // 默认比例，按下时会自动变化
             .contentShape(Capsule()) // 确保点击区域正确
             
@@ -1599,9 +1687,9 @@ struct FullscreenPostDetailView: View {
             }) {
                 Image(systemName: viewModel.post.isBookmarkedByCurrentUser ? "bookmark.fill" : "bookmark")
                     .font(.system(size: 15))
-                    .foregroundColor(viewModel.post.isBookmarkedByCurrentUser ? DesignSystem.Colors.primary : .secondary)
+                    .foregroundColor(viewModel.post.isBookmarkedByCurrentUser ? FPDVDesignSystem.Colors.primary : .secondary)
             }
-            // 使用更安全的轻量级替代方案，避免引用ScaleButtonStyle
+            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
             .scaleEffect(1.0) // 默认比例，按下时会自动变化
             .contentShape(Capsule()) // 确保点击区域正确
             

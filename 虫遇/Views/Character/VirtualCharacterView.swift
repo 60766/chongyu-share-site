@@ -13,6 +13,7 @@ struct VirtualCharacterView: View {
     @State private var selectedCategory: CharacterCategory = .all
     @State private var characters: [Character] = []
     @State private var isLoading = true
+    @State private var animateContent = false
     
     // 搜索结果过滤
     private var filteredCharacters: [Character] {
@@ -49,112 +50,73 @@ struct VirtualCharacterView: View {
     private let categories: [CharacterCategory] = [.all, .scientist, .philosopher, .writer, .artist]
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
-                Color(.systemGray6)
-                    .opacity(0.5)
+                // 背景色 - 更柔和的背景色
+                Color(.systemBackground)
                     .edgesIgnoringSafeArea(.all)
                 
                 VStack(spacing: 0) {
-                    // 搜索栏
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gray)
-                            .padding(.leading, 8)
-                        
-                        TextField("搜索历史人物", text: $searchText)
-                            .padding(8)
-                        
-                        if !searchText.isEmpty {
-                            Button(action: {
-                                searchText = ""
-                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.gray)
-                                    .padding(.trailing, 8)
-                            }
-                        }
-                    }
-                    .background(Color.white)
-                    .cornerRadius(10)
-                    .padding([.horizontal, .top], 16)
+                    // 搜索栏 - 现代风格搜索栏
+                    SearchBarView(searchText: $searchText)
                     
-                    // 分类标签栏
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(categories, id: \.self) { category in
-                                Button(action: {
-                                    withAnimation {
-                                        selectedCategory = category
-                                    }
-                                }) {
-                                    Text(category.displayName)
-                                        .font(.system(size: 14, weight: selectedCategory == category ? .semibold : .regular))
-                                        .padding(.vertical, 8)
-                                        .padding(.horizontal, 16)
-                                        .background(
-                                            Capsule()
-                                                .fill(selectedCategory == category ? category.color : Color.white)
-                                        )
-                                        .foregroundColor(selectedCategory == category ? .white : category.color)
-                                        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
+                    // 分类标签栏 - 优化的标签栏
+                    CategoryTabBarView(
+                        categories: categories,
+                        selectedCategory: $selectedCategory
+                    )
                     
                     if isLoading {
-                        Spacer()
-                        ProgressView("加载中...")
-                        Spacer()
+                        LoadingView()
                     } else if filteredCharacters.isEmpty {
-                        Spacer()
-                        VStack(spacing: 16) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 40))
-                                .foregroundColor(.gray)
-                            
-                            Text("没有找到符合条件的角色")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
+                        EmptyResultView(searchText: searchText)
                     } else {
                         // 角色列表
                         ScrollView {
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                                ForEach(filteredCharacters) { character in
-                                    NavigationLink(destination: CharacterDetailView(character: character)) {
-                                        CharacterCardView2(character: character)
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                }
-                            }
-                            .padding(16)
+                            CharacterGridView(
+                                characters: filteredCharacters,
+                                animateContent: animateContent
+                            )
+                        }
+                        .refreshable {
+                            // 添加下拉刷新功能
+                            await refreshData()
                         }
                     }
                 }
             }
             .navigationTitle("虚拟角色")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .onAppear {
                 loadCharacters()
                 
                 // 确保TabBar可见
                 DispatchQueue.main.async {
                     tabBarManager.ensureTabBarVisible()
+                    
+                    // 延迟一小段时间后启动动画
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation(.easeOut(duration: 0.5)) {
+                            animateContent = true
+                        }
+                    }
                 }
             }
         }
     }
     
+    // 刷新数据
+    private func refreshData() async {
+        // 模拟网络请求
+        isLoading = true
+        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
+        loadCharacters()
+    }
+    
     // 加载角色数据
     private func loadCharacters() {
         // 模拟加载延迟
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.characters = [
                 Character(
                     id: "1",
@@ -223,6 +185,23 @@ struct VirtualCharacterView: View {
                     interactionCount: 18300,
                     rating: 4.9,
                     createdAt: Date().addingTimeInterval(-3600 * 24 * 15)
+                ),
+                Character(
+                    id: "5",
+                    name: "苏格拉底",
+                    introduction: "古希腊哲学家，西方哲学的奠基人之一。他没有留下任何著作，我们对他的了解主要来自于他的学生柏拉图的对话录。苏格拉底通过提问引导人们思考的方法（苏格拉底式方法）对后世的教育和哲学研究有深远影响。他的名言\"未经审视的生活不值得过\"体现了他对反思和自知的重视。",
+                    field: "哲学家",
+                    birthYear: "前469",
+                    deathYear: "前399",
+                    avatarUrl: "https://example.com/socrates.jpg",
+                    eraTag: "古希腊",
+                    achievements: ["苏格拉底方法", "西方哲学奠基人", "道德理性主义"],
+                    mainWorks: ["（通过柏拉图记录）《申辩篇》", "《会饮篇》", "《理想国》"],
+                    keyThoughts: ["认识你自己", "美德即知识", "未经审视的生活不值得过", "我只知道我一无所知"],
+                    followerCount: 2870,
+                    interactionCount: 10200,
+                    rating: 4.8,
+                    createdAt: Date().addingTimeInterval(-3600 * 24 * 15)
                 )
             ]
             
@@ -232,32 +211,183 @@ struct VirtualCharacterView: View {
 }
 
 /**
- * 角色卡片视图
+ * 搜索栏视图
+ * 优化的搜索体验
  */
-struct CharacterCardView2: View {
+struct SearchBarView: View {
+    @Binding var searchText: String
+    @FocusState private var isSearchFocused: Bool
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(searchText.isEmpty ? .gray : .primaryColor)
+                .font(.system(size: 17))
+                .padding(.leading, 8)
+            
+            TextField("搜索历史人物", text: $searchText)
+                .focused($isSearchFocused)
+                .font(.system(size: 16))
+                .padding(10)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+            
+            if !searchText.isEmpty {
+                Button(action: {
+                    searchText = ""
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                        .padding(.trailing, 8)
+                }
+                .transition(.opacity)
+                .animation(.easeInOut, value: searchText)
+            }
+        }
+        .background(Color(.systemGray6).opacity(0.5))
+        .cornerRadius(12)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+    }
+}
+
+/**
+ * 分类标签栏视图
+ * 轻量级分类选择UI
+ */
+struct CategoryTabBarView: View {
+    let categories: [CharacterCategory]
+    @Binding var selectedCategory: CharacterCategory
+    
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                ForEach(categories, id: \.self) { category in
+                    CharacterCategoryButton(
+                        category: category, 
+                        isSelected: selectedCategory == category, 
+                        action: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                selectedCategory = category
+                            }
+                        }
+                    )
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+        }
+        .background(Color.white)
+        .overlay(
+            Divider()
+                .opacity(0.3),
+            alignment: .bottom
+        )
+    }
+}
+
+/**
+ * 分类按钮
+ * 简洁现代的分类按钮设计
+ */
+private struct CharacterCategoryButton: View {
+    let category: CharacterCategory
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(category.displayName)
+                .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? category.color.opacity(0.9) : Color.gray.opacity(0.08))
+                )
+                .foregroundColor(isSelected ? .white : .primary)
+        }
+        .buttonStyle(PlainButtonStyle())
+        // 添加缩放动画
+        .scaleEffect(isSelected ? 1.0 : 0.97)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+    }
+}
+
+/**
+ * 角色网格视图
+ * 显示角色卡片的网格布局
+ */
+struct CharacterGridView: View {
+    let characters: [Character]
+    let animateContent: Bool
+    
+    // TabBar管理器
+    @ObservedObject private var tabBarManager = TabBarManager.shared
+    
+    private let columns = [
+        GridItem(.adaptive(minimum: 160), spacing: 16)
+    ]
+    
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 16) {
+            ForEach(Array(characters.enumerated()), id: \.element.id) { index, character in
+                NavigationLink(destination: CharacterDetailView(character: character)) {
+                    CharacterCardView(character: character)
+                        .offset(y: animateContent ? 0 : 30)
+                        .opacity(animateContent ? 1 : 0)
+                        .animation(
+                            .spring(response: 0.5, dampingFraction: 0.7)
+                            .delay(Double(index % 8) * 0.05),
+                            value: animateContent
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(16)
+    }
+}
+
+/**
+ * 角色卡片视图
+ * 优化的卡片设计
+ */
+struct CharacterCardView: View {
     let character: Character
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 角色头像区域
+            // 头像区域
             ZStack(alignment: .bottomLeading) {
-                // 头像
-                AsyncImage(url: URL(string: character.avatarUrl)) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else if phase.error != nil {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.white.opacity(0.8))
-                    } else {
-                        Rectangle()
-                            .foregroundColor(.gray.opacity(0.2))
-                    }
+                // 头像背景
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                getCategoryColor(from: character.field).opacity(0.2),
+                                getCategoryColor(from: character.field).opacity(0.1)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(height: 130)
+                
+                // 模拟头像 - 使用字母缩写
+                ZStack {
+                    Circle()
+                        .fill(getCategoryColor(from: character.field).opacity(0.3))
+                        .frame(width: 70, height: 70)
+                    
+                    Text(String(character.name.prefix(1)))
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundColor(getCategoryColor(from: character.field))
                 }
-                .frame(height: 150)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.bottom, 10)
+                .padding(.leading, 10)
                 
                 // 年代标签
                 Text(character.eraTag ?? "现代")
@@ -265,48 +395,70 @@ struct CharacterCardView2: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color.black.opacity(0.6))
+                    .background(Color.black.opacity(0.5))
                     .cornerRadius(6)
-                    .padding(8)
+                    .padding(10)
+                    .offset(y: -40)
             }
             
             // 角色信息
-            VStack(alignment: .leading, spacing: 6) {
-                // 名称和职业
+            VStack(alignment: .leading, spacing: 8) {
+                // 名称和评分
                 HStack {
                     Text(character.name)
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.primary)
+                        .lineLimit(1)
                     
                     Spacer()
                     
-                    // 粉丝数指示
-                    HStack(spacing: 2) {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 10))
-                        
-                        Text("\(character.followerCount)")
+                    // 简化评分显示
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
                             .font(.system(size: 12))
+                            .foregroundColor(.orange)
+                        
+                        Text(String(format: "%.1f", character.rating))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
-                    .foregroundColor(.secondary)
                 }
                 
+                // 职业
                 Text(character.field)
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
                 
-                // 评分
-                HStack(spacing: 2) {
-                    ForEach(0..<5) { index in
-                        Image(systemName: index < Int(character.rating) ? "star.fill" : "star")
+                // 生卒年
+                Text("\(character.birthYear)-\(character.deathYear ?? "现在")")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary.opacity(0.8))
+                    .padding(.top, 2)
+                
+                // 粉丝数和互动量 - 水平排列更紧凑
+                HStack(spacing: 12) {
+                    // 粉丝数
+                    HStack(spacing: 4) {
+                        Image(systemName: "person.fill")
                             .font(.system(size: 10))
-                            .foregroundColor(.orange)
+                            .foregroundColor(.secondary.opacity(0.7))
+                        
+                        Text(formatNumber(character.followerCount))
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary.opacity(0.8))
                     }
                     
-                    Text(String(format: "%.1f", character.rating))
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .padding(.leading, 4)
+                    // 互动量
+                    HStack(spacing: 4) {
+                        Image(systemName: "bubble.left.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary.opacity(0.7))
+                        
+                        Text(formatNumber(character.interactionCount))
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary.opacity(0.8))
+                    }
                 }
                 .padding(.top, 2)
             }
@@ -314,7 +466,76 @@ struct CharacterCardView2: View {
         }
         .background(Color.white)
         .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.08), radius: 5, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+    }
+    
+    // 格式化数字
+    private func formatNumber(_ number: Int) -> String {
+        if number >= 10000 {
+            return String(format: "%.1fK", Double(number) / 1000.0)
+        } else if number >= 1000 {
+            return String(format: "%.1fK", Double(number) / 1000.0)
+        } else {
+            return "\(number)"
+        }
+    }
+    
+    // 根据角色领域获取对应的分类颜色
+    private func getCategoryColor(from field: String) -> Color {
+        if field.contains("科学") || field.contains("物理") || field.contains("化学") {
+            return CharacterCategory.scientist.color
+        } else if field.contains("哲学") || field.contains("思想家") {
+            return CharacterCategory.philosopher.color
+        } else if field.contains("文学") || field.contains("作家") || field.contains("诗人") {
+            return CharacterCategory.writer.color
+        } else if field.contains("艺术") || field.contains("画家") || field.contains("音乐") {
+            return CharacterCategory.artist.color
+        } else {
+            return .gray
+        }
+    }
+}
+
+/**
+ * 加载中视图
+ */
+struct LoadingView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            ProgressView()
+                .scaleEffect(1.5)
+                .padding(.bottom, 4)
+            Text("正在穿越时空...")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/**
+ * 空结果视图
+ */
+struct EmptyResultView: View {
+    let searchText: String
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "person.fill.questionmark")
+                .font(.system(size: 50))
+                .foregroundColor(.gray.opacity(0.5))
+            
+            Text(searchText.isEmpty ? "没有找到符合条件的角色" : "没有找到与\"\(searchText)\"相关的角色")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            
+            Text("尝试其他搜索词或切换分类")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary.opacity(0.8))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
