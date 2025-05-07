@@ -21,7 +21,7 @@ struct ChongYuApp: App {
             Character.self,
             User.self,
             Message.self,
-            Conversation.self,
+            SDConversation.self,
             Post.self,
             Comment.self
         ])

@@ -47,7 +47,7 @@ public struct PulseEffect: ViewModifier {
                             .onAppear {
                                 // 使用异步调用避免在视图更新过程中修改状态
                                 DispatchQueue.main.async {
-                                    self.isPulsing = true
+                                self.isPulsing = true
                                 }
                             }
                     }
@@ -198,9 +198,9 @@ public struct CreationTypeButton: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
         
         // 按钮标题 - 优化文字排版
-        Text(typeManager.types[index])
+            Text(typeManager.types[index])
             .font(.system(size: fontSize, weight: isSelected ? .medium : .regular))
-            .foregroundColor(.white)
+                .foregroundColor(.white)
             .opacity(isSelected ? 1.0 : 0.7) // 提高对比度
             .padding(.top, index == 0 ? 3 : 2) // 随机漫游按钮文字间距稍大
     }

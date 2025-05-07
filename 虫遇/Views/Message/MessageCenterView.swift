@@ -13,7 +13,7 @@ struct MessageCenterView: View {
     /// 标签选项
     private let tabOptions = ["全部对话", "未读消息", "收藏对话"]
     /// 模拟对话数据
-    @State private var conversations: [Conversation] = []
+    @State private var conversations: [SDConversation] = []
     /// 模拟角色数据 - 修改为CYChatCharacter类型
     @State private var characters: [String: CYChatCharacter] = [:]
     
@@ -142,7 +142,7 @@ struct MessageCenterView: View {
     }
     
     /// 过滤后的对话列表
-    private var filteredConversations: [Conversation] {
+    private var filteredConversations: [SDConversation] {
         var result = conversations
         
         // 根据标签过滤
@@ -170,21 +170,21 @@ struct MessageCenterView: View {
     }
     
     /// 删除对话
-    private func deleteConversation(_ conversation: Conversation) {
+    private func deleteConversation(_ conversation: SDConversation) {
         if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
             conversations.remove(at: index)
         }
     }
     
     /// 切换已读/未读状态
-    private func toggleReadStatus(_ conversation: Conversation) {
+    private func toggleReadStatus(_ conversation: SDConversation) {
         if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
             conversations[index].messageCount = conversations[index].messageCount > 0 ? 0 : 1
         }
     }
     
     /// 切换收藏状态
-    private func toggleFavorite(_ conversation: Conversation) {
+    private func toggleFavorite(_ conversation: SDConversation) {
         // 实际项目中应该实现收藏功能
     }
     
@@ -244,7 +244,7 @@ struct MessageCenterView: View {
         
         // 模拟对话数据
         conversations = [
-            Conversation(
+            SDConversation(
                 id: "1",
                 characterId: einstein.id,
                 userId: "currentUser",
@@ -252,7 +252,7 @@ struct MessageCenterView: View {
                 lastMessageTime: Date().addingTimeInterval(-3600 * 2),
                 messageCount: 3
             ),
-            Conversation(
+            SDConversation(
                 id: "2",
                 characterId: socrates.id,
                 userId: "currentUser",
@@ -260,7 +260,7 @@ struct MessageCenterView: View {
                 lastMessageTime: Date().addingTimeInterval(-3600 * 24),
                 messageCount: 0
             ),
-            Conversation(
+            SDConversation(
                 id: "3",
                 characterId: davinci.id,
                 userId: "currentUser",
@@ -276,7 +276,7 @@ struct MessageCenterView: View {
  * 对话行项目
  */
 struct ConversationRow: View {
-    var conversation: Conversation
+    var conversation: SDConversation
     var character: CYChatCharacter?
     
     var body: some View {

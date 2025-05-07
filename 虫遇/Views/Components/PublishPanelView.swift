@@ -287,7 +287,7 @@ struct PublishPanelView: View {
                                         let generator = UIImpactFeedbackGenerator(style: .light)
                                         generator.impactOccurred()
                                         
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        _ = withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                             selectedImages.remove(at: index)
                                         }
                                     }) {

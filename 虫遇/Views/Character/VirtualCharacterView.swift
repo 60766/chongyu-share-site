@@ -87,16 +87,6 @@ struct VirtualCharacterView: View {
             }
             .navigationTitle("虚拟角色")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        // 添加角色或其他操作
-                    }) {
-                        Image(systemName: "plus.circle")
-                            .foregroundColor(.primaryColor)
-                    }
-                }
-            }
             .onAppear {
                 loadCharacters()
                 
@@ -333,6 +323,9 @@ private struct CharacterCategoryButton: View {
 struct CharacterGridView: View {
     let characters: [Character]
     let animateContent: Bool
+    
+    // TabBar管理器
+    @ObservedObject private var tabBarManager = TabBarManager.shared
     
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 16)
