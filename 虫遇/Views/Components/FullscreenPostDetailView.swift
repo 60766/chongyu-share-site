@@ -355,6 +355,9 @@ struct FullscreenPostDetailView: View {
     @State private var isWormholeDragging: Bool = false
     @State private var showWormholeSwipeIndicator: Bool = false
     
+    // 添加虫洞捕捉转场效果状态
+    @State private var showWormholeTransition: Bool = false
+    
     // 初始化方法
     init(
         post: UserPostModel, 
@@ -1206,51 +1209,9 @@ struct FullscreenPostDetailView: View {
                                 return
                             }
                             
-                            // 使用类似滑动返回的动画效果
-                            isTransitioning = true
-                            
-                            // 提供触觉反馈
-                            let feedback = UIImpactFeedbackGenerator(style: .light)
-                            feedback.impactOccurred()
-                            
-                            // 使用与页面转场相同的动画序列
-                            let initialEffectDuration: Double = 0.12
-                            let slideOutDuration: Double = 0.2
-                            
-                            // 第一阶段：显示时空效果
-                            withAnimation(.easeIn(duration: initialEffectDuration)) {
-                                showingTimeSpaceEffect = true
-                                // 从顶部返回而不是右滑
-                                timeSpaceDirection = .right
-                            }
-                            
-                            // 第二阶段：页面滑出
-                            DispatchQueue.main.asyncAfter(deadline: .now() + initialEffectDuration) {
-                                withAnimation(.spring(response: slideOutDuration, dampingFraction: 0.85, blendDuration: 0.08)) {
-                                    // 向右滑出
-                                    dragOffset = UIScreen.main.bounds.width
-                                    showingTimeSpaceEffect = false
-                                }
-                                
-                                // 第三阶段：关闭页面并重置
-                                DispatchQueue.main.asyncAfter(deadline: .now() + slideOutDuration) {
-                                    // 关闭虫洞探索页面
-                                    showAddContentView = false
-                                    
-                                    // 重置状态
-                                    dragOffset = 0
-                                    swipeDirection = .none
-                                    isTransitioning = false
-                                    
-                                    // 延迟一点调用onDismiss
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                        // 额外检查以确保不会出现重复调用
-                                        let elapsedTime = Date().timeIntervalSince(operationStartTime)
-                                        if elapsedTime < 1.0 && !showAddContentView {
-                                            onDismiss?()
-                                        }
-                                    }
-                                }
+                            // 触发虫洞捕捉转场效果
+                            withAnimation {
+                                showWormholeTransition = true
                             }
                         }) {
                             HStack(spacing: 10) {  // 增加图标与文字间距
@@ -1338,6 +1299,12 @@ struct FullscreenPostDetailView: View {
                         .opacity(showWormholeSwipeIndicator || (isDragging && dragOffset > 10) ? 0.8 : 0)
                         .animation(.easeOut(duration: 0.2), value: showWormholeSwipeIndicator || isDragging)
                     }
+                    
+                    // 虫洞捕捉转场效果
+                    WormholeTransitionEffect(isActive: $showWormholeTransition, onComplete: {
+                        // 转场效果结束后执行原有的关闭逻辑
+                        executeWormholeCaptureAction(operationStartTime: Date())
+                    })
                 }
                 .zIndex(300)
                 .transition(.opacity) // 使用渐变过渡效果
@@ -2706,6 +2673,52 @@ struct FullscreenPostDetailView: View {
         
         print("⭐️ 经过多次尝试，无法确定是否为最后一篇帖子，默认非最后一篇")
         return false
+    }
+    
+    // 添加执行虫洞捕捉动作的方法
+    private func executeWormholeCaptureAction(operationStartTime: Date) {
+        // 使用与页面转场相同的动画序列
+        isTransitioning = true
+        
+        // 使用与页面转场相同的动画序列
+        let initialEffectDuration: Double = 0.12
+        let slideOutDuration: Double = 0.2
+        
+        // 第一阶段：显示时空效果
+        withAnimation(.easeIn(duration: initialEffectDuration)) {
+            showingTimeSpaceEffect = true
+            // 从顶部返回而不是右滑
+            timeSpaceDirection = .right
+        }
+        
+        // 第二阶段：页面滑出
+        DispatchQueue.main.asyncAfter(deadline: .now() + initialEffectDuration) {
+            withAnimation(.spring(response: slideOutDuration, dampingFraction: 0.85, blendDuration: 0.08)) {
+                // 向右滑出
+                dragOffset = UIScreen.main.bounds.width
+                showingTimeSpaceEffect = false
+            }
+            
+            // 第三阶段：关闭页面并重置
+            DispatchQueue.main.asyncAfter(deadline: .now() + slideOutDuration) {
+                // 关闭虫洞探索页面
+                showAddContentView = false
+                
+                // 重置状态
+                dragOffset = 0
+                swipeDirection = .none
+                isTransitioning = false
+                
+                // 延迟一点调用onDismiss
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // 额外检查以确保不会出现重复调用
+                    let elapsedTime = Date().timeIntervalSince(operationStartTime)
+                    if elapsedTime < 1.0 && !showAddContentView {
+                        onDismiss?()
+                    }
+                }
+            }
+        }
     }
 }
 
