@@ -378,16 +378,16 @@ public struct BlackHoleView: View {
                     // 图标和光晕效果
                     Image(systemName: iconName)
                         .font(.system(size: 26, weight: .light))
-                        .foregroundColor(.white)
-                        .opacity(0.9)
-                        .shadow(color: Color.white.opacity(0.8), radius: 5, x: 0, y: 0)
+                        .foregroundColor(Color(red: 255/255, green: 220/255, blue: 0/255)) // 更亮的黄色
+                        .opacity(1.0) // 增加不透明度，使其更明亮
+                        .shadow(color: Color(red: 255/255, green: 220/255, blue: 0/255).opacity(0.9), radius: 8, x: 0, y: 0) // 增强黄色光晕
                         .transition(.scale.combined(with: .opacity))
                         .overlay(
                             Image(systemName: iconName)
                                 .font(.system(size: 26, weight: .light))
-                                .foregroundColor(.white)
-                                .opacity(0.6)
-                                .blur(radius: 3)
+                                .foregroundColor(Color(red: 255/255, green: 220/255, blue: 0/255)) // 更亮的黄色
+                                .opacity(0.8) // 增加不透明度
+                                .blur(radius: 5) // 增加模糊以增强发光效果
                                 .offset(x: 0.5, y: 0.5)
                         )
                 }
@@ -503,7 +503,7 @@ public struct BlackHoleView: View {
                         .stroke(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.7), // 紫色调
+                                    Color(red: 255/255, green: 220/255, blue: 0/255, opacity: 0.6), // 黄色调
                                     Color.white.opacity(0.7)
                                 ]),
                                 startPoint: .topLeading,
@@ -514,13 +514,13 @@ public struct BlackHoleView: View {
                         .blur(radius: 1)
                 )
                 .overlay(
-                    // 中心光晕效果 - 添加紫色调
+                    // 中心光晕效果 - 添加黄色调
                     ZStack {
                         Circle()
                             .fill(
                                 RadialGradient(
                                     gradient: Gradient(colors: [
-                                        Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.4), // 紫色调
+                                        Color(red: 255/255, green: 220/255, blue: 0/255, opacity: 0.3), // 黄色调
                                         Color.clear
                                     ]),
                                     center: .center,
