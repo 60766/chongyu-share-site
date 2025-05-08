@@ -1,462 +1,253 @@
 import SwiftUI
 
 /**
- * 虫洞捕捉转场效果
- * 提供点击启动虫洞捕捉按钮后的视觉动效
+ * 虫洞过渡特效组件
+ * 提供在页面过渡时的虫洞特效动画
  */
 struct WormholeTransitionEffect: View {
-    // 动画状态
+    // 控制动画进度的绑定变量
+    @Binding var progress: Double
+    // 是否显示特效
     @Binding var isActive: Bool
-    @State private var animationProgress: CGFloat = 0
+    // 方向 - 进入或退出
+    var direction: TransitionDirection = .enter
     
-    // 动画完成回调
-    var onComplete: (() -> Void)?
-    
-    // 粒子系统状态
-    @State private var particlePositions: [(CGPoint, CGPoint, CGFloat, Color)] = []
-    @State private var wormholeScale: CGFloat = 0.1
-    @State private var distortionIntensity: CGFloat = 0
-    @State private var showTimeRipple: Bool = false
-    @State private var showSpaceFold: Bool = false
-    
-    // 构造函数
-    init(isActive: Binding<Bool>, onComplete: (() -> Void)? = nil) {
-        self._isActive = isActive
-        self.onComplete = onComplete
+    // 转场方向枚举
+    enum TransitionDirection {
+        case enter   // 进入
+        case exit    // 退出
     }
+    
+    // 屏幕尺寸
+    @State private var screenSize: CGSize = UIScreen.main.bounds.size
+    // 粒子系统
+    @State private var particles: [TransitionParticle] = []
+    
+    // 波纹层级数量
+    private let rippleCount = 3
+    // 粒子数量
+    private let particleCount = 80
     
     var body: some View {
-        ZStack {
-            // 背景层 - 深紫色星空背景
-            backgroundLayer
-            
-            // 1. 虫洞引力场效果 - 从中心向外扩散的波纹
-            if isActive {
-                gravityFieldEffect
-            }
-            
-            // 2. 时间折叠效果 - 屏幕上下向中心折叠
-            if showSpaceFold {
-                SpaceFoldEffect(progress: animationProgress)
-                    .opacity(max(0, 1 - animationProgress * 2))
-            }
-            
-            // 3. 光速粒子流效果
-            particleFlowEffect
-            
-            // 4. 中心虫洞效果
-            wormholeEffect
-            
-            // 5. 时空波纹效果
-            if showTimeRipple {
-                TimeRippleEffect(progress: animationProgress)
-                    .opacity(1.0 - animationProgress)
-            }
-            
-            // 6. 空间扭曲效果 - 使用ZStack包裹以便应用3D变换
-            if distortionIntensity > 0 {
-                spaceDistortionLayer
-            }
-        }
-        .onChange(of: isActive) { oldValue, newValue in
-            if newValue {
-                // 启动动画
-                startAnimation()
-            } else {
-                // 重置动画
-                resetAnimation()
-            }
-        }
-    }
-    
-    // 背景层
-    private var backgroundLayer: some View {
-        Color(red: 0.08, green: 0.03, blue: 0.15)
-            .edgesIgnoringSafeArea(.all)
-            .opacity(isActive ? 1 : 0)
-            .animation(.easeIn(duration: 0.2), value: isActive)
-    }
-    
-    // 虫洞引力场效果
-    private var gravityFieldEffect: some View {
-        ForEach(0..<3, id: \.self) { index in
-            Circle()
-                .fill(createGravityFieldGradient(index: index))
-                .scaleEffect(0.3 + CGFloat(index) * 0.2 + animationProgress * 0.7)
-                .opacity(1.0 - animationProgress * 0.7)
-        }
-    }
-    
-    // 创建引力场渐变
-    private func createGravityFieldGradient(index: Int) -> RadialGradient {
-        RadialGradient(
-            gradient: Gradient(colors: [
-                Color(red: 0.6, green: 0.4, blue: 0.8, opacity: max(0.0, 0.4 - Double(index) * 0.1)),
-                Color(red: 0.5, green: 0.3, blue: 0.7, opacity: max(0.0, 0.1 - Double(index) * 0.03)),
-                Color.clear
-            ]),
-            center: .center,
-            startRadius: 5 + 20.0 * Double(index),
-            endRadius: 800.0 * animationProgress
-        )
-    }
-    
-    // 粒子流效果
-    private var particleFlowEffect: some View {
-        ForEach(0..<particlePositions.count, id: \.self) { index in
-            particleView(at: index)
-        }
-    }
-    
-    // 单个粒子视图
-    private func particleView(at index: Int) -> some View {
-        let (initialPos, endPos, size, color) = particlePositions[index]
-        
-        return ZStack {
-            // 粒子主体
-            Circle()
-                .fill(
-                    RadialGradient(
-                        gradient: Gradient(colors: [
-                            color,
-                            color.opacity(0)
-                        ]),
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: size * 2
-                    )
-                )
-                .frame(width: size, height: size)
-                .position(
-                    x: initialPos.x + (endPos.x - initialPos.x) * animationProgress,
-                    y: initialPos.y + (endPos.y - initialPos.y) * animationProgress
-                )
-                .opacity(max(0.0, 1 - animationProgress * 0.8))
-            
-            // 粒子轨迹 - 尾迹效果
-            if animationProgress > 0.1 && animationProgress < 0.9 {
-                particleTrailEffect(initialPos: initialPos, endPos: endPos, size: size, color: color)
-            }
-        }
-    }
-    
-    // 粒子尾迹效果
-    private func particleTrailEffect(initialPos: CGPoint, endPos: CGPoint, size: CGFloat, color: Color) -> some View {
-        let angle = atan2(endPos.y - initialPos.y, endPos.x - initialPos.x)
-        
-        return Rectangle()
-            .fill(
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        color.opacity(0.7),
-                        color.opacity(0)
-                    ]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .frame(
-                width: min(size * 6 * animationProgress, 15),
-                height: max(size * 0.6, 1)
-            )
-            .rotationEffect(Angle(radians: Double(angle)))
-            .position(
-                x: initialPos.x + (endPos.x - initialPos.x) * animationProgress * 0.85,
-                y: initialPos.y + (endPos.y - initialPos.y) * animationProgress * 0.85
-            )
-            .opacity(max(0.0, 0.7 - abs(animationProgress - 0.5)))
-    }
-    
-    // 中心虫洞效果
-    private var wormholeEffect: some View {
-        ZStack {
-            // 虫洞外圈光环
-            wormholeRings
-            
-            // 虫洞中心黑洞
-            wormholeCenter
-            
-            // 虫洞中心能量核心
-            wormholeEnergyCore
-        }
-        .scaleEffect(1 + animationProgress * 0.3)
-    }
-    
-    // 虫洞光环
-    private var wormholeRings: some View {
-        ForEach(0..<3, id: \.self) { index in
-            Circle()
-                .strokeBorder(createWormholeRingGradient(index: index), lineWidth: max(0.1, 2.0 - CGFloat(index) * 0.5))
-                .frame(width: 120 + CGFloat(index) * 30, height: 120 + CGFloat(index) * 30)
-                .scaleEffect(wormholeScale + CGFloat(index) * 0.1)
-                .opacity(max(0.0, 1.0 - animationProgress))
-        }
-    }
-    
-    // 创建虫洞光环渐变
-    private func createWormholeRingGradient(index: Int) -> LinearGradient {
-        LinearGradient(
-            gradient: Gradient(colors: [
-                Color(red: 0.6, green: 0.4, blue: 0.8, opacity: max(0.0, 0.8 - Double(index) * 0.2)),
-                Color(red: 0.8, green: 0.7, blue: 0.9, opacity: max(0.0, 0.6 - Double(index) * 0.2)),
-                Color(red: 0.6, green: 0.4, blue: 0.8, opacity: max(0.0, 0.4 - Double(index) * 0.1))
-            ]),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-    
-    // 虫洞中心
-    private var wormholeCenter: some View {
-        Circle()
-            .fill(
-                RadialGradient(
-                    gradient: Gradient(colors: [
-                        Color.black.opacity(0.7),
-                        Color(red: 0.15, green: 0.10, blue: 0.25).opacity(0.5),
-                        Color.black.opacity(0.9)
-                    ]),
-                    center: .center,
-                    startRadius: 5,
-                    endRadius: 60
-                )
-            )
-            .frame(width: 100, height: 100)
-            .scaleEffect(wormholeScale)
-            .opacity(max(0.0, 1.0 - animationProgress))
-    }
-    
-    // 虫洞能量核心
-    private var wormholeEnergyCore: some View {
-        Circle()
-            .fill(
-                RadialGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.9, green: 0.8, blue: 0.2, opacity: 0.9), // 黄色能量核心
-                        Color(red: 0.9, green: 0.5, blue: 0.1, opacity: 0.5),
-                        Color.clear
-                    ]),
-                    center: .center,
-                    startRadius: 0,
-                    endRadius: 30
-                )
-            )
-            .frame(width: 40, height: 40)
-            .scaleEffect(wormholeScale * (0.8 + 0.2 * sin(animationProgress * 10)))
-            .blur(radius: 2)
-            .opacity(max(0.0, 1.0 - animationProgress))
-    }
-    
-    // 空间扭曲效果层
-    private var spaceDistortionLayer: some View {
-        Rectangle()
-            .fill(Color.clear)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .modifier(SpaceDistortionEffect(intensity: distortionIntensity))
-    }
-    
-    // 启动动画
-    private func startAnimation() {
-        // 重置状态
-        resetAnimation()
-        
-        // 生成随机粒子
-        generateParticles()
-        
-        // 启动动画序列
-        withAnimation(.easeIn(duration: 0.3)) {
-            wormholeScale = 1.0
-        }
-        
-        // 阶段1: 开始扭曲
-        withAnimation(.easeInOut(duration: 0.3)) {
-            distortionIntensity = 0.5
-        }
-        
-        // 阶段2: 显示时间波纹
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.easeIn(duration: 0.2)) {
-                showTimeRipple = true
-            }
-        }
-        
-        // 阶段3: 加强空间扭曲
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                distortionIntensity = 1.0
-            }
-        }
-        
-        // 阶段4: 空间折叠效果
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            withAnimation(.easeIn(duration: 0.2)) {
-                showSpaceFold = true
-            }
-        }
-        
-        // 主动画进度
-        withAnimation(.easeInOut(duration: 1.0)) {
-            animationProgress = 1.0
-        }
-        
-        // 阶段5: 完成动画并调用回调
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            onComplete?()
-        }
-    }
-    
-    // 重置动画状态
-    private func resetAnimation() {
-        animationProgress = 0
-        wormholeScale = 0.1
-        distortionIntensity = 0
-        showTimeRipple = false
-        showSpaceFold = false
-        particlePositions = []
-    }
-    
-    // 生成粒子系统
-    private func generateParticles() {
-        // 清空现有粒子
-        particlePositions = []
-        
-        // 屏幕中心
-        let centerX = UIScreen.main.bounds.width / 2
-        let centerY = UIScreen.main.bounds.height / 2
-        
-        // 生成100个粒子
-        for _ in 0..<100 {
-            // 初始位置 - 靠近中心
-            let initialRadius = CGFloat.random(in: 20...70)
-            let initialAngle = CGFloat.random(in: 0...(2 * .pi))
-            let initialX = centerX + initialRadius * cos(initialAngle)
-            let initialY = centerY + initialRadius * sin(initialAngle)
-            
-            // 终点位置 - 向屏幕边缘飞出
-            let endRadius = CGFloat.random(in: UIScreen.main.bounds.width...UIScreen.main.bounds.width * 1.5)
-            let endX = centerX + endRadius * cos(initialAngle)
-            let endY = centerY + endRadius * sin(initialAngle)
-            
-            // 粒子大小
-            let size = CGFloat.random(in: 1.5...5)
-            
-            // 粒子颜色 - 以紫色为主
-            let color: Color
-            let colorChoice = Int.random(in: 0...10)
-            if colorChoice < 7 {
-                // 70% 几率是紫色系
-                color = Color(
-                    red: Double.random(in: 0.5...0.7),
-                    green: Double.random(in: 0.3...0.5),
-                    blue: Double.random(in: 0.7...0.9),
-                    opacity: Double.random(in: 0.7...1.0)
-                )
-            } else if colorChoice < 9 {
-                // 20% 几率是蓝白色系
-                color = Color(
-                    red: Double.random(in: 0.7...0.9),
-                    green: Double.random(in: 0.7...0.9),
-                    blue: Double.random(in: 0.9...1.0),
-                    opacity: Double.random(in: 0.7...1.0)
-                )
-            } else {
-                // 10% 几率是金黄色系
-                color = Color(
-                    red: Double.random(in: 0.8...1.0),
-                    green: Double.random(in: 0.7...0.9),
-                    blue: Double.random(in: 0.1...0.3),
-                    opacity: Double.random(in: 0.7...1.0)
-                )
-            }
-            
-            // 添加到粒子系统
-            particlePositions.append((
-                CGPoint(x: initialX, y: initialY),
-                CGPoint(x: endX, y: endY),
-                size,
-                color
-            ))
-        }
-    }
-}
-
-/**
- * 空间扭曲效果修饰符
- */
-struct SpaceDistortionEffect: ViewModifier {
-    let intensity: CGFloat
-    
-    func body(content: Content) -> some View {
-        content
-            .rotation3DEffect(.degrees(intensity * 3), axis: (x: 1, y: 0, z: 0))
-            .rotation3DEffect(.degrees(intensity * -2), axis: (x: 0, y: 1, z: 0))
-            .rotation3DEffect(.degrees(intensity * 1), axis: (x: 0, y: 0, z: 1))
-            .blur(radius: intensity * 2)
-    }
-}
-
-/**
- * 时间波纹效果
- */
-struct TimeRippleEffect: View {
-    let progress: CGFloat
-    @State private var animateRings: Bool = false
-    
-    var body: some View {
-        ZStack {
-            // 创建3个波纹圆环
-            ForEach(0..<3, id: \.self) { index in
+        GeometryReader { geometry in
+            ZStack {
+                // 背景层 - 随着进度变化透明度
+                let backgroundOpacity = direction == .enter ? 
+                    Double(min(0.7, progress * 1.2)) : 
+                    Double(min(0.7, (1.0 - progress) * 1.2))
+                
+                Color.black
+                    .opacity(backgroundOpacity)
+                    .edgesIgnoringSafeArea(.all)
+                
+                // 波纹效果层
+                ForEach(0..<rippleCount, id: \.self) { index in
+                    let indexDouble = Double(index)
+                    // 计算当前波纹的放大比例
+                    let currentScale: CGFloat = {
+                        if direction == .enter {
+                            // 进入时，从小到大
+                            return CGFloat(progress * (1.0 + indexDouble * 0.15))
+                        } else {
+                            // 退出时，从大到小
+                            let reverseProgress = 1.0 - progress
+                            return CGFloat(reverseProgress * (1.0 + indexDouble * 0.15))
+                        }
+                    }()
+                    
+                    // 计算不透明度
+                    let baseOpacity = 0.7 - (indexDouble * 0.2)
+                    let fadeOpacity: Double = {
+                        if direction == .enter {
+                            // 进入时，逐渐显示
+                            return min(1.0, progress * 2.0) * baseOpacity
+                        } else {
+                            // 退出时，逐渐消失
+                            return min(1.0, (1.0 - progress) * 2.0) * baseOpacity
+                        }
+                    }()
+                    
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color(red: 0.6, green: 0.4, blue: 0.8).opacity(fadeOpacity),
+                                    Color(red: 0.5, green: 0.3, blue: 0.7).opacity(fadeOpacity * 0.6),
+                                    Color(red: 0.4, green: 0.2, blue: 0.6).opacity(fadeOpacity * 0.3)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.0 + (indexDouble * 0.2)
+                        )
+                        .frame(
+                            width: min(geometry.size.width, geometry.size.height) * 0.8 * currentScale,
+                            height: min(geometry.size.width, geometry.size.height) * 0.8 * currentScale
+                        )
+                        .blur(radius: 0.5 + (indexDouble * 0.5))
+                }
+                
+                // 粒子效果层
+                ForEach(particles) { particle in
+                    // 计算粒子位置
+                    let particleProgress: Double = {
+                        if direction == .enter {
+                            return progress
+                        } else {
+                            return 1.0 - progress
+                        }
+                    }()
+                    
+                    // 根据方向设置起始和结束位置
+                    let startX = particle.startPosition.x
+                    let startY = particle.startPosition.y
+                    let endX = particle.endPosition.x
+                    let endY = particle.endPosition.y
+                    
+                    // 计算当前位置
+                    let currentX = startX + (endX - startX) * particleProgress
+                    let currentY = startY + (endY - startY) * particleProgress
+                    
+                    // 粒子不透明度
+                    let maxOpacity = particle.baseOpacity
+                    let currentOpacity = direction == .enter ?
+                        min(maxOpacity, progress * 1.5) :
+                        min(maxOpacity, (1.0 - progress) * 1.5)
+                    
+                    Circle()
+                        .fill(particle.color.opacity(currentOpacity))
+                        .frame(width: particle.size, height: particle.size)
+                        .position(x: currentX, y: currentY)
+                        .blur(radius: particle.size * 0.3)
+                }
+                
+                // 中心虫洞效果
+                let centerSize: CGFloat = {
+                    if direction == .enter {
+                        return 100.0 * CGFloat(progress)
+                    } else {
+                        return 100.0 * CGFloat(1.0 - progress)
+                    }
+                }()
+                
                 Circle()
-                    .stroke(
-                        Color(red: 0.6, green: 0.4, blue: 0.8, opacity: max(0.0, 0.5 - Double(index) * 0.15)),
-                        lineWidth: max(0.1, 1.5 - CGFloat(index) * 0.3)
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(colors: [
+                                Color(red: 0.2, green: 0.1, blue: 0.3),
+                                Color.black
+                            ]),
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: centerSize * 0.5
+                        )
                     )
-                    .scaleEffect(animateRings ? 1 + CGFloat(index) * 0.25 : 0.2)
-                    .opacity(animateRings ? 0 : 0.6)
-                    .animation(
-                        Animation.easeOut(duration: 0.8)
-                            .repeatForever(autoreverses: false)
-                            .delay(Double(index) * 0.2),
-                        value: animateRings
+                    .frame(width: centerSize, height: centerSize)
+                    .shadow(
+                        color: Color(red: 0.5, green: 0.3, blue: 0.7).opacity(0.5),
+                        radius: 10,
+                        x: 0,
+                        y: 0
                     )
             }
-        }
-        .onAppear {
-            // 延迟启动波纹动画
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                animateRings = true
+            .onChange(of: geometry.size) { newSize in
+                screenSize = newSize
+                if particles.isEmpty {
+                    generateParticles(in: geometry)
+                }
+            }
+            .onAppear {
+                screenSize = geometry.size
+                generateParticles(in: geometry)
             }
         }
+        .ignoresSafeArea()
+        .opacity(isActive ? 1 : 0)
     }
-}
-
-/**
- * 空间折叠效果
- */
-struct SpaceFoldEffect: View {
-    let progress: CGFloat
     
-    var body: some View {
-        ZStack {
-            // 上半部分向下折叠
-            Rectangle()
-                .fill(Material.ultraThinMaterial)
-                .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height/2)
-                .position(x: UIScreen.main.bounds.width/2, y: UIScreen.main.bounds.height/4)
-                .offset(y: progress * UIScreen.main.bounds.height/4)
+    // 生成粒子
+    private func generateParticles(in geometry: GeometryProxy) {
+        particles = []
+        
+        // 中心点
+        let centerX = geometry.size.width / 2
+        let centerY = geometry.size.height / 2
+        
+        // 外围圆环半径
+        let radius = min(geometry.size.width, geometry.size.height) * 0.4
+        
+        // 生成粒子
+        for _ in 0..<particleCount {
+            // 生成随机角度
+            let angle = Double.random(in: 0..<(2 * .pi))
             
-            // 下半部分向上折叠
-            Rectangle()
-                .fill(Material.ultraThinMaterial)
-                .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height/2)
-                .position(x: UIScreen.main.bounds.width/2, y: UIScreen.main.bounds.height*3/4)
-                .offset(y: -progress * UIScreen.main.bounds.height/4)
+            // 计算外围起始/结束点
+            let outerRadius = radius * Double.random(in: 0.8...1.2)
+            
+            // 计算粒子起始和结束位置
+            let startX: CGFloat
+            let startY: CGFloat
+            let endX: CGFloat
+            let endY: CGFloat
+            
+            if direction == .enter {
+                // 入场：从外部到中心
+                startX = centerX + cos(angle) * outerRadius
+                startY = centerY + sin(angle) * outerRadius
+                endX = centerX
+                endY = centerY
+            } else {
+                // 出场：从中心到外部
+                startX = centerX
+                startY = centerY
+                endX = centerX + cos(angle) * outerRadius
+                endY = centerY + sin(angle) * outerRadius
+            }
+            
+            // 随机粒子大小
+            let size = CGFloat.random(in: 1.5...4.0)
+            
+            // 随机粒子基础不透明度
+            let baseOpacity = Double.random(in: 0.3...0.8)
+            
+            // 随机粒子颜色 - 紫色系
+            let color = Color(
+                red: Double.random(in: 0.4...0.6),
+                green: Double.random(in: 0.2...0.4),
+                blue: Double.random(in: 0.7...0.9)
+            )
+            
+            // 创建粒子并添加到数组
+            particles.append(
+                TransitionParticle(
+                    id: UUID(),
+                    startPosition: CGPoint(x: startX, y: startY),
+                    endPosition: CGPoint(x: endX, y: endY),
+                    color: color,
+                    size: size,
+                    baseOpacity: baseOpacity
+                )
+            )
         }
-        .opacity(0.3)
-        .blur(radius: 3)
     }
 }
 
-#Preview {
-    WormholeTransitionEffect(isActive: .constant(true))
+// 过渡特效中使用的粒子模型
+struct TransitionParticle: Identifiable {
+    let id: UUID
+    let startPosition: CGPoint
+    let endPosition: CGPoint
+    let color: Color
+    let size: CGFloat
+    let baseOpacity: Double
+}
+
+// 为了预览
+struct WormholeTransitionEffect_Previews: PreviewProvider {
+    static var previews: some View {
+        WormholeTransitionEffect(
+            progress: .constant(0.5),
+            isActive: .constant(true)
+        )
+    }
 } 
