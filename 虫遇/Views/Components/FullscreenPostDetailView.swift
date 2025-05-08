@@ -1064,29 +1064,25 @@ struct FullscreenPostDetailView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 0) {
-                        // 顶部标题 - 更精确地与返回按钮对齐
-                        HStack(spacing: 16) {
-                            // 左侧空间，保持与返回按钮相似的间距
+                        // 顶部区域 - 使用ZStack而不是HStack进行绝对定位
+                        ZStack(alignment: .center) {
+                            // 透明背景确保布局稳定
                             Color.clear
-                                .frame(width: 16, height: 16)
+                                .frame(height: 44)
+                                .padding(.top, getSafeAreaTop())
                             
-                            Spacer()
-                            
-                            // 标题 - 使用与其他页面相同的样式，但微调垂直位置
-                            Text("探索虫洞深处")
-                                .font(.system(size: 17, weight: .medium))
-                                .foregroundColor(.white)
-                                .offset(y: -1) // 微调文本垂直位置，使其在视觉上居中
-                            
-                            Spacer()
-                            
-                            // 右侧空间，保持对称
-                            Color.clear
-                                .frame(width: 16, height: 16)
+                            // 标题 - 使用GeometryReader确保精确居中
+                            GeometryReader { geometry in
+                                Text("探索虫洞深处")
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .frame(width: geometry.size.width, alignment: .center)
+                                    .position(
+                                        x: geometry.size.width / 2,
+                                        y: getSafeAreaTop() + 26
+                                    )
+                            }
                         }
-                        .padding(.horizontal, 16)
-                        .frame(height: 30) // 调整容器高度
-                        .padding(.top, getSafeAreaTop() + 11) // 微调顶部偏移，使标题视觉上与返回按钮对齐
                         
                         // 黑洞主视觉
                         BlackHoleView()
