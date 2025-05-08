@@ -1073,45 +1073,62 @@ struct FullscreenPostDetailView: View {
                             
                             // 标题 - 使用GeometryReader确保精确居中
                             GeometryReader { geometry in
-                                Text("探索虫洞深处")
-                                    .font(.system(size: 17, weight: .medium))
-                                    .foregroundColor(.white)
-                                    .frame(width: geometry.size.width, alignment: .center)
-                                    .position(
-                                        x: geometry.size.width / 2,
-                                        y: getSafeAreaTop() + 26
-                                    )
+                                VStack(spacing: 5) {
+                                    Text("探索虫洞深处")
+                                        .font(.system(size: 17, weight: .medium))
+                                        .foregroundColor(.white)
+                                        .frame(width: geometry.size.width, alignment: .center)
+                                    
+                                    // 删除副标题
+                                }
+                                .position(
+                                    x: geometry.size.width / 2,
+                                    y: getSafeAreaTop() + 22
+                                )
                             }
                         }
                         
-                        // 黑洞主视觉
+                        // 使用Spacer进行自动分配空间
+                        Spacer()
+                            .frame(minHeight: 0)
+                        
+                        // 顶部间距 - 大幅增加空间
+                        Spacer()
+                            .frame(height: UIScreen.main.bounds.height * 0.05)
+                        
+                        // 黑洞主视觉 - 进一步减小高度
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 进一步减小黑洞视图高度
-                            .padding(.bottom, 16)  // 增加底部间距
+                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 增大黑洞视觉比例
+                            .padding(.bottom, 16)
                         
-                        // 提示文本 - 移到黑洞下方
-                        Text("连接不同时代的声音，体验跨越时空的社交互动")
-                            .font(.system(size: 16, weight: .medium))  // 增大字体并增加粗细
-                            .foregroundColor(.white.opacity(0.8))  // 增加文字不透明度
-                            .padding(.top, 0)
-                            .padding(.bottom, 8)  // 增加段落间距
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)  // 减少水平内边距
+                        // 删除原有的两行说明文字
                         
-                        // 辅助说明
-                        Text("每种内容类型将带你进入不同的时空交流维度")
-                            .font(.system(size: 14))  // 增大字体
-                            .foregroundColor(.white.opacity(0.6))  // 增加对比度
-                            .padding(.bottom, 28)  // 增加与按钮之间的间距
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
+                        // 使用灵活的Spacer自动分配空间
+                        Spacer()
+                            .frame(minHeight: 0, idealHeight: UIScreen.main.bounds.height * 0.04)
                         
-                        // 创作类型按钮 - 移到文字下方
+                        // 将说明文字移到按钮上方，并添加视觉增强效果
+                        ZStack {
+                            // 背景轻微高亮
+                            RoundedRectangle(cornerRadius: 15)
+                                .fill(Color.white.opacity(0.05)) 
+                                .frame(width: 332, height: 32)
+                            
+                            // 文字内容
+                            Text("每种内容类型将带你进入不同的时空交流维度")
+                                .font(.system(size: 13, weight: .light))
+                                .foregroundColor(.white.opacity(0.4))  // 进一步降低透明度
+                                .multilineTextAlignment(.center)
+                                .frame(width: 300)  // 文字宽度稍小于背景
+                        }
+                        .padding(.bottom, 16)  // 减少与按钮的间距
+                        
+                        // 创作类型按钮
                         CreationTypeButtonsView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: 80)  // 减小按钮区域高度，适应单行按钮
-                            .padding(.bottom, 30)  // 增加与主按钮之间的间距
+                            .frame(height: 70)  // 保持按钮高度
+                            .padding(.bottom, 24)  // 增加与主按钮间的间距
                         
                         // 主按钮 - 开启时空对话
                         Button(action: {
@@ -1196,7 +1213,11 @@ struct FullscreenPostDetailView: View {
                             .cornerRadius(28)  // 圆角随高度增加
                             .shadow(color: Color.white.opacity(0.4), radius: 10, x: 0, y: 0)  // 增强发光效果
                         }
-                        .padding(.bottom, 60)  // 调整与底部的距离
+                        .padding(.bottom, 40)  // 调整与底部的距离
+                        
+                        // 底部空间，确保布局不贴底
+                        Spacer()
+                            .frame(minHeight: 0, idealHeight: UIScreen.main.bounds.height * 0.02)
                     }
                     
                     // 右滑指示器 - 仅在开始拖动时显示或短暂提示时显示

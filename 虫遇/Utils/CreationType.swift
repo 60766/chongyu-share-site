@@ -232,149 +232,151 @@ public struct BlackHoleView: View {
         let iconName = typeManager.icons[selectedIndex]
         let typeName = typeManager.types[selectedIndex]
         
-        return Button(action: {
-            // 触发触觉反馈
-            let impactMed = UIImpactFeedbackGenerator(style: .medium)
-            impactMed.impactOccurred()
-            
-            // 按钮动作保持不变 - 确保选中当前类型
-            typeManager.selectType(at: selectedIndex)
-        }) {
-            ZStack {
-                // 外部光晕扩散效果 - 类似于黑洞的吸积盘
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 90, height: 90)
-                    .overlay(
-                        Circle()
-                            .stroke(
-                                AngularGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.white.opacity(0.2),
-                                        Color.white.opacity(0.6),
-                                        Color.white.opacity(0.8),
-                                        Color.white.opacity(0.6),
-                                        Color.white.opacity(0.2)
-                                    ]),
-                                    center: .center
-                                ),
-                                lineWidth: 1.5
-                            )
-                            .blur(radius: 1.5)
-                    )
-                    .rotationEffect(.degrees(innerRotation * 0.3))
+        return ZStack {
+            // 按钮部分 - 保持在中心位置
+            Button(action: {
+                // 触发触觉反馈
+                let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                impactMed.impactOccurred()
                 
-                // 外部星云效果 - 类似于黑洞周围的星云
-                ForEach(0..<6) { index in
-                    Circle()
-                        .fill(Color.white.opacity(0.06))
-                        .frame(width: CGFloat.random(in: 10...20), height: CGFloat.random(in: 10...20))
-                        .blur(radius: CGFloat.random(in: 2...4))
-                        .offset(
-                            x: cos(Double(index) * 2 * .pi / 6) * 45,
-                            y: sin(Double(index) * 2 * .pi / 6) * 45
-                        )
-                }
-                
-                // 主按钮背景 - 半透明暗色调，更好地融入黑洞
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            gradient: Gradient(colors: [
-                                Color.white.opacity(0.15),
-                                Color.white.opacity(0.05)
-                            ]),
-                            center: .center,
-                            startRadius: 5,
-                            endRadius: 35
-                        )
-                    )
-                    .frame(width: 70, height: 70)
-                    .overlay(
-                        Circle()
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.white.opacity(0.8),
-                                        Color.white.opacity(0.3)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    )
-                    .shadow(color: Color.white.opacity(0.2), radius: 8, x: 0, y: 0)
-                
-                // 内部星空效果 - 在按钮内部添加微妙的星空
+                // 按钮动作保持不变 - 确保选中当前类型
+                typeManager.selectType(at: selectedIndex)
+            }) {
                 ZStack {
-                    // 内部星星点缀
-                    ForEach(0..<20) { _ in
+                    // 外部光晕扩散效果 - 类似于黑洞的吸积盘
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: 90, height: 90)
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    AngularGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0.2),
+                                            Color.white.opacity(0.6),
+                                            Color.white.opacity(0.8),
+                                            Color.white.opacity(0.6),
+                                            Color.white.opacity(0.2)
+                                        ]),
+                                        center: .center
+                                    ),
+                                    lineWidth: 1.5
+                                )
+                                .blur(radius: 1.5)
+                        )
+                        .rotationEffect(.degrees(innerRotation * 0.3))
+                    
+                    // 外部星云效果 - 类似于黑洞周围的星云
+                    ForEach(0..<6) { index in
                         Circle()
-                            .fill(Color.white)
-                            .frame(width: CGFloat.random(in: 0.5...1.2), 
-                                  height: CGFloat.random(in: 0.5...1.2))
-                            .position(
-                                x: CGFloat.random(in: 15...55),
-                                y: CGFloat.random(in: 15...55)
+                            .fill(Color.white.opacity(0.06))
+                            .frame(width: CGFloat.random(in: 10...20), height: CGFloat.random(in: 10...20))
+                            .blur(radius: CGFloat.random(in: 2...4))
+                            .offset(
+                                x: cos(Double(index) * 2 * .pi / 6) * 45,
+                                y: sin(Double(index) * 2 * .pi / 6) * 45
                             )
-                            .opacity(Double.random(in: 0.3...0.8))
-                            .blur(radius: 0.1)
                     }
+                    
+                    // 主按钮背景 - 半透明暗色调，更好地融入黑洞
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.15),
+                                    Color.white.opacity(0.05)
+                                ]),
+                                center: .center,
+                                startRadius: 5,
+                                endRadius: 35
+                            )
+                        )
+                        .frame(width: 70, height: 70)
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0.8),
+                                            Color.white.opacity(0.3)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                        )
+                        .shadow(color: Color.white.opacity(0.2), radius: 8, x: 0, y: 0)
+                    
+                    // 内部星空效果 - 在按钮内部添加微妙的星空
+                    ZStack {
+                        // 内部星星点缀
+                        ForEach(0..<20) { _ in
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: CGFloat.random(in: 0.5...1.2), 
+                                      height: CGFloat.random(in: 0.5...1.2))
+                                .position(
+                                    x: CGFloat.random(in: 15...55),
+                                    y: CGFloat.random(in: 15...55)
+                                )
+                                .opacity(Double.random(in: 0.3...0.8))
+                                .blur(radius: 0.1)
+                        }
+                    }
+                    .frame(width: 70, height: 70)
+                    .mask(Circle().frame(width: 70, height: 70))
+                    .opacity(0.6)
+                    .rotationEffect(.degrees(innerRotation * 0.5))
+                    
+                    // 能量光环 - 添加内部光环效果
+                    Circle()
+                        .stroke(
+                            AngularGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0),
+                                    Color.white.opacity(0.4),
+                                    Color.white.opacity(0.8),
+                                    Color.white.opacity(0.4),
+                                    Color.white.opacity(0)
+                                ]),
+                                center: .center
+                            ),
+                            lineWidth: 0.8
+                        )
+                        .frame(width: 50, height: 50)
+                        .blur(radius: 0.5)
+                        .rotationEffect(.degrees(innerRotation * -0.7))
+                    
+                    // 图标和光晕效果
+                    Image(systemName: iconName)
+                        .font(.system(size: 26, weight: .light))
+                        .foregroundColor(.white)
+                        .opacity(0.9)
+                        .shadow(color: Color.white.opacity(0.8), radius: 5, x: 0, y: 0)
+                        .transition(.scale.combined(with: .opacity))
+                        .overlay(
+                            Image(systemName: iconName)
+                                .font(.system(size: 26, weight: .light))
+                                .foregroundColor(.white)
+                                .opacity(0.6)
+                                .blur(radius: 3)
+                                .offset(x: 0.5, y: 0.5)
+                        )
                 }
-                .frame(width: 70, height: 70)
-                .mask(Circle().frame(width: 70, height: 70))
-                .opacity(0.6)
-                .rotationEffect(.degrees(innerRotation * 0.5))
-                
-                // 能量光环 - 添加内部光环效果
-                Circle()
-                    .stroke(
-                        AngularGradient(
-                            gradient: Gradient(colors: [
-                                Color.white.opacity(0),
-                                Color.white.opacity(0.4),
-                                Color.white.opacity(0.8),
-                                Color.white.opacity(0.4),
-                                Color.white.opacity(0)
-                            ]),
-                            center: .center
-                        ),
-                        lineWidth: 0.8
-                    )
-                    .frame(width: 50, height: 50)
-                    .blur(radius: 0.5)
-                    .rotationEffect(.degrees(innerRotation * -0.7))
-                
-                // 图标和光晕效果
-                Image(systemName: iconName)
-                    .font(.system(size: 26, weight: .light))
-                    .foregroundColor(.white)
-                    .opacity(0.9)
-                    .shadow(color: Color.white.opacity(0.8), radius: 5, x: 0, y: 0)
-                    .transition(.scale.combined(with: .opacity))
-                    .overlay(
-                        Image(systemName: iconName)
-                            .font(.system(size: 26, weight: .light))
-                            .foregroundColor(.white)
-                            .opacity(0.6)
-                            .blur(radius: 3)
-                            .offset(x: 0.5, y: 0.5)
-                    )
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
             }
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
-        }
-        .buttonStyle(PlainButtonStyle()) // 使用Plain样式避免默认按钮效果
-        .overlay(
-            // 类型文字 - 放置在按钮中间
+            .buttonStyle(PlainButtonStyle()) // 使用Plain样式避免默认按钮效果
+            
+            // 类型文字 - 放置在按钮下方，作为单独元素
             Text(typeName)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.white)
                 .opacity(0.95)
                 .shadow(color: .black, radius: 2, x: 0, y: 0)
-                .offset(y: 0) // 将文字放置在按钮中间
+                .offset(y: 48) // 将文字放置在按钮下方，使用足够大的偏移确保不在按钮内
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
-        )
+        }
     }
     
     public var body: some View {
@@ -483,10 +485,11 @@ public struct BlackHoleView: View {
             // 添加中心按钮显示当前选中的类型
             centerButton()
                 .scaleEffect(centerButtonScale)
+                .offset(y: 0) // 确保按钮位于黑洞正中心
                 .onAppear {
                     // 添加缓慢脉动动画
                     withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
-                        centerButtonScale = 1.05
+                        centerButtonScale = 1.03 // 略微减小脉动幅度
                     }
                 }
         }
