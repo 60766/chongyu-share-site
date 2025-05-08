@@ -10,7 +10,7 @@ public class CreationTypeManager: ObservableObject {
     
     // 探索方向数据
     public let types = ["随机漫游", "日常心情", "古今对望", "奇思妙想", "时空记事"]
-    public let icons = ["waveform.path.ecg", "moon.stars", "arrow.2.squarepath", "sparkles", "infinity"]
+    public let icons = ["waveform.path.ecg", "cloud.sun", "hourglass", "sparkles", "infinity"]
     
     @Published public var selectedIndex: Int = 0
     
