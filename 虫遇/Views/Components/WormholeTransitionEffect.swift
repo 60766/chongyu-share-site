@@ -131,7 +131,7 @@ struct WormholeTransitionEffect: View {
                     x: initialPos.x + (endPos.x - initialPos.x) * animationProgress,
                     y: initialPos.y + (endPos.y - initialPos.y) * animationProgress
                 )
-                .opacity(1 - animationProgress * 0.8)
+                .opacity(max(0.0, 1 - animationProgress * 0.8))
             
             // 粒子轨迹 - 尾迹效果
             if animationProgress > 0.1 && animationProgress < 0.9 {
@@ -164,7 +164,7 @@ struct WormholeTransitionEffect: View {
                 x: initialPos.x + (endPos.x - initialPos.x) * animationProgress * 0.85,
                 y: initialPos.y + (endPos.y - initialPos.y) * animationProgress * 0.85
             )
-            .opacity(0.7 - abs(animationProgress - 0.5))
+            .opacity(max(0.0, 0.7 - abs(animationProgress - 0.5)))
     }
     
     // 中心虫洞效果
@@ -186,10 +186,10 @@ struct WormholeTransitionEffect: View {
     private var wormholeRings: some View {
         ForEach(0..<3, id: \.self) { index in
             Circle()
-                .strokeBorder(createWormholeRingGradient(index: index), lineWidth: 2.0 - CGFloat(index) * 0.5)
+                .strokeBorder(createWormholeRingGradient(index: index), lineWidth: max(0.1, 2.0 - CGFloat(index) * 0.5))
                 .frame(width: 120 + CGFloat(index) * 30, height: 120 + CGFloat(index) * 30)
                 .scaleEffect(wormholeScale + CGFloat(index) * 0.1)
-                .opacity(1.0 - animationProgress)
+                .opacity(max(0.0, 1.0 - animationProgress))
         }
     }
     
@@ -223,7 +223,7 @@ struct WormholeTransitionEffect: View {
             )
             .frame(width: 100, height: 100)
             .scaleEffect(wormholeScale)
-            .opacity(1.0 - animationProgress)
+            .opacity(max(0.0, 1.0 - animationProgress))
     }
     
     // 虫洞能量核心
@@ -244,7 +244,7 @@ struct WormholeTransitionEffect: View {
             .frame(width: 40, height: 40)
             .scaleEffect(wormholeScale * (0.8 + 0.2 * sin(animationProgress * 10)))
             .blur(radius: 2)
-            .opacity(1.0 - animationProgress)
+            .opacity(max(0.0, 1.0 - animationProgress))
     }
     
     // 空间扭曲效果层
@@ -408,8 +408,8 @@ struct TimeRippleEffect: View {
             ForEach(0..<3, id: \.self) { index in
                 Circle()
                     .stroke(
-                        Color(red: 0.6, green: 0.4, blue: 0.8, opacity: 0.5 - Double(index) * 0.15),
-                        lineWidth: 1.5 - CGFloat(index) * 0.3
+                        Color(red: 0.6, green: 0.4, blue: 0.8, opacity: max(0.0, 0.5 - Double(index) * 0.15)),
+                        lineWidth: max(0.1, 1.5 - CGFloat(index) * 0.3)
                     )
                     .scaleEffect(animateRings ? 1 + CGFloat(index) * 0.25 : 0.2)
                     .opacity(animateRings ? 0 : 0.6)
