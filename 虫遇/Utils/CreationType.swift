@@ -278,11 +278,11 @@ public struct BlackHoleView: View {
                                 .stroke(
                                     AngularGradient(
                                         gradient: Gradient(colors: [
-                                            Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.2), // 添加紫色调
-                                            Color.white.opacity(0.6),
-                                            Color.white.opacity(0.8),
-                                            Color.white.opacity(0.6),
-                                            Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.2) // 添加紫色调
+                                            Color(red: 0.4, green: 0.2, blue: 0.6).opacity(0.2), // 改为紫色
+                                            Color(red: 0.5, green: 0.3, blue: 0.7).opacity(0.6), // 改为紫色
+                                            Color(red: 0.6, green: 0.4, blue: 0.8).opacity(0.8), // 改为紫色
+                                            Color(red: 0.5, green: 0.3, blue: 0.7).opacity(0.6), // 改为紫色
+                                            Color(red: 0.4, green: 0.2, blue: 0.6).opacity(0.2)  // 改为紫色
                                         ]),
                                         center: .center
                                     ),
@@ -323,9 +323,9 @@ public struct BlackHoleView: View {
                                 .stroke(
                                     LinearGradient(
                                         gradient: Gradient(colors: [
-                                            Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.8), // 紫色调
-                                            Color.white.opacity(0.8),
-                                            Color.white.opacity(0.3)
+                                            Color.white.opacity(0.8), // 改回白色
+                                            Color.white.opacity(0.8), // 改回白色
+                                            Color.white.opacity(0.3)  // 改回白色
                                         ]),
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -333,7 +333,7 @@ public struct BlackHoleView: View {
                                     lineWidth: 1
                                 )
                         )
-                        .shadow(color: Color.white.opacity(0.2), radius: 8, x: 0, y: 0)
+                        .shadow(color: Color.white.opacity(0.2), radius: 8, x: 0, y: 0) // 改回白色阴影
                     
                     // 内部星空效果 - 在按钮内部添加微妙的星空
                     ZStack {
@@ -361,11 +361,11 @@ public struct BlackHoleView: View {
                         .stroke(
                             AngularGradient(
                                 gradient: Gradient(colors: [
-                                    Color.white.opacity(0),
-                                    Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.4), // 添加紫色调
-                                    Color.white.opacity(0.8),
-                                    Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.4), // 添加紫色调
-                                    Color.white.opacity(0)
+                                    Color.white.opacity(0),           // 改回白色
+                                    Color.white.opacity(0.5),         // 改回白色
+                                    Color.white.opacity(0.8),         // 改回白色
+                                    Color.white.opacity(0.5),         // 改回白色
+                                    Color.white.opacity(0)            // 改回白色
                                 ]),
                                 center: .center
                             ),
@@ -422,7 +422,7 @@ public struct BlackHoleView: View {
                     )
                 )
                 .frame(width: UIScreen.main.bounds.width * 1.6, height: UIScreen.main.bounds.width * 1.6)
-                .shadow(color: Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.05), radius: 50, x: 0, y: 0) // 紫色调阴影
+                .shadow(color: Color.white.opacity(0.05), radius: 50, x: 0, y: 0) // 改为白色阴影
             
             // 最外层星空
             StarfieldView()
@@ -430,26 +430,26 @@ public struct BlackHoleView: View {
                 .opacity(0.7)
                 .rotationEffect(.degrees(outerRotation))
             
-            // 黑洞外围光环效果 - 最外层 - 添加紫色调
+            // 黑洞外围光环效果 - 最外层 - 修改为白色
             Circle()
-                .stroke(Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.15), lineWidth: 1) // 紫色调
+                .stroke(Color.white.opacity(0.15), lineWidth: 1) // 改为白色
                 .frame(width: UIScreen.main.bounds.width * 0.85, height: UIScreen.main.bounds.width * 0.85)
                 .blur(radius: 1)
             
-            // 黑洞外围光环效果 - 中间层 - 添加紫色调
+            // 黑洞外围光环效果 - 中间层 - 修改为白色
             Circle()
-                .stroke(Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.25), lineWidth: 2) // 紫色调
+                .stroke(Color.white.opacity(0.25), lineWidth: 2) // 改为白色
                 .frame(width: UIScreen.main.bounds.width * 0.7, height: UIScreen.main.bounds.width * 0.7)
             
             // 黑洞外围粒子层
             ParticleRingView(count: 200, minSize: 1.0, maxSize: 2.5, radius: UIScreen.main.bounds.width * 0.32, innerRadius: UIScreen.main.bounds.width * 0.28, rotationDuration: 240)
             
-            // 辉光圆环 - 添加紫色调
+            // 辉光圆环 - 修改为白色
             Circle()
                 .stroke(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.8), // 紫色调
+                            Color.white.opacity(0.8), // 改为白色
                             Color.white.opacity(0.4),
                             Color.white.opacity(0.1)
                         ]),
@@ -462,13 +462,13 @@ public struct BlackHoleView: View {
                 .blur(radius: 0.5)
                 .rotationEffect(.degrees(innerRotation * -0.5))
             
-            // 黑洞内环 - 添加紫色调
+            // 黑洞内环 - 修改为白色
             Circle()
                 .stroke(
                     LinearGradient(
                         gradient: Gradient(colors: [
                             Color.white.opacity(0.5),
-                            Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.5) // 紫色调
+                            Color.white.opacity(0.5) // 改为白色
                         ]),
                         startPoint: .top,
                         endPoint: .bottom
@@ -478,9 +478,9 @@ public struct BlackHoleView: View {
                 .frame(width: UIScreen.main.bounds.width * 0.34, height: UIScreen.main.bounds.width * 0.34)
                 .rotationEffect(.degrees(innerRotation))
             
-            // 脉冲效果 - 添加紫色调
+            // 脉冲效果 - 修改为白色
             Circle()
-                .stroke(Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.3), lineWidth: 1) // 紫色调
+                .stroke(Color.white.opacity(0.3), lineWidth: 1) // 改为白色
                 .frame(width: UIScreen.main.bounds.width * 0.3, height: UIScreen.main.bounds.width * 0.3)
                 .scaleEffect(pulseScale)
             
@@ -503,7 +503,7 @@ public struct BlackHoleView: View {
                         .stroke(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    Color(red: 255/255, green: 220/255, blue: 0/255, opacity: 0.6), // 黄色调
+                                    Color.white.opacity(0.6), // 改为白色，原为黄色调
                                     Color.white.opacity(0.7)
                                 ]),
                                 startPoint: .topLeading,
@@ -520,7 +520,7 @@ public struct BlackHoleView: View {
                             .fill(
                                 RadialGradient(
                                     gradient: Gradient(colors: [
-                                        Color(red: 255/255, green: 220/255, blue: 0/255, opacity: 0.3), // 黄色调
+                                        Color.white.opacity(0.3), // 改为白色，原为黄色调
                                         Color.clear
                                     ]),
                                     center: .center,
