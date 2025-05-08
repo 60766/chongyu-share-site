@@ -1059,9 +1059,45 @@ struct FullscreenPostDetailView: View {
             // 添加内容视图 - 在最后一篇帖子左滑时显示
             if showAddContentView {
                 ZStack {
-                    // 背景 - 使用纯黑背景
-                    Color.black
-                        .edgesIgnoringSafeArea(.all)
+                    // 背景 - 使用深紫到黑色的渐变背景
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 0.08, green: 0.03, blue: 0.15), // 深紫色
+                            Color.black
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .edgesIgnoringSafeArea(.all)
+                    
+                    // 增强的星空效果
+                    ZStack {
+                        // 微妙的星星
+                        ForEach(0..<100) { _ in
+                            Circle()
+                                .fill(Color.white.opacity(Double.random(in: 0.1...0.5)))
+                                .frame(width: CGFloat.random(in: 1...2.5), height: CGFloat.random(in: 1...2.5))
+                                .position(
+                                    x: CGFloat.random(in: 0...UIScreen.main.bounds.width),
+                                    y: CGFloat.random(in: 0...UIScreen.main.bounds.height)
+                                )
+                        }
+                        
+                        // 彩色微弱星星 - 与应用图标配色呼应
+                        ForEach(0..<25) { _ in
+                            Circle()
+                                .fill(Color(
+                                    red: Double.random(in: 0.5...0.8),
+                                    green: Double.random(in: 0.5...0.8),
+                                    blue: Double.random(in: 0.8...1.0)
+                                ).opacity(Double.random(in: 0.1...0.3)))
+                                .frame(width: CGFloat.random(in: 1...3), height: CGFloat.random(in: 1...3))
+                                .position(
+                                    x: CGFloat.random(in: 0...UIScreen.main.bounds.width),
+                                    y: CGFloat.random(in: 0...UIScreen.main.bounds.height)
+                                )
+                        }
+                    }
                     
                     VStack(spacing: 0) {
                         // 顶部区域 - 使用ZStack而不是HStack进行绝对定位
@@ -1110,17 +1146,41 @@ struct FullscreenPostDetailView: View {
                         
                         // 将说明文字移到按钮上方，并添加视觉增强效果
                         ZStack {
-                            // 背景轻微高亮
+                            // 背景轻微高亮 - 优化为渐变并添加精致的边框
                             RoundedRectangle(cornerRadius: 15)
-                                .fill(Color.white.opacity(0.05)) 
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0.03),
+                                            Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.05)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 15)
+                                        .stroke(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [
+                                                    Color.white.opacity(0.15),
+                                                    Color.white.opacity(0.05)
+                                                ]),
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 0.5
+                                        )
+                                )
                                 .frame(width: 332, height: 32)
                             
-                            // 文字内容
+                            // 文字内容 - 优化字重和透明度
                             Text("每种内容类型将带你进入不同的时空交流维度")
                                 .font(.system(size: 13, weight: .light))
-                                .foregroundColor(.white.opacity(0.4))  // 进一步降低透明度
+                                .foregroundColor(.white.opacity(0.45))  // 微调透明度
                                 .multilineTextAlignment(.center)
                                 .frame(width: 300)  // 文字宽度稍小于背景
+                                .shadow(color: Color.black.opacity(0.5), radius: 0.5, x: 0, y: 0.5) // 极微小的阴影增强可读性
                         }
                         .padding(.bottom, 16)  // 减少与按钮的间距
                         
@@ -1196,22 +1256,61 @@ struct FullscreenPostDetailView: View {
                             HStack(spacing: 10) {  // 增加图标与文字间距
                                 Image(systemName: "antenna.radiowaves.left.and.right")
                                     .font(.system(size: 18))  // 增大图标尺寸
+                                    .symbolRenderingMode(.hierarchical) // 使用分层渲染增强图标细节
                                 
                                 Text("启动虫洞捕捉")
                                     .font(.system(size: 18, weight: .semibold))  // 增大文字尺寸
+                                    .kerning(0.3) // 添加轻微字间距
                             }
                             .foregroundColor(.black)
                             .frame(height: 56)  // 增加按钮高度
                             .frame(width: UIScreen.main.bounds.width * 0.6)  // 增加按钮宽度
                             .background(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [.white, .white.opacity(0.92)]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )  // 添加微妙渐变
+                                ZStack {
+                                    // 主渐变背景
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white,
+                                            Color(red: 0.96, green: 0.96, blue: 1.0) // 添加微妙的紫罗兰色调
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                    
+                                    // 添加轻微的内部光晕效果 
+                                    RadialGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0.5),
+                                            Color.clear
+                                        ]),
+                                        center: .topLeading,
+                                        startRadius: 0,
+                                        endRadius: 150
+                                    )
+                                    .opacity(0.4)
+                                }
+                            )  // 增强渐变效果
                             .cornerRadius(28)  // 圆角随高度增加
-                            .shadow(color: Color.white.opacity(0.4), radius: 10, x: 0, y: 0)  // 增强发光效果
+                            .shadow(
+                                color: Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.4), 
+                                radius: 12, 
+                                x: 0, 
+                                y: 2
+                            )  // 微调阴影透明度
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 28)
+                                    .stroke(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.white.opacity(0.9),
+                                                Color.white.opacity(0.3)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 0.5
+                                    )
+                            )  // 增强边框对比度
                         }
                         .padding(.bottom, 40)  // 调整与底部的距离
                         
@@ -1595,7 +1694,7 @@ struct FullscreenPostDetailView: View {
         backButton.setImage(image, for: .normal)
         
         // 使用主题色
-        backButton.tintColor = UIColor.systemBlue
+        backButton.tintColor = UIColor(red: 140/255, green: 105/255, blue: 158/255, alpha: 1.0) // 主色调紫色
         
         // 简化样式 - 使用 iOS 15 推荐的方式
         backButton.backgroundColor = .clear
