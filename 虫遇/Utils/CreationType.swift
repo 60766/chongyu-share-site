@@ -169,12 +169,12 @@ public struct ParticleRingView: View {
  * 创作类型按钮
  */
 public struct CreationTypeButton: View {
-    var index: Int
-    var isSelected: Bool
-    var size: CGFloat
-    var fontSize: CGFloat
+    let index: Int
+    let isSelected: Bool
+    let size: CGFloat
+    let fontSize: CGFloat
     
-    @EnvironmentObject private var typeManager: CreationTypeManager
+    @StateObject private var typeManager = CreationTypeManager.shared
     
     public var body: some View {
         ZStack {
@@ -183,16 +183,40 @@ public struct CreationTypeButton: View {
                 .fill(isSelected ? Color.white : Color.white.opacity(0.07))
                 .frame(width: size, height: size)
                 .shadow(
-                    color: isSelected ? Color.white.opacity(0.4) : Color.clear, 
+                    color: isSelected ? Color(red: 0.95, green: 0.95, blue: 1.0, opacity: 0.6) : Color.clear, 
                     radius: isSelected ? 8 : 0, 
                     x: 0, 
                     y: 0
+                )
+                // 添加细微的边框，提升在黑色背景上的可见度
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                        .opacity(isSelected ? 0 : 1)
+                )
+                // 添加精致的内部高光效果(仅在选中时)
+                .overlay(
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white,
+                                    Color.white.opacity(0)
+                                ]),
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: size * 0.5
+                            )
+                        )
+                        .scaleEffect(0.85)
+                        .opacity(isSelected ? 0.15 : 0)
                 )
             
             // 图标
             Image(systemName: typeManager.icons[index])
                 .font(.system(size: size * 0.4, weight: isSelected ? .semibold : .regular))
                 .foregroundColor(isSelected ? .black : .white)
+                .opacity(isSelected ? 1.0 : 0.9) // 微调未选中时图标的透明度
         }
         .scaleEffect(isSelected ? 1.05 : 1.0) // 缩放比例
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
@@ -203,6 +227,8 @@ public struct CreationTypeButton: View {
                 .foregroundColor(.white)
             .opacity(isSelected ? 1.0 : 0.7) // 提高对比度
             .padding(.top, index == 0 ? 3 : 2) // 随机漫游按钮文字间距稍大
+            // 添加极微小的文字阴影，增强可读性
+            .shadow(color: Color.black.opacity(0.5), radius: 1, x: 0, y: 0.5)
     }
     
     public init(index: Int, isSelected: Bool, size: CGFloat, fontSize: CGFloat) {
@@ -252,11 +278,11 @@ public struct BlackHoleView: View {
                                 .stroke(
                                     AngularGradient(
                                         gradient: Gradient(colors: [
-                                            Color.white.opacity(0.2),
+                                            Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.2), // 添加紫色调
                                             Color.white.opacity(0.6),
                                             Color.white.opacity(0.8),
                                             Color.white.opacity(0.6),
-                                            Color.white.opacity(0.2)
+                                            Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.2) // 添加紫色调
                                         ]),
                                         center: .center
                                     ),
@@ -283,12 +309,12 @@ public struct BlackHoleView: View {
                         .fill(
                             RadialGradient(
                                 gradient: Gradient(colors: [
-                                    Color.white.opacity(0.15),
-                                    Color.white.opacity(0.05)
+                                    Color(red: 0.15, green: 0.12, blue: 0.2), // 深紫黑色
+                                    Color.black.opacity(0.8)
                                 ]),
                                 center: .center,
-                                startRadius: 5,
-                                endRadius: 35
+                                startRadius: 0,
+                                endRadius: 40
                             )
                         )
                         .frame(width: 70, height: 70)
@@ -297,6 +323,7 @@ public struct BlackHoleView: View {
                                 .stroke(
                                     LinearGradient(
                                         gradient: Gradient(colors: [
+                                            Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.8), // 紫色调
                                             Color.white.opacity(0.8),
                                             Color.white.opacity(0.3)
                                         ]),
@@ -335,9 +362,9 @@ public struct BlackHoleView: View {
                             AngularGradient(
                                 gradient: Gradient(colors: [
                                     Color.white.opacity(0),
-                                    Color.white.opacity(0.4),
+                                    Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.4), // 添加紫色调
                                     Color.white.opacity(0.8),
-                                    Color.white.opacity(0.4),
+                                    Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.4), // 添加紫色调
                                     Color.white.opacity(0)
                                 ]),
                                 center: .center
@@ -372,7 +399,7 @@ public struct BlackHoleView: View {
             Text(typeName)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.white)
-                .opacity(0.95)
+                .opacity(0.7) // 降低透明度从0.95到0.7
                 .shadow(color: .black, radius: 2, x: 0, y: 0)
                 .offset(y: 48) // 将文字放置在按钮下方，使用足够大的偏移确保不在按钮内
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
@@ -381,18 +408,21 @@ public struct BlackHoleView: View {
     
     public var body: some View {
         ZStack {
-            // 最外层光晕
+            // 最外层光晕 - 添加紫色调
             Circle()
                 .fill(
                     RadialGradient(
-                        gradient: Gradient(colors: [Color.black, Color.black.opacity(0)]),
+                        gradient: Gradient(colors: [
+                            Color(red: 0.1, green: 0.05, blue: 0.15), // 深紫黑色
+                            Color.black.opacity(0)
+                        ]),
                         center: .center,
                         startRadius: UIScreen.main.bounds.width * 0.3,
                         endRadius: UIScreen.main.bounds.width * 0.8
                     )
                 )
                 .frame(width: UIScreen.main.bounds.width * 1.6, height: UIScreen.main.bounds.width * 1.6)
-                .shadow(color: Color.white.opacity(0.05), radius: 50, x: 0, y: 0)
+                .shadow(color: Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.05), radius: 50, x: 0, y: 0) // 紫色调阴影
             
             // 最外层星空
             StarfieldView()
@@ -400,26 +430,26 @@ public struct BlackHoleView: View {
                 .opacity(0.7)
                 .rotationEffect(.degrees(outerRotation))
             
-            // 黑洞外围光环效果 - 最外层
+            // 黑洞外围光环效果 - 最外层 - 添加紫色调
             Circle()
-                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                .stroke(Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.15), lineWidth: 1) // 紫色调
                 .frame(width: UIScreen.main.bounds.width * 0.85, height: UIScreen.main.bounds.width * 0.85)
                 .blur(radius: 1)
             
-            // 黑洞外围光环效果 - 中间层
+            // 黑洞外围光环效果 - 中间层 - 添加紫色调
             Circle()
-                .stroke(Color.white.opacity(0.25), lineWidth: 2)
+                .stroke(Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.25), lineWidth: 2) // 紫色调
                 .frame(width: UIScreen.main.bounds.width * 0.7, height: UIScreen.main.bounds.width * 0.7)
             
             // 黑洞外围粒子层
             ParticleRingView(count: 200, minSize: 1.0, maxSize: 2.5, radius: UIScreen.main.bounds.width * 0.32, innerRadius: UIScreen.main.bounds.width * 0.28, rotationDuration: 240)
             
-            // 辉光圆环
+            // 辉光圆环 - 添加紫色调
             Circle()
                 .stroke(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.white.opacity(0.8),
+                            Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.8), // 紫色调
                             Color.white.opacity(0.4),
                             Color.white.opacity(0.1)
                         ]),
@@ -432,34 +462,67 @@ public struct BlackHoleView: View {
                 .blur(radius: 0.5)
                 .rotationEffect(.degrees(innerRotation * -0.5))
             
-            // 黑洞内环
+            // 黑洞内环 - 添加紫色调
             Circle()
-                .stroke(Color.white.opacity(0.5), lineWidth: 1)
+                .stroke(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.white.opacity(0.5),
+                            Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.5) // 紫色调
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
                 .frame(width: UIScreen.main.bounds.width * 0.34, height: UIScreen.main.bounds.width * 0.34)
                 .rotationEffect(.degrees(innerRotation))
             
-            // 脉冲效果
+            // 脉冲效果 - 添加紫色调
             Circle()
-                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                .stroke(Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.3), lineWidth: 1) // 紫色调
                 .frame(width: UIScreen.main.bounds.width * 0.3, height: UIScreen.main.bounds.width * 0.3)
                 .scaleEffect(pulseScale)
             
             // 黑洞中心
             Circle()
-                .fill(Color.black)
+                .fill(
+                    RadialGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 0.1, green: 0.05, blue: 0.15), // 深紫黑色
+                            Color.black
+                        ]),
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: UIScreen.main.bounds.width * 0.14
+                    )
+                )
                 .frame(width: UIScreen.main.bounds.width * 0.28, height: UIScreen.main.bounds.width * 0.28)
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(0.7), lineWidth: 1)
+                        .stroke(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.7), // 紫色调
+                                    Color.white.opacity(0.7)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
                         .blur(radius: 1)
                 )
                 .overlay(
-                    // 中心光晕效果
+                    // 中心光晕效果 - 添加紫色调
                     ZStack {
                         Circle()
                             .fill(
                                 RadialGradient(
-                                    gradient: Gradient(colors: [Color.white.opacity(0.4), Color.clear]),
+                                    gradient: Gradient(colors: [
+                                        Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.4), // 紫色调
+                                        Color.clear
+                                    ]),
                                     center: .center,
                                     startRadius: 0,
                                     endRadius: UIScreen.main.bounds.width * 0.15
