@@ -1195,9 +1195,6 @@ struct FullscreenPostDetailView: View {
                         
                         // 主按钮 - 开启时空对话
                         Button(action: {
-                            // 记录操作开始时间，用于防止可能的重复触发
-                            let operationStartTime = Date()
-                            
                             // 立即重置所有相关状态
                             showWormholeSwipeIndicator = false
                             
@@ -2152,11 +2149,8 @@ struct FullscreenPostDetailView: View {
         // 优化2：使用低优先级线程进行预加载，避免与UI动画竞争资源
         Task(priority: .background) {
             // 预加载操作
-            async let imagesTask = preloadImagesForPostAsync(nextPost)
-            async let commentsTask = preloadCommentsForPostAsync(nextPost)
-            
-            // 非阻塞式等待 - 继续UI动画而不等待预加载完成
-            _ = await (imagesTask, commentsTask)
+            await preloadImagesForPostAsync(nextPost)
+            await preloadCommentsForPostAsync(nextPost)
         }
         
         // 优化3：使用单一动画队列而不是嵌套的延迟调用，减少动画竞争

@@ -28,30 +28,11 @@ struct WormholeTransitionEffect: View {
     var body: some View {
         ZStack {
             // 背景层 - 深紫色星空背景
-            Color(red: 0.08, green: 0.03, blue: 0.15)
-                .edgesIgnoringSafeArea(.all)
-                .opacity(isActive ? 1 : 0)
-                .animation(.easeIn(duration: 0.2), value: isActive)
+            backgroundLayer
             
             // 1. 虫洞引力场效果 - 从中心向外扩散的波纹
             if isActive {
-                ForEach(0..<3, id: \.self) { index in
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                gradient: Gradient(colors: [
-                                    Color(red: 0.6, green: 0.4, blue: 0.8, opacity: 0.4 - Double(index) * 0.1),
-                                    Color(red: 0.5, green: 0.3, blue: 0.7, opacity: 0.1 - Double(index) * 0.03),
-                                    Color.clear
-                                ]),
-                                center: .center,
-                                startRadius: 5 + 20.0 * Double(index),
-                                endRadius: 800.0 * animationProgress
-                            )
-                        )
-                        .scaleEffect(0.3 + CGFloat(index) * 0.2 + animationProgress * 0.7)
-                        .opacity(1.0 - animationProgress * 0.7)
-                }
+                gravityFieldEffect
             }
             
             // 2. 时间折叠效果 - 屏幕上下向中心折叠
@@ -61,119 +42,10 @@ struct WormholeTransitionEffect: View {
             }
             
             // 3. 光速粒子流效果
-            ForEach(0..<particlePositions.count, id: \.self) { index in
-                let (initialPos, endPos, size, color) = particlePositions[index]
-                
-                ZStack {
-                    // 粒子主体
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                gradient: Gradient(colors: [
-                                    color,
-                                    color.opacity(0)
-                                ]),
-                                center: .center,
-                                startRadius: 0,
-                                endRadius: size * 2
-                            )
-                        )
-                        .frame(width: size, height: size)
-                        .position(
-                            x: initialPos.x + (endPos.x - initialPos.x) * animationProgress,
-                            y: initialPos.y + (endPos.y - initialPos.y) * animationProgress
-                        )
-                        .opacity(1 - animationProgress * 0.8)
-                    
-                    // 粒子轨迹 - 尾迹效果
-                    if animationProgress > 0.1 && animationProgress < 0.9 {
-                        let angle = atan2(endPos.y - initialPos.y, endPos.x - initialPos.x)
-                        
-                        Rectangle()
-                            .fill(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        color.opacity(0.7),
-                                        color.opacity(0)
-                                    ]),
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(
-                                width: min(size * 6 * animationProgress, 15),
-                                height: max(size * 0.6, 1)
-                            )
-                            .rotationEffect(Angle(radians: Double(angle)))
-                            .position(
-                                x: initialPos.x + (endPos.x - initialPos.x) * animationProgress * 0.85,
-                                y: initialPos.y + (endPos.y - initialPos.y) * animationProgress * 0.85
-                            )
-                            .opacity(0.7 - abs(animationProgress - 0.5))
-                    }
-                }
-            }
+            particleFlowEffect
             
             // 4. 中心虫洞效果
-            ZStack {
-                // 虫洞外圈光环
-                ForEach(0..<3, id: \.self) { index in
-                    Circle()
-                        .strokeBorder(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    Color(red: 0.6, green: 0.4, blue: 0.8, opacity: 0.8 - Double(index) * 0.2),
-                                    Color(red: 0.8, green: 0.7, blue: 0.9, opacity: 0.6 - Double(index) * 0.2),
-                                    Color(red: 0.6, green: 0.4, blue: 0.8, opacity: 0.4 - Double(index) * 0.1)
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 2.0 - CGFloat(index) * 0.5
-                        )
-                        .frame(width: 120 + CGFloat(index) * 30, height: 120 + CGFloat(index) * 30)
-                        .scaleEffect(wormholeScale + CGFloat(index) * 0.1)
-                        .opacity(1.0 - animationProgress)
-                }
-                
-                // 虫洞中心黑洞
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            gradient: Gradient(colors: [
-                                Color.black.opacity(0.7),
-                                Color(red: 0.15, green: 0.10, blue: 0.25).opacity(0.5),
-                                Color.black.opacity(0.9)
-                            ]),
-                            center: .center,
-                            startRadius: 5,
-                            endRadius: 60
-                        )
-                    )
-                    .frame(width: 100, height: 100)
-                    .scaleEffect(wormholeScale)
-                    .opacity(1.0 - animationProgress)
-                
-                // 虫洞中心能量核心
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            gradient: Gradient(colors: [
-                                Color(red: 0.9, green: 0.8, blue: 0.2, opacity: 0.9), // 黄色能量核心
-                                Color(red: 0.9, green: 0.5, blue: 0.1, opacity: 0.5),
-                                Color.clear
-                            ]),
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 30
-                        )
-                    )
-                    .frame(width: 40, height: 40)
-                    .scaleEffect(wormholeScale * (0.8 + 0.2 * sin(animationProgress * 10)))
-                    .blur(radius: 2)
-                    .opacity(1.0 - animationProgress)
-            }
-            .scaleEffect(1 + animationProgress * 0.3)
+            wormholeEffect
             
             // 5. 时空波纹效果
             if showTimeRipple {
@@ -183,10 +55,7 @@ struct WormholeTransitionEffect: View {
             
             // 6. 空间扭曲效果 - 使用ZStack包裹以便应用3D变换
             if distortionIntensity > 0 {
-                Rectangle()
-                    .fill(Color.clear)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .modifier(SpaceDistortionEffect(intensity: distortionIntensity))
+                spaceDistortionLayer
             }
         }
         .onChange(of: isActive) { oldValue, newValue in
@@ -198,6 +67,192 @@ struct WormholeTransitionEffect: View {
                 resetAnimation()
             }
         }
+    }
+    
+    // 背景层
+    private var backgroundLayer: some View {
+        Color(red: 0.08, green: 0.03, blue: 0.15)
+            .edgesIgnoringSafeArea(.all)
+            .opacity(isActive ? 1 : 0)
+            .animation(.easeIn(duration: 0.2), value: isActive)
+    }
+    
+    // 虫洞引力场效果
+    private var gravityFieldEffect: some View {
+        ForEach(0..<3, id: \.self) { index in
+            Circle()
+                .fill(createGravityFieldGradient(index: index))
+                .scaleEffect(0.3 + CGFloat(index) * 0.2 + animationProgress * 0.7)
+                .opacity(1.0 - animationProgress * 0.7)
+        }
+    }
+    
+    // 创建引力场渐变
+    private func createGravityFieldGradient(index: Int) -> RadialGradient {
+        RadialGradient(
+            gradient: Gradient(colors: [
+                Color(red: 0.6, green: 0.4, blue: 0.8, opacity: max(0.0, 0.4 - Double(index) * 0.1)),
+                Color(red: 0.5, green: 0.3, blue: 0.7, opacity: max(0.0, 0.1 - Double(index) * 0.03)),
+                Color.clear
+            ]),
+            center: .center,
+            startRadius: 5 + 20.0 * Double(index),
+            endRadius: 800.0 * animationProgress
+        )
+    }
+    
+    // 粒子流效果
+    private var particleFlowEffect: some View {
+        ForEach(0..<particlePositions.count, id: \.self) { index in
+            particleView(at: index)
+        }
+    }
+    
+    // 单个粒子视图
+    private func particleView(at index: Int) -> some View {
+        let (initialPos, endPos, size, color) = particlePositions[index]
+        
+        return ZStack {
+            // 粒子主体
+            Circle()
+                .fill(
+                    RadialGradient(
+                        gradient: Gradient(colors: [
+                            color,
+                            color.opacity(0)
+                        ]),
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: size * 2
+                    )
+                )
+                .frame(width: size, height: size)
+                .position(
+                    x: initialPos.x + (endPos.x - initialPos.x) * animationProgress,
+                    y: initialPos.y + (endPos.y - initialPos.y) * animationProgress
+                )
+                .opacity(1 - animationProgress * 0.8)
+            
+            // 粒子轨迹 - 尾迹效果
+            if animationProgress > 0.1 && animationProgress < 0.9 {
+                particleTrailEffect(initialPos: initialPos, endPos: endPos, size: size, color: color)
+            }
+        }
+    }
+    
+    // 粒子尾迹效果
+    private func particleTrailEffect(initialPos: CGPoint, endPos: CGPoint, size: CGFloat, color: Color) -> some View {
+        let angle = atan2(endPos.y - initialPos.y, endPos.x - initialPos.x)
+        
+        return Rectangle()
+            .fill(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        color.opacity(0.7),
+                        color.opacity(0)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .frame(
+                width: min(size * 6 * animationProgress, 15),
+                height: max(size * 0.6, 1)
+            )
+            .rotationEffect(Angle(radians: Double(angle)))
+            .position(
+                x: initialPos.x + (endPos.x - initialPos.x) * animationProgress * 0.85,
+                y: initialPos.y + (endPos.y - initialPos.y) * animationProgress * 0.85
+            )
+            .opacity(0.7 - abs(animationProgress - 0.5))
+    }
+    
+    // 中心虫洞效果
+    private var wormholeEffect: some View {
+        ZStack {
+            // 虫洞外圈光环
+            wormholeRings
+            
+            // 虫洞中心黑洞
+            wormholeCenter
+            
+            // 虫洞中心能量核心
+            wormholeEnergyCore
+        }
+        .scaleEffect(1 + animationProgress * 0.3)
+    }
+    
+    // 虫洞光环
+    private var wormholeRings: some View {
+        ForEach(0..<3, id: \.self) { index in
+            Circle()
+                .strokeBorder(createWormholeRingGradient(index: index), lineWidth: 2.0 - CGFloat(index) * 0.5)
+                .frame(width: 120 + CGFloat(index) * 30, height: 120 + CGFloat(index) * 30)
+                .scaleEffect(wormholeScale + CGFloat(index) * 0.1)
+                .opacity(1.0 - animationProgress)
+        }
+    }
+    
+    // 创建虫洞光环渐变
+    private func createWormholeRingGradient(index: Int) -> LinearGradient {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(red: 0.6, green: 0.4, blue: 0.8, opacity: max(0.0, 0.8 - Double(index) * 0.2)),
+                Color(red: 0.8, green: 0.7, blue: 0.9, opacity: max(0.0, 0.6 - Double(index) * 0.2)),
+                Color(red: 0.6, green: 0.4, blue: 0.8, opacity: max(0.0, 0.4 - Double(index) * 0.1))
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    
+    // 虫洞中心
+    private var wormholeCenter: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    gradient: Gradient(colors: [
+                        Color.black.opacity(0.7),
+                        Color(red: 0.15, green: 0.10, blue: 0.25).opacity(0.5),
+                        Color.black.opacity(0.9)
+                    ]),
+                    center: .center,
+                    startRadius: 5,
+                    endRadius: 60
+                )
+            )
+            .frame(width: 100, height: 100)
+            .scaleEffect(wormholeScale)
+            .opacity(1.0 - animationProgress)
+    }
+    
+    // 虫洞能量核心
+    private var wormholeEnergyCore: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.9, green: 0.8, blue: 0.2, opacity: 0.9), // 黄色能量核心
+                        Color(red: 0.9, green: 0.5, blue: 0.1, opacity: 0.5),
+                        Color.clear
+                    ]),
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: 30
+                )
+            )
+            .frame(width: 40, height: 40)
+            .scaleEffect(wormholeScale * (0.8 + 0.2 * sin(animationProgress * 10)))
+            .blur(radius: 2)
+            .opacity(1.0 - animationProgress)
+    }
+    
+    // 空间扭曲效果层
+    private var spaceDistortionLayer: some View {
+        Rectangle()
+            .fill(Color.clear)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .modifier(SpaceDistortionEffect(intensity: distortionIntensity))
     }
     
     // 启动动画
