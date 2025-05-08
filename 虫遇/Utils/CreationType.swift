@@ -610,6 +610,11 @@ public struct CreationTypeButtonsView: View {
                     )
                     .frame(width: 55, height: 55)  // 按钮尺寸为55x55
                 
+                // 为所有按钮添加微弱的白色边框，增加可见度
+                Circle()
+                    .stroke(Color.white.opacity(isSelected ? 0 : 0.15), lineWidth: 0.5)
+                    .frame(width: 55, height: 55)
+                
                 // 内部阴影效果
                 if isSelected {
                     Circle()
