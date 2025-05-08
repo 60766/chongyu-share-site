@@ -767,6 +767,105 @@ struct HomeView: View {
                         },
                         onLike: { comment in
                             handleLikeComment(post: post, comment: comment)
+                        },
+                        onNextPost: { currentPostId in
+                            // 打印所有帖子ID以便调试
+                            print("📊 所有帖子ID:")
+                            for (index, p) in userPosts.enumerated() {
+                                print("📊 [\(index)] \(p.id.uuidString)")
+                            }
+                            
+                            // 使用传入的当前帖子ID，而不是初始post
+                            print("🔎 当前查找帖子ID: \(currentPostId.uuidString)")
+                            
+                            // 查找当前帖子索引 - 使用更严格的ID比较
+                            let currentIndex = userPosts.firstIndex { currentPost in
+                                let matchFound = currentPost.id.uuidString == currentPostId.uuidString
+                                print("📊 比较索引 - 当前遍历ID: \(currentPost.id.uuidString) vs 当前帖子ID: \(currentPostId.uuidString) = \(matchFound ? "匹配" : "不匹配")")
+                                return matchFound
+                            }
+                            
+                            guard let safeIndex = currentIndex else {
+                                print("❌ 无法找到当前帖子索引! ID: \(currentPostId.uuidString)")
+                                return nil
+                            }
+                            
+                            // 确保索引有效并输出调试信息
+                            print("🔍 当前帖子索引: \(safeIndex), 总帖子数: \(userPosts.count)")
+                            
+                            // 检查是否有下一篇帖子
+                            let nextIndex = safeIndex + 1
+                            if nextIndex < userPosts.count {
+                                let nextPost = userPosts[nextIndex]
+                                
+                                // 确保不返回相同ID的帖子
+                                if nextPost.id.uuidString == currentPostId.uuidString {
+                                    print("⚠️ 警告：下一篇帖子ID与当前帖子ID相同，跳过")
+                                    
+                                    // 尝试获取下下篇帖子
+                                    if nextIndex + 1 < userPosts.count {
+                                        print("🔄 跳过ID相同的帖子，尝试获取下下篇帖子")
+                                        let nextNextPost = userPosts[nextIndex + 1]
+                                        print("✅ 找到下下篇帖子ID: \(nextNextPost.id.uuidString)")
+                                        return nextNextPost
+                                    } else {
+                                        print("❌ 已经是最后一篇帖子!")
+                                        return nil
+                                    }
+                                }
+                                
+                                print("✅ 找到下一篇帖子: \(nextPost.id.uuidString)")
+                                return nextPost
+                            } else {
+                                print("❌ 已经是最后一篇帖子! 索引: \(safeIndex)")
+                                return nil // 如果是最后一篇，返回nil
+                            }
+                        },
+                        onPrevPost: { currentPostId in
+                            // 打印当前帖子ID - 使用传入的post参数
+                            print("🔎 当前查找帖子ID: \(currentPostId.uuidString)")
+                            
+                            // 查找当前帖子索引 - 使用更严格的ID比较
+                            let currentIndex = userPosts.firstIndex { currentPost in 
+                                let matchFound = currentPost.id.uuidString == currentPostId.uuidString
+                                print("📊 比较索引 - 当前遍历ID: \(currentPost.id.uuidString) vs 当前帖子ID: \(currentPostId.uuidString) = \(matchFound ? "匹配" : "不匹配")")
+                                return matchFound
+                            }
+                            
+                            guard let safeIndex = currentIndex else {
+                                print("❌ 无法找到当前帖子索引! ID: \(currentPostId.uuidString)")
+                                return nil
+                            }
+                            
+                            // 确保索引有效并输出调试信息
+                            print("🔍 当前帖子索引: \(safeIndex), 总帖子数: \(userPosts.count)")
+                            
+                            // 检查是否有上一篇帖子
+                            if safeIndex > 0 {
+                                let prevPost = userPosts[safeIndex - 1]
+                                
+                                // 确保不返回相同ID的帖子
+                                if prevPost.id.uuidString == currentPostId.uuidString {
+                                    print("⚠️ 警告：上一篇帖子ID与当前帖子ID相同，跳过")
+                                    
+                                    // 尝试获取上上篇帖子
+                                    if safeIndex - 2 >= 0 {
+                                        print("🔄 跳过ID相同的帖子，尝试获取上上篇帖子")
+                                        let prevPrevPost = userPosts[safeIndex - 2]
+                                        print("✅ 找到上上篇帖子ID: \(prevPrevPost.id.uuidString)")
+                                        return prevPrevPost
+                                    } else {
+                                        print("❌ 已经是第一篇帖子!")
+                                        return nil
+                                    }
+                                }
+                                
+                                print("✅ 找到上一篇帖子: \(prevPost.id.uuidString)")
+                                return prevPost
+                            } else {
+                                print("❌ 已经是第一篇帖子! 索引: \(safeIndex)")
+                                return nil // 如果是第一篇，返回nil
+                            }
                         }
                     )
                 }

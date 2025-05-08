@@ -309,7 +309,7 @@ struct CharacterDetailView: View {
                 systemBackButtonWindow = nil
             }
         }
-        .onChange(of: showingShareSheet) { newValue in
+        .onChange(of: showingShareSheet) { oldValue, newValue in
             if let window = systemBackButtonWindow {
                 window.isHidden = newValue
             }

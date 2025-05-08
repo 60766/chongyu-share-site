@@ -246,6 +246,7 @@ struct ModelData {
         // 返回构建好的帖子数组
         return [
             UserPostModel(
+                id: UUID(uuidString: "11111111-1111-1111-1111-111111111111") ?? UUID(),
                 username: "历史探索者",
                 userAvatar: "avatar1",
                 content: "今天与爱因斯坦探讨了关于相对论的一些基本原理，他的解释让我对时间和空间有了全新的认识。他说：\n\"想象你坐在一个美丽女孩身边，一小时会感觉像一分钟；但当你坐在一个滚烫的火炉上时，一分钟会感觉像一小时。这就是相对论。\"",
@@ -257,6 +258,7 @@ struct ModelData {
                 isBookmarkedByCurrentUser: false
             ),
             UserPostModel(
+                id: UUID(uuidString: "22222222-2222-2222-2222-222222222222") ?? UUID(),
                 username: "艺术爱好者",
                 userAvatar: "avatar2",
                 content: "拜访了达芬奇的工作室，他向我展示了他的绘画技巧和对解剖学的深入研究。他的《维特鲁威人》展现了完美的人体比例，体现了他对数学与艺术结合的追求。",
@@ -268,6 +270,7 @@ struct ModelData {
                 isBookmarkedByCurrentUser: true
             ),
             UserPostModel(
+                id: UUID(uuidString: "33333333-3333-3333-3333-333333333333") ?? UUID(),
                 username: "诗词鉴赏家",
                 userAvatar: "avatar3",
                 content: "与李白畅饮江边，他即兴作诗：\"抽刀断水水更流，举杯消愁愁更愁。\" 诗仙果然名不虚传，短短数语便道尽人生苦乐。",
