@@ -126,76 +126,184 @@ private enum DisplayState {
 struct TimeSpaceParticleView: View {
     @State private var phase: CGFloat = 0
     let direction: SwipeDirection
+    var centerPoint: CGPoint? = nil // 添加中心点参数
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // 背景层 - 仍然使用协调的色彩，但略微提高对比度
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.92, green: 0.94, blue: 0.98, opacity: 0.85),  // 淡蓝白色
-                        Color(red: 0.94, green: 0.92, blue: 0.97, opacity: 0.85)   // 淡紫白色
-                    ]),
-                    startPoint: direction == .left ? .trailing : .leading,
-                    endPoint: direction == .left ? .leading : .trailing
-                )
+                // 背景层 - 当从黑洞中心发散时使用更加深邃的渐变
+                if centerPoint != nil {
+                    RadialGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 0.1, green: 0.05, blue: 0.18, opacity: 0.9),  // 深紫黑色中心
+                            Color(red: 0.15, green: 0.1, blue: 0.25, opacity: 0.75),  // 深紫色过渡
+                            Color(red: 0.2, green: 0.15, blue: 0.3, opacity: 0.6),  // 中等紫色
+                            Color.black.opacity(0.0)  // 完全透明外圈
+                        ]),
+                        center: UnitPoint(x: centerPoint!.x / geometry.size.width, 
+                                         y: centerPoint!.y / geometry.size.height),
+                        startRadius: 10,
+                        endRadius: phase * max(geometry.size.width, geometry.size.height)
+                    )
+                    .opacity(phase * 0.8)
+                } else {
+                    // 原始背景层，用于非黑洞中心模式
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 0.92, green: 0.94, blue: 0.98, opacity: 0.85),
+                            Color(red: 0.94, green: 0.92, blue: 0.97, opacity: 0.85)
+                        ]),
+                        startPoint: direction == .left ? .trailing : .leading,
+                        endPoint: direction == .left ? .leading : .trailing
+                    )
+                }
                 
-                // 粒子层 - 增加粒子数量，提高不透明度和尺寸
-                ForEach(0..<45, id: \.self) { index in
+                // 如果有中心点，绘制强化的黑洞效果
+                if let center = centerPoint {
+                    // 黑洞中心能量光晕
                     Circle()
-                        .fill(Color(red: 0.6, green: 0.7, blue: 0.95, opacity: Double.random(in: 0.3...0.6)))
-                        .frame(width: CGFloat.random(in: 3...10))
-                        .position(
-                            x: CGFloat.random(in: 0...geometry.size.width),
-                            y: CGFloat.random(in: 0...geometry.size.height)
+                        .fill(
+                            RadialGradient(
+                                gradient: Gradient(colors: [
+                                    Color(red: 0.7, green: 0.5, blue: 0.9, opacity: 0.8),  // 亮紫色中心
+                                    Color(red: 0.4, green: 0.2, blue: 0.6, opacity: 0.4),  // 中等紫色
+                                    Color.clear
+                                ]),
+                                center: .center,
+                                startRadius: 5,
+                                endRadius: 120 * phase
+                            )
                         )
-                        .offset(x: offsetForIndex(index, width: geometry.size.width))
+                        .frame(width: 200, height: 200)
+                        .position(center)
+                        .opacity(min(1.0, phase * 2.0))
+                        .scaleEffect(phase * 1.2)
+                        .blur(radius: 8)
+                    
+                    // 能量环
+                    ForEach(0..<3) { ring in
+                        Circle()
+                            .stroke(
+                                AngularGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.purple.opacity(0.2),
+                                        Color.purple.opacity(0.8),
+                                        Color.blue.opacity(0.6),
+                                        Color.purple.opacity(0.8),
+                                        Color.purple.opacity(0.2)
+                                    ]),
+                                    center: .center
+                                ),
+                                lineWidth: 3 - CGFloat(ring) * 0.5
+                            )
+                            .frame(width: 80 + CGFloat(ring) * 60 * phase, 
+                                  height: 80 + CGFloat(ring) * 60 * phase)
+                            .position(center)
+                            .opacity(max(0, min(1.0, 1.3 - Double(ring) * 0.3) * phase))
+                            .rotationEffect(.degrees(Double(ring) * 30 * phase))
+                            .blur(radius: 2)
+                    }
+                }
+                
+                // 粒子层 - 根据中心点位置调整，增加数量和变化
+                ForEach(0..<(centerPoint != nil ? 80 : 45), id: \.self) { index in
+                    let particleSize = centerPoint != nil ? 
+                        CGFloat.random(in: 2.0...15.0) : 
+                        CGFloat.random(in: 3...10)
+                    
+                    let particleOpacity = centerPoint != nil ? 
+                        Double.random(in: 0.3...0.9) : 
+                        Double.random(in: 0.3...0.6)
+                    
+                    let particleColor = centerPoint != nil && index % 5 == 0 ?
+                        Color(red: 0.8, green: 0.7, blue: 1.0, opacity: particleOpacity) : // 偶尔出现亮紫色粒子
+                        Color(red: 0.6, green: 0.7, blue: 0.95, opacity: particleOpacity)  // 标准蓝色粒子
+                    
+                    Circle()
+                        .fill(particleColor)
+                        .frame(width: particleSize, height: particleSize)
+                        .position(
+                            x: centerPoint != nil ? 
+                               centerPoint!.x + CGFloat.random(in: -geometry.size.width/2...geometry.size.width/2) : 
+                               CGFloat.random(in: 0...geometry.size.width),
+                            y: centerPoint != nil ? 
+                               centerPoint!.y + CGFloat.random(in: -geometry.size.height/2...geometry.size.height/2) : 
+                               CGFloat.random(in: 0...geometry.size.height)
+                        )
+                        .offset(x: offsetForIndex(index, width: geometry.size.width, fromCenter: centerPoint != nil))
                         .animation(
-                            Animation.linear(duration: Double.random(in: 0.4...0.8))
+                            Animation.linear(duration: Double.random(in: 0.4...1.2))
                                 .repeatForever(autoreverses: false),
                             value: phase
                         )
+                        .blur(radius: centerPoint != nil && particleSize > 10 ? 2 : 0) // 大粒子添加模糊效果
                 }
                 
-                // 光线效果 - 增强光线效果，增加数量和不透明度
-                ForEach(0..<15, id: \.self) { index in
+                // 光线效果 - 增强光线效果，并从中心点发散
+                ForEach(0..<(centerPoint != nil ? 25 : 15), id: \.self) { index in
+                    // 光线长度和宽度
+                    let rayLength = centerPoint != nil ? 
+                        CGFloat.random(in: 100...450) : 
+                        CGFloat.random(in: 100...350)
+                    
+                    let rayHeight = centerPoint != nil ? 
+                        CGFloat.random(in: 1.5...6.0) : 
+                        CGFloat.random(in: 1.5...3.0)
+                    
+                    // 选择光线颜色
+                    let rayColors: [Color] = centerPoint != nil ? 
+                        [
+                            .clear, 
+                            Color(red: 0.7, green: 0.5, blue: 0.95, opacity: 0.5),
+                            Color(red: 0.6, green: 0.4, blue: 0.9, opacity: 0.6),
+                            .clear
+                        ] : 
+                        [
+                            .clear, 
+                            Color(red: 0.65, green: 0.7, blue: 0.95, opacity: 0.45), 
+                            .clear
+                        ]
+                    
                     RoundedRectangle(cornerRadius: 1)
                         .fill(
                             LinearGradient(
-                                gradient: Gradient(colors: [
-                                    .clear, 
-                                    Color(red: 0.65, green: 0.7, blue: 0.95, opacity: 0.45), 
-                                    .clear
-                                ]),
+                                gradient: Gradient(colors: rayColors),
                                 startPoint: direction == .left ? .trailing : .leading,
                                 endPoint: direction == .left ? .leading : .trailing
                             )
                         )
-                        .frame(width: CGFloat.random(in: 100...350), height: CGFloat.random(in: 1.5...3))
-                        .rotationEffect(.degrees(Double.random(in: -15...15)))
+                        .frame(width: rayLength, height: rayHeight)
+                        .rotationEffect(.degrees(Double.random(in: -35...35)))
                         .position(
-                            x: CGFloat.random(in: 0...geometry.size.width),
-                            y: CGFloat.random(in: 0...geometry.size.height)
+                            x: centerPoint != nil ? 
+                               centerPoint!.x + CGFloat.random(in: -geometry.size.width/3...geometry.size.width/3) : 
+                               CGFloat.random(in: 0...geometry.size.width),
+                            y: centerPoint != nil ? 
+                               centerPoint!.y + CGFloat.random(in: -geometry.size.height/3...geometry.size.height/3) : 
+                               CGFloat.random(in: 0...geometry.size.height)
                         )
-                        .offset(x: offsetForIndex(index + 40, width: geometry.size.width) * 1.5)
+                        .offset(x: offsetForIndex(index + 40, width: geometry.size.width, fromCenter: centerPoint != nil) * 1.5)
                         .animation(
-                            Animation.linear(duration: Double.random(in: 0.5...0.9))
+                            Animation.linear(duration: Double.random(in: 0.5...1.2))
                                 .repeatForever(autoreverses: false),
                             value: phase
                         )
+                        .opacity(centerPoint != nil ? min(1.0, phase * 1.5) : 1.0) // 中心点模式下有淡入效果
                 }
                 
-                // 方向指示箭头 - 增强可见度
-                Image(systemName: direction == .left ? "chevron.left" : "chevron.right")
-                    .font(.system(size: 40, weight: .light))
-                    .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.95, opacity: 0.8))
-                    .offset(x: direction == .left ? -30 : 30)
-                    .opacity(phase == 1.0 ? 0.9 : 0.6)
-                    .animation(
-                        Animation.easeInOut(duration: 0.6)
-                            .repeatForever(autoreverses: true),
-                        value: phase
-                    )
+                // 方向指示箭头 - 只在没有指定中心点时显示
+                if centerPoint == nil {
+                    Image(systemName: direction == .left ? "chevron.left" : "chevron.right")
+                        .font(.system(size: 40, weight: .light))
+                        .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.95, opacity: 0.8))
+                        .offset(x: direction == .left ? -30 : 30)
+                        .opacity(phase == 1.0 ? 0.9 : 0.6)
+                        .animation(
+                            Animation.easeInOut(duration: 0.6)
+                                .repeatForever(autoreverses: true),
+                            value: phase
+                        )
+                }
             }
             .onAppear {
                 // 使用异步调用避免在视图更新过程中修改状态
@@ -208,10 +316,19 @@ struct TimeSpaceParticleView: View {
         .edgesIgnoringSafeArea(.all)
     }
     
-    // 根据方向计算偏移量
-    private func offsetForIndex(_ index: Int, width: CGFloat) -> CGFloat {
-        let baseOffset = direction == .left ? width * 2 : -width * 2
-        return phase * baseOffset
+    // 根据方向计算偏移量，从中心点发散
+    private func offsetForIndex(_ index: Int, width: CGFloat, fromCenter: Bool) -> CGFloat {
+        if fromCenter {
+            // 从中心点向各个方向发散
+            let angle = Double(index % 8) * .pi / 4 // 8个方向发散
+            let direction = index % 2 == 0 ? 1.0 : -1.0 // 交替方向
+            let speedMultiplier = Double.random(in: 0.8...1.2) // 增加随机性
+            return CGFloat(direction * (phase * width * cos(angle) * speedMultiplier))
+        } else {
+            // 原有的单向偏移逻辑
+            let baseOffset = direction == .left ? width * 2 : -width * 2
+            return phase * baseOffset
+        }
     }
 }
 
@@ -222,59 +339,146 @@ struct TimeSpaceParticleView: View {
 struct TimeSpaceRippleView: View {
     @State private var animating = false
     let direction: SwipeDirection
+    var centerPoint: CGPoint? = nil // 添加中心点参数
     
     var body: some View {
         ZStack {
-            // 背景层 - 保持协调的色彩，略微增强对比度
-            Color(red: 0.93, green: 0.95, blue: 0.98, opacity: 0.9)
-                .edgesIgnoringSafeArea(.all)
-            
-            // 波纹效果 - 增强波纹的可见度
-            ForEach(0..<4, id: \.self) { index in
-                Circle()
-                    .stroke(Color(red: 0.6, green: 0.7, blue: 0.95, opacity: 0.3 - Double(index) * 0.04), lineWidth: 2.5)
-                    .scaleEffect(animating ? 1 + CGFloat(index) * 0.25 : 0.2)
-                    .opacity(animating ? 0 : 0.7)
+            // 背景层 - 当从黑洞中心发散时使用更深邃的背景
+            if centerPoint != nil {
+                // 黑洞中心模式使用深色背景
+                Color.black.opacity(animating ? 0.7 : 0.0)
                     .animation(
-                        Animation.easeOut(duration: 0.8)
-                            .repeatForever(autoreverses: false)
-                            .delay(Double(index) * 0.2),
+                        Animation.easeIn(duration: 0.6),
+                        value: animating
+                    )
+                    .edgesIgnoringSafeArea(.all)
+            } else {
+                // 原始模式使用浅色背景
+                Color(red: 0.93, green: 0.95, blue: 0.98, opacity: 0.9)
+                    .edgesIgnoringSafeArea(.all)
+            }
+            
+            // 波纹效果 - 从中心点发散
+            if let center = centerPoint {
+                // 以黑洞中心为起点的波纹 - 增加数量和变化效果
+                ForEach(0..<6) { index in
+                    Circle()
+                        .stroke(
+                            AngularGradient(
+                                gradient: Gradient(colors: [
+                                    Color(red: 0.7, green: 0.5, blue: 0.9, opacity: 0.4 - Double(index) * 0.06),
+                                    Color(red: 0.5, green: 0.3, blue: 0.8, opacity: 0.6 - Double(index) * 0.09),
+                                    Color(red: 0.4, green: 0.2, blue: 0.7, opacity: 0.5 - Double(index) * 0.07),
+                                    Color(red: 0.7, green: 0.5, blue: 0.9, opacity: 0.4 - Double(index) * 0.06)
+                                ]),
+                                center: .center
+                            ),
+                            lineWidth: 3 - CGFloat(index) * 0.4
+                        )
+                        .frame(width: animating ? CGFloat(200 + index * 70) : 20, 
+                               height: animating ? CGFloat(200 + index * 70) : 20)
+                        .opacity(animating ? max(0, 0.7 - Double(index) * 0.1) : 0.7)
+                        .position(center)
+                        .rotationEffect(.degrees(animating ? Double(index) * 15 : 0))
+                        .animation(
+                            Animation.easeOut(duration: 0.8)
+                                .repeatForever(autoreverses: false)
+                                .delay(Double(index) * 0.15),
+                            value: animating
+                        )
+                }
+                
+                // 中心光效 - 在黑洞中心增强发光效果
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(colors: [
+                                Color(red: 0.7, green: 0.5, blue: 0.95, opacity: 0.9), 
+                                Color(red: 0.6, green: 0.4, blue: 0.9, opacity: 0.7),
+                                Color(red: 0.5, green: 0.3, blue: 0.8, opacity: 0.5),
+                                Color.clear
+                            ]),
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 100
+                        )
+                    )
+                    .frame(width: 130, height: 130)
+                    .position(center)
+                    .opacity(animating ? 0.85 : 0.3)
+                    .scaleEffect(animating ? 1.15 : 0.9)
+                    .blur(radius: 5)
+                    .animation(
+                        Animation.easeInOut(duration: 0.8)
+                            .repeatForever(autoreverses: true),
+                        value: animating
+                    )
+                
+                // 添加星星粒子效果
+                ForEach(0..<50) { index in
+                    Circle()
+                        .fill(Color.white.opacity(Double.random(in: 0.3...0.8)))
+                        .frame(width: CGFloat.random(in: 1...3), height: CGFloat.random(in: 1...3))
+                        .position(
+                            x: center.x + CGFloat.random(in: -200...200),
+                            y: center.y + CGFloat.random(in: -200...200)
+                        )
+                        .opacity(animating ? Double.random(in: 0.5...1.0) : 0)
+                        .animation(
+                            Animation.easeIn(duration: Double.random(in: 0.3...0.8))
+                                .delay(Double.random(in: 0...0.5))
+                                .repeatForever(autoreverses: true),
+                            value: animating
+                        )
+                }
+            } else {
+                // 原有的波纹效果 - 屏幕中心波纹（默认行为）
+                ForEach(0..<4) { index in
+                    Circle()
+                        .stroke(Color(red: 0.6, green: 0.7, blue: 0.95, opacity: 0.3 - Double(index) * 0.04), lineWidth: 2.5)
+                        .scaleEffect(animating ? 1 + CGFloat(index) * 0.25 : 0.2)
+                        .opacity(animating ? 0 : 0.7)
+                        .animation(
+                            Animation.easeOut(duration: 0.8)
+                                .repeatForever(autoreverses: false)
+                                .delay(Double(index) * 0.2),
+                            value: animating
+                        )
+                }
+                
+                // 中心光效 - 增强光晕效果
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(colors: [
+                                Color(red: 0.65, green: 0.75, blue: 0.95, opacity: 0.7), 
+                                .clear
+                            ]),
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 140
+                        )
+                    )
+                    .frame(width: 100, height: 100)
+                    .opacity(animating ? 0.6 : 0.3)
+                    .animation(
+                        Animation.easeInOut(duration: 0.8)
+                            .repeatForever(autoreverses: true),
+                        value: animating
+                    )
+                
+                // 方向指示 - 只在默认模式下显示
+                Image(systemName: direction == .left ? "chevron.left" : "chevron.right")
+                    .font(.system(size: 40, weight: .medium))
+                    .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.9, opacity: 0.8))
+                    .offset(x: direction == .left ? -30 : 30)
+                    .opacity(animating ? 0.9 : 0.6)
+                    .animation(
+                        Animation.easeInOut(duration: 0.6)
+                            .repeatForever(autoreverses: true),
                         value: animating
                     )
             }
-            
-            // 中心光效 - 增强光晕效果
-            Circle()
-                .fill(
-                    RadialGradient(
-                        gradient: Gradient(colors: [
-                            Color(red: 0.65, green: 0.75, blue: 0.95, opacity: 0.7), 
-                            .clear
-                        ]),
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 140
-                    )
-                )
-                .frame(width: 100, height: 100)
-                .opacity(animating ? 0.6 : 0.3)
-                .animation(
-                    Animation.easeInOut(duration: 0.8)
-                        .repeatForever(autoreverses: true),
-                    value: animating
-                )
-            
-            // 方向指示 - 增强指示箭头的可见度
-            Image(systemName: direction == .left ? "chevron.left" : "chevron.right")
-                .font(.system(size: 40, weight: .medium))
-                .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.9, opacity: 0.8))
-                .offset(x: direction == .left ? -30 : 30)
-                .opacity(animating ? 0.9 : 0.6)
-                .animation(
-                    Animation.easeInOut(duration: 0.6)
-                        .repeatForever(autoreverses: true),
-                    value: animating
-                )
         }
         .onAppear {
             // 使用异步调用避免在视图更新过程中修改状态
@@ -355,8 +559,8 @@ struct FullscreenPostDetailView: View {
     @State private var isWormholeDragging: Bool = false
     @State private var showWormholeSwipeIndicator: Bool = false
     
-    // 添加虫洞捕捉转场效果状态
-    @State private var showWormholeTransition: Bool = false
+    // 添加黑洞中心点位置状态
+    @State private var blackHoleCenterPoint: CGPoint? = nil
     
     // 初始化方法
     init(
@@ -405,11 +609,11 @@ struct FullscreenPostDetailView: View {
                         // 使用GeometryReader确保全屏覆盖
                         ZStack {
                             // 底层使用波纹效果
-                            TimeSpaceRippleView(direction: timeSpaceDirection)
+                            TimeSpaceRippleView(direction: timeSpaceDirection, centerPoint: blackHoleCenterPoint)
                                 .opacity(0.95) // 提高透明度使波纹效果更明显
                             
                             // 顶层使用粒子效果
-                            TimeSpaceParticleView(direction: timeSpaceDirection)
+                            TimeSpaceParticleView(direction: timeSpaceDirection, centerPoint: blackHoleCenterPoint)
                                 .opacity(0.95) // 提高透明度使粒子效果更明显
                         }
                         .frame(width: geo.size.width, height: geo.size.height)
@@ -1140,6 +1344,19 @@ struct FullscreenPostDetailView: View {
                             .environmentObject(CreationTypeManager.shared)
                             .frame(height: UIScreen.main.bounds.height * 0.38)  // 增大黑洞视觉比例
                             .padding(.bottom, 16)
+                            // 添加代码获取黑洞中心位置
+                            .background(
+                                GeometryReader { geometry in
+                                    Color.clear
+                                        .preference(key: BlackHoleCenterKey.self, value: CGPoint(
+                                            x: geometry.frame(in: .global).midX,
+                                            y: geometry.frame(in: .global).midY
+                                        ))
+                                }
+                            )
+                            .onPreferenceChange(BlackHoleCenterKey.self) { center in
+                                self.blackHoleCenterPoint = center
+                            }
                         
                         // 删除原有的两行说明文字
                         
@@ -1195,6 +1412,9 @@ struct FullscreenPostDetailView: View {
                         
                         // 主按钮 - 开启时空对话
                         Button(action: {
+                            // 记录操作开始时间，用于防止可能的重复触发
+                            let operationStartTime = Date()
+                            
                             // 立即重置所有相关状态
                             showWormholeSwipeIndicator = false
                             
@@ -1206,9 +1426,60 @@ struct FullscreenPostDetailView: View {
                                 return
                             }
                             
-                            // 触发虫洞捕捉转场效果
-                            withAnimation {
-                                showWormholeTransition = true
+                            // 使用类似滑动返回的动画效果
+                            isTransitioning = true
+                            
+                            // 提供增强的触觉反馈
+                            let feedback = UIImpactFeedbackGenerator(style: .heavy)
+                            feedback.impactOccurred(intensity: 0.8)
+                            
+                            // 改进动画序列，提供更沉浸式的体验
+                            let initialEffectDuration: Double = 1.2  // 大幅增加效果持续时间
+                            let slideOutDuration: Double = 0.5  // 适当增加滑出持续时间
+                            
+                            // 第一阶段：显示从黑洞中心发散的时空效果
+                            withAnimation(.easeIn(duration: 0.3)) {
+                                showingTimeSpaceEffect = true
+                                timeSpaceDirection = .right
+                            }
+                            
+                            // 在0.7秒时增加第二次触觉反馈，模拟穿越过程中的"颠簸"
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                                let secondaryFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                secondaryFeedback.impactOccurred(intensity: 0.6)
+                            }
+                            
+                            // 第二阶段：页面滑出，但延长初始效果时间以增强沉浸感
+                            DispatchQueue.main.asyncAfter(deadline: .now() + initialEffectDuration) {
+                                // 提供最终的触觉反馈，模拟穿越结束
+                                let finalFeedback = UIImpactFeedbackGenerator(style: .rigid)
+                                finalFeedback.impactOccurred(intensity: 0.5)
+                                
+                                withAnimation(.spring(response: slideOutDuration, dampingFraction: 0.85, blendDuration: 0.08)) {
+                                    // 向右滑出
+                                    dragOffset = UIScreen.main.bounds.width
+                                    showingTimeSpaceEffect = false
+                                }
+                                
+                                // 第三阶段：关闭页面并重置
+                                DispatchQueue.main.asyncAfter(deadline: .now() + slideOutDuration) {
+                                    // 关闭虫洞探索页面
+                                    showAddContentView = false
+                                    
+                                    // 重置状态
+                                    dragOffset = 0
+                                    swipeDirection = .none
+                                    isTransitioning = false
+                                    
+                                    // 延迟一点调用onDismiss
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                        // 额外检查以确保不会出现重复调用
+                                        let elapsedTime = Date().timeIntervalSince(operationStartTime)
+                                        if elapsedTime < 2.5 && !showAddContentView { // 增加时间限制，适应更长的动画
+                                            onDismiss?()
+                                        }
+                                    }
+                                }
                             }
                         }) {
                             HStack(spacing: 10) {  // 增加图标与文字间距
@@ -1296,12 +1567,6 @@ struct FullscreenPostDetailView: View {
                         .opacity(showWormholeSwipeIndicator || (isDragging && dragOffset > 10) ? 0.8 : 0)
                         .animation(.easeOut(duration: 0.2), value: showWormholeSwipeIndicator || isDragging)
                     }
-                    
-                    // 虫洞捕捉转场效果
-                    WormholeTransitionEffect(isActive: $showWormholeTransition, onComplete: {
-                        // 转场效果结束后执行原有的关闭逻辑
-                        executeWormholeCaptureAction(operationStartTime: Date())
-                    })
                 }
                 .zIndex(300)
                 .transition(.opacity) // 使用渐变过渡效果
@@ -2149,8 +2414,11 @@ struct FullscreenPostDetailView: View {
         // 优化2：使用低优先级线程进行预加载，避免与UI动画竞争资源
         Task(priority: .background) {
             // 预加载操作
-            await preloadImagesForPostAsync(nextPost)
-            await preloadCommentsForPostAsync(nextPost)
+            async let imagesTask = preloadImagesForPostAsync(nextPost)
+            async let commentsTask = preloadCommentsForPostAsync(nextPost)
+            
+            // 非阻塞式等待 - 继续UI动画而不等待预加载完成
+            _ = await (imagesTask, commentsTask)
         }
         
         // 优化3：使用单一动画队列而不是嵌套的延迟调用，减少动画竞争
@@ -2668,52 +2936,6 @@ struct FullscreenPostDetailView: View {
         print("⭐️ 经过多次尝试，无法确定是否为最后一篇帖子，默认非最后一篇")
         return false
     }
-    
-    // 添加执行虫洞捕捉动作的方法
-    private func executeWormholeCaptureAction(operationStartTime: Date) {
-        // 使用与页面转场相同的动画序列
-        isTransitioning = true
-        
-        // 使用与页面转场相同的动画序列
-        let initialEffectDuration: Double = 0.12
-        let slideOutDuration: Double = 0.2
-        
-        // 第一阶段：显示时空效果
-        withAnimation(.easeIn(duration: initialEffectDuration)) {
-            showingTimeSpaceEffect = true
-            // 从顶部返回而不是右滑
-            timeSpaceDirection = .right
-        }
-        
-        // 第二阶段：页面滑出
-        DispatchQueue.main.asyncAfter(deadline: .now() + initialEffectDuration) {
-            withAnimation(.spring(response: slideOutDuration, dampingFraction: 0.85, blendDuration: 0.08)) {
-                // 向右滑出
-                dragOffset = UIScreen.main.bounds.width
-                showingTimeSpaceEffect = false
-            }
-            
-            // 第三阶段：关闭页面并重置
-            DispatchQueue.main.asyncAfter(deadline: .now() + slideOutDuration) {
-                // 关闭虫洞探索页面
-                showAddContentView = false
-                
-                // 重置状态
-                dragOffset = 0
-                swipeDirection = .none
-                isTransitioning = false
-                
-                // 延迟一点调用onDismiss
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    // 额外检查以确保不会出现重复调用
-                    let elapsedTime = Date().timeIntervalSince(operationStartTime)
-                    if elapsedTime < 1.0 && !showAddContentView {
-                        onDismiss?()
-                    }
-                }
-            }
-        }
-    }
 }
 
 /**
@@ -2855,5 +3077,13 @@ struct BlackHoleParticleRing: View {
     
     private func getFrame() -> CGRect {
         return CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width * 0.65, height: UIScreen.main.bounds.width * 0.65)
+    }
+}
+
+// 添加黑洞中心坐标的PreferenceKey
+struct BlackHoleCenterKey: PreferenceKey {
+    static var defaultValue: CGPoint = .zero
+    static func reduce(value: inout CGPoint, nextValue: () -> CGPoint) {
+        value = nextValue()
     }
 }
