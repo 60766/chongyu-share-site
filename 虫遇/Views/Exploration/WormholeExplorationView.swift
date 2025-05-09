@@ -40,18 +40,57 @@ public struct WormholeExplorationView: View {
             .opacity(isShowingButtons ? 1 : 0)
             .animation(.easeInOut(duration: 0.6).delay(0.3), value: isShowingButtons)
             
-            // 黑洞视图 - 使用GeometryReader获取其中心位置
-            GeometryReader { geometry in
+            // 黑洞视图定位器 - 使用PreferenceKey获取随机漫游按钮的精确位置
+            ZStack {
+                // 实际的黑洞视图
                 BlackHoleView()
                     .opacity(isShowingButtons && !isShowingSpaceEffect ? 1 : 0)
                     .scaleEffect(isShowingButtons ? 1 : 0.5)
                     .animation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.1), value: isShowingButtons)
-                    .onAppear {
-                        // 计算黑洞中心位置
-                        let centerX = geometry.frame(in: .global).midX
-                        let centerY = geometry.frame(in: .global).midY
-                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
-                    }
+                
+                // 在黑洞视图上叠加透明视图来获取随机漫游按钮的位置
+                GeometryReader { geometry in
+                    // 用于获取整个ZStack在全局坐标系中的位置
+                    let blackHoleFrame = geometry.frame(in: .global)
+                    
+                    // 这个圆形按钮定位器放置在随机漫游按钮的位置上
+                    // 根据BlackHoleView的实现，中心按钮在黑洞视图正中心
+                    Circle()
+                        .fill(Color.clear) // 完全透明
+                        .frame(width: 1, height: 1) // 极小尺寸，不影响视觉
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2) // 放置在中心
+                        .onAppear {
+                            // 计算随机漫游按钮中心位置
+                            let buttonCenterX = blackHoleFrame.midX
+                            let buttonCenterY = blackHoleFrame.midY
+                            
+                            // 更新按钮位置状态，用于特效定位
+                            blackHoleCenterPosition = CGPoint(x: buttonCenterX, y: buttonCenterY)
+                            
+                            // 打印位置信息，用于调试
+                            print("黑洞随机漫游按钮位置: \(CGPoint(x: buttonCenterX, y: buttonCenterY))")
+                        }
+                }
+                .allowsHitTesting(false) // 不干扰用户交互
+                
+                // DEBUG标记 - 显示黑洞中心位置和向上偏移后的位置
+                #if DEBUG
+                if let centerPosition = blackHoleCenterPosition {
+                    // 显示原始中心位置
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 4, height: 4)
+                        .position(centerPosition)
+                        .opacity(isShowingSpaceEffect ? 0 : 0.7)
+                    
+                    // 显示向上偏移40像素后的位置
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 4, height: 4)
+                        .position(CGPoint(x: centerPosition.x, y: centerPosition.y - 40))
+                        .opacity(isShowingSpaceEffect ? 0 : 0.7)
+                }
+                #endif
             }
             
             // 底部按钮视图
@@ -128,25 +167,38 @@ public struct WormholeExplorationView: View {
             
             // 时空效果覆盖层 - 使用新的TimeSpaceEffectView
             if isShowingSpaceEffect {
-                TimeSpaceEffectView(
-                    isActive: $isShowingSpaceEffect, 
-                    centerPosition: blackHoleCenterPosition ?? CGPoint(
-                        x: UIScreen.main.bounds.width / 2,
-                        y: UIScreen.main.bounds.height / 2
-                    )
-                ) {
-                    // 当特效完成后，重置过渡状态
-                    withAnimation {
-                        isTransitioning = false
+                if let centerPosition = blackHoleCenterPosition {
+                    // 如果黑洞中心位置可用，则使用它作为特效中心
+                    // 注意：特效视图内部已经实现向上偏移40像素
+                    TimeSpaceEffectView(isActive: $isShowingSpaceEffect, centerPosition: centerPosition) {
+                        // 当特效完成后，重置过渡状态
+                        withAnimation {
+                            isTransitioning = false
+                        }
+                        
+                        // 可以添加其他逻辑，例如导航到新页面等
+                        print("虫洞捕捉完成")
                     }
-                    
-                    // 可以添加其他逻辑，例如导航到新页面等
-                    print("虫洞捕捉完成")
+                    .edgesIgnoringSafeArea(.all)
+                    // 确保特效位于最顶层且全屏显示
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(100) // 确保在最上层显示
+                } else {
+                    // 如果黑洞中心位置不可用，则使用默认中心位置
+                    TimeSpaceEffectView(isActive: $isShowingSpaceEffect) {
+                        // 当特效完成后，重置过渡状态
+                        withAnimation {
+                            isTransitioning = false
+                        }
+                        
+                        // 可以添加其他逻辑，例如导航到新页面等
+                        print("虫洞捕捉完成")
+                    }
+                    .edgesIgnoringSafeArea(.all)
+                    // 确保特效位于最顶层且全屏显示
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(100) // 确保在最上层显示
                 }
-                .edgesIgnoringSafeArea(.all)
-                // 确保特效位于最顶层且全屏显示
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .zIndex(100) // 确保在最上层显示
             }
         }
         .onAppear {

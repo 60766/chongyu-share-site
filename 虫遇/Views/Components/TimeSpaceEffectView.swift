@@ -35,6 +35,9 @@ struct TimeSpaceEffectView: View {
     @State private var rotation: Double = 0
     @State private var flashTriggered: Bool = false
     
+    // 调试状态 - 用于确认中心点位置
+    @State private var actualCenterPosition: CGPoint?
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -56,10 +59,42 @@ struct TimeSpaceEffectView: View {
                 }
                 
                 // 计算中心位置 - 使用提供的中心点或默认为屏幕中心
-                let centerPosition = effectCenterPosition ?? CGPoint(
-                    x: geometry.size.width / 2, 
-                    y: geometry.size.height / 2
-                )
+                // 使用GeometryReader获取的全局坐标系转换为局部坐标系
+                let centerPosition: CGPoint = {
+                    if let effectCenter = effectCenterPosition {
+                        // 将全局坐标转换为局部坐标
+                        let localCenter = CGPoint(
+                            x: effectCenter.x - geometry.frame(in: .global).minX,
+                            // 在y坐标方向上向上偏移40像素
+                            y: effectCenter.y - geometry.frame(in: .global).minY - 40
+                        )
+                        
+                        // 更新实际使用的中心点位置（用于调试）
+                        DispatchQueue.main.async {
+                            actualCenterPosition = localCenter
+                        }
+                        
+                        // 打印中心点信息以进行调试
+                        print("特效使用指定中心点(已向上偏移): \(localCenter)")
+                        
+                        return localCenter
+                    } else {
+                        // 使用视图中心作为默认值
+                        let defaultCenter = CGPoint(
+                            x: geometry.size.width / 2, 
+                            y: geometry.size.height / 2
+                        )
+                        
+                        // 更新实际使用的中心点位置（用于调试）
+                        DispatchQueue.main.async {
+                            actualCenterPosition = defaultCenter
+                        }
+                        
+                        print("特效使用默认中心点: \(defaultCenter)")
+                        
+                        return defaultCenter
+                    }
+                }()
                 
                 // 阶段1: 虫洞形成 (0-0.5秒)
                 ZStack {
@@ -233,8 +268,24 @@ struct TimeSpaceEffectView: View {
                             .opacity(animationProgress >= 1.6 ? 1.0 - min(1.0, (animationProgress - 1.6) * 2) : 0)
                     }
                 }
+                
+                // 调试视图 - 仅在调试模式显示
+                #if DEBUG
+                if let center = actualCenterPosition {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 5, height: 5)
+                        .position(center)
+                        .opacity(0.7)
+                }
+                #endif
             }
             .onAppear {
+                print("TimeSpaceEffectView 出现。使用自定义中心点: \(effectCenterPosition != nil)")
+                if let center = effectCenterPosition {
+                    print("原始中心点坐标: \(center)，将向上偏移40像素")
+                }
+                
                 startAnimation()
             }
         }
