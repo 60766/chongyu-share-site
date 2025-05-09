@@ -1,7 +1,12 @@
 import SwiftUI
 import Combine
 import UIKit // 如果还没有导入
-// 使用ColorExtensions提供的Color(hex:)方法
+// 导入时空效果
+import SwiftData
+// 添加对时空效果模块的引用
+@_exported import TimeSpaceTransitionEffect
+// 添加对共享类型的引用
+@_exported import Utils
 
 // 导入NavigationHelper
 // 由于无法直接导入Utils模块，我们在此处定义所需的辅助类
@@ -105,185 +110,11 @@ private struct FullscreenScrollOffsetKey: PreferenceKey {
     }
 }
 
-// 定义滑动方向枚举
-enum SwipeDirection {
-    case left
-    case right
-    case none
-}
-
 // 定义显示状态枚举，用于处理视图转换
 private enum DisplayState {
     case current     // 当前显示的动态
     case transitioning(direction: SwipeDirection, progress: CGFloat) // 正在过渡
     case nextPagePreview  // 下一页预览
-}
-
-/**
- * 穿越时空粒子效果视图
- * 在页面转换过程中显示，增强穿越时空的主题感
- */
-struct TimeSpaceParticleView: View {
-    @State private var phase: CGFloat = 0
-    let direction: SwipeDirection
-    
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // 背景层 - 仍然使用协调的色彩，但略微提高对比度
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.92, green: 0.94, blue: 0.98, opacity: 0.85),  // 淡蓝白色
-                        Color(red: 0.94, green: 0.92, blue: 0.97, opacity: 0.85)   // 淡紫白色
-                    ]),
-                    startPoint: direction == .left ? .trailing : .leading,
-                    endPoint: direction == .left ? .leading : .trailing
-                )
-                
-                // 粒子层 - 增加粒子数量，提高不透明度和尺寸
-                ForEach(0..<45, id: \.self) { index in
-                    Circle()
-                        .fill(Color(red: 0.6, green: 0.7, blue: 0.95, opacity: Double.random(in: 0.3...0.6)))
-                        .frame(width: CGFloat.random(in: 3...10))
-                        .position(
-                            x: CGFloat.random(in: 0...geometry.size.width),
-                            y: CGFloat.random(in: 0...geometry.size.height)
-                        )
-                        .offset(x: offsetForIndex(index, width: geometry.size.width))
-                        .animation(
-                            Animation.linear(duration: Double.random(in: 0.4...0.8))
-                                .repeatForever(autoreverses: false),
-                            value: phase
-                        )
-                }
-                
-                // 光线效果 - 增强光线效果，增加数量和不透明度
-                ForEach(0..<15, id: \.self) { index in
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    .clear, 
-                                    Color(red: 0.65, green: 0.7, blue: 0.95, opacity: 0.45), 
-                                    .clear
-                                ]),
-                                startPoint: direction == .left ? .trailing : .leading,
-                                endPoint: direction == .left ? .leading : .trailing
-                            )
-                        )
-                        .frame(width: CGFloat.random(in: 100...350), height: CGFloat.random(in: 1.5...3))
-                        .rotationEffect(.degrees(Double.random(in: -15...15)))
-                        .position(
-                            x: CGFloat.random(in: 0...geometry.size.width),
-                            y: CGFloat.random(in: 0...geometry.size.height)
-                        )
-                        .offset(x: offsetForIndex(index + 40, width: geometry.size.width) * 1.5)
-                        .animation(
-                            Animation.linear(duration: Double.random(in: 0.5...0.9))
-                                .repeatForever(autoreverses: false),
-                            value: phase
-                        )
-                }
-                
-                // 方向指示箭头 - 增强可见度
-                Image(systemName: direction == .left ? "chevron.left" : "chevron.right")
-                    .font(.system(size: 40, weight: .light))
-                    .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.95, opacity: 0.8))
-                    .offset(x: direction == .left ? -30 : 30)
-                    .opacity(phase == 1.0 ? 0.9 : 0.6)
-                    .animation(
-                        Animation.easeInOut(duration: 0.6)
-                            .repeatForever(autoreverses: true),
-                        value: phase
-                    )
-            }
-            .onAppear {
-                // 使用异步调用避免在视图更新过程中修改状态
-                DispatchQueue.main.async {
-                    self.phase = 1.0
-                }
-            }
-            .drawingGroup() // 使用离屏渲染提高性能
-        }
-        .edgesIgnoringSafeArea(.all)
-    }
-    
-    // 根据方向计算偏移量
-    private func offsetForIndex(_ index: Int, width: CGFloat) -> CGFloat {
-        let baseOffset = direction == .left ? width * 2 : -width * 2
-        return phase * baseOffset
-    }
-}
-
-/**
- * 时空波纹效果视图
- * 作为备选效果，模拟穿越时空时的空间波纹
- */
-struct TimeSpaceRippleView: View {
-    @State private var animating = false
-    let direction: SwipeDirection
-    
-    var body: some View {
-        ZStack {
-            // 背景层 - 保持协调的色彩，略微增强对比度
-            Color(red: 0.93, green: 0.95, blue: 0.98, opacity: 0.9)
-                .edgesIgnoringSafeArea(.all)
-            
-            // 波纹效果 - 增强波纹的可见度
-            ForEach(0..<4, id: \.self) { index in
-                Circle()
-                    .stroke(Color(red: 0.6, green: 0.7, blue: 0.95, opacity: 0.3 - Double(index) * 0.04), lineWidth: 2.5)
-                    .scaleEffect(animating ? 1 + CGFloat(index) * 0.25 : 0.2)
-                    .opacity(animating ? 0 : 0.7)
-                    .animation(
-                        Animation.easeOut(duration: 0.8)
-                            .repeatForever(autoreverses: false)
-                            .delay(Double(index) * 0.2),
-                        value: animating
-                    )
-            }
-            
-            // 中心光效 - 增强光晕效果
-            Circle()
-                .fill(
-                    RadialGradient(
-                        gradient: Gradient(colors: [
-                            Color(red: 0.65, green: 0.75, blue: 0.95, opacity: 0.7), 
-                            .clear
-                        ]),
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 140
-                    )
-                )
-                .frame(width: 100, height: 100)
-                .opacity(animating ? 0.6 : 0.3)
-                .animation(
-                    Animation.easeInOut(duration: 0.8)
-                        .repeatForever(autoreverses: true),
-                    value: animating
-                )
-            
-            // 方向指示 - 增强指示箭头的可见度
-            Image(systemName: direction == .left ? "chevron.left" : "chevron.right")
-                .font(.system(size: 40, weight: .medium))
-                .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.9, opacity: 0.8))
-                .offset(x: direction == .left ? -30 : 30)
-                .opacity(animating ? 0.9 : 0.6)
-                .animation(
-                    Animation.easeInOut(duration: 0.6)
-                        .repeatForever(autoreverses: true),
-                    value: animating
-                )
-        }
-        .onAppear {
-            // 使用异步调用避免在视图更新过程中修改状态
-            DispatchQueue.main.async {
-                self.animating = true
-            }
-        }
-        .drawingGroup() // 使用离屏渲染提高性能
-    }
 }
 
 /**

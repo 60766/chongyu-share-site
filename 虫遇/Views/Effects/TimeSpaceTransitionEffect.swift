@@ -1,4 +1,6 @@
 import SwiftUI
+// 导入共享类型
+@_exported import Utils
 
 /**
  * 时空粒子效果视图
@@ -165,13 +167,6 @@ struct TimeSpaceRippleView: View {
         }
         .drawingGroup() // 使用离屏渲染提高性能
     }
-}
-
-// 滑动方向枚举
-enum SwipeDirection {
-    case left
-    case right
-    case none
 }
 
 /**
