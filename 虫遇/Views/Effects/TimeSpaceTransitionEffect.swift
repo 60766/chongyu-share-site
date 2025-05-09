@@ -1,6 +1,6 @@
 import SwiftUI
-// 导入共享类型
-@_exported import Utils
+// 修改导入方式
+import Utils
 
 /**
  * 时空粒子效果视图

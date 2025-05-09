@@ -1,11 +1,9 @@
 import SwiftUI
-// 移除对模块自身的导入，添加必要的模块导入
-// import 虫遇
 
 /**
  * 虫洞探索应用程序入口
+ * 这是虫遇应用的一个子模块视图
  */
-// 移除@main属性
 struct WormholeExplorationApp: App {
     var body: some Scene {
         WindowGroup {

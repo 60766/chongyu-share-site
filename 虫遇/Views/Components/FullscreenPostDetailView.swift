@@ -3,10 +3,8 @@ import Combine
 import UIKit // 如果还没有导入
 // 导入时空效果
 import SwiftData
-// 添加对时空效果模块的引用
-@_exported import TimeSpaceTransitionEffect
-// 添加对共享类型的引用
-@_exported import Utils
+// 修改导入方式
+import Utils
 
 // 导入NavigationHelper
 // 由于无法直接导入Utils模块，我们在此处定义所需的辅助类
