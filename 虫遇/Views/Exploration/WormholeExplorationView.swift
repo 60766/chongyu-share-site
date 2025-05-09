@@ -1,8 +1,8 @@
 import SwiftUI
 import Foundation
 
-// 移除自导入，因为该文件已经是模块的一部分
-// @_implementationOnly import struct 虫遇.TimeSpaceEffectCenterTestView
+// 导入测试视图
+@_implementationOnly import struct 虫遇.TimeSpaceEffectCenterTestView
 
 /**
  * 虫洞探索主视图
@@ -42,32 +42,20 @@ public struct WormholeExplorationView: View {
             
             // 黑洞视图 - 使用GeometryReader获取其中心位置
             GeometryReader { geometry in
-                // 使用ZStack包装BlackHoleView并使用geometry获取其确切中心位置
-                ZStack {
-                    BlackHoleView()
-                        .opacity(isShowingButtons && !isShowingSpaceEffect ? 1 : 0)
-                        .scaleEffect(isShowingButtons ? 1 : 0.5)
-                        .animation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.1), value: isShowingButtons)
-                        .background(
-                            // 使用背景GeometryReader精确捕获黑洞中心位置
-                            GeometryReader { blackHoleGeometry in
-                                Color.clear
-                                    .onAppear {
-                                        // 计算黑洞中心位置 - 这是随机漫游按钮所在位置
-                                        let centerX = blackHoleGeometry.frame(in: .global).midX
-                                        let centerY = blackHoleGeometry.frame(in: .global).midY
-                                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
-                                    }
-                                    .onChange(of: geometry.size) { _, _ in
-                                        // 屏幕尺寸改变时更新位置
-                                        let centerX = blackHoleGeometry.frame(in: .global).midX
-                                        let centerY = blackHoleGeometry.frame(in: .global).midY
-                                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
-                                    }
-                            }
-                        )
-                }
-                .frame(width: geometry.size.width, height: geometry.size.height)
+                BlackHoleView()
+                    .opacity(isShowingButtons && !isShowingSpaceEffect ? 1 : 0)
+                    .scaleEffect(isShowingButtons ? 1 : 0.5)
+                    .animation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.1), value: isShowingButtons)
+                    .onAppear {
+                        // 计算黑洞中心位置
+                        let centerX = geometry.frame(in: .global).midX
+                        // 向上移动中心点位置，使特效从随机漫游按钮的位置开始
+                        // 以下Y轴偏移使特效起始点更接近随机漫游按钮
+                        let centerY = geometry.frame(in: .global).midY - geometry.size.height * 0.1
+                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
+                        
+                        print("黑洞中心位置设置为: x=\(centerX), y=\(centerY)")
+                    }
             }
             
             // 底部按钮视图
@@ -144,19 +132,37 @@ public struct WormholeExplorationView: View {
             
             // 时空效果覆盖层 - 使用新的TimeSpaceEffectView
             if isShowingSpaceEffect {
-                TimeSpaceEffectView(isActive: $isShowingSpaceEffect, effectCenterPosition: blackHoleCenterPosition) {
-                    // 当特效完成后，重置过渡状态
-                    withAnimation {
-                        isTransitioning = false
+                if let centerPosition = blackHoleCenterPosition {
+                    // 如果黑洞中心位置可用，则使用它作为特效中心
+                    TimeSpaceEffectView(isActive: $isShowingSpaceEffect, centerPosition: centerPosition) {
+                        // 当特效完成后，重置过渡状态
+                        withAnimation {
+                            isTransitioning = false
+                        }
+                        
+                        // 可以添加其他逻辑，例如导航到新页面等
+                        print("虫洞捕捉完成")
                     }
-                    
-                    // 可以添加其他逻辑，例如导航到新页面等
-                    print("虫洞捕捉完成")
+                    .edgesIgnoringSafeArea(.all)
+                    // 确保特效位于最顶层且全屏显示
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(100) // 确保在最上层显示
+                } else {
+                    // 如果黑洞中心位置不可用，则使用默认中心位置
+                    TimeSpaceEffectView(isActive: $isShowingSpaceEffect) {
+                        // 当特效完成后，重置过渡状态
+                        withAnimation {
+                            isTransitioning = false
+                        }
+                        
+                        // 可以添加其他逻辑，例如导航到新页面等
+                        print("虫洞捕捉完成")
+                    }
+                    .edgesIgnoringSafeArea(.all)
+                    // 确保特效位于最顶层且全屏显示
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(100) // 确保在最上层显示
                 }
-                .edgesIgnoringSafeArea(.all)
-                // 确保特效位于最顶层且全屏显示
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .zIndex(100) // 确保在最上层显示
             }
         }
         .onAppear {
@@ -232,17 +238,27 @@ public struct StarfieldBackground: View {
                         )
                         .opacity(Double.random(in: 0.1...0.6))
                 }
-            }
-            .onChange(of: phase) { _, newValue in
-                // 添加微妙的星星移动或闪烁效果
-                // 根据phase更新星星位置或不透明度
-            }
-            .onAppear {
-                // 添加星星闪烁动画
-                withAnimation(.linear(duration: 4).repeatForever(autoreverses: true)) {
-                    phase = 1.0
+                
+                // 闪烁效果
+                ForEach(0..<20, id: \.self) { _ in
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: CGFloat.random(in: 1.0...2.5), height: CGFloat.random(in: 1.0...2.5))
+                        .position(
+                            x: CGFloat.random(in: 0...geometry.size.width),
+                            y: CGFloat.random(in: 0...geometry.size.height)
+                        )
+                        .opacity(Foundation.sin(phase + Double.random(in: 0...2 * .pi)))
                 }
             }
         }
+        .onAppear {
+            // 创建闪烁动画
+            withAnimation(.linear(duration: 4).repeatForever(autoreverses: false)) {
+                phase += 2 * .pi
+            }
+        }
     }
+    
+    public init() {}
 } 

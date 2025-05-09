@@ -1027,12 +1027,15 @@ struct FullscreenPostDetailView: View {
                         
                         // 主按钮 - 开启时空对话
                         Button(action: {
-                            // 触发触觉反馈
-                            let feedback = UIImpactFeedbackGenerator(style: .medium)
-                            feedback.impactOccurred()
+                            // 记录操作开始时间，用于防止可能的重复触发
+                            let operationStartTime = Date()
                             
                             // 立即重置所有相关状态
                             showWormholeSwipeIndicator = false
+                            
+                            // 触发触觉反馈
+                            let feedback = UIImpactFeedbackGenerator(style: .medium)
+                            feedback.impactOccurred()
                             
                             // 显示时空特效视图 - 使用简化版实现
                             withAnimation {
@@ -1314,23 +1317,36 @@ struct FullscreenPostDetailView: View {
             
             // 自定义时空特效覆盖层
             if showCustomTimeSpaceEffect {
-                TimeSpaceEffectView(isActive: $showCustomTimeSpaceEffect) {
-                    // 特效完成后的回调
-                    print("⭐️ 时空特效完成，准备返回主页面")
+                GeometryReader { geometry in
+                    // 计算黑洞中心位置 - 位于屏幕中央偏上的位置
+                    let centerX = geometry.size.width / 2
+                    // 向上调整Y轴位置，使特效从随机漫游按钮位置开始
+                    let centerY = geometry.size.height / 2 - geometry.size.height * 0.1
+                    let blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
                     
-                    // 关闭虫洞探索页面
-                    showAddContentView = false
-                    
-                    // 重置状态
-                    dragOffset = 0
-                    swipeDirection = .none
-                    isTransitioning = false
-                    
-                    // 延迟一点调用onDismiss
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        onDismiss?()
+                    // 使用自定义位置的TimeSpaceEffectView
+                    TimeSpaceEffectView(
+                        isActive: $showCustomTimeSpaceEffect, 
+                        centerPosition: blackHoleCenterPosition
+                    ) {
+                        // 特效完成后的回调
+                        print("⭐️ 时空特效完成，准备返回主页面")
+                        
+                        // 关闭虫洞探索页面
+                        showAddContentView = false
+                        
+                        // 重置状态
+                        dragOffset = 0
+                        swipeDirection = .none
+                        isTransitioning = false
+                        
+                        // 延迟一点调用onDismiss
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            onDismiss?()
+                        }
                     }
                 }
+                .edgesIgnoringSafeArea(.all)
                 .zIndex(1000) // 确保特效显示在最上层
             }
         }
@@ -1993,9 +2009,12 @@ struct FullscreenPostDetailView: View {
         
         // 优化2：使用低优先级线程进行预加载，避免与UI动画竞争资源
         Task(priority: .background) {
-            // 预加载操作 - 使用 _ = await 替换变量赋值
-            _ = await preloadImagesForPostAsync(nextPost)
-            _ = await preloadCommentsForPostAsync(nextPost)
+            // 预加载操作
+            async let imagesTask = preloadImagesForPostAsync(nextPost)
+            async let commentsTask = preloadCommentsForPostAsync(nextPost)
+            
+            // 非阻塞式等待 - 继续UI动画而不等待预加载完成
+            _ = await (imagesTask, commentsTask)
         }
         
         // 优化3：使用单一动画队列而不是嵌套的延迟调用，减少动画竞争

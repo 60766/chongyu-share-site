@@ -16,43 +16,32 @@ public struct TimeSpaceEffectCenterTestView: View {
             
             // 简化版黑洞视图 - 仅用于显示位置参考
             GeometryReader { geometry in
-                ZStack {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                gradient: Gradient(colors: [
-                                    Color(red: 0.15, green: 0.1, blue: 0.25),
-                                    Color(red: 0.05, green: 0.02, blue: 0.1),
-                                    Color.black
-                                ]),
-                                center: .center,
-                                startRadius: 1,
-                                endRadius: 100
-                            )
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(colors: [
+                                Color(red: 0.15, green: 0.1, blue: 0.25),
+                                Color(red: 0.05, green: 0.02, blue: 0.1),
+                                Color.black
+                            ]),
+                            center: .center,
+                            startRadius: 1,
+                            endRadius: 100
                         )
-                        .frame(width: 200, height: 200)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                        .opacity(showEffect ? 0 : 1) // 特效出现时隐藏黑洞
-                        .background(
-                            // 使用背景GeometryReader精确捕获黑洞中心位置
-                            GeometryReader { blackHoleGeometry in
-                                Color.clear
-                                    .onAppear {
-                                        // 记录黑洞中心位置
-                                        let centerX = blackHoleGeometry.frame(in: .global).midX
-                                        let centerY = blackHoleGeometry.frame(in: .global).midY
-                                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
-                                    }
-                                    .onChange(of: geometry.size) { _, _ in
-                                        // 屏幕尺寸改变时更新位置
-                                        let centerX = blackHoleGeometry.frame(in: .global).midX
-                                        let centerY = blackHoleGeometry.frame(in: .global).midY
-                                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
-                                    }
-                            }
-                        )
-                }
-                .frame(width: geometry.size.width, height: geometry.size.height)
+                    )
+                    .frame(width: 200, height: 200)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    .opacity(showEffect ? 0 : 1) // 特效出现时隐藏黑洞
+                    .onAppear {
+                        // 记录黑洞中心位置
+                        let centerX = geometry.frame(in: .global).midX
+                        // 向上移动中心点位置，使特效从模拟的随机漫游按钮位置开始
+                        // 保持与WormholeExplorationView中相同的偏移量
+                        let centerY = geometry.frame(in: .global).midY - geometry.size.height * 0.1
+                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
+                        
+                        print("测试页面黑洞中心位置设置为: x=\(centerX), y=\(centerY)")
+                    }
             }
             
             // 星星背景
@@ -122,11 +111,27 @@ public struct TimeSpaceEffectCenterTestView: View {
             
             // 显示时空特效
             if showEffect {
-                TimeSpaceEffectView(isActive: $showEffect, effectCenterPosition: blackHoleCenterPosition) {
-                    // 特效结束后计数加1
-                    effectCount += 1
+                if let centerPosition = blackHoleCenterPosition {
+                    // 使用黑洞中心位置作为特效中心
+                    TimeSpaceEffectView(isActive: $showEffect, centerPosition: centerPosition) {
+                        // 特效完成后的回调
+                        print("特效完成")
+                    }
+                    .edgesIgnoringSafeArea(.all)
+                    // 确保特效位于最顶层且全屏显示
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(100) // 确保在最上层显示
+                } else {
+                    // 默认使用屏幕中心
+                    TimeSpaceEffectView(isActive: $showEffect) {
+                        // 特效完成后的回调
+                        print("特效完成")
+                    }
+                    .edgesIgnoringSafeArea(.all)
+                    // 确保特效位于最顶层且全屏显示
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(100) // 确保在最上层显示
                 }
-                .edgesIgnoringSafeArea(.all)
             }
         }
     }
