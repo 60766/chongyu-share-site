@@ -1055,15 +1055,15 @@ struct FullscreenPostDetailView: View {
                                         if newDirection != .none && abs(dampedOffset) > screenWidth * 0.12 {
                                             // 显示穿越时空效果
                                             if !showingTimeSpaceEffect {
-                                                // 使用更快的淡入动画
-                                                withAnimation(.easeIn(duration: 0.05)) {
+                                                // 使用更慢的淡入动画，增强视觉体验
+                                                withAnimation(.easeIn(duration: 0.2)) {  // 增加到0.2秒，原为0.05秒
                                                     self.showingTimeSpaceEffect = true
                                                     self.timeSpaceDirection = newDirection
                                                 }
                                                 
                                                 // 设置更短的动画展示时间，加快体验
-                                                let displayDuration: TimeInterval = 0.5 // 缩短到0.5秒
-                                                let fadeOutDuration: TimeInterval = 0.2
+                                                let displayDuration: TimeInterval = 1.5 // 增加到1.5秒，原为0.5秒
+                                                let fadeOutDuration: TimeInterval = 0.3 // 增加到0.3秒，原为0.2秒
                                                 
                                                 // 动画结束后淡出
                                                 DispatchQueue.main.asyncAfter(deadline: .now() + displayDuration) {
@@ -1434,11 +1434,11 @@ struct FullscreenPostDetailView: View {
                             feedback.impactOccurred(intensity: 0.8)
                             
                             // 改进动画序列，提供更沉浸式的体验
-                            let initialEffectDuration: Double = 1.2  // 大幅增加效果持续时间
-                            let slideOutDuration: Double = 0.5  // 适当增加滑出持续时间
+                            let initialEffectDuration: Double = 2.0  // 大幅增加效果持续时间，从1.2秒增加到2.0秒
+                            let slideOutDuration: Double = 0.6  // 适当增加滑出持续时间，从0.5秒增加到0.6秒
                             
                             // 第一阶段：显示从黑洞中心发散的时空效果
-                            withAnimation(.easeIn(duration: 0.3)) {
+                            withAnimation(.easeIn(duration: 0.5)) {  // 增加淡入时间，从0.3秒增加到0.5秒
                                 showingTimeSpaceEffect = true
                                 timeSpaceDirection = .right
                             }
@@ -1671,8 +1671,8 @@ struct FullscreenPostDetailView: View {
                                 isTransitioning = true
                                 
                                 // 时间参数与页面转场相同
-                                let initialEffectDuration: Double = 0.12
-                                let slideOutDuration: Double = 0.2
+                                let initialEffectDuration: Double = 0.5  // 增加到0.5秒，原为0.12秒
+                                let slideOutDuration: Double = 0.4  // 增加到0.4秒，原为0.2秒
                                 
                                 // 使用与页面转场相同的动画序列
                                 withAnimation(.easeIn(duration: initialEffectDuration)) {
@@ -2393,12 +2393,12 @@ struct FullscreenPostDetailView: View {
         // 立即更新数据模型并显示下一页
         self.nextPagePost = nextPost
         
-        // 更短、更快的动画时间，减少用户等待
-        let initialEffectDuration: Double = 0.12
-        let slideOutDuration: Double = 0.2
+        // 更长、更明显的动画时间
+        let initialEffectDuration: Double = 0.5  // 增加到0.5秒，原为0.12秒
+        let slideOutDuration: Double = 0.4  // 增加到0.4秒，原为0.2秒
         
         // 添加转场保障计时器 - 如果转场在合理时间内未完成会强制恢复
-        let transitionTimeout: Double = 1.2 // 缩短超时时间
+        let transitionTimeout: Double = 2.0 // 延长超时时间，与更长的动画匹配
         
         // 保存状态用于恢复
         var transitionCancelled = false
