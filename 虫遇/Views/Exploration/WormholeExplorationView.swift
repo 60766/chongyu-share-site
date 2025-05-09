@@ -16,196 +16,156 @@ public struct WormholeExplorationView: View {
     @State private var blackHoleCenterPosition: CGPoint? = nil // 保存黑洞中心位置
     
     public var body: some View {
-        ZStack {
-            // 背景
-            Color.black.edgesIgnoringSafeArea(.all)
-            
-            // 星空背景
-            StarfieldBackground()
-            
-            // 主标题
-            VStack {
-                Text("时空探索")
-                    .font(.system(size: 28, weight: .medium))
-                    .foregroundColor(.white)
-                    .padding(.top, 60)
-                
-                Text("选择你想探索的方向")
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(.white.opacity(0.7))
-                    .padding(.top, 2)
-                
-                Spacer()
-            }
-            .opacity(isShowingButtons ? 1 : 0)
-            .animation(.easeInOut(duration: 0.6).delay(0.3), value: isShowingButtons)
-            
-            // 黑洞视图定位器 - 使用PreferenceKey获取随机漫游按钮的精确位置
+        GeometryReader { mainGeometry in
             ZStack {
-                // 实际的黑洞视图
+                // 背景
+                Color.black.edgesIgnoringSafeArea(.all)
+                
+                // 星空背景
+                StarfieldBackground()
+                
+                // 主标题
+                VStack {
+                    Text("时空探索")
+                        .font(.system(size: 28, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.top, 60)
+                    
+                    Text("选择你想探索的方向")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.top, 2)
+                    
+                    Spacer()
+                }
+                .opacity(isShowingButtons ? 1 : 0)
+                .animation(.easeInOut(duration: 0.6).delay(0.3), value: isShowingButtons)
+                
+                // 黑洞视图 - 直接放置在屏幕中央
                 BlackHoleView()
                     .opacity(isShowingButtons && !isShowingSpaceEffect ? 1 : 0)
                     .scaleEffect(isShowingButtons ? 1 : 0.5)
                     .animation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.1), value: isShowingButtons)
                 
-                // 在黑洞视图上叠加透明视图来获取随机漫游按钮的位置
-                GeometryReader { geometry in
-                    // 用于获取整个ZStack在全局坐标系中的位置
-                    let blackHoleFrame = geometry.frame(in: .global)
+                // 底部按钮视图
+                VStack {
+                    Spacer()
                     
-                    // 这个圆形按钮定位器放置在随机漫游按钮的位置上
-                    // 根据BlackHoleView的实现，中心按钮在黑洞视图正中心
-                    Circle()
-                        .fill(Color.clear) // 完全透明
-                        .frame(width: 1, height: 1) // 极小尺寸，不影响视觉
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2) // 放置在中心
-                        .onAppear {
-                            // 计算随机漫游按钮中心位置
-                            let buttonCenterX = blackHoleFrame.midX
-                            let buttonCenterY = blackHoleFrame.midY
-                            
-                            // 更新按钮位置状态，用于特效定位
-                            blackHoleCenterPosition = CGPoint(x: buttonCenterX, y: buttonCenterY)
-                            
-                            // 打印位置信息，用于调试
-                            print("黑洞随机漫游按钮位置: \(CGPoint(x: buttonCenterX, y: buttonCenterY))")
+                    // 创作类型按钮
+                    CreationTypeButtonsView()
+                        .padding(.bottom, 30)
+                    
+                    // 启动按钮
+                    Button(action: {
+                        // 触发触觉反馈
+                        let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                        impactMed.impactOccurred()
+                        
+                        // 启动虫洞捕捉过程
+                        withAnimation {
+                            isTransitioning = true
                         }
-                }
-                .allowsHitTesting(false) // 不干扰用户交互
-                
-                // DEBUG标记 - 显示黑洞中心位置和向上偏移后的位置
-                #if DEBUG
-                if let centerPosition = blackHoleCenterPosition {
-                    // 显示原始中心位置
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 4, height: 4)
-                        .position(centerPosition)
-                        .opacity(isShowingSpaceEffect ? 0 : 0.7)
-                    
-                    // 显示向上偏移40像素后的位置
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 4, height: 4)
-                        .position(CGPoint(x: centerPosition.x, y: centerPosition.y - 40))
-                        .opacity(isShowingSpaceEffect ? 0 : 0.7)
-                }
-                #endif
-            }
-            
-            // 底部按钮视图
-            VStack {
-                Spacer()
-                
-                // 创作类型按钮
-                CreationTypeButtonsView()
-                    .padding(.bottom, 30)
-                
-                // 启动按钮
-                Button(action: {
-                    // 触发触觉反馈
-                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                    impactMed.impactOccurred()
-                    
-                    // 启动虫洞捕捉过程
-                    withAnimation {
-                        isTransitioning = true
-                    }
-                    
-                    // 显示时空效果 - 由TimeSpaceEffectView自己控制结束时间
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        isShowingSpaceEffect = true
-                    }
-                }) {
-                    Text("启动虫洞捕捉")
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.vertical, 14)
-                        .padding(.horizontal, 36)
-                        .background(
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color(red: 0.4, green: 0.2, blue: 0.6),
-                                            Color(red: 0.5, green: 0.3, blue: 0.7)
-                                        ]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
+                        
+                        // 计算黑洞中心位置 - 就是屏幕中心位置
+                        let centerX = mainGeometry.size.width / 2
+                        let centerY = mainGeometry.size.height / 2
+                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
+                        
+                        // 显示时空效果 - 由TimeSpaceEffectView自己控制结束时间
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            isShowingSpaceEffect = true
+                        }
+                    }) {
+                        Text("启动虫洞捕捉")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 14)
+                            .padding(.horizontal, 36)
+                            .background(
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color(red: 0.4, green: 0.2, blue: 0.6),
+                                                Color(red: 0.5, green: 0.3, blue: 0.7)
+                                            ]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
                                     )
-                                )
-                                .overlay(
-                                    Capsule()
-                                        .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
-                                )
-                        )
-                        .shadow(color: Color(red: 0.5, green: 0.3, blue: 0.7).opacity(0.5), radius: 10, x: 0, y: 4)
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
+                                    )
+                            )
+                            .shadow(color: Color(red: 0.5, green: 0.3, blue: 0.7).opacity(0.5), radius: 10, x: 0, y: 4)
+                    }
+                    .disabled(isTransitioning)
+                    .opacity(isTransitioning ? 0.5 : 1.0)
+                    .padding(.bottom, 40)
+                    .opacity(isShowingButtons ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.6).delay(0.5), value: isShowingButtons)
+                    
+                    // 开发测试按钮 - 仅用于测试特效
+                    #if DEBUG
+                    NavigationLink(destination: TimeSpaceEffectCenterTestView()) {
+                        Text("测试特效")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.5))
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 16)
+                            .background(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
+                            )
+                    }
+                    .padding(.bottom, 10)
+                    .opacity(isShowingButtons ? 0.7 : 0)
+                    #endif
                 }
-                .disabled(isTransitioning)
-                .opacity(isTransitioning ? 0.5 : 1.0)
-                .padding(.bottom, 40)
-                .opacity(isShowingButtons ? 1 : 0)
-                .animation(.easeInOut(duration: 0.6).delay(0.5), value: isShowingButtons)
                 
-                // 开发测试按钮 - 仅用于测试特效
-                #if DEBUG
-                NavigationLink(destination: TimeSpaceEffectCenterTestView()) {
-                    Text("测试特效")
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.5))
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 16)
-                        .background(
-                            Capsule()
-                                .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
-                        )
-                }
-                .padding(.bottom, 10)
-                .opacity(isShowingButtons ? 0.7 : 0)
-                #endif
-            }
-            
-            // 时空效果覆盖层 - 使用新的TimeSpaceEffectView
-            if isShowingSpaceEffect {
-                if let centerPosition = blackHoleCenterPosition {
-                    // 如果黑洞中心位置可用，则使用它作为特效中心
-                    // 注意：特效视图内部已经实现向上偏移40像素
-                    TimeSpaceEffectView(isActive: $isShowingSpaceEffect, centerPosition: centerPosition) {
-                        // 当特效完成后，重置过渡状态
-                        withAnimation {
-                            isTransitioning = false
+                // 时空效果覆盖层 - 使用新的TimeSpaceEffectView
+                if isShowingSpaceEffect {
+                    if let centerPosition = blackHoleCenterPosition {
+                        // 如果黑洞中心位置可用，则使用它作为特效中心
+                        TimeSpaceEffectView(isActive: $isShowingSpaceEffect, centerPosition: centerPosition) {
+                            // 当特效完成后，重置过渡状态
+                            withAnimation {
+                                isTransitioning = false
+                            }
+                            
+                            // 可以添加其他逻辑，例如导航到新页面等
+                            print("虫洞捕捉完成")
                         }
-                        
-                        // 可以添加其他逻辑，例如导航到新页面等
-                        print("虫洞捕捉完成")
-                    }
-                    .edgesIgnoringSafeArea(.all)
-                    // 确保特效位于最顶层且全屏显示
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .zIndex(100) // 确保在最上层显示
-                } else {
-                    // 如果黑洞中心位置不可用，则使用默认中心位置
-                    TimeSpaceEffectView(isActive: $isShowingSpaceEffect) {
-                        // 当特效完成后，重置过渡状态
-                        withAnimation {
-                            isTransitioning = false
+                        .edgesIgnoringSafeArea(.all)
+                        // 确保特效位于最顶层且全屏显示
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .zIndex(100) // 确保在最上层显示
+                    } else {
+                        // 如果黑洞中心位置不可用，则使用默认中心位置
+                        TimeSpaceEffectView(isActive: $isShowingSpaceEffect) {
+                            // 当特效完成后，重置过渡状态
+                            withAnimation {
+                                isTransitioning = false
+                            }
+                            
+                            // 可以添加其他逻辑，例如导航到新页面等
+                            print("虫洞捕捉完成")
                         }
-                        
-                        // 可以添加其他逻辑，例如导航到新页面等
-                        print("虫洞捕捉完成")
+                        .edgesIgnoringSafeArea(.all)
+                        // 确保特效位于最顶层且全屏显示
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .zIndex(100) // 确保在最上层显示
                     }
-                    .edgesIgnoringSafeArea(.all)
-                    // 确保特效位于最顶层且全屏显示
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .zIndex(100) // 确保在最上层显示
                 }
             }
-        }
-        .onAppear {
-            // 延迟显示按钮
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                withAnimation {
-                    isShowingButtons = true
+            .frame(width: mainGeometry.size.width, height: mainGeometry.size.height)
+            .onAppear {
+                // 延迟显示按钮
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    withAnimation {
+                        isShowingButtons = true
+                    }
                 }
             }
         }
@@ -274,27 +234,17 @@ public struct StarfieldBackground: View {
                         )
                         .opacity(Double.random(in: 0.1...0.6))
                 }
-                
-                // 闪烁效果
-                ForEach(0..<20, id: \.self) { _ in
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: CGFloat.random(in: 1.0...2.5), height: CGFloat.random(in: 1.0...2.5))
-                        .position(
-                            x: CGFloat.random(in: 0...geometry.size.width),
-                            y: CGFloat.random(in: 0...geometry.size.height)
-                        )
-                        .opacity(Foundation.sin(phase + Double.random(in: 0...2 * .pi)))
+            }
+            .onChange(of: phase) { _, newValue in
+                // 添加微妙的星星移动或闪烁效果
+                // 根据phase更新星星位置或不透明度
+            }
+            .onAppear {
+                // 添加星星闪烁动画
+                withAnimation(.linear(duration: 4).repeatForever(autoreverses: true)) {
+                    phase = 1.0
                 }
             }
         }
-        .onAppear {
-            // 创建闪烁动画
-            withAnimation(.linear(duration: 4).repeatForever(autoreverses: false)) {
-                phase += 2 * .pi
-            }
-        }
     }
-    
-    public init() {}
 } 
