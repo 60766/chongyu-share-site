@@ -127,76 +127,91 @@ struct TimeSpaceParticleView: View {
     @State private var phase: CGFloat = 0
     let direction: SwipeDirection
     
-    // 添加黑洞中心位置参数，默认为nil表示使用屏幕中心
-    var centerPoint: CGPoint? = nil
-    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // 背景层
+                // 背景层 - 仍然使用协调的色彩，但略微提高对比度
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(red: 0.92, green: 0.94, blue: 0.98, opacity: 0.85),
-                        Color(red: 0.94, green: 0.92, blue: 0.97, opacity: 0.85)
+                        Color(red: 0.92, green: 0.94, blue: 0.98, opacity: 0.85),  // 淡蓝白色
+                        Color(red: 0.94, green: 0.92, blue: 0.97, opacity: 0.85)   // 淡紫白色
                     ]),
                     startPoint: direction == .left ? .trailing : .leading,
                     endPoint: direction == .left ? .leading : .trailing
                 )
                 
-                // 计算中心点 - 默认为屏幕中心或使用传入的参数
-                let center = centerPoint ?? CGPoint(
-                    x: geometry.size.width / 2,
-                    y: geometry.size.height / 2
-                )
-                
-                // 粒子层 - 从中心点向外扩散
-                ForEach(0..<45, id: \.self) { _ in
-                    // 计算随机角度和距离
-                    let angle = Double.random(in: 0...360)
-                    let distance = phase * geometry.size.width * 0.7
-                    
+                // 粒子层 - 增加粒子数量，提高不透明度和尺寸
+                ForEach(0..<45, id: \.self) { index in
                     Circle()
                         .fill(Color(red: 0.6, green: 0.7, blue: 0.95, opacity: Double.random(in: 0.3...0.6)))
                         .frame(width: CGFloat.random(in: 3...10))
                         .position(
-                            x: center.x + cos(angle * .pi / 180) * distance,
-                            y: center.y + sin(angle * .pi / 180) * distance
+                            x: CGFloat.random(in: 0...geometry.size.width),
+                            y: CGFloat.random(in: 0...geometry.size.height)
                         )
-                        .opacity(1 - phase) // 随距离淡出
+                        .offset(x: offsetForIndex(index, width: geometry.size.width))
+                        .animation(
+                            Animation.linear(duration: Double.random(in: 0.4...0.8))
+                                .repeatForever(autoreverses: false),
+                            value: phase
+                        )
                 }
                 
-                // 光线效果 - 从中心点发散
+                // 光线效果 - 增强光线效果，增加数量和不透明度
                 ForEach(0..<15, id: \.self) { index in
-                    let angle = Double(index) * (360.0 / 15.0)
-                    
-                    Rectangle()
+                    RoundedRectangle(cornerRadius: 1)
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    Color.white,
-                                    Color(red: 0.65, green: 0.7, blue: 0.95, opacity: 0.45),
-                                    Color.clear
+                                    .clear, 
+                                    Color(red: 0.65, green: 0.7, blue: 0.95, opacity: 0.45), 
+                                    .clear
                                 ]),
-                                startPoint: .leading,
-                                endPoint: .trailing
+                                startPoint: direction == .left ? .trailing : .leading,
+                                endPoint: direction == .left ? .leading : .trailing
                             )
                         )
-                        .frame(width: phase * geometry.size.width, height: CGFloat.random(in: 1.5...3))
-                        .position(center)
-                        .rotationEffect(.degrees(angle))
+                        .frame(width: CGFloat.random(in: 100...350), height: CGFloat.random(in: 1.5...3))
+                        .rotationEffect(.degrees(Double.random(in: -15...15)))
+                        .position(
+                            x: CGFloat.random(in: 0...geometry.size.width),
+                            y: CGFloat.random(in: 0...geometry.size.height)
+                        )
+                        .offset(x: offsetForIndex(index + 40, width: geometry.size.width) * 1.5)
+                        .animation(
+                            Animation.linear(duration: Double.random(in: 0.5...0.9))
+                                .repeatForever(autoreverses: false),
+                            value: phase
+                        )
                 }
+                
+                // 方向指示箭头 - 增强可见度
+                Image(systemName: direction == .left ? "chevron.left" : "chevron.right")
+                    .font(.system(size: 40, weight: .light))
+                    .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.95, opacity: 0.8))
+                    .offset(x: direction == .left ? -30 : 30)
+                    .opacity(phase == 1.0 ? 0.9 : 0.6)
+                    .animation(
+                        Animation.easeInOut(duration: 0.6)
+                            .repeatForever(autoreverses: true),
+                        value: phase
+                    )
             }
             .onAppear {
                 // 使用异步调用避免在视图更新过程中修改状态
                 DispatchQueue.main.async {
-                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: false)) {
-                        self.phase = 1.0
-                    }
+                    self.phase = 1.0
                 }
             }
             .drawingGroup() // 使用离屏渲染提高性能
         }
         .edgesIgnoringSafeArea(.all)
+    }
+    
+    // 根据方向计算偏移量
+    private func offsetForIndex(_ index: Int, width: CGFloat) -> CGFloat {
+        let baseOffset = direction == .left ? width * 2 : -width * 2
+        return phase * baseOffset
     }
 }
 
@@ -208,56 +223,66 @@ struct TimeSpaceRippleView: View {
     @State private var animating = false
     let direction: SwipeDirection
     
-    // 添加黑洞中心位置参数
-    var centerPoint: CGPoint? = nil
-    
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // 计算中心点 - 默认为屏幕中心或使用传入的参数
-                let center = centerPoint ?? CGPoint(
-                    x: geometry.size.width / 2,
-                    y: geometry.size.height / 2
-                )
-                
-                // 背景层
-                Color(red: 0.93, green: 0.95, blue: 0.98, opacity: 0.9)
-                    .edgesIgnoringSafeArea(.all)
-                
-                // 波纹效果 - 从中心点扩散
-                ForEach(0..<4, id: \.self) { index in
-                    Circle()
-                        .stroke(Color(red: 0.6, green: 0.7, blue: 0.95, opacity: 0.3 - Double(index) * 0.04), lineWidth: 2.5)
-                        .scaleEffect(animating ? 1 + CGFloat(index) * 0.25 : 0.2)
-                        .opacity(animating ? 0 : 0.7)
-                        .position(center)
-                }
-                
-                // 中心光效
+        ZStack {
+            // 背景层 - 保持协调的色彩，略微增强对比度
+            Color(red: 0.93, green: 0.95, blue: 0.98, opacity: 0.9)
+                .edgesIgnoringSafeArea(.all)
+            
+            // 波纹效果 - 增强波纹的可见度
+            ForEach(0..<4, id: \.self) { index in
                 Circle()
-                    .fill(
-                        RadialGradient(
-                            gradient: Gradient(colors: [
-                                Color(red: 0.65, green: 0.75, blue: 0.95, opacity: 0.7),
-                                Color.clear
-                            ]),
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 140
-                        )
+                    .stroke(Color(red: 0.6, green: 0.7, blue: 0.95, opacity: 0.3 - Double(index) * 0.04), lineWidth: 2.5)
+                    .scaleEffect(animating ? 1 + CGFloat(index) * 0.25 : 0.2)
+                    .opacity(animating ? 0 : 0.7)
+                    .animation(
+                        Animation.easeOut(duration: 0.8)
+                            .repeatForever(autoreverses: false)
+                            .delay(Double(index) * 0.2),
+                        value: animating
                     )
-                    .frame(width: 100, height: 100)
-                    .position(center)
-                    .opacity(animating ? 0.6 : 0.3)
             }
-            .onAppear {
-                // 使用异步调用避免在视图更新过程中修改状态
-                DispatchQueue.main.async {
-                    self.animating = true
-                }
-            }
-            .drawingGroup() // 使用离屏渲染提高性能
+            
+            // 中心光效 - 增强光晕效果
+            Circle()
+                .fill(
+                    RadialGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 0.65, green: 0.75, blue: 0.95, opacity: 0.7), 
+                            .clear
+                        ]),
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 140
+                    )
+                )
+                .frame(width: 100, height: 100)
+                .opacity(animating ? 0.6 : 0.3)
+                .animation(
+                    Animation.easeInOut(duration: 0.8)
+                        .repeatForever(autoreverses: true),
+                    value: animating
+                )
+            
+            // 方向指示 - 增强指示箭头的可见度
+            Image(systemName: direction == .left ? "chevron.left" : "chevron.right")
+                .font(.system(size: 40, weight: .medium))
+                .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.9, opacity: 0.8))
+                .offset(x: direction == .left ? -30 : 30)
+                .opacity(animating ? 0.9 : 0.6)
+                .animation(
+                    Animation.easeInOut(duration: 0.6)
+                        .repeatForever(autoreverses: true),
+                    value: animating
+                )
         }
+        .onAppear {
+            // 使用异步调用避免在视图更新过程中修改状态
+            DispatchQueue.main.async {
+                self.animating = true
+            }
+        }
+        .drawingGroup() // 使用离屏渲染提高性能
     }
 }
 
@@ -295,7 +320,6 @@ struct FullscreenPostDetailView: View {
     // 穿越时空效果状态变量
     @State private var showingTimeSpaceEffect: Bool = false
     @State private var timeSpaceDirection: SwipeDirection = .none
-    @State private var timeSpaceEffectCenter: CGPoint? = nil  // 添加时空效果中心点状态变量
     
     // 添加新内容状态变量
     @State private var showAddContentView: Bool = false
@@ -330,6 +354,9 @@ struct FullscreenPostDetailView: View {
     @State private var wormholePageDragOffset: CGFloat = 0.0
     @State private var isWormholeDragging: Bool = false
     @State private var showWormholeSwipeIndicator: Bool = false
+    
+    // 自定义时空特效状态
+    @State private var showCustomTimeSpaceEffect: Bool = false
     
     // 初始化方法
     init(
@@ -378,18 +405,12 @@ struct FullscreenPostDetailView: View {
                         // 使用GeometryReader确保全屏覆盖
                         ZStack {
                             // 底层使用波纹效果
-                            TimeSpaceRippleView(
-                                direction: timeSpaceDirection,
-                                centerPoint: timeSpaceEffectCenter  // 传递中心点
-                            )
-                            .opacity(0.95) // 提高透明度使波纹效果更明显
+                            TimeSpaceRippleView(direction: timeSpaceDirection)
+                                .opacity(0.95) // 提高透明度使波纹效果更明显
                             
                             // 顶层使用粒子效果
-                            TimeSpaceParticleView(
-                                direction: timeSpaceDirection,
-                                centerPoint: timeSpaceEffectCenter  // 传递中心点
-                            )
-                            .opacity(0.95) // 提高透明度使粒子效果更明显
+                            TimeSpaceParticleView(direction: timeSpaceDirection)
+                                .opacity(0.95) // 提高透明度使粒子效果更明显
                         }
                         .frame(width: geo.size.width, height: geo.size.height)
                     }
@@ -834,11 +855,6 @@ struct FullscreenPostDetailView: View {
                                                 withAnimation(.easeIn(duration: 0.05)) {
                                                     self.showingTimeSpaceEffect = true
                                                     self.timeSpaceDirection = newDirection
-                                                    // 设置时空效果从黑洞中心开始
-                                                    self.timeSpaceEffectCenter = CGPoint(
-                                                        x: UIScreen.main.bounds.width / 2,
-                                                        y: UIScreen.main.bounds.height / 2
-                                                    )
                                                 }
                                                 
                                                 // 设置更短的动画展示时间，加快体验
@@ -879,11 +895,6 @@ struct FullscreenPostDetailView: View {
                                         withAnimation(.easeIn(duration: 0.1)) {
                                             showingTimeSpaceEffect = true
                                             timeSpaceDirection = newDirection
-                                            // 设置时空效果从黑洞中心开始
-                                            timeSpaceEffectCenter = CGPoint(
-                                                x: UIScreen.main.bounds.width / 2,
-                                                y: UIScreen.main.bounds.height / 2
-                                            )
                                         }
                                     } else if abs(dampedOffset) < screenWidth * 0.12 && showingTimeSpaceEffect {
                                         // 低于阈值且正在显示
@@ -1190,66 +1201,14 @@ struct FullscreenPostDetailView: View {
                             // 立即重置所有相关状态
                             showWormholeSwipeIndicator = false
                             
-                            // 额外检查，防止转场状态混乱
-                            if isTransitioning {
-                                print("⚠️ 警告：点击按钮时发现正在转场中，先重置转场状态")
-                                isTransitioning = false
-                                dragOffset = 0
-                                return
-                            }
-                            
                             // 触发触觉反馈
                             let feedback = UIImpactFeedbackGenerator(style: .medium)
                             feedback.impactOccurred()
                             
-                            // 设置转场状态
-                            isTransitioning = true
-                            
-                            // 使用与页面转场相同的动画序列
-                            let initialEffectDuration: Double = 0.4  // 增加动画时间
-                            let slideOutDuration: Double = 0.3
-                            
-                            // 获取黑洞中心位置 (屏幕中心)
-                            let blackHoleCenterPoint = CGPoint(
-                                x: UIScreen.main.bounds.width / 2,
-                                y: UIScreen.main.bounds.height / 2
-                            )
-                            
-                            // 第一阶段：显示时空效果 - 从黑洞中心开始
-                            withAnimation(.easeIn(duration: initialEffectDuration)) {
-                                self.showingTimeSpaceEffect = true
-                                self.timeSpaceDirection = .right  // 右滑方向
-                                self.timeSpaceEffectCenter = blackHoleCenterPoint  // 设置特效中心点
-                                self.nextPageVisible = true
-                            }
-                            
-                            // 第二阶段：页面滑出
-                            DispatchQueue.main.asyncAfter(deadline: .now() + initialEffectDuration) {
-                                withAnimation(.spring(response: slideOutDuration, dampingFraction: 0.85, blendDuration: 0.08)) {
-                                    // 向右滑出
-                                    dragOffset = UIScreen.main.bounds.width
-                                    showingTimeSpaceEffect = false
-                                }
-                                
-                                // 第三阶段：关闭页面并重置
-                                DispatchQueue.main.asyncAfter(deadline: .now() + slideOutDuration) {
-                                    // 关闭虫洞探索页面
-                                    showAddContentView = false
-                                    
-                                    // 重置状态
-                                    dragOffset = 0
-                                    swipeDirection = .none
-                                    isTransitioning = false
-                                    
-                                    // 延迟一点调用onDismiss
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                        // 额外检查以确保不会出现重复调用
-                                        let elapsedTime = Date().timeIntervalSince(operationStartTime)
-                                        if elapsedTime < 1.0 && !showAddContentView {
-                                            onDismiss?()
-                                        }
-                                    }
-                                }
+                            // 显示时空特效视图 - 使用简化版实现
+                            withAnimation {
+                                // 设置全屏时空特效
+                                showCustomTimeSpaceEffect = true
                             }
                         }) {
                             HStack(spacing: 10) {  // 增加图标与文字间距
@@ -1395,11 +1354,6 @@ struct FullscreenPostDetailView: View {
                                             withAnimation(.easeIn(duration: 0.1)) {
                                                 showingTimeSpaceEffect = true
                                                 timeSpaceDirection = .right
-                                                // 设置时空效果从黑洞中心开始
-                                                timeSpaceEffectCenter = CGPoint(
-                                                    x: UIScreen.main.bounds.width / 2,
-                                                    y: UIScreen.main.bounds.height / 2
-                                                )
                                             }
                                         }
                                     }
@@ -1528,6 +1482,28 @@ struct FullscreenPostDetailView: View {
                         .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: -2)
                         .edgesIgnoringSafeArea(.bottom)
                 )
+            
+            // 自定义时空特效覆盖层
+            if showCustomTimeSpaceEffect {
+                TimeSpaceEffectView(isActive: $showCustomTimeSpaceEffect) {
+                    // 特效完成后的回调
+                    print("⭐️ 时空特效完成，准备返回主页面")
+                    
+                    // 关闭虫洞探索页面
+                    showAddContentView = false
+                    
+                    // 重置状态
+                    dragOffset = 0
+                    swipeDirection = .none
+                    isTransitioning = false
+                    
+                    // 延迟一点调用onDismiss
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        onDismiss?()
+                    }
+                }
+                .zIndex(1000) // 确保特效显示在最上层
+            }
         }
         // 禁用用户交互当正在过渡中
         .disabled(isTransitioning)
@@ -2183,11 +2159,6 @@ struct FullscreenPostDetailView: View {
         withAnimation(.easeIn(duration: initialEffectDuration)) {
             self.showingTimeSpaceEffect = true
             self.timeSpaceDirection = direction
-            // 设置时空效果从黑洞中心开始
-            self.timeSpaceEffectCenter = CGPoint(
-                x: UIScreen.main.bounds.width / 2,
-                y: UIScreen.main.bounds.height / 2
-            )
             self.nextPageVisible = true
         }
         
@@ -2306,7 +2277,6 @@ struct FullscreenPostDetailView: View {
             self.dragOffset = 0
             self.swipeDirection = .none
             self.showingTimeSpaceEffect = false
-            self.timeSpaceEffectCenter = nil // 重置时空效果中心点
             self.nextPageVisible = false // 立即隐藏下一页
         }
         
@@ -2860,4 +2830,3 @@ struct BlackHoleParticleRing: View {
         return CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width * 0.65, height: UIScreen.main.bounds.width * 0.65)
     }
 }
-
