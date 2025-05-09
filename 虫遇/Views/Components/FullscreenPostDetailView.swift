@@ -1027,15 +1027,12 @@ struct FullscreenPostDetailView: View {
                         
                         // 主按钮 - 开启时空对话
                         Button(action: {
-                            // 记录操作开始时间，用于防止可能的重复触发
-                            let operationStartTime = Date()
-                            
-                            // 立即重置所有相关状态
-                            showWormholeSwipeIndicator = false
-                            
                             // 触发触觉反馈
                             let feedback = UIImpactFeedbackGenerator(style: .medium)
                             feedback.impactOccurred()
+                            
+                            // 立即重置所有相关状态
+                            showWormholeSwipeIndicator = false
                             
                             // 显示时空特效视图 - 使用简化版实现
                             withAnimation {
@@ -1996,12 +1993,9 @@ struct FullscreenPostDetailView: View {
         
         // 优化2：使用低优先级线程进行预加载，避免与UI动画竞争资源
         Task(priority: .background) {
-            // 预加载操作
-            async let imagesTask = preloadImagesForPostAsync(nextPost)
-            async let commentsTask = preloadCommentsForPostAsync(nextPost)
-            
-            // 非阻塞式等待 - 继续UI动画而不等待预加载完成
-            _ = await (imagesTask, commentsTask)
+            // 预加载操作 - 使用 _ = await 替换变量赋值
+            _ = await preloadImagesForPostAsync(nextPost)
+            _ = await preloadCommentsForPostAsync(nextPost)
         }
         
         // 优化3：使用单一动画队列而不是嵌套的延迟调用，减少动画竞争
@@ -2117,7 +2111,7 @@ struct FullscreenPostDetailView: View {
     }
     
     // 优化异步版本的图片预加载 - 使用批处理减少线程切换
-    private func preloadImagesForPostAsync(_ post: UserPostModel) async -> Bool {
+    private func preloadImagesForPostAsync(_ post: UserPostModel) async {
         // 创建一个批处理组，减少过多的线程切换
         var batchCounter = 0
         let batchSize = 3
@@ -2135,12 +2129,10 @@ struct FullscreenPostDetailView: View {
                 batchCounter = 0
             }
         }
-        
-        return true // 返回成功状态
     }
     
     // 优化异步版本的评论预加载
-    private func preloadCommentsForPostAsync(_ post: UserPostModel) async -> Bool {
+    private func preloadCommentsForPostAsync(_ post: UserPostModel) async {
         // 预加载评论数据
         _ = post.getTotalCommentsCount()
         let topLevelComments = post.getTopLevelComments()
@@ -2161,8 +2153,6 @@ struct FullscreenPostDetailView: View {
                 batchCounter = 0
             }
         }
-        
-        return true // 返回成功状态
     }
     
     // 恢复原位 - 当滑动不满足触发翻页条件时

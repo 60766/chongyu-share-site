@@ -5,7 +5,7 @@ import Combine
  * 时空特效视图
  * 为应用提供高级的时空穿越特效
  */
-struct TimeSpaceEffectView: View {
+public struct TimeSpaceEffectView: View {
     // 绑定状态，用于控制特效的开始和结束
     @Binding var isActive: Bool
     
@@ -35,7 +35,7 @@ struct TimeSpaceEffectView: View {
     @State private var rotation: Double = 0
     @State private var flashTriggered: Bool = false
     
-    var body: some View {
+    public var body: some View {
         GeometryReader { geometry in
             ZStack {
                 // 黑色背景层 - 增强对比度
@@ -324,18 +324,16 @@ struct TimeSpaceEffectView: View {
         }
     }
     
-    // 默认初始化器 - 使用屏幕中心作为特效中心
-    init(isActive: Binding<Bool>, onComplete: (() -> Void)? = nil) {
+    public init(isActive: Binding<Bool>, onComplete: (() -> Void)? = nil) {
         self._isActive = isActive
         self.onComplete = onComplete
         self.effectCenterPosition = nil
     }
     
-    // 带位置参数的初始化器 - 使用指定位置作为特效中心
-    init(isActive: Binding<Bool>, centerPosition: CGPoint, onComplete: (() -> Void)? = nil) {
+    public init(isActive: Binding<Bool>, effectCenterPosition: CGPoint?, onComplete: (() -> Void)? = nil) {
         self._isActive = isActive
         self.onComplete = onComplete
-        self.effectCenterPosition = centerPosition
+        self.effectCenterPosition = effectCenterPosition
     }
 }
 

@@ -1,8 +1,8 @@
 import SwiftUI
 import Foundation
 
-// 导入测试视图
-@_implementationOnly import struct 虫遇.TimeSpaceEffectCenterTestView
+// 移除自导入，因为该文件已经是模块的一部分
+// @_implementationOnly import struct 虫遇.TimeSpaceEffectCenterTestView
 
 /**
  * 虫洞探索主视图
@@ -16,156 +16,154 @@ public struct WormholeExplorationView: View {
     @State private var blackHoleCenterPosition: CGPoint? = nil // 保存黑洞中心位置
     
     public var body: some View {
-        GeometryReader { mainGeometry in
-            ZStack {
-                // 背景
-                Color.black.edgesIgnoringSafeArea(.all)
+        ZStack {
+            // 背景
+            Color.black.edgesIgnoringSafeArea(.all)
+            
+            // 星空背景
+            StarfieldBackground()
+            
+            // 主标题
+            VStack {
+                Text("时空探索")
+                    .font(.system(size: 28, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.top, 60)
                 
-                // 星空背景
-                StarfieldBackground()
+                Text("选择你想探索的方向")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(.white.opacity(0.7))
+                    .padding(.top, 2)
                 
-                // 主标题
-                VStack {
-                    Text("时空探索")
-                        .font(.system(size: 28, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.top, 60)
-                    
-                    Text("选择你想探索的方向")
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(.white.opacity(0.7))
-                        .padding(.top, 2)
-                    
-                    Spacer()
-                }
-                .opacity(isShowingButtons ? 1 : 0)
-                .animation(.easeInOut(duration: 0.6).delay(0.3), value: isShowingButtons)
-                
-                // 黑洞视图 - 直接放置在屏幕中央
-                BlackHoleView()
-                    .opacity(isShowingButtons && !isShowingSpaceEffect ? 1 : 0)
-                    .scaleEffect(isShowingButtons ? 1 : 0.5)
-                    .animation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.1), value: isShowingButtons)
-                
-                // 底部按钮视图
-                VStack {
-                    Spacer()
-                    
-                    // 创作类型按钮
-                    CreationTypeButtonsView()
-                        .padding(.bottom, 30)
-                    
-                    // 启动按钮
-                    Button(action: {
-                        // 触发触觉反馈
-                        let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                        impactMed.impactOccurred()
-                        
-                        // 启动虫洞捕捉过程
-                        withAnimation {
-                            isTransitioning = true
-                        }
-                        
-                        // 计算黑洞中心位置 - 就是屏幕中心位置
-                        let centerX = mainGeometry.size.width / 2
-                        let centerY = mainGeometry.size.height / 2
-                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
-                        
-                        // 显示时空效果 - 由TimeSpaceEffectView自己控制结束时间
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            isShowingSpaceEffect = true
-                        }
-                    }) {
-                        Text("启动虫洞捕捉")
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.vertical, 14)
-                            .padding(.horizontal, 36)
-                            .background(
-                                Capsule()
-                                    .fill(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [
-                                                Color(red: 0.4, green: 0.2, blue: 0.6),
-                                                Color(red: 0.5, green: 0.3, blue: 0.7)
-                                            ]),
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .overlay(
-                                        Capsule()
-                                            .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
-                                    )
-                            )
-                            .shadow(color: Color(red: 0.5, green: 0.3, blue: 0.7).opacity(0.5), radius: 10, x: 0, y: 4)
-                    }
-                    .disabled(isTransitioning)
-                    .opacity(isTransitioning ? 0.5 : 1.0)
-                    .padding(.bottom, 40)
-                    .opacity(isShowingButtons ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.6).delay(0.5), value: isShowingButtons)
-                    
-                    // 开发测试按钮 - 仅用于测试特效
-                    #if DEBUG
-                    NavigationLink(destination: TimeSpaceEffectCenterTestView()) {
-                        Text("测试特效")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.5))
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 16)
-                            .background(
-                                Capsule()
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
-                            )
-                    }
-                    .padding(.bottom, 10)
-                    .opacity(isShowingButtons ? 0.7 : 0)
-                    #endif
-                }
-                
-                // 时空效果覆盖层 - 使用新的TimeSpaceEffectView
-                if isShowingSpaceEffect {
-                    if let centerPosition = blackHoleCenterPosition {
-                        // 如果黑洞中心位置可用，则使用它作为特效中心
-                        TimeSpaceEffectView(isActive: $isShowingSpaceEffect, centerPosition: centerPosition) {
-                            // 当特效完成后，重置过渡状态
-                            withAnimation {
-                                isTransitioning = false
-                            }
-                            
-                            // 可以添加其他逻辑，例如导航到新页面等
-                            print("虫洞捕捉完成")
-                        }
-                        .edgesIgnoringSafeArea(.all)
-                        // 确保特效位于最顶层且全屏显示
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .zIndex(100) // 确保在最上层显示
-                    } else {
-                        // 如果黑洞中心位置不可用，则使用默认中心位置
-                        TimeSpaceEffectView(isActive: $isShowingSpaceEffect) {
-                            // 当特效完成后，重置过渡状态
-                            withAnimation {
-                                isTransitioning = false
-                            }
-                            
-                            // 可以添加其他逻辑，例如导航到新页面等
-                            print("虫洞捕捉完成")
-                        }
-                        .edgesIgnoringSafeArea(.all)
-                        // 确保特效位于最顶层且全屏显示
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .zIndex(100) // 确保在最上层显示
-                    }
-                }
+                Spacer()
             }
-            .frame(width: mainGeometry.size.width, height: mainGeometry.size.height)
-            .onAppear {
-                // 延迟显示按钮
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            .opacity(isShowingButtons ? 1 : 0)
+            .animation(.easeInOut(duration: 0.6).delay(0.3), value: isShowingButtons)
+            
+            // 黑洞视图 - 使用GeometryReader获取其中心位置
+            GeometryReader { geometry in
+                // 使用ZStack包装BlackHoleView并使用geometry获取其确切中心位置
+                ZStack {
+                    BlackHoleView()
+                        .opacity(isShowingButtons && !isShowingSpaceEffect ? 1 : 0)
+                        .scaleEffect(isShowingButtons ? 1 : 0.5)
+                        .animation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.1), value: isShowingButtons)
+                        .background(
+                            // 使用背景GeometryReader精确捕获黑洞中心位置
+                            GeometryReader { blackHoleGeometry in
+                                Color.clear
+                                    .onAppear {
+                                        // 计算黑洞中心位置 - 这是随机漫游按钮所在位置
+                                        let centerX = blackHoleGeometry.frame(in: .global).midX
+                                        let centerY = blackHoleGeometry.frame(in: .global).midY
+                                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
+                                    }
+                                    .onChange(of: geometry.size) { _, _ in
+                                        // 屏幕尺寸改变时更新位置
+                                        let centerX = blackHoleGeometry.frame(in: .global).midX
+                                        let centerY = blackHoleGeometry.frame(in: .global).midY
+                                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
+                                    }
+                            }
+                        )
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+            }
+            
+            // 底部按钮视图
+            VStack {
+                Spacer()
+                
+                // 创作类型按钮
+                CreationTypeButtonsView()
+                    .padding(.bottom, 30)
+                
+                // 启动按钮
+                Button(action: {
+                    // 触发触觉反馈
+                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                    impactMed.impactOccurred()
+                    
+                    // 启动虫洞捕捉过程
                     withAnimation {
-                        isShowingButtons = true
+                        isTransitioning = true
                     }
+                    
+                    // 显示时空效果 - 由TimeSpaceEffectView自己控制结束时间
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        isShowingSpaceEffect = true
+                    }
+                }) {
+                    Text("启动虫洞捕捉")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, 36)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color(red: 0.4, green: 0.2, blue: 0.6),
+                                            Color(red: 0.5, green: 0.3, blue: 0.7)
+                                        ]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
+                                )
+                        )
+                        .shadow(color: Color(red: 0.5, green: 0.3, blue: 0.7).opacity(0.5), radius: 10, x: 0, y: 4)
+                }
+                .disabled(isTransitioning)
+                .opacity(isTransitioning ? 0.5 : 1.0)
+                .padding(.bottom, 40)
+                .opacity(isShowingButtons ? 1 : 0)
+                .animation(.easeInOut(duration: 0.6).delay(0.5), value: isShowingButtons)
+                
+                // 开发测试按钮 - 仅用于测试特效
+                #if DEBUG
+                NavigationLink(destination: TimeSpaceEffectCenterTestView()) {
+                    Text("测试特效")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.5))
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .background(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
+                        )
+                }
+                .padding(.bottom, 10)
+                .opacity(isShowingButtons ? 0.7 : 0)
+                #endif
+            }
+            
+            // 时空效果覆盖层 - 使用新的TimeSpaceEffectView
+            if isShowingSpaceEffect {
+                TimeSpaceEffectView(isActive: $isShowingSpaceEffect, effectCenterPosition: blackHoleCenterPosition) {
+                    // 当特效完成后，重置过渡状态
+                    withAnimation {
+                        isTransitioning = false
+                    }
+                    
+                    // 可以添加其他逻辑，例如导航到新页面等
+                    print("虫洞捕捉完成")
+                }
+                .edgesIgnoringSafeArea(.all)
+                // 确保特效位于最顶层且全屏显示
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .zIndex(100) // 确保在最上层显示
+            }
+        }
+        .onAppear {
+            // 延迟显示按钮
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                withAnimation {
+                    isShowingButtons = true
                 }
             }
         }
