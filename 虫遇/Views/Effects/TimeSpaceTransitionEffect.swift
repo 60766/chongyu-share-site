@@ -6,11 +6,16 @@ import Utils
  * 时空粒子效果视图
  * 在页面转换过程中显示，增强穿越时空的主题感
  */
-struct TimeSpaceParticleView: View {
+public struct TimeSpaceParticleView: View {
     @State private var phase: CGFloat = 0
-    let direction: SwipeDirection
+    public let direction: SwipeDirection
     
-    var body: some View {
+    // 添加公共初始化方法
+    public init(direction: SwipeDirection) {
+        self.direction = direction
+    }
+    
+    public var body: some View {
         GeometryReader { geometry in
             ZStack {
                 // 背景层 - 使用协调的色彩
@@ -102,11 +107,16 @@ struct TimeSpaceParticleView: View {
  * 时空波纹效果视图
  * 作为备选效果，模拟穿越时空时的空间波纹
  */
-struct TimeSpaceRippleView: View {
+public struct TimeSpaceRippleView: View {
     @State private var animating = false
-    let direction: SwipeDirection
+    public let direction: SwipeDirection
     
-    var body: some View {
+    // 添加公共初始化方法
+    public init(direction: SwipeDirection) {
+        self.direction = direction
+    }
+    
+    public var body: some View {
         ZStack {
             // 背景层
             Color(red: 0.93, green: 0.95, blue: 0.98, opacity: 0.9)

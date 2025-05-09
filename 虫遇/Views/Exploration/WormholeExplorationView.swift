@@ -1,4 +1,8 @@
 import SwiftUI
+import Foundation
+
+// 导入测试视图
+@_implementationOnly import struct 虫遇.TimeSpaceEffectCenterTestView
 
 /**
  * 虫洞探索主视图
@@ -9,6 +13,7 @@ public struct WormholeExplorationView: View {
     @State private var isShowingSpaceEffect = false
     @State private var isShowingButtons = false
     @State private var isTransitioning = false
+    @State private var blackHoleCenterPosition: CGPoint? = nil // 保存黑洞中心位置
     
     public var body: some View {
         ZStack {
@@ -35,11 +40,19 @@ public struct WormholeExplorationView: View {
             .opacity(isShowingButtons ? 1 : 0)
             .animation(.easeInOut(duration: 0.6).delay(0.3), value: isShowingButtons)
             
-            // 黑洞视图
-            BlackHoleView()
-                .opacity(isShowingButtons ? 1 : 0)
-                .scaleEffect(isShowingButtons ? 1 : 0.5)
-                .animation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.1), value: isShowingButtons)
+            // 黑洞视图 - 使用GeometryReader获取其中心位置
+            GeometryReader { geometry in
+                BlackHoleView()
+                    .opacity(isShowingButtons && !isShowingSpaceEffect ? 1 : 0)
+                    .scaleEffect(isShowingButtons ? 1 : 0.5)
+                    .animation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.1), value: isShowingButtons)
+                    .onAppear {
+                        // 计算黑洞中心位置
+                        let centerX = geometry.frame(in: .global).midX
+                        let centerY = geometry.frame(in: .global).midY
+                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
+                    }
+            }
             
             // 底部按钮视图
             VStack {
@@ -60,13 +73,10 @@ public struct WormholeExplorationView: View {
                         isTransitioning = true
                     }
                     
-                    // 显示时空效果 - 由WormholeTransitionView自己控制结束时间
+                    // 显示时空效果 - 由TimeSpaceEffectView自己控制结束时间
                     withAnimation(.easeInOut(duration: 0.5)) {
                         isShowingSpaceEffect = true
                     }
-                    
-                    // 监听isShowingSpaceEffect的变化，当它被内部设置为false时恢复按钮状态
-                    // 不再使用外部的定时器，避免两个定时器冲突
                 }) {
                     Text("启动虫洞捕捉")
                         .font(.system(size: 17, weight: .medium))
@@ -97,20 +107,46 @@ public struct WormholeExplorationView: View {
                 .padding(.bottom, 40)
                 .opacity(isShowingButtons ? 1 : 0)
                 .animation(.easeInOut(duration: 0.6).delay(0.5), value: isShowingButtons)
+                
+                // 开发测试按钮 - 仅用于测试特效
+                #if DEBUG
+                NavigationLink(destination: TimeSpaceEffectCenterTestView()) {
+                    Text("测试特效")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.5))
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .background(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
+                        )
+                }
+                .padding(.bottom, 10)
+                .opacity(isShowingButtons ? 0.7 : 0)
+                #endif
             }
             
-            // 时空效果覆盖层
+            // 时空效果覆盖层 - 使用新的TimeSpaceEffectView
             if isShowingSpaceEffect {
-                WormholeTransitionView(isActive: $isShowingSpaceEffect)
-                    .edgesIgnoringSafeArea(.all)
-                    .onChange(of: isShowingSpaceEffect) { newValue in
-                        // 当isShowingSpaceEffect变为false时，重置isTransitioning状态
-                        if !newValue {
-                            withAnimation {
-                                isTransitioning = false
-                            }
-                        }
+                TimeSpaceEffectView(
+                    isActive: $isShowingSpaceEffect, 
+                    centerPosition: blackHoleCenterPosition ?? CGPoint(
+                        x: UIScreen.main.bounds.width / 2,
+                        y: UIScreen.main.bounds.height / 2
+                    )
+                ) {
+                    // 当特效完成后，重置过渡状态
+                    withAnimation {
+                        isTransitioning = false
                     }
+                    
+                    // 可以添加其他逻辑，例如导航到新页面等
+                    print("虫洞捕捉完成")
+                }
+                .edgesIgnoringSafeArea(.all)
+                // 确保特效位于最顶层且全屏显示
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .zIndex(100) // 确保在最上层显示
             }
         }
         .onAppear {
@@ -196,7 +232,7 @@ public struct StarfieldBackground: View {
                             x: CGFloat.random(in: 0...geometry.size.width),
                             y: CGFloat.random(in: 0...geometry.size.height)
                         )
-                        .opacity(sin(phase + Double.random(in: 0...2 * .pi)))
+                        .opacity(Foundation.sin(phase + Double.random(in: 0...2 * .pi)))
                 }
             }
         }

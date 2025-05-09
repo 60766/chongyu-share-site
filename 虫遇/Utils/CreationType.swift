@@ -394,6 +394,23 @@ public struct BlackHoleView: View {
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
             }
             .buttonStyle(PlainButtonStyle()) // 使用Plain样式避免默认按钮效果
+            .id("blackHoleCenterButton") // 添加唯一ID以便精确定位
+            .background(
+                GeometryReader { geometry -> Color in
+                    // 利用GeometryEffect发出位置信息
+                    DispatchQueue.main.async {
+                        let center = CGPoint(
+                            x: geometry.frame(in: .global).midX,
+                            y: geometry.frame(in: .global).midY
+                        )
+                        NotificationCenter.default.post(
+                            name: Notification.Name("BlackHoleCenterPositionUpdated"),
+                            object: center
+                        )
+                    }
+                    return Color.clear
+                }
+            )
             
             // 类型文字 - 放置在按钮下方，作为单独元素
             Text(typeName)

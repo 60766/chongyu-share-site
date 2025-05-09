@@ -1,10 +1,13 @@
 import SwiftUI
 import Combine
 import UIKit // 如果还没有导入
-// 导入时空效果
+// 导入数据模型
 import SwiftData
-// 修改导入方式
-import Utils
+
+// 注意: TimeSpaceParticleView, TimeSpaceRippleView 和 SwipeDirection 
+// 定义在 TimeSpaceTransitionEffect.swift 文件中
+// 虫遇项目中所有视图组件都在同一模块内，可以直接引用
+// 不需要特殊导入语句，但确保该文件是项目的编译目标一部分
 
 // 导入NavigationHelper
 // 由于无法直接导入Utils模块，我们在此处定义所需的辅助类
@@ -2114,7 +2117,7 @@ struct FullscreenPostDetailView: View {
     }
     
     // 优化异步版本的图片预加载 - 使用批处理减少线程切换
-    private func preloadImagesForPostAsync(_ post: UserPostModel) async {
+    private func preloadImagesForPostAsync(_ post: UserPostModel) async -> Bool {
         // 创建一个批处理组，减少过多的线程切换
         var batchCounter = 0
         let batchSize = 3
@@ -2132,10 +2135,12 @@ struct FullscreenPostDetailView: View {
                 batchCounter = 0
             }
         }
+        
+        return true // 返回成功状态
     }
     
     // 优化异步版本的评论预加载
-    private func preloadCommentsForPostAsync(_ post: UserPostModel) async {
+    private func preloadCommentsForPostAsync(_ post: UserPostModel) async -> Bool {
         // 预加载评论数据
         _ = post.getTotalCommentsCount()
         let topLevelComments = post.getTopLevelComments()
@@ -2156,6 +2161,8 @@ struct FullscreenPostDetailView: View {
                 batchCounter = 0
             }
         }
+        
+        return true // 返回成功状态
     }
     
     // 恢复原位 - 当滑动不满足触发翻页条件时
