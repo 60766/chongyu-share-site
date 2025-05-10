@@ -7,6 +7,9 @@ import SwiftUI
  * 处理帖子数据和用户交互
  */
 class PostViewModel: ObservableObject {
+    // 单例实例 - 在应用内共享帖子数据
+    static let shared = PostViewModel()
+    
     // 帖子数据
     @Published var posts: [UserPostModel] = []
     
@@ -415,7 +418,7 @@ class PostViewModel: ObservableObject {
                 // 创建一条随机生成的评论
                 let randomComment = UserCommentModel(
                     username: characterNames[characterIndex],
-                    userAvatar: "avatar_\(characterIDs[characterIndex])",
+                    userAvatar: "person.fill", // 使用系统SF Symbol
                     content: "这个维度很有趣，让我想到了\(characterNames[characterIndex])的理论。",
                     datePosted: Date().addingTimeInterval(-Double.random(in: 0...36000)),
                     likes: Int.random(in: 5...50),
@@ -423,12 +426,12 @@ class PostViewModel: ObservableObject {
                     characterID: characterIDs[characterIndex]
                 )
                 
-                // 创建帖子
+                // 创建帖子 - 不使用图片
                 let post = UserPostModel(
                     username: "虫遇探索者",
-                    userAvatar: "explorer_avatar",
+                    userAvatar: "person.circle.fill", // 使用系统SF Symbol
                     content: content,
-                    images: ["dimension_\(i+1)", "exploration_scene"],
+                    images: [], // 不使用图片
                     datePosted: Date(),
                     likes: Int.random(in: 0...20),
                     comments: [randomComment],
@@ -453,12 +456,12 @@ class PostViewModel: ObservableObject {
             for i in 0..<5 {
                 let content = moodContents[i % moodContents.count]
                 
-                // 创建帖子
+                // 创建帖子 - 不使用图片
                 let post = UserPostModel(
                     username: "心情记录者",
-                    userAvatar: "mood_avatar",
+                    userAvatar: "heart.fill", // 使用系统SF Symbol
                     content: content,
-                    images: ["mood_\(i+1)", "daily_scene"],
+                    images: [], // 不使用图片
                     datePosted: Date().addingTimeInterval(-Double.random(in: 0...7200)),
                     likes: Int.random(in: 10...60),
                     comments: [],
@@ -482,16 +485,17 @@ class PostViewModel: ObservableObject {
             // 对应的历史人物
             let historicalFigures = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "李白"]
             let characterIDs = ["einstein", "shakespeare", "davinci", "confucius", "libai"]
+            let avatarSymbols = ["atom", "book.fill", "paintpalette.fill", "scroll.fill", "text.book.closed.fill"]
             
             // 生成5个古今对望类型的帖子
             for i in 0..<5 {
                 let content = historicalContents[i % historicalContents.count]
                 let figureIndex = i % historicalFigures.count
                 
-                // 创建历史人物评论
+                // 创建历史人物评论 - 使用系统图标
                 let historicalComment = UserCommentModel(
                     username: historicalFigures[figureIndex],
-                    userAvatar: "avatar_\(characterIDs[figureIndex])",
+                    userAvatar: avatarSymbols[figureIndex], // 使用系统SF Symbol
                     content: "看到现代人对我的解读很有趣。技术虽然变了，但人性的本质还是相通的。",
                     datePosted: Date().addingTimeInterval(-Double.random(in: 0...3600)),
                     likes: Int.random(in: 30...100),
@@ -499,12 +503,12 @@ class PostViewModel: ObservableObject {
                     characterID: characterIDs[figureIndex]
                 )
                 
-                // 创建帖子
+                // 创建帖子 - 不使用图片
                 let post = UserPostModel(
                     username: "时空对话者",
-                    userAvatar: "time_traveler",
+                    userAvatar: "hourglass", // 使用系统SF Symbol
                     content: content,
-                    images: ["historical_\(figureIndex)", "modern_comparison"],
+                    images: [], // 不使用图片
                     datePosted: Date().addingTimeInterval(-Double.random(in: 0...14400)),
                     likes: Int.random(in: 50...150),
                     comments: [historicalComment],
@@ -533,7 +537,7 @@ class PostViewModel: ObservableObject {
                 let randomName = ["思想实验家", "未来学者", "创意探索者", "概念设计师", "哲学思考者"][i % 5]
                 let randomComment = UserCommentModel(
                     username: randomName,
-                    userAvatar: "creative_thinker",
+                    userAvatar: "lightbulb.fill", // 使用系统SF Symbol
                     content: "这个想法很有深度！让我想到了另一个角度：如果...",
                     datePosted: Date().addingTimeInterval(-Double.random(in: 0...7200)),
                     likes: Int.random(in: 15...45),
@@ -541,12 +545,12 @@ class PostViewModel: ObservableObject {
                     characterID: nil
                 )
                 
-                // 创建帖子
+                // 创建帖子 - 不使用图片
                 let post = UserPostModel(
                     username: "创想家",
-                    userAvatar: "idea_creator",
+                    userAvatar: "brain.fill", // 使用系统SF Symbol
                     content: content,
-                    images: ["concept_\(i+1)", "imagination_scene"],
+                    images: [], // 不使用图片
                     datePosted: Date().addingTimeInterval(-Double.random(in: 0...21600)),
                     likes: Int.random(in: 30...120),
                     comments: [randomComment],
@@ -575,12 +579,12 @@ class PostViewModel: ObservableObject {
                 let content = timeContents[i % timeContents.count]
                 let timePeriod = timePeriods[i % timePeriods.count]
                 
-                // 创建帖子
+                // 创建帖子 - 不使用图片，添加时间标记到内容
                 let post = UserPostModel(
                     username: "时间记录者",
-                    userAvatar: "time_recorder",
-                    content: content,
-                    images: ["timepoint_\(i+1)", "historical_event"],
+                    userAvatar: "clock.fill", // 使用系统SF Symbol
+                    content: "[\(timePeriod)] " + content,
+                    images: [], // 不使用图片
                     datePosted: Date().addingTimeInterval(-Double.random(in: 0...28800)),
                     likes: Int.random(in: 40...180),
                     comments: [],
@@ -598,5 +602,21 @@ class PostViewModel: ObservableObject {
         
         print("已根据创作类型「\(typeName)」生成 \(generatedPosts.count) 个帖子")
         return generatedPosts
+    }
+    
+    /// 添加一组帖子到列表前端
+    /// - Parameter newPosts: 要添加的帖子数组
+    func addPosts(_ newPosts: [UserPostModel]) {
+        // 将新帖子添加到列表前面
+        posts.insert(contentsOf: newPosts, at: 0)
+        
+        // 发送通知，通知订阅者帖子列表已更新
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PostsUpdated"),
+            object: nil, 
+            userInfo: ["newPostsCount": newPosts.count]
+        )
+        
+        print("📱 PostViewModel: 添加了 \(newPosts.count) 个新帖子，当前总数: \(posts.count)")
     }
 } 

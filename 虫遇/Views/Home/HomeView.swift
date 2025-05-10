@@ -582,8 +582,12 @@ struct HomeView: View {
     @State private var characters: [CharacterModel] = []
     /// 帖子数据
     @State private var posts: [PostModel] = []
-    /// 用户帖子数据 - 用于显示评论功能
-    @State private var userPosts: [UserPostModel] = []
+    /// 使用共享的PostViewModel提供的用户帖子数据
+    @ObservedObject private var postViewModel = PostViewModel.shared
+    /// 为兼容现有代码，提供用户帖子的计算属性
+    private var userPosts: [UserPostModel] {
+        return postViewModel.posts
+    }
     /// 评论相关状态
     @State private var commentText: String = ""
     @State private var replyingTo: UserCommentModel? = nil
@@ -612,6 +616,36 @@ struct HomeView: View {
     
     // TabBar管理器
     @ObservedObject private var tabBarManager = TabBarManager.shared
+    
+    // 新增一个初始化方法来设置通知观察者
+    init() {
+        // 添加通知监听，当新帖子生成时刷新界面
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("NewPostsGenerated"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let count = notification.userInfo?["count"] as? Int {
+                print("🏠 HomeView: 接收到新帖子生成通知，\(count)个新帖子")
+                // 主要目的是触发视图刷新，实际的添加帖子逻辑已在PostViewModel中处理
+                // 强制刷新列表，确保新增的帖子能显示出来
+                self.postViewModel.objectWillChange.send()
+            }
+        }
+        
+        // 添加帖子更新通知监听
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("PostsUpdated"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let count = notification.userInfo?["newPostsCount"] as? Int {
+                print("🏠 HomeView: 接收到帖子更新通知，\(count)个新帖子已添加")
+                // 触发视图刷新
+                self.postViewModel.objectWillChange.send()
+            }
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -769,17 +803,11 @@ struct HomeView: View {
                             handleLikeComment(post: post, comment: comment)
                         },
                         onNextPost: { currentPostId in
-                            // 打印所有帖子ID以便调试
-                            print("📊 所有帖子ID:")
-                            for (index, p) in userPosts.enumerated() {
-                                print("📊 [\(index)] \(p.id.uuidString)")
-                            }
-                            
-                            // 使用传入的当前帖子ID，而不是初始post
+                            // 打印当前帖子ID - 使用传入的post参数
                             print("🔎 当前查找帖子ID: \(currentPostId.uuidString)")
                             
                             // 查找当前帖子索引 - 使用更严格的ID比较
-                            let currentIndex = userPosts.firstIndex { currentPost in
+                            let currentIndex = postViewModel.posts.firstIndex { currentPost in
                                 let matchFound = currentPost.id.uuidString == currentPostId.uuidString
                                 print("📊 比较索引 - 当前遍历ID: \(currentPost.id.uuidString) vs 当前帖子ID: \(currentPostId.uuidString) = \(matchFound ? "匹配" : "不匹配")")
                                 return matchFound
@@ -791,21 +819,21 @@ struct HomeView: View {
                             }
                             
                             // 确保索引有效并输出调试信息
-                            print("🔍 当前帖子索引: \(safeIndex), 总帖子数: \(userPosts.count)")
+                            print("🔍 当前帖子索引: \(safeIndex), 总帖子数: \(postViewModel.posts.count)")
                             
                             // 检查是否有下一篇帖子
                             let nextIndex = safeIndex + 1
-                            if nextIndex < userPosts.count {
-                                let nextPost = userPosts[nextIndex]
+                            if nextIndex < postViewModel.posts.count {
+                                let nextPost = postViewModel.posts[nextIndex]
                                 
                                 // 确保不返回相同ID的帖子
                                 if nextPost.id.uuidString == currentPostId.uuidString {
                                     print("⚠️ 警告：下一篇帖子ID与当前帖子ID相同，跳过")
                                     
                                     // 尝试获取下下篇帖子
-                                    if nextIndex + 1 < userPosts.count {
+                                    if nextIndex + 1 < postViewModel.posts.count {
                                         print("🔄 跳过ID相同的帖子，尝试获取下下篇帖子")
-                                        let nextNextPost = userPosts[nextIndex + 1]
+                                        let nextNextPost = postViewModel.posts[nextIndex + 1]
                                         print("✅ 找到下下篇帖子ID: \(nextNextPost.id.uuidString)")
                                         return nextNextPost
                                     } else {
@@ -826,7 +854,7 @@ struct HomeView: View {
                             print("🔎 当前查找帖子ID: \(currentPostId.uuidString)")
                             
                             // 查找当前帖子索引 - 使用更严格的ID比较
-                            let currentIndex = userPosts.firstIndex { currentPost in 
+                            let currentIndex = postViewModel.posts.firstIndex { currentPost in 
                                 let matchFound = currentPost.id.uuidString == currentPostId.uuidString
                                 print("📊 比较索引 - 当前遍历ID: \(currentPost.id.uuidString) vs 当前帖子ID: \(currentPostId.uuidString) = \(matchFound ? "匹配" : "不匹配")")
                                 return matchFound
@@ -838,11 +866,11 @@ struct HomeView: View {
                             }
                             
                             // 确保索引有效并输出调试信息
-                            print("🔍 当前帖子索引: \(safeIndex), 总帖子数: \(userPosts.count)")
+                            print("🔍 当前帖子索引: \(safeIndex), 总帖子数: \(postViewModel.posts.count)")
                             
                             // 检查是否有上一篇帖子
                             if safeIndex > 0 {
-                                let prevPost = userPosts[safeIndex - 1]
+                                let prevPost = postViewModel.posts[safeIndex - 1]
                                 
                                 // 确保不返回相同ID的帖子
                                 if prevPost.id.uuidString == currentPostId.uuidString {
@@ -851,7 +879,7 @@ struct HomeView: View {
                                     // 尝试获取上上篇帖子
                                     if safeIndex - 2 >= 0 {
                                         print("🔄 跳过ID相同的帖子，尝试获取上上篇帖子")
-                                        let prevPrevPost = userPosts[safeIndex - 2]
+                                        let prevPrevPost = postViewModel.posts[safeIndex - 2]
                                         print("✅ 找到上上篇帖子ID: \(prevPrevPost.id.uuidString)")
                                         return prevPrevPost
                                     } else {
@@ -948,56 +976,8 @@ struct HomeView: View {
         ScrollView {
             // 使用LazyVStack提高性能
             LazyVStack(spacing: 0) {
-                ForEach(Array(userPosts.enumerated()), id: \.element.id) { index, post in
-                    PostCardView(
-                        post: post,
-                        onPostTap: {
-                            // 查看帖子详情
-                            selectedPost = post
-                            showPostDetail = true
-                        },
-                        onLikeToggle: { isLiked in
-                            // 点赞逻辑
-                            if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
-                                var updatedPost = userPosts[index].toggleLike(isLiked: isLiked)
-                                updatedPost = updatedPost.updateLikes(delta: isLiked ? 1 : -1)
-                                userPosts[index] = updatedPost
-                            }
-                        },
-                        onCommentToggle: {
-                            // 在首页中，评论按钮直接跳转到详情页
-                            selectedPost = post
-                            
-                            // 触觉反馈
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                            impactFeedback.impactOccurred()
-                            
-                            // 显示帖子详情
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                showPostDetail = true
-                            }
-                        },
-                        onBookmarkToggle: { isBookmarked in
-                            // 收藏逻辑
-                            if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
-                                userPosts[index] = userPosts[index].toggleBookmark(isBookmarked: isBookmarked)
-                            }
-                        },
-                        onShare: {
-                            // 分享逻辑
-                            // 可以在此添加分享功能
-                        },
-                        // 确保使用预览模式显示
-                        displayMode: .preview
-                    )
-                    .offset(y: contentAppeared ? 0 : 50)
-                    .opacity(contentAppeared ? 1 : 0)
-                    .animation(
-                        .easeOut(duration: 0.5)
-                        .delay(0.1 + Double(index % 5) * 0.05), // 使用取模避免延迟过长
-                        value: contentAppeared
-                    )
-                }
+                // 提取帖子列表为独立的视图生成函数
+                postsListView
                 
                 // 底部安全区域填充 - 使用极小值，避免多余的空白
                 Color.clear
@@ -1018,6 +998,78 @@ struct HomeView: View {
         }
         .ignoresSafeArea(.all, edges: .bottom) // 确保内容可以延伸到底部安全区域
         .edgesIgnoringSafeArea(.bottom) // 进一步确保内容延伸到底部边缘
+    }
+    
+    // 提取帖子列表为独立的计算属性
+    private var postsListView: some View {
+        ForEach(Array(postViewModel.posts.enumerated()), id: \.element.id) { index, post in
+            postCardView(for: post, at: index)
+        }
+    }
+    
+    // 提取单个帖子卡片为独立方法
+    private func postCardView(for post: UserPostModel, at index: Int) -> some View {
+        PostCardView(
+            post: post,
+            onPostTap: {
+                // 查看帖子详情
+                selectedPost = post
+                showPostDetail = true
+            },
+            onLikeToggle: { isLiked in
+                handlePostLike(post: post, isLiked: isLiked)
+            },
+            onCommentToggle: {
+                handleCommentToggle(for: post)
+            },
+            onBookmarkToggle: { isBookmarked in
+                handlePostBookmark(post: post, isBookmarked: isBookmarked)
+            },
+            onShare: {
+                // 分享逻辑
+                // 可以在此添加分享功能
+            },
+            // 确保使用预览模式显示
+            displayMode: .preview
+        )
+        .offset(y: contentAppeared ? 0 : 50)
+        .opacity(contentAppeared ? 1 : 0)
+        .animation(
+            .easeOut(duration: 0.5)
+            .delay(0.1 + Double(index % 5) * 0.05), // 使用取模避免延迟过长
+            value: contentAppeared
+        )
+    }
+    
+    // 处理帖子点赞
+    private func handlePostLike(post: UserPostModel, isLiked: Bool) {
+        if let index = postViewModel.posts.firstIndex(where: { $0.id == post.id }) {
+            var updatedPost = postViewModel.posts[index].toggleLike(isLiked: isLiked)
+            updatedPost = updatedPost.updateLikes(delta: isLiked ? 1 : -1)
+            postViewModel.posts[index] = updatedPost
+        }
+    }
+    
+    // 处理评论切换
+    private func handleCommentToggle(for post: UserPostModel) {
+        // 在首页中，评论按钮直接跳转到详情页
+        selectedPost = post
+        
+        // 触觉反馈
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // 显示帖子详情
+        withAnimation(.easeOut(duration: 0.2)) {
+            showPostDetail = true
+        }
+    }
+    
+    // 处理帖子收藏
+    private func handlePostBookmark(post: UserPostModel, isBookmarked: Bool) {
+        if let index = postViewModel.posts.firstIndex(where: { $0.id == post.id }) {
+            postViewModel.posts[index] = postViewModel.posts[index].toggleBookmark(isBookmarked: isBookmarked)
+        }
     }
     
     // MARK: - 历史人物邀请区域
@@ -1168,15 +1220,15 @@ struct HomeView: View {
         )
         
         // 更新帖子评论
-        if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
-            userPosts[index].addComment(
+        if let index = postViewModel.posts.firstIndex(where: { $0.id == post.id }) {
+            postViewModel.posts[index].addComment(
                 username: "我",
                 userAvatar: "person.circle.fill",
                 content: commentText,
                 isVirtualCharacter: false,
                 characterID: nil
             )
-            selectedPost = userPosts[index]
+            selectedPost = postViewModel.posts[index]
         }
         
         // 重置评论状态
@@ -1198,8 +1250,8 @@ struct HomeView: View {
         let content = contentMap[character.name] ?? "这是一条来自\(character.name)的虚拟评论，实际应用中应通过AI生成。"
         
         // 更新帖子评论
-        if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
-            userPosts[index].addComment(
+        if let index = postViewModel.posts.firstIndex(where: { $0.id == post.id }) {
+            postViewModel.posts[index].addComment(
                 username: character.name,
                 userAvatar: character.avatar,
                 content: content,
@@ -1208,7 +1260,7 @@ struct HomeView: View {
             )
             
             // 如果正在查看的是同一帖子，也更新 selectedPost
-            selectedPost = userPosts[index]
+            selectedPost = postViewModel.posts[index]
         }
     }
     
@@ -1234,10 +1286,10 @@ struct HomeView: View {
         )
         
         // 更新帖子的评论列表 - 使用帖子模型自带的 addComment 方法
-        if let index = userPosts.firstIndex(where: { $0.id == post.id }) {
+        if let index = postViewModel.posts.firstIndex(where: { $0.id == post.id }) {
             // 如果是回复评论
             if let replyID = replyingTo {
-                userPosts[index].addComment(
+                postViewModel.posts[index].addComment(
                     username: "当前用户",
                     userAvatar: "person.circle.fill",
                     content: trimmedContent,
@@ -1246,7 +1298,7 @@ struct HomeView: View {
                 )
             } else {
                 // 直接添加评论
-                userPosts[index].addComment(
+                postViewModel.posts[index].addComment(
                     username: "当前用户",
                     userAvatar: "person.circle.fill",
                     content: trimmedContent
@@ -1255,7 +1307,7 @@ struct HomeView: View {
             
             // 如果正在查看的是同一帖子，也更新 selectedPost
             if selectedPost?.id == post.id {
-                selectedPost = userPosts[index]
+                selectedPost = postViewModel.posts[index]
             }
         }
     }
@@ -1264,14 +1316,14 @@ struct HomeView: View {
      * 导航到下一个帖子
      */
     private func navigateToNextPost() {
-        guard !userPosts.isEmpty else { return }
+        guard !postViewModel.posts.isEmpty else { return }
         
-        let currentIndex = userPosts.firstIndex(where: { $0.id == selectedPost?.id }) ?? 0
+        let currentIndex = postViewModel.posts.firstIndex(where: { $0.id == selectedPost?.id }) ?? 0
         
         // 只有当不是最后一个帖子时才导航到下一个
-        if currentIndex < userPosts.count - 1 {
+        if currentIndex < postViewModel.posts.count - 1 {
             let nextIndex = currentIndex + 1
-            selectedPost = userPosts[nextIndex]
+            selectedPost = postViewModel.posts[nextIndex]
         } else {
             // 已经是最后一个帖子，提供触觉反馈提示用户
             let feedbackGenerator = UIImpactFeedbackGenerator(style: .rigid)
@@ -1299,14 +1351,14 @@ struct HomeView: View {
      * 导航到上一个帖子
      */
     private func navigateToPreviousPost() {
-        guard !userPosts.isEmpty else { return }
+        guard !postViewModel.posts.isEmpty else { return }
         
-        let currentIndex = userPosts.firstIndex(where: { $0.id == selectedPost?.id }) ?? 0
+        let currentIndex = postViewModel.posts.firstIndex(where: { $0.id == selectedPost?.id }) ?? 0
         
         // 只有当不是第一个帖子时才导航到上一个
         if currentIndex > 0 {
             let previousIndex = currentIndex - 1
-            selectedPost = userPosts[previousIndex]
+            selectedPost = postViewModel.posts[previousIndex]
         } else {
             // 已经是第一个帖子，使用触觉反馈提示用户
             let feedbackGenerator = UIImpactFeedbackGenerator(style: .rigid)
@@ -1327,13 +1379,13 @@ struct HomeView: View {
      */
     private func handleLikeComment(post: UserPostModel, comment: UserCommentModel) {
         // 查找评论所属的帖子
-        if let postIndex = userPosts.firstIndex(where: { $0.id == post.id }) {
+        if let postIndex = postViewModel.posts.firstIndex(where: { $0.id == post.id }) {
             // 更新点赞状态
-            userPosts[postIndex].likeComment(commentId: comment.id)
+            postViewModel.posts[postIndex].likeComment(commentId: comment.id)
             
             // 如果是当前选中的帖子，也更新selectedPost
             if selectedPost?.id == post.id {
-                selectedPost = userPosts[postIndex]
+                selectedPost = postViewModel.posts[postIndex]
             }
         }
     }
@@ -1389,8 +1441,11 @@ struct HomeView: View {
             )
         ]
         
-        // 加载用户帖子
-        userPosts = ModelData.samplePosts
+        // 加载用户帖子 - 使用共享的PostViewModel
+        // 检查是否已有帖子，如果没有才加载示例帖子
+        if postViewModel.posts.isEmpty {
+            postViewModel.posts = ModelData.samplePosts
+        }
     }
     
     // MARK: - Helper Methods

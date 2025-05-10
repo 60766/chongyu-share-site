@@ -14,8 +14,8 @@ public struct WormholeExplorationView: View {
     @State private var isTransitioning = false
     @State private var blackHoleCenterPosition: CGPoint? = nil // 保存黑洞中心位置
     
-    // 引入PostViewModel以便生成帖子
-    @StateObject private var postViewModel = PostViewModel()
+    // 使用共享的PostViewModel实例
+    @ObservedObject private var postViewModel = PostViewModel.shared
     
     // 添加生成帖子成功的状态
     @State private var showGeneratedPostsMessage = false
@@ -165,40 +165,46 @@ public struct WormholeExplorationView: View {
             if isShowingSpaceEffect {
                 if let centerPosition = blackHoleCenterPosition {
                     // 如果黑洞中心位置可用，则使用它作为特效中心
-                    TimeSpaceEffectView(isActive: $isShowingSpaceEffect, centerPosition: centerPosition) {
-                        // 当特效完成后，重置过渡状态
+                    TimeSpaceEffectView(
+                        isActive: $isShowingSpaceEffect,
+                        centerPosition: centerPosition
+                    ) {
+                        // 特效完成后的回调
                         withAnimation {
                             isTransitioning = false
-                        }
-                        
-                        // 获取当前选中的创作类型索引
-                        let selectedTypeIndex = typeManager.selectedIndex
-                        
-                        // 使用PostViewModel根据创作类型生成帖子
-                        let generatedPosts = postViewModel.generatePostsByCreationType(typeIndex: selectedTypeIndex)
-                        
-                        // 将生成的帖子添加到PostViewModel的posts数组中
-                        // 将新生成的帖子放在最前面
-                        postViewModel.posts.insert(contentsOf: generatedPosts, at: 0)
-                        
-                        // 更新生成帖子数量并显示成功提示
-                        generatedPostsCount = generatedPosts.count
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
                             showGeneratedPostsMessage = true
                         }
                         
-                        // 3秒后隐藏提示
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        // 添加打印信息，跟踪执行情况
+                        print("🚀 时空效果完成，准备生成帖子，当前选择的创作类型索引: \(typeManager.selectedIndex)")
+                        
+                        // 生成基于当前所选创作类型的5个帖子
+                        let typeIndex = typeManager.selectedIndex
+                        let posts = postViewModel.generatePostsByCreationType(typeIndex: typeIndex)
+                        
+                        // 添加到现有帖子列表的前面
+                        postViewModel.posts.insert(contentsOf: posts, at: 0)
+                        
+                        // 打印生成的帖子数量及内容摘要
+                        generatedPostsCount = posts.count
+                        print("✅ 成功生成 \(posts.count) 个帖子，创作类型: \(typeManager.types[typeIndex])")
+                        for (index, post) in posts.enumerated() {
+                            print("📝 帖子 #\(index+1): \(post.content.prefix(30))...")
+                        }
+                        
+                        // 发送通知，让其他视图知道新内容已生成
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("NewPostsGenerated"),
+                            object: nil,
+                            userInfo: ["count": posts.count]
+                        )
+                        
+                        // 显示成功信息
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                             withAnimation {
                                 showGeneratedPostsMessage = false
                             }
                         }
-                        
-                        // 添加触觉反馈
-                        let successFeedback = UINotificationFeedbackGenerator()
-                        successFeedback.notificationOccurred(.success)
-                        
-                        print("虫洞捕捉完成，生成了\(generatedPosts.count)个帖子，类型：\(typeManager.types[selectedTypeIndex])")
                     }
                     .edgesIgnoringSafeArea(.all)
                     // 确保特效位于最顶层且全屏显示
@@ -303,4 +309,30 @@ public struct StarfieldBackground: View {
     }
     
     public init() {}
+}
+
+// 导航相关扩展
+extension WormholeExplorationView {
+    /**
+     * 返回首页
+     * 使用NotificationCenter广播返回首页的请求
+     */
+    private func navigateBackToHome() {
+        // 发送通知以返回主页
+        NotificationCenter.default.post(name: NSNotification.Name("NavigateToHomeTab"), object: nil)
+        
+        // 使用UIApplication获取顶层视图控制器并返回
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first,
+           let rootViewController = window.rootViewController {
+            // 如果是NavigationController，尝试返回到根视图
+            if let navigationController = rootViewController as? UINavigationController {
+                navigationController.popToRootViewController(animated: true)
+            } 
+            // 如果是模态呈现的，则关闭
+            else if let presentedVC = rootViewController.presentedViewController {
+                presentedVC.dismiss(animated: true)
+            }
+        }
+    }
 } 
