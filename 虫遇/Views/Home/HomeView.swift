@@ -752,13 +752,7 @@ struct HomeView: View {
     @State private var forceRefreshID = UUID()
     
     // 添加存储subscribers的属性
-    private var cancellables = Set<AnyCancellable>()
-    
-    // 确保在deinit中清理
-    deinit {
-        cancellables.removeAll()
-        print("🏠 HomeView: deinit")
-    }
+    @State private var cancellables = Set<AnyCancellable>()
     
     // 移除原来的初始化方法，改用新的初始化器
     init() {
@@ -947,6 +941,11 @@ struct HomeView: View {
                         self?.forceRefreshID = UUID()
                     }
                     .store(in: &cancellables)
+            }
+            .onDisappear {
+                // 在视图消失时清理资源
+                cancellables.removeAll()
+                print("🏠 HomeView: onDisappear，已清理订阅")
             }
             // 使用水平模态过渡代替全屏覆盖
             .fullscreenHorizontalModal(
