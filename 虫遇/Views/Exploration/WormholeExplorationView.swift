@@ -14,6 +14,13 @@ public struct WormholeExplorationView: View {
     @State private var isTransitioning = false
     @State private var blackHoleCenterPosition: CGPoint? = nil // 保存黑洞中心位置
     
+    // 引入PostViewModel以便生成帖子
+    @StateObject private var postViewModel = PostViewModel()
+    
+    // 添加生成帖子成功的状态
+    @State private var showGeneratedPostsMessage = false
+    @State private var generatedPostsCount = 0
+    
     public var body: some View {
         ZStack {
             // 背景
@@ -127,6 +134,33 @@ public struct WormholeExplorationView: View {
                 #endif
             }
             
+            // 帖子生成成功提示
+            if showGeneratedPostsMessage {
+                VStack {
+                    Text("虫洞捕捉成功")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    Text("已为你生成\(generatedPostsCount)个「\(typeManager.types[typeManager.selectedIndex])」类型的帖子")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white.opacity(0.9))
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 8)
+                }
+                .padding(.horizontal, 30)
+                .padding(.vertical, 24)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.black.opacity(0.8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                        )
+                )
+                .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
+                .transition(.scale(scale: 0.8).combined(with: .opacity))
+            }
+            
             // 时空效果覆盖层 - 使用新的TimeSpaceEffectView
             if isShowingSpaceEffect {
                 if let centerPosition = blackHoleCenterPosition {
@@ -137,8 +171,34 @@ public struct WormholeExplorationView: View {
                             isTransitioning = false
                         }
                         
-                        // 可以添加其他逻辑，例如导航到新页面等
-                        print("虫洞捕捉完成")
+                        // 获取当前选中的创作类型索引
+                        let selectedTypeIndex = typeManager.selectedIndex
+                        
+                        // 使用PostViewModel根据创作类型生成帖子
+                        let generatedPosts = postViewModel.generatePostsByCreationType(typeIndex: selectedTypeIndex)
+                        
+                        // 将生成的帖子添加到PostViewModel的posts数组中
+                        // 将新生成的帖子放在最前面
+                        postViewModel.posts.insert(contentsOf: generatedPosts, at: 0)
+                        
+                        // 更新生成帖子数量并显示成功提示
+                        generatedPostsCount = generatedPosts.count
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                            showGeneratedPostsMessage = true
+                        }
+                        
+                        // 3秒后隐藏提示
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                            withAnimation {
+                                showGeneratedPostsMessage = false
+                            }
+                        }
+                        
+                        // 添加触觉反馈
+                        let successFeedback = UINotificationFeedbackGenerator()
+                        successFeedback.notificationOccurred(.success)
+                        
+                        print("虫洞捕捉完成，生成了\(generatedPosts.count)个帖子，类型：\(typeManager.types[selectedTypeIndex])")
                     }
                     .edgesIgnoringSafeArea(.all)
                     // 确保特效位于最顶层且全屏显示

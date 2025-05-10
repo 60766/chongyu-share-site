@@ -382,4 +382,221 @@ class PostViewModel: ObservableObject {
             // apiService.updateLikeStatus(postId: post.id, isLiked: post.isLikedByCurrentUser)
         }
     }
+    
+    /**
+     * 根据创作类型生成帖子
+     * @param typeIndex 创作类型索引
+     * @return 生成的帖子数组
+     */
+    func generatePostsByCreationType(typeIndex: Int) -> [UserPostModel] {
+        let types = CreationTypeManager.shared.types
+        let typeName = types[typeIndex]
+        var generatedPosts: [UserPostModel] = []
+        
+        // 根据不同创作类型生成不同内容
+        switch typeIndex {
+        case 0: // 随机漫游
+            // 随机漫游类型的帖子内容
+            let randomContents = [
+                "在虫洞中随机漫游时，我偶遇了一个奇妙的平行宇宙，那里的科技与我们完全不同。他们通过思维就能控制机器，没有任何物理界面。",
+                "今天的随机漫游让我见到了一个和地球几乎相同的世界，但所有的颜色都是互补色！蓝天是橙色的，绿草是紫红色的，太奇妙了。",
+                "随机漫游时遇到了一个由数学公式构成的维度，那里的一切都遵循严格的数学规律，连情感都可以用方程式表达。",
+                "在虫洞随机跳跃中，我发现了一个只有声音没有影像的世界。所有的交流、表达和艺术都是通过声波完成的。",
+                "随机漫游带我到了一个时间倒流的宇宙，那里的人从死亡开始生活，走向出生。他们知道自己的未来，却无法知晓过去。"
+            ]
+            
+            // 生成5个随机漫游类型的帖子
+            for i in 0..<5 {
+                let content = randomContents[i % randomContents.count]
+                let characterIndex = Int.random(in: 0...5)
+                let characterNames = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "牛顿", "李白"]
+                let characterIDs = ["einstein", "shakespeare", "davinci", "confucius", "newton", "libai"]
+                
+                // 创建一条随机生成的评论
+                let randomComment = UserCommentModel(
+                    username: characterNames[characterIndex],
+                    userAvatar: "avatar_\(characterIDs[characterIndex])",
+                    content: "这个维度很有趣，让我想到了\(characterNames[characterIndex])的理论。",
+                    datePosted: Date().addingTimeInterval(-Double.random(in: 0...36000)),
+                    likes: Int.random(in: 5...50),
+                    isVirtualCharacter: true,
+                    characterID: characterIDs[characterIndex]
+                )
+                
+                // 创建帖子
+                let post = UserPostModel(
+                    username: "虫遇探索者",
+                    userAvatar: "explorer_avatar",
+                    content: content,
+                    images: ["dimension_\(i+1)", "exploration_scene"],
+                    datePosted: Date(),
+                    likes: Int.random(in: 0...20),
+                    comments: [randomComment],
+                    isLikedByCurrentUser: false,
+                    isBookmarkedByCurrentUser: false
+                )
+                
+                generatedPosts.append(post)
+            }
+            
+        case 1: // 日常心情
+            // 日常心情类型的帖子内容
+            let moodContents = [
+                "今天在公园散步时，一片落叶轻轻飘落在我肩上，仿佛是自然给我的一个温柔问候。这小小的瞬间让我整天心情舒畅。",
+                "工作压力大的时候，我喜欢泡一杯茶，静静地看窗外的云卷云舒。这样的片刻宁静总能让我重新找回平衡。",
+                "雨后的空气特别清新，街上的灯光倒映在湿漉漉的地面上，像是另一个世界。这样的夜晚总让我感到莫名的感动。",
+                "今天遇到了一位老奶奶，她对我微笑的样子让我想起了外婆。有时候幸福就藏在这些小小的相遇里。",
+                "清晨第一缕阳光透过窗帘洒在书桌上的那一刻，感觉一天的可能性都在眼前展开。这种新的开始总是充满希望。"
+            ]
+            
+            // 生成5个日常心情类型的帖子
+            for i in 0..<5 {
+                let content = moodContents[i % moodContents.count]
+                
+                // 创建帖子
+                let post = UserPostModel(
+                    username: "心情记录者",
+                    userAvatar: "mood_avatar",
+                    content: content,
+                    images: ["mood_\(i+1)", "daily_scene"],
+                    datePosted: Date().addingTimeInterval(-Double.random(in: 0...7200)),
+                    likes: Int.random(in: 10...60),
+                    comments: [],
+                    isLikedByCurrentUser: false,
+                    isBookmarkedByCurrentUser: false
+                )
+                
+                generatedPosts.append(post)
+            }
+            
+        case 2: // 古今对望
+            // 古今对望类型的帖子内容
+            let historicalContents = [
+                "假如爱因斯坦活在互联网时代，他会如何看待信息爆炸？他曾说过想象力比知识更重要，在这个知识触手可得的时代，或许创新思维更加珍贵。",
+                "莎士比亚如果使用现代社交媒体，会创造出怎样的内容？他的戏剧性叙事和对人性的洞察，可能会让他成为最火的内容创作者。",
+                "达芬奇生活在当今社会，会对AI绘画有什么看法？作为一位横跨艺术与科学的天才，他可能会将技术视为扩展创造力的工具，而非替代品。",
+                "孔子面对现代教育体系，会提出怎样的改革？他强调的因材施教和终身学习理念，在今天看来依然具有重要意义。",
+                "李白如果乘坐宇宙飞船遨游太空，会写出怎样的诗句？他的浪漫主义和对自由的向往，或许会在星际旅行中找到更广阔的表达空间。"
+            ]
+            
+            // 对应的历史人物
+            let historicalFigures = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "李白"]
+            let characterIDs = ["einstein", "shakespeare", "davinci", "confucius", "libai"]
+            
+            // 生成5个古今对望类型的帖子
+            for i in 0..<5 {
+                let content = historicalContents[i % historicalContents.count]
+                let figureIndex = i % historicalFigures.count
+                
+                // 创建历史人物评论
+                let historicalComment = UserCommentModel(
+                    username: historicalFigures[figureIndex],
+                    userAvatar: "avatar_\(characterIDs[figureIndex])",
+                    content: "看到现代人对我的解读很有趣。技术虽然变了，但人性的本质还是相通的。",
+                    datePosted: Date().addingTimeInterval(-Double.random(in: 0...3600)),
+                    likes: Int.random(in: 30...100),
+                    isVirtualCharacter: true,
+                    characterID: characterIDs[figureIndex]
+                )
+                
+                // 创建帖子
+                let post = UserPostModel(
+                    username: "时空对话者",
+                    userAvatar: "time_traveler",
+                    content: content,
+                    images: ["historical_\(figureIndex)", "modern_comparison"],
+                    datePosted: Date().addingTimeInterval(-Double.random(in: 0...14400)),
+                    likes: Int.random(in: 50...150),
+                    comments: [historicalComment],
+                    isLikedByCurrentUser: false,
+                    isBookmarkedByCurrentUser: false
+                )
+                
+                generatedPosts.append(post)
+            }
+            
+        case 3: // 奇思妙想
+            // 奇思妙想类型的帖子内容
+            let creativeContents = [
+                "如果我们能够通过梦境连接到集体潜意识，会不会创造出一种全新的社交网络？在梦中与世界各地的人交流，共享创意和灵感。",
+                "想象未来的城市是立体的，不仅向上生长，还向下延伸。地下城市与地上城市形成互补，利用地热能源，创造全新的生活空间。",
+                "如果植物能够像使用互联网一样通过菌根网络共享信息和资源，那么森林是否就是地球上最古老的社交网络？",
+                "海洋占地球表面积的71%，但我们对它的了解少于月球表面。如果我们建立水下城市，会不会发现全新的生活方式和资源利用模式？",
+                "时间可能不是线性的，而是像树一样分叉。每个决定创造一个新的时间线，这意味着可能存在无数个版本的你，过着不同的生活。"
+            ]
+            
+            // 生成5个奇思妙想类型的帖子
+            for i in 0..<5 {
+                let content = creativeContents[i % creativeContents.count]
+                
+                // 随机评论
+                let randomName = ["思想实验家", "未来学者", "创意探索者", "概念设计师", "哲学思考者"][i % 5]
+                let randomComment = UserCommentModel(
+                    username: randomName,
+                    userAvatar: "creative_thinker",
+                    content: "这个想法很有深度！让我想到了另一个角度：如果...",
+                    datePosted: Date().addingTimeInterval(-Double.random(in: 0...7200)),
+                    likes: Int.random(in: 15...45),
+                    isVirtualCharacter: false,
+                    characterID: nil
+                )
+                
+                // 创建帖子
+                let post = UserPostModel(
+                    username: "创想家",
+                    userAvatar: "idea_creator",
+                    content: content,
+                    images: ["concept_\(i+1)", "imagination_scene"],
+                    datePosted: Date().addingTimeInterval(-Double.random(in: 0...21600)),
+                    likes: Int.random(in: 30...120),
+                    comments: [randomComment],
+                    isLikedByCurrentUser: false,
+                    isBookmarkedByCurrentUser: false
+                )
+                
+                generatedPosts.append(post)
+            }
+            
+        case 4: // 时空记事
+            // 时空记事类型的帖子内容
+            let timeContents = [
+                "2023年11月，全球第一个量子互联网节点成功连接，这可能是继互联网之后最重要的通信革命，为未来的信息安全奠定基础。",
+                "回顾1969年人类首次登月，阿姆斯特朗的一小步是如何改变了人类对宇宙探索的理解和想象？这一壮举开启了太空时代。",
+                "公元前500年，古希腊哲学的黄金时代，苏格拉底、柏拉图和亚里士多德如何塑造了西方思想的基础？他们的智慧跨越时空仍然影响着我们。",
+                "1440年古腾堡印刷机的发明，是如何彻底改变知识传播方式的？这一技术创新使知识不再局限于精英阶层，为文艺复兴和启蒙运动铺平了道路。",
+                "2045年，技术奇点可能到来，人工智能将超越人类智能。这一假设性事件会如何重新定义人类的角色和价值？我们需要开始思考这些问题。"
+            ]
+            
+            // 时间点
+            let timePeriods = ["2023年", "1969年", "公元前500年", "1440年", "2045年"]
+            
+            // 生成5个时空记事类型的帖子
+            for i in 0..<5 {
+                let content = timeContents[i % timeContents.count]
+                let timePeriod = timePeriods[i % timePeriods.count]
+                
+                // 创建帖子
+                let post = UserPostModel(
+                    username: "时间记录者",
+                    userAvatar: "time_recorder",
+                    content: content,
+                    images: ["timepoint_\(i+1)", "historical_event"],
+                    datePosted: Date().addingTimeInterval(-Double.random(in: 0...28800)),
+                    likes: Int.random(in: 40...180),
+                    comments: [],
+                    isLikedByCurrentUser: false,
+                    isBookmarkedByCurrentUser: false
+                )
+                
+                generatedPosts.append(post)
+            }
+            
+        default:
+            // 默认情况下返回空数组
+            return []
+        }
+        
+        print("已根据创作类型「\(typeName)」生成 \(generatedPosts.count) 个帖子")
+        return generatedPosts
+    }
 } 
