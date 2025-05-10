@@ -571,6 +571,57 @@ struct VirtualCharacterCard: View {
     }
 }
 
+// 添加通知管理器类
+class HomeViewNotificationManager: ObservableObject {
+    private weak var postViewModel: PostViewModel?
+    
+    init(postViewModel: PostViewModel) {
+        self.postViewModel = postViewModel
+        setupNotifications()
+    }
+    
+    deinit {
+        // 移除通知观察者，防止内存泄漏
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    private func setupNotifications() {
+        // 新帖子生成通知
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleNewPostsGenerated(_:)),
+            name: NSNotification.Name("NewPostsGenerated"),
+            object: nil
+        )
+        
+        // 帖子更新通知
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handlePostsUpdated(_:)),
+            name: NSNotification.Name("PostsUpdated"),
+            object: nil
+        )
+    }
+    
+    @objc private func handleNewPostsGenerated(_ notification: Notification) {
+        guard let count = notification.userInfo?["count"] as? Int else { return }
+        
+        DispatchQueue.main.async {
+            print("🏠 HomeView通知管理器: 接收到新帖子生成通知，\(count)个新帖子")
+            self.postViewModel?.objectWillChange.send()
+        }
+    }
+    
+    @objc private func handlePostsUpdated(_ notification: Notification) {
+        guard let count = notification.userInfo?["newPostsCount"] as? Int else { return }
+        
+        DispatchQueue.main.async {
+            print("🏠 HomeView通知管理器: 接收到帖子更新通知，\(count)个新帖子已添加")
+            self.postViewModel?.objectWillChange.send()
+        }
+    }
+}
+
 /**
  * 首页视图
  * 显示历史人物角色和动态内容
@@ -617,34 +668,14 @@ struct HomeView: View {
     // TabBar管理器
     @ObservedObject private var tabBarManager = TabBarManager.shared
     
-    // 新增一个初始化方法来设置通知观察者
+    // 通知管理器
+    @StateObject private var notificationManager: HomeViewNotificationManager
+    
+    // 移除原来的初始化方法，改用新的初始化器
     init() {
-        // 添加通知监听，当新帖子生成时刷新界面
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("NewPostsGenerated"),
-            object: nil,
-            queue: .main
-        ) { notification in
-            if let count = notification.userInfo?["count"] as? Int {
-                print("🏠 HomeView: 接收到新帖子生成通知，\(count)个新帖子")
-                // 主要目的是触发视图刷新，实际的添加帖子逻辑已在PostViewModel中处理
-                // 强制刷新列表，确保新增的帖子能显示出来
-                self.postViewModel.objectWillChange.send()
-            }
-        }
-        
-        // 添加帖子更新通知监听
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("PostsUpdated"),
-            object: nil,
-            queue: .main
-        ) { notification in
-            if let count = notification.userInfo?["newPostsCount"] as? Int {
-                print("🏠 HomeView: 接收到帖子更新通知，\(count)个新帖子已添加")
-                // 触发视图刷新
-                self.postViewModel.objectWillChange.send()
-            }
-        }
+        // 使用 _notificationManager 直接初始化 @StateObject
+        let manager = HomeViewNotificationManager(postViewModel: PostViewModel.shared)
+        self._notificationManager = StateObject(wrappedValue: manager)
     }
     
     var body: some View {
