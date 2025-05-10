@@ -178,30 +178,33 @@ class PostViewModel: ObservableObject {
      * @param postContent 帖子内容
      * @param postIndex 帖子索引
      */
-    private func generateVirtualCharacterReply(characterID: String, to userComment: String, in postContent: String, postIndex: Int) {
-        // 设置加载状态
-        self.isLoading = true
-        
-        // 调用虚拟角色服务生成回复
-        virtualCharacterService.getCharacterReply(
-            characterID: characterID,
-            to: userComment,
-            in: postContent
-        )
-        .receive(on: DispatchQueue.main)
-        .sink { [weak self] completion in
-            self?.isLoading = false
+    func generateVirtualCharacterReply(characterID: String, to userComment: String, in postContent: String, postIndex: Int) {
+        // 模拟一些延迟
+        DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1.0...2.0)) {
+            // 根据不同角色生成不同的回复内容（简单示例，实际应用中应连接到AI服务）
+            var replyContent = ""
             
-            if case .failure(let error) = completion {
-                self?.errorMessage = "生成回复失败: \(error.localizedDescription)"
+            switch characterID {
+            case "einstein":
+                replyContent = "从相对论的角度来看，你的观点很有意思。时空是相互关联的，就像你提到的这个问题。"
+            case "shakespeare":
+                replyContent = "文字如诗如画，你的思考让我想起了《哈姆雷特》中的经典场景：'生存还是毁灭，这是个问题。'"
+            case "davinci":
+                replyContent = "艺术与科学的结合是我毕生的追求。你的想法展现了这种美妙的交融。"
+            case "goku":
+                replyContent = "修炼的道路上没有捷径！只有不断突破自己的极限，才能到达新的高度！"
+            case "holmes":
+                replyContent = "有趣的观察。但你忽略了一个微小却至关重要的细节，那就是..."
+            case "naruto":
+                replyContent = "永不放弃是我的忍道！相信自己，你也可以克服一切困难！"
+            default:
+                replyContent = "你的观点很有启发性，让我思考了很多。"
             }
-        } receiveValue: { [weak self] replyContent in
-            guard let self = self else { return }
             
             // 创建虚拟角色评论
             let _ = UserCommentModel(
                 username: self.getCharacterName(for: characterID),
-                userAvatar: "avatar_\(characterID)",
+                userAvatar: self.getCharacterAvatar(for: characterID), // 使用系统图标替代
                 content: replyContent,
                 datePosted: Date(),
                 likes: 0,
@@ -212,13 +215,12 @@ class PostViewModel: ObservableObject {
             // 添加评论到帖子
             self.posts[postIndex].addComment(
                 username: self.getCharacterName(for: characterID),
-                userAvatar: "avatar_\(characterID)",
+                userAvatar: self.getCharacterAvatar(for: characterID), // 使用系统图标替代
                 content: replyContent,
                 isVirtualCharacter: true,
                 characterID: characterID
             )
         }
-        .store(in: &cancellables)
     }
     
     /**
@@ -239,7 +241,7 @@ class PostViewModel: ObservableObject {
         // 创建虚拟角色评论
         let _ = UserCommentModel(
             username: character.name,
-            userAvatar: "avatar_default",
+            userAvatar: self.getCharacterAvatar(for: characterID), // 使用系统图标替代
             content: commentContent,
             datePosted: Date(),
             likes: Int.random(in: 20...100),
@@ -251,11 +253,41 @@ class PostViewModel: ObservableObject {
         if let postIndex = posts.firstIndex(where: { $0.id == post.id }) {
             posts[postIndex].addComment(
                 username: character.name,
-                userAvatar: "avatar_default",
+                userAvatar: self.getCharacterAvatar(for: characterID), // 使用系统图标替代
                 content: commentContent,
                 isVirtualCharacter: true,
                 characterID: characterID
             )
+        }
+    }
+    
+    /**
+     * 获取角色头像
+     * @param characterID 角色ID
+     * @return 角色头像系统图标名称
+     */
+    private func getCharacterAvatar(for characterID: String) -> String {
+        switch characterID {
+        case "einstein":
+            return "atom" // 原子图标适合爱因斯坦
+        case "shakespeare":
+            return "book.fill" // 书籍图标适合莎士比亚
+        case "davinci":
+            return "paintpalette.fill" // 绘画图标适合达芬奇
+        case "goku":
+            return "person.fill.viewfinder" // 人物图标适合孙悟空
+        case "holmes":
+            return "magnifyingglass" // 放大镜适合福尔摩斯
+        case "naruto":
+            return "tornado" // 螺旋适合鸣人
+        case "confucius":
+            return "scroll.fill" // 卷轴适合孔子
+        case "newton":
+            return "arrow.down.circle.fill" // 下降箭头适合牛顿
+        case "libai":
+            return "text.book.closed.fill" // 诗集适合李白
+        default:
+            return "person.circle.fill" // 通用人物图标
         }
     }
     
@@ -396,6 +428,9 @@ class PostViewModel: ObservableObject {
         let typeName = types[typeIndex]
         var generatedPosts: [UserPostModel] = []
         
+        // 增加日志输出
+        print("🌀 开始生成「\(typeName)」类型帖子")
+        
         // 根据不同创作类型生成不同内容
         switch typeIndex {
         case 0: // 随机漫游
@@ -413,17 +448,19 @@ class PostViewModel: ObservableObject {
                 let content = randomContents[i % randomContents.count]
                 let characterIndex = Int.random(in: 0...5)
                 let characterNames = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "牛顿", "李白"]
-                let characterIDs = ["einstein", "shakespeare", "davinci", "confucius", "newton", "libai"]
+                
+                // 使用系统图标代替角色头像
+                let avatarSymbols = ["atom", "book.fill", "paintpalette.fill", "scroll.fill", "graduationcap.fill", "text.book.closed.fill"]
                 
                 // 创建一条随机生成的评论
                 let randomComment = UserCommentModel(
                     username: characterNames[characterIndex],
-                    userAvatar: "person.fill", // 使用系统SF Symbol
+                    userAvatar: avatarSymbols[characterIndex], // 使用系统SF Symbol替代角色头像
                     content: "这个维度很有趣，让我想到了\(characterNames[characterIndex])的理论。",
                     datePosted: Date().addingTimeInterval(-Double.random(in: 0...36000)),
                     likes: Int.random(in: 5...50),
                     isVirtualCharacter: true,
-                    characterID: characterIDs[characterIndex]
+                    characterID: characterNames[characterIndex].lowercased()
                 )
                 
                 // 创建帖子 - 不使用图片
@@ -484,7 +521,6 @@ class PostViewModel: ObservableObject {
             
             // 对应的历史人物
             let historicalFigures = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "李白"]
-            let characterIDs = ["einstein", "shakespeare", "davinci", "confucius", "libai"]
             let avatarSymbols = ["atom", "book.fill", "paintpalette.fill", "scroll.fill", "text.book.closed.fill"]
             
             // 生成5个古今对望类型的帖子
@@ -500,7 +536,7 @@ class PostViewModel: ObservableObject {
                     datePosted: Date().addingTimeInterval(-Double.random(in: 0...3600)),
                     likes: Int.random(in: 30...100),
                     isVirtualCharacter: true,
-                    characterID: characterIDs[figureIndex]
+                    characterID: historicalFigures[figureIndex].lowercased()
                 )
                 
                 // 创建帖子 - 不使用图片
@@ -600,7 +636,7 @@ class PostViewModel: ObservableObject {
             return []
         }
         
-        print("已根据创作类型「\(typeName)」生成 \(generatedPosts.count) 个帖子")
+        print("✅ 已根据创作类型「\(typeName)」生成 \(generatedPosts.count) 个帖子")
         return generatedPosts
     }
     
@@ -612,41 +648,118 @@ class PostViewModel: ObservableObject {
         print("📊 PostViewModel: 添加前帖子数量 = \(oldCount)")
         
         // 先触发objectWillChange，确保订阅者知道数据将要变化
-        self.objectWillChange.send()
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+            print("📊 PostViewModel: 发送pre-update objectWillChange通知")
+        }
+        
+        // 过滤掉可能重复的帖子
+        var filteredPosts = [UserPostModel]()
+        var existingIDs = Set<UUID>(posts.map { $0.id })
+        
+        for post in newPosts {
+            if !existingIDs.contains(post.id) {
+                filteredPosts.append(post)
+                existingIDs.insert(post.id)
+            } else {
+                print("⚠️ PostViewModel: 检测到重复帖子ID: \(post.id)，已跳过")
+            }
+        }
+        
+        if filteredPosts.isEmpty {
+            print("⚠️ PostViewModel: 过滤后没有新帖子可添加，所有帖子ID都已存在")
+            
+            // 尝试生成带有新ID的帖子
+            var regeneratedPosts = [UserPostModel]()
+            for post in newPosts {
+                let newID = UUID() // 生成新的UUID
+                var newPost = post
+                // 使用反射动态修改ID (仅用于紧急情况)
+                if let idProperty = class_getProperty(object_getClass(newPost), "id") {
+                    let getterSetter = property_getAttributes(idProperty)
+                    let mirror = Mirror(reflecting: newPost)
+                    for case let (label?, value) in mirror.children {
+                        if label == "id" {
+                            // 尝试使用KVC修改ID
+                            newPost = UserPostModel(
+                                id: newID,
+                                username: newPost.username,
+                                userAvatar: newPost.userAvatar,
+                                content: newPost.content,
+                                images: newPost.images,
+                                datePosted: newPost.datePosted,
+                                likes: newPost.likes,
+                                comments: newPost.comments,
+                                isLikedByCurrentUser: newPost.isLikedByCurrentUser,
+                                isBookmarkedByCurrentUser: newPost.isBookmarkedByCurrentUser
+                            )
+                            break
+                        }
+                    }
+                }
+                regeneratedPosts.append(newPost)
+            }
+            
+            if !regeneratedPosts.isEmpty {
+                print("🔄 PostViewModel: 已重新生成 \(regeneratedPosts.count) 个带有新ID的帖子")
+                filteredPosts = regeneratedPosts
+            }
+        }
         
         // 将新帖子添加到列表前面
-        posts.insert(contentsOf: newPosts, at: 0)
+        if !filteredPosts.isEmpty {
+            posts.insert(contentsOf: filteredPosts, at: 0)
+            print("✅ PostViewModel: 成功添加 \(filteredPosts.count) 个新帖子")
+        }
         
         // 验证添加是否成功
         let newCount = posts.count
-        let addedCount = newPosts.count
+        let addedCount = filteredPosts.count
         print("📊 PostViewModel: 添加后帖子数量 = \(newCount)，应增加 \(addedCount)，实际增加 \(newCount - oldCount)")
         
-        // 检查第一篇帖子是否就是新添加的第一篇
-        if let firstNewPost = newPosts.first, let firstPost = posts.first {
-            let isFirstPostMatch = firstNewPost.id == firstPost.id
-            print("📊 PostViewModel: 第一篇帖子ID匹配检查 = \(isFirstPostMatch ? "✅成功" : "❌失败")")
-            print("📊 PostViewModel: 第一篇新帖子内容片段: \(firstNewPost.content.prefix(30))...")
+        // 验证数据完整性
+        if !posts.isEmpty {
+            print("📊 PostViewModel: 第一篇帖子ID: \(posts[0].id)")
+            print("📊 PostViewModel: 第一篇帖子内容片段: \(posts[0].content.prefix(30))...")
         }
         
-        // 发送通知，通知订阅者帖子列表已更新
+        // 立即发送通知，通知订阅者帖子列表已更新
         let userInfo: [String: Any] = [
-            "newPostsCount": newPosts.count,
+            "newPostsCount": filteredPosts.count,
             "timestamp": Date().timeIntervalSince1970
         ]
         
-        NotificationCenter.default.post(
-            name: NSNotification.Name("PostsUpdated"),
-            object: self,  // 使用self作为object便于识别通知来源
-            userInfo: userInfo
-        )
-        
-        print("📱 PostViewModel: 已发送PostsUpdated通知，添加了 \(newPosts.count) 个新帖子，当前总数: \(posts.count)")
-        
-        // 强制再次触发变更通知，确保UI更新
+        // 主线程发送通知和objectWillChange事件
         DispatchQueue.main.async {
+            // 发送PostsUpdated通知
+            NotificationCenter.default.post(
+                name: NSNotification.Name("PostsUpdated"),
+                object: self,  // 使用self作为object便于识别通知来源
+                userInfo: userInfo
+            )
+            
+            // 强制再次触发变更通知，确保UI更新
             self.objectWillChange.send()
-            print("📱 PostViewModel: 已在主线程再次触发objectWillChange")
+            
+            print("📱 PostViewModel: 已发送PostsUpdated通知和objectWillChange，添加了 \(filteredPosts.count) 个新帖子，当前总数: \(self.posts.count)")
+            
+            // 增加延迟再次触发，确保所有UI组件都能正确处理变更
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                self.objectWillChange.send()
+                print("📱 PostViewModel: 延迟0.2秒后再次触发objectWillChange以确保UI刷新")
+            }
+            
+            // 增加第二次延迟触发，进一步确保UI更新
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.objectWillChange.send()
+                print("📱 PostViewModel: 延迟0.5秒后第三次触发objectWillChange强制UI刷新")
+                
+                // 打印最终验证信息
+                if !self.posts.isEmpty {
+                    print("📱 PostViewModel: 最终确认 - 首篇帖子ID: \(self.posts[0].id)")
+                    print("📱 PostViewModel: 最终确认 - 帖子总数: \(self.posts.count)")
+                }
+            }
         }
     }
 } 

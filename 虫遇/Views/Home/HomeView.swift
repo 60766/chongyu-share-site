@@ -643,6 +643,26 @@ class HomeViewNotificationManager: ObservableObject {
                 // 验证数据一致性
                 if !viewModel.posts.isEmpty {
                     print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 第一篇帖子内容片段: \(viewModel.posts[0].content.prefix(30))...")
+                    print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 第一篇帖子ID: \(viewModel.posts[0].id)")
+                }
+                
+                // 手动发送通知到主线程
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("HomeViewNeedsRefresh"),
+                    object: nil,
+                    userInfo: ["timestamp": Date().timeIntervalSince1970]
+                )
+                
+                // 增加额外的objectWillChange触发以确保UI更新
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    viewModel.objectWillChange.send()
+                    print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 延迟0.1秒后再次触发objectWillChange")
+                    
+                    // 验证更新是否成功 - 二次确认
+                    if !viewModel.posts.isEmpty {
+                        print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 二次确认 - 首篇帖子ID: \(viewModel.posts[0].id)")
+                        print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 二次确认 - 帖子数量: \(viewModel.posts.count)")
+                    }
                 }
             } else {
                 print("⚠️ HomeViewNotificationManager[\(self.instanceId)]: 严重错误 - 无法访问postViewModel")
@@ -681,6 +701,26 @@ class HomeViewNotificationManager: ObservableObject {
                 // 验证数据一致性
                 if !viewModel.posts.isEmpty {
                     print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 第一篇帖子内容片段: \(viewModel.posts[0].content.prefix(30))...")
+                    print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 第一篇帖子ID: \(viewModel.posts[0].id)")
+                }
+                
+                // 手动发送通知到主线程，通知HomeView需要刷新
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("HomeViewNeedsRefresh"),
+                    object: nil,
+                    userInfo: ["timestamp": Date().timeIntervalSince1970]
+                )
+                
+                // 增加额外的objectWillChange触发
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    viewModel.objectWillChange.send()
+                    print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 延迟0.2秒后再次触发objectWillChange")
+                    
+                    // 验证更新是否成功 - 二次确认
+                    if !viewModel.posts.isEmpty {
+                        print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 二次确认 - 首篇帖子ID: \(viewModel.posts[0].id)")
+                        print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 二次确认 - 帖子数量: \(viewModel.posts.count)")
+                    }
                 }
             } else {
                 print("⚠️ HomeViewNotificationManager[\(self.instanceId)]: 严重错误 - 无法访问postViewModel")
@@ -859,6 +899,44 @@ struct HomeView: View {
                         showNavBar = value < 50
                     }
                 }
+                // 监听HomeViewNeedsRefresh通知，以便在虫洞捕捉完成后刷新主页
+                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("HomeViewNeedsRefresh"))) { _ in
+                    print("📱 HomeView: 接收到HomeViewNeedsRefresh通知，准备刷新界面")
+                    
+                    // 立即生成新的刷新ID
+                    forceRefreshID = UUID()
+                    print("📱 HomeView: 已生成新的forceRefreshID: \(forceRefreshID)")
+                    
+                    // 验证数据
+                    print("📱 HomeView: 当前帖子数量: \(postViewModel.posts.count)")
+                    if !postViewModel.posts.isEmpty {
+                        print("📱 HomeView: 首篇帖子ID: \(postViewModel.posts[0].id)")
+                        print("📱 HomeView: 首篇帖子内容: \(postViewModel.posts[0].content.prefix(30))...")
+                    }
+                    
+                    // 延迟执行多次刷新，确保UI更新
+                    let delayTimes = [0.1, 0.3, 0.5]
+                    for (index, delay) in delayTimes.enumerated() {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                            // 生成新的刷新ID
+                            self.forceRefreshID = UUID()
+                            print("📱 HomeView: 延迟\(delay)秒后第\(index+1)次刷新，新ID: \(self.forceRefreshID)")
+                            
+                            // 验证数据
+                            if !self.postViewModel.posts.isEmpty {
+                                print("📱 HomeView: 验证 - 首篇帖子ID: \(self.postViewModel.posts[0].id)")
+                            }
+                            
+                            // 最后一次刷新后添加触觉反馈
+                            if index == delayTimes.count - 1 {
+                                let generator = UIImpactFeedbackGenerator(style: .light)
+                                generator.prepare()
+                                generator.impactOccurred(intensity: 0.4)
+                                print("📱 HomeView: 完成所有刷新步骤")
+                            }
+                        }
+                    }
+                }
                 
                 // 添加手动刷新按钮（可选，仅用于调试）
                 VStack {
@@ -869,10 +947,35 @@ struct HomeView: View {
                         
                         Button(action: {
                             print("🔄 手动强制刷新HomeView")
-                            // 更新ID触发视图刷新
+                            
+                            // 1. 先触发视图刷新
                             forceRefreshID = UUID()
-                            // 强制触发数据模型更新
+                            print("🔄 生成新的forceRefreshID: \(forceRefreshID)")
+                            
+                            // 2. 确保PostViewModel中的数据是最新的
                             postViewModel.objectWillChange.send()
+                            
+                            // 3. 打印当前数据状态
+                            print("🔄 当前帖子数量: \(postViewModel.posts.count)")
+                            if !postViewModel.posts.isEmpty {
+                                print("🔄 第一篇帖子ID: \(postViewModel.posts[0].id)")
+                                print("🔄 第一篇帖子内容: \(postViewModel.posts[0].content.prefix(50))...")
+                            }
+                            
+                            // 4. 延迟刷新确保UI更新
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                // 二次刷新
+                                forceRefreshID = UUID()
+                                print("🔄 延迟0.1秒后二次刷新，新ID: \(forceRefreshID)")
+                                
+                                // 再次确认数据
+                                print("🔄 二次确认 - 当前帖子数量: \(postViewModel.posts.count)")
+                                
+                                // 显示振动反馈，告知用户刷新已完成
+                                let generator = UIImpactFeedbackGenerator(style: .medium)
+                                generator.prepare()
+                                generator.impactOccurred()
+                            }
                         }) {
                             Image(systemName: "arrow.clockwise.circle.fill")
                                 .font(.system(size: 24))
@@ -920,6 +1023,12 @@ struct HomeView: View {
                 print("🏠 HomeView.onAppear: 当前帖子数量 = \(postViewModel.posts.count)")
                 if !postViewModel.posts.isEmpty {
                     print("🏠 HomeView.onAppear: 首篇帖子ID = \(postViewModel.posts[0].id)")
+                    print("🏠 HomeView.onAppear: 首篇帖子内容 = \(postViewModel.posts[0].content.prefix(50))...")
+                    
+                    // 打印所有帖子的ID和内容前缀，方便调试
+                    for (index, post) in postViewModel.posts.enumerated() {
+                        print("🏠 HomeView.onAppear: 帖子[\(index)] ID = \(post.id), 内容 = \(post.content.prefix(30))...")
+                    }
                 }
                 
                 // 注册为publisher的订阅者，确保数据变化时能收到通知
@@ -929,8 +1038,28 @@ struct HomeView: View {
                         print("🏠 HomeView.onAppear中的sink: 收到postViewModel更新")
                         // 强制刷新视图
                         forceRefreshID = UUID()
+                        
+                        // 打印当前帖子信息
+                        print("🏠 HomeView: 接收到postViewModel的objectWillChange信号")
+                        print("🏠 HomeView: 当前帖子数量: \(postViewModel.posts.count)")
+                        if !postViewModel.posts.isEmpty {
+                            print("🏠 HomeView: 首篇帖子: \(postViewModel.posts[0].content.prefix(50))...")
+                        }
                     }
                     .store(in: &cancellables)
+                
+                // 添加定时刷新机制，确保UI显示最新数据
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    // 强制发出objectWillChange信号，确保视图刷新
+                    forceRefreshID = UUID()
+                    
+                    // 显示首篇帖子信息
+                    if !postViewModel.posts.isEmpty {
+                        print("🏠 首篇帖子已显示: \(postViewModel.posts[0].id) - \(postViewModel.posts[0].content.prefix(50))...")
+                    } else {
+                        print("⚠️ HomeView: 帖子列表为空!")
+                    }
+                }
             }
             .onDisappear {
                 // 在视图消失时清理资源
@@ -1157,20 +1286,70 @@ struct HomeView: View {
     private var postsListView: some View {
         ForEach(Array(postViewModel.posts.enumerated()), id: \.element.id) { index, post in
             postCardView(for: post, at: index)
-                .id(post.id) // 添加显式ID，帮助SwiftUI识别视图身份变化
+                .id("\(post.id)_\(forceRefreshID)") // 在强制刷新时更新视图ID
                 .onAppear {
                     // 在视图出现时打印日志，帮助调试
                     if index == 0 {
-                        print("🏠 首篇帖子已显示: \(post.id) - \(post.content.prefix(20))...")
+                        print("🏠 首篇帖子已显示: \(post.id) - \(post.content.prefix(50))...")
                     }
                 }
         }
+        .id(forceRefreshID) // 当forceRefreshID变化时，整个ForEach会重新创建
         .onReceive(postViewModel.objectWillChange) { _ in
             // 接收到模型变更信号时添加额外日志
-            print("🏠 HomeView: 接收到postViewModel的objectWillChange信号")
-            print("🏠 HomeView: 当前帖子数量: \(postViewModel.posts.count)")
+            print("🏠 postsListView: 接收到postViewModel的objectWillChange信号")
+            print("🏠 postsListView: 当前帖子数量: \(postViewModel.posts.count)")
             if !postViewModel.posts.isEmpty {
-                print("🏠 HomeView: 首篇帖子: \(postViewModel.posts[0].content.prefix(20))...")
+                print("🏠 postsListView: 首篇帖子: \(postViewModel.posts[0].content.prefix(50))...")
+            }
+            
+            // 强制刷新 - 使用主线程以确保UI更新
+            DispatchQueue.main.async {
+                // 立即更新ID强制刷新
+                forceRefreshID = UUID()
+                print("🔄 postsListView: 已触发强制刷新，新ID: \(self.forceRefreshID)")
+                
+                // 检查数据状态
+                print("🔄 postsListView: 强制刷新后帖子数量: \(postViewModel.posts.count)")
+                
+                // 延迟0.1秒后再次触发刷新，确保UI更新
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.forceRefreshID = UUID()
+                    print("🔄 postsListView: 延迟0.1秒后再次触发刷新，新ID: \(self.forceRefreshID)")
+                    
+                    // 打印最终状态确认
+                    print("🔄 postsListView: 最终确认 - 帖子数量: \(self.postViewModel.posts.count)")
+                    if !self.postViewModel.posts.isEmpty {
+                        print("🔄 postsListView: 最终确认 - 首篇帖子ID: \(self.postViewModel.posts[0].id)")
+                    }
+                    
+                    // 添加第三次刷新，进一步确保UI更新
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        self.forceRefreshID = UUID()
+                        print("🔄 postsListView: 延迟0.3秒后第三次刷新，新ID: \(self.forceRefreshID)")
+                        
+                        // 触发微弱振动提示内容已更新
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.prepare()
+                        generator.impactOccurred(intensity: 0.3)
+                    }
+                }
+            }
+        }
+        // 增加对特定通知的监听
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PostsUpdated"))) { notification in
+            print("🏠 postsListView: 接收到PostsUpdated通知")
+            
+            // 获取通知详情
+            if let userInfo = notification.userInfo,
+               let count = userInfo["newPostsCount"] as? Int {
+                print("🏠 postsListView: PostsUpdated通知显示有\(count)个新帖子")
+                
+                // 延迟一小段时间后强制刷新
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    self.forceRefreshID = UUID()
+                    print("🔄 postsListView: 收到通知后触发刷新，新ID: \(self.forceRefreshID)")
+                }
             }
         }
     }
