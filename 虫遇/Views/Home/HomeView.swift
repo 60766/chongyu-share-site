@@ -632,12 +632,7 @@ class HomeViewNotificationManager: ObservableObject {
             print("⚠️ HomeViewNotificationManager[\(instanceId)]: 警告 - postViewModel已被释放")
         }
         
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else {
-                print("⚠️ HomeViewNotificationManager: self已被释放，无法处理通知")
-                return
-            }
-            
+        DispatchQueue.main.async { [self] in
             print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 正在主线程处理NewPostsGenerated通知，\(count)个新帖子")
             
             if let viewModel = self.postViewModel {
@@ -675,12 +670,7 @@ class HomeViewNotificationManager: ObservableObject {
             print("⚠️ HomeViewNotificationManager[\(instanceId)]: 警告 - postViewModel已被释放")
         }
         
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else {
-                print("⚠️ HomeViewNotificationManager: self已被释放，无法处理通知")
-                return
-            }
-            
+        DispatchQueue.main.async { [self] in
             print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 正在主线程处理PostsUpdated通知，\(count)个新帖子")
             
             if let viewModel = self.postViewModel {
@@ -935,10 +925,10 @@ struct HomeView: View {
                 // 注册为publisher的订阅者，确保数据变化时能收到通知
                 // 这是额外的保障措施，确保能接收到更新
                 postViewModel.objectWillChange
-                    .sink { [weak self] _ in
+                    .sink { _ in
                         print("🏠 HomeView.onAppear中的sink: 收到postViewModel更新")
                         // 强制刷新视图
-                        self?.forceRefreshID = UUID()
+                        forceRefreshID = UUID()
                     }
                     .store(in: &cancellables)
             }
