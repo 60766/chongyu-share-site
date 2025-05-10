@@ -607,16 +607,46 @@ class PostViewModel: ObservableObject {
     /// 添加一组帖子到列表前端
     /// - Parameter newPosts: 要添加的帖子数组
     func addPosts(_ newPosts: [UserPostModel]) {
+        // 记录添加前的帖子数量
+        let oldCount = posts.count
+        print("📊 PostViewModel: 添加前帖子数量 = \(oldCount)")
+        
+        // 先触发objectWillChange，确保订阅者知道数据将要变化
+        self.objectWillChange.send()
+        
         // 将新帖子添加到列表前面
         posts.insert(contentsOf: newPosts, at: 0)
         
+        // 验证添加是否成功
+        let newCount = posts.count
+        let addedCount = newPosts.count
+        print("📊 PostViewModel: 添加后帖子数量 = \(newCount)，应增加 \(addedCount)，实际增加 \(newCount - oldCount)")
+        
+        // 检查第一篇帖子是否就是新添加的第一篇
+        if let firstNewPost = newPosts.first, let firstPost = posts.first {
+            let isFirstPostMatch = firstNewPost.id == firstPost.id
+            print("📊 PostViewModel: 第一篇帖子ID匹配检查 = \(isFirstPostMatch ? "✅成功" : "❌失败")")
+            print("📊 PostViewModel: 第一篇新帖子内容片段: \(firstNewPost.content.prefix(30))...")
+        }
+        
         // 发送通知，通知订阅者帖子列表已更新
+        let userInfo: [String: Any] = [
+            "newPostsCount": newPosts.count,
+            "timestamp": Date().timeIntervalSince1970
+        ]
+        
         NotificationCenter.default.post(
             name: NSNotification.Name("PostsUpdated"),
-            object: nil, 
-            userInfo: ["newPostsCount": newPosts.count]
+            object: self,  // 使用self作为object便于识别通知来源
+            userInfo: userInfo
         )
         
-        print("📱 PostViewModel: 添加了 \(newPosts.count) 个新帖子，当前总数: \(posts.count)")
+        print("📱 PostViewModel: 已发送PostsUpdated通知，添加了 \(newPosts.count) 个新帖子，当前总数: \(posts.count)")
+        
+        // 强制再次触发变更通知，确保UI更新
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+            print("📱 PostViewModel: 已在主线程再次触发objectWillChange")
+        }
     }
 } 

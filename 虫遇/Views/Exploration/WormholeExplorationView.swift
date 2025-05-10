@@ -182,28 +182,72 @@ public struct WormholeExplorationView: View {
                         let typeIndex = typeManager.selectedIndex
                         let posts = postViewModel.generatePostsByCreationType(typeIndex: typeIndex)
                         
-                        // 添加到现有帖子列表的前面
-                        postViewModel.posts.insert(contentsOf: posts, at: 0)
-                        
-                        // 打印生成的帖子数量及内容摘要
-                        generatedPostsCount = posts.count
-                        print("✅ 成功生成 \(posts.count) 个帖子，创作类型: \(typeManager.types[typeIndex])")
-                        for (index, post) in posts.enumerated() {
-                            print("📝 帖子 #\(index+1): \(post.content.prefix(30))...")
+                        // 验证生成的帖子
+                        if posts.isEmpty {
+                            print("⚠️ 严重错误：没有生成任何帖子！")
+                        } else {
+                            print("✅ 成功生成 \(posts.count) 个帖子，创作类型: \(typeManager.types[typeIndex])")
+                            
+                            // 检查帖子内容有效性
+                            for (index, post) in posts.enumerated() {
+                                print("📝 帖子 #\(index+1): ID=\(post.id), 内容=\(post.content.prefix(30))...")
+                            }
+                            
+                            // 捕获当前帖子数量
+                            let beforeCount = postViewModel.posts.count
+                            print("📊 添加前帖子总数: \(beforeCount)")
+                            
+                            // 添加到现有帖子列表的前面
+                            postViewModel.addPosts(posts)
+                            
+                            // 验证添加成功
+                            let afterCount = postViewModel.posts.count
+                            let expectedCount = beforeCount + posts.count
+                            print("📊 添加后帖子总数: \(afterCount)，预期总数: \(expectedCount)")
+                            
+                            if afterCount != expectedCount {
+                                print("⚠️ 错误：帖子添加异常！预期添加后总数\(expectedCount)，实际\(afterCount)")
+                            } else {
+                                print("✅ 帖子添加成功，从索引0开始新增了\(posts.count)个帖子")
+                                
+                                // 确认首篇帖子内容
+                                if !postViewModel.posts.isEmpty {
+                                    let firstPost = postViewModel.posts[0]
+                                    print("📝 当前首篇帖子: ID=\(firstPost.id), 内容=\(firstPost.content.prefix(30))...")
+                                }
+                            }
                         }
                         
                         // 发送通知，让其他视图知道新内容已生成
+                        generatedPostsCount = posts.count
+                        
+                        let userInfo: [String: Any] = [
+                            "count": posts.count,
+                            "typeIndex": typeIndex,
+                            "timestamp": Date().timeIntervalSince1970
+                        ]
+                        
+                        print("📣 准备发送NewPostsGenerated通知，\(posts.count)个新帖子")
+                        
                         NotificationCenter.default.post(
                             name: NSNotification.Name("NewPostsGenerated"),
-                            object: nil,
-                            userInfo: ["count": posts.count]
+                            object: self, // 使用self作为通知来源
+                            userInfo: userInfo
                         )
                         
-                        // 显示成功信息
+                        print("📣 成功发送NewPostsGenerated通知")
+                        
+                        // 显示成功信息一段时间后关闭
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                             withAnimation {
                                 showGeneratedPostsMessage = false
                             }
+                            
+                            // 提供额外的视觉和触觉反馈
+                            let successFeedback = UINotificationFeedbackGenerator()
+                            successFeedback.notificationOccurred(.success)
+                            
+                            print("✨ 所有生成和通知步骤已完成，即将返回主界面")
                         }
                     }
                     .edgesIgnoringSafeArea(.all)

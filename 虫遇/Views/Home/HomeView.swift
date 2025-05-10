@@ -228,7 +228,7 @@ struct CharacterPickerView: View {
             withAnimation(.easeOut(duration: 0.2)) {
                 animateContent = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    isPresented = false
+                    animateContent = false
                 }
             }
         }) {
@@ -575,17 +575,24 @@ struct VirtualCharacterCard: View {
 class HomeViewNotificationManager: ObservableObject {
     private weak var postViewModel: PostViewModel?
     
+    // 添加对象ID，便于区分不同实例
+    private let instanceId = UUID().uuidString.prefix(8)
+    
     init(postViewModel: PostViewModel) {
         self.postViewModel = postViewModel
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 初始化完成，postViewModel设置成功")
         setupNotifications()
     }
     
     deinit {
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 正在析构，移除所有观察者")
         // 移除通知观察者，防止内存泄漏
         NotificationCenter.default.removeObserver(self)
     }
     
     private func setupNotifications() {
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 开始设置通知观察者")
+        
         // 新帖子生成通知
         NotificationCenter.default.addObserver(
             self,
@@ -601,23 +608,93 @@ class HomeViewNotificationManager: ObservableObject {
             name: NSNotification.Name("PostsUpdated"),
             object: nil
         )
+        
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 通知观察者设置完成")
     }
     
     @objc private func handleNewPostsGenerated(_ notification: Notification) {
-        guard let count = notification.userInfo?["count"] as? Int else { return }
+        guard let count = notification.userInfo?["count"] as? Int else { 
+            print("⚠️ HomeViewNotificationManager[\(instanceId)]: 接收到NewPostsGenerated通知但count数据缺失")
+            return 
+        }
         
-        DispatchQueue.main.async {
-            print("🏠 HomeView通知管理器: 接收到新帖子生成通知，\(count)个新帖子")
-            self.postViewModel?.objectWillChange.send()
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 接收到NewPostsGenerated通知，\(count)个新帖子")
+        
+        // 检查发送者
+        if let sender = notification.object {
+            print("🔔 通知发送者: \(type(of: sender))")
+        } else {
+            print("🔔 通知发送者: nil")
+        }
+        
+        // 检查postViewModel是否仍然有效
+        if postViewModel == nil {
+            print("⚠️ HomeViewNotificationManager[\(instanceId)]: 警告 - postViewModel已被释放")
+        }
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                print("⚠️ HomeViewNotificationManager: self已被释放，无法处理通知")
+                return
+            }
+            
+            print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 正在主线程处理NewPostsGenerated通知，\(count)个新帖子")
+            
+            if let viewModel = self.postViewModel {
+                print("🏠 HomeViewNotificationManager[\(self.instanceId)]: postViewModel依然有效，准备触发objectWillChange")
+                viewModel.objectWillChange.send()
+                print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 已触发objectWillChange，当前帖子数量: \(viewModel.posts.count)")
+                
+                // 验证数据一致性
+                if !viewModel.posts.isEmpty {
+                    print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 第一篇帖子内容片段: \(viewModel.posts[0].content.prefix(30))...")
+                }
+            } else {
+                print("⚠️ HomeViewNotificationManager[\(self.instanceId)]: 严重错误 - 无法访问postViewModel")
+            }
         }
     }
     
     @objc private func handlePostsUpdated(_ notification: Notification) {
-        guard let count = notification.userInfo?["newPostsCount"] as? Int else { return }
+        guard let count = notification.userInfo?["newPostsCount"] as? Int else { 
+            print("⚠️ HomeViewNotificationManager[\(instanceId)]: 接收到PostsUpdated通知但count数据缺失")
+            return 
+        }
         
-        DispatchQueue.main.async {
-            print("🏠 HomeView通知管理器: 接收到帖子更新通知，\(count)个新帖子已添加")
-            self.postViewModel?.objectWillChange.send()
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 接收到PostsUpdated通知，\(count)个新帖子")
+        
+        // 检查发送者
+        if let sender = notification.object {
+            print("🔔 通知发送者: \(type(of: sender))")
+        } else {
+            print("🔔 通知发送者: nil")
+        }
+        
+        // 检查postViewModel是否仍然有效
+        if postViewModel == nil {
+            print("⚠️ HomeViewNotificationManager[\(instanceId)]: 警告 - postViewModel已被释放")
+        }
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                print("⚠️ HomeViewNotificationManager: self已被释放，无法处理通知")
+                return
+            }
+            
+            print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 正在主线程处理PostsUpdated通知，\(count)个新帖子")
+            
+            if let viewModel = self.postViewModel {
+                print("🏠 HomeViewNotificationManager[\(self.instanceId)]: postViewModel依然有效，准备触发objectWillChange")
+                viewModel.objectWillChange.send()
+                print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 已触发objectWillChange，当前帖子数量: \(viewModel.posts.count)")
+                
+                // 验证数据一致性
+                if !viewModel.posts.isEmpty {
+                    print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 第一篇帖子内容片段: \(viewModel.posts[0].content.prefix(30))...")
+                }
+            } else {
+                print("⚠️ HomeViewNotificationManager[\(self.instanceId)]: 严重错误 - 无法访问postViewModel")
+            }
         }
     }
 }
@@ -670,6 +747,18 @@ struct HomeView: View {
     
     // 通知管理器
     @StateObject private var notificationManager: HomeViewNotificationManager
+    
+    // 添加强制刷新状态
+    @State private var forceRefreshID = UUID()
+    
+    // 添加存储subscribers的属性
+    private var cancellables = Set<AnyCancellable>()
+    
+    // 确保在deinit中清理
+    deinit {
+        cancellables.removeAll()
+        print("🏠 HomeView: deinit")
+    }
     
     // 移除原来的初始化方法，改用新的初始化器
     init() {
@@ -776,6 +865,7 @@ struct HomeView: View {
                         
                         // 内容区域
                         contentSection
+                            .id(forceRefreshID) // 添加动态ID实现强制刷新
                     }
                 }
                 .coordinateSpace(name: "scroll")
@@ -783,6 +873,33 @@ struct HomeView: View {
                     // 根据滚动位置控制导航栏显示
                     withAnimation {
                         showNavBar = value < 50
+                    }
+                }
+                
+                // 添加手动刷新按钮（可选，仅用于调试）
+                VStack {
+                    Spacer()
+                    
+                    HStack {
+                        Spacer()
+                        
+                        Button(action: {
+                            print("🔄 手动强制刷新HomeView")
+                            // 更新ID触发视图刷新
+                            forceRefreshID = UUID()
+                            // 强制触发数据模型更新
+                            postViewModel.objectWillChange.send()
+                        }) {
+                            Image(systemName: "arrow.clockwise.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                                .shadow(radius: 3)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 80) // 避免遮挡TabBar
                     }
                 }
                 
@@ -814,6 +931,22 @@ struct HomeView: View {
                         contentAppeared = true
                     }
                 }
+                
+                // 检查PostViewModel状态
+                print("🏠 HomeView.onAppear: 当前帖子数量 = \(postViewModel.posts.count)")
+                if !postViewModel.posts.isEmpty {
+                    print("🏠 HomeView.onAppear: 首篇帖子ID = \(postViewModel.posts[0].id)")
+                }
+                
+                // 注册为publisher的订阅者，确保数据变化时能收到通知
+                // 这是额外的保障措施，确保能接收到更新
+                postViewModel.objectWillChange
+                    .sink { [weak self] _ in
+                        print("🏠 HomeView.onAppear中的sink: 收到postViewModel更新")
+                        // 强制刷新视图
+                        self?.forceRefreshID = UUID()
+                    }
+                    .store(in: &cancellables)
             }
             // 使用水平模态过渡代替全屏覆盖
             .fullscreenHorizontalModal(
@@ -1035,6 +1168,21 @@ struct HomeView: View {
     private var postsListView: some View {
         ForEach(Array(postViewModel.posts.enumerated()), id: \.element.id) { index, post in
             postCardView(for: post, at: index)
+                .id(post.id) // 添加显式ID，帮助SwiftUI识别视图身份变化
+                .onAppear {
+                    // 在视图出现时打印日志，帮助调试
+                    if index == 0 {
+                        print("🏠 首篇帖子已显示: \(post.id) - \(post.content.prefix(20))...")
+                    }
+                }
+        }
+        .onReceive(postViewModel.objectWillChange) { _ in
+            // 接收到模型变更信号时添加额外日志
+            print("🏠 HomeView: 接收到postViewModel的objectWillChange信号")
+            print("🏠 HomeView: 当前帖子数量: \(postViewModel.posts.count)")
+            if !postViewModel.posts.isEmpty {
+                print("🏠 HomeView: 首篇帖子: \(postViewModel.posts[0].content.prefix(20))...")
+            }
         }
     }
     
