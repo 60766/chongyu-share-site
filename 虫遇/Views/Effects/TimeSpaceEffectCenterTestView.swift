@@ -30,14 +30,17 @@ public struct TimeSpaceEffectCenterTestView: View {
                         )
                     )
                     .frame(width: 200, height: 200)
-                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    .position(
+                        x: geometry.frame(in: .global).midX,
+                        y: geometry.frame(in: .global).midY + geometry.size.height * 0.25 - 290
+                    )
                     .opacity(showEffect ? 0 : 1) // 特效出现时隐藏黑洞
                     .onAppear {
                         // 记录黑洞中心位置
                         let centerX = geometry.frame(in: .global).midX
-                        // 向上移动中心点位置，使特效从模拟的随机漫游按钮位置开始
-                        // 保持与WormholeExplorationView中相同的偏移量
-                        let centerY = geometry.frame(in: .global).midY - geometry.size.height * 0.1
+                        // 向下移动中心点位置，使特效显示在屏幕下半部分
+                        // 与WormholeExplorationView中保持相同的偏移量，并额外向下移动
+                        let centerY = geometry.frame(in: .global).midY + geometry.size.height * 0.25 - 290
                         blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
                         
                         print("测试页面黑洞中心位置设置为: x=\(centerX), y=\(centerY)")

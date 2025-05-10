@@ -223,12 +223,15 @@ public struct CreationTypeButton: View {
         
         // 按钮标题 - 优化文字排版
             Text(typeManager.types[index])
-            .font(.system(size: fontSize, weight: isSelected ? .medium : .regular))
-                .foregroundColor(.white)
-            .opacity(isSelected ? 1.0 : 0.7) // 提高对比度
-            .padding(.top, index == 0 ? 3 : 2) // 随机漫游按钮文字间距稍大
-            // 添加极微小的文字阴影，增强可读性
+            .font(.system(size: fontSize, weight: isSelected ? .medium : .regular, design: .rounded))
+            .foregroundColor(.white)
+            .opacity(isSelected ? 1.0 : 0.7)
+            .tracking(0.6) // 增加字间距提升科技感
+            .padding(.top, index == 0 ? 3 : 2)
+            // 增强可读性的阴影效果
             .shadow(color: Color.black.opacity(0.5), radius: 1, x: 0, y: 0.5)
+            // 选中时添加轻微辉光效果
+            .shadow(color: isSelected ? Color.white.opacity(0.3) : Color.clear, radius: 2, x: 0, y: 0)
     }
     
     public init(index: Int, isSelected: Bool, size: CGFloat, fontSize: CGFloat) {
@@ -394,23 +397,6 @@ public struct BlackHoleView: View {
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
             }
             .buttonStyle(PlainButtonStyle()) // 使用Plain样式避免默认按钮效果
-            .id("blackHoleCenterButton") // 添加唯一ID以便精确定位
-            .background(
-                GeometryReader { geometry -> Color in
-                    // 利用GeometryEffect发出位置信息
-                    DispatchQueue.main.async {
-                        let center = CGPoint(
-                            x: geometry.frame(in: .global).midX,
-                            y: geometry.frame(in: .global).midY
-                        )
-                        NotificationCenter.default.post(
-                            name: Notification.Name("BlackHoleCenterPositionUpdated"),
-                            object: center
-                        )
-                    }
-                    return Color.clear
-                }
-            )
             
             // 类型文字 - 放置在按钮下方，作为单独元素
             Text(typeName)
@@ -725,11 +711,16 @@ public struct CreationTypeButtonsView: View {
             
             // 按钮文字
             Text(typeManager.types[index])
-                .font(.system(size: 12, weight: isSelected ? .medium : .regular))  // 文字大小12
+                .font(.system(size: 12, weight: isSelected ? .medium : .regular, design: .rounded))
                 .foregroundColor(.white)
                 .opacity(isSelected ? 1.0 : 0.7)
+                .tracking(0.5) // 增加字间距，提升科技感
                 .lineLimit(1)
                 .fixedSize(horizontal: false, vertical: true)
+                // 添加轻微阴影效果增强可读性
+                .shadow(color: Color.black.opacity(0.5), radius: 1, x: 0, y: 0.5)
+                // 选中时添加微弱辉光效果
+                .shadow(color: isSelected ? Color.white.opacity(0.2) : Color.clear, radius: 1.5, x: 0, y: 0)
         }
         .frame(width: 65)  // 整体宽度65
         .offset(y: animateButtons ? 0 : 30)

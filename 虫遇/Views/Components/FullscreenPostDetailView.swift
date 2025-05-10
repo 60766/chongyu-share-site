@@ -649,8 +649,8 @@ struct FullscreenPostDetailView: View {
                                                                 // 预加载图片和评论
                                                                 Task { 
                                                                     await Task.yield() // 让UI优先更新
-                                                                    await preloadImagesForPostAsync(nextPost)
-                                                                    await preloadCommentsForPostAsync(nextPost)
+                                                                    _ = await preloadImagesForPostAsync(nextPost)
+                                                                    _ = await preloadCommentsForPostAsync(nextPost)
                                                                 }
                                                             }
                                                         }
@@ -666,8 +666,8 @@ struct FullscreenPostDetailView: View {
                                                                 // 预加载图片和评论
                                                                 Task {
                                                                     await Task.yield() // 让UI优先更新
-                                                                    await preloadImagesForPostAsync(prevPost)
-                                                                    await preloadCommentsForPostAsync(prevPost)
+                                                                    _ = await preloadImagesForPostAsync(prevPost)
+                                                                    _ = await preloadCommentsForPostAsync(prevPost)
                                                                 }
                                                             }
                                                         }
@@ -1011,11 +1011,13 @@ struct FullscreenPostDetailView: View {
                             
                             // 文字内容 - 优化字重和透明度
                             Text("每种内容类型将带你进入不同的时空交流维度")
-                                .font(.system(size: 13, weight: .light))
-                                .foregroundColor(.white.opacity(0.45))  // 微调透明度
+                                .font(.system(size: 13, weight: .light, design: .rounded))
+                                .foregroundColor(.white.opacity(0.5))
+                                .tracking(0.8) // 增加字间距，提升未来感
                                 .multilineTextAlignment(.center)
-                                .frame(width: 300)  // 文字宽度稍小于背景
-                                .shadow(color: Color.black.opacity(0.5), radius: 0.5, x: 0, y: 0.5) // 极微小的阴影增强可读性
+                                .frame(width: 300)
+                                .shadow(color: Color.black.opacity(0.5), radius: 0.5, x: 0, y: 0.5)
+                                .shadow(color: Color.white.opacity(0.1), radius: 2, x: 0, y: 0) // 微弱白色辉光
                         }
                         .padding(.bottom, 16)  // 减少与按钮的间距
                         
@@ -1028,7 +1030,7 @@ struct FullscreenPostDetailView: View {
                         // 主按钮 - 开启时空对话
                         Button(action: {
                             // 记录操作开始时间，用于防止可能的重复触发
-                            let operationStartTime = Date()
+                            _ = Date() // 如果后续需要，可重新启用
                             
                             // 立即重置所有相关状态
                             showWormholeSwipeIndicator = false
@@ -1049,8 +1051,10 @@ struct FullscreenPostDetailView: View {
                                     .symbolRenderingMode(.hierarchical) // 使用分层渲染增强图标细节
                                 
                                 Text("启动虫洞捕捉")
-                                    .font(.system(size: 18, weight: .semibold))  // 增大文字尺寸
-                                    .kerning(0.3) // 添加轻微字间距
+                                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                    .tracking(1.2) // 增加字间距，提升未来科技感
+                                    .kerning(0.5) // 精细调整字符间距
+                                    .shadow(color: Color.black.opacity(0.2), radius: 0.5, x: 0, y: 0.5) // 微小阴影增强可读性
                             }
                             .foregroundColor(.black)
                             .frame(height: 56)  // 增加按钮高度
@@ -1321,7 +1325,7 @@ struct FullscreenPostDetailView: View {
                     // 计算黑洞中心位置 - 位于屏幕中央偏上的位置
                     let centerX = geometry.size.width / 2
                     // 向上调整Y轴位置，使特效从随机漫游按钮位置开始
-                    let centerY = geometry.size.height / 2 - geometry.size.height * 0.1
+                    let centerY = geometry.size.height / 2 + geometry.size.height * 0.25 - 290 // 修改为与其他文件一致
                     let blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
                     
                     // 使用自定义位置的TimeSpaceEffectView
@@ -2009,12 +2013,12 @@ struct FullscreenPostDetailView: View {
         
         // 优化2：使用低优先级线程进行预加载，避免与UI动画竞争资源
         Task(priority: .background) {
-            // 预加载操作
-            async let imagesTask = preloadImagesForPostAsync(nextPost)
-            async let commentsTask = preloadCommentsForPostAsync(nextPost)
+            // 预加载操作 - 确保获取异步函数的正确返回值
+            let imagesTask = await preloadImagesForPostAsync(nextPost)
+            let commentsTask = await preloadCommentsForPostAsync(nextPost)
             
-            // 非阻塞式等待 - 继续UI动画而不等待预加载完成
-            _ = await (imagesTask, commentsTask)
+            // 不再需要额外的等待，因为上面已经使用了 await
+            print("预加载完成：图片(\(imagesTask ? "成功" : "完成"))，评论(\(commentsTask ? "成功" : "完成"))")
         }
         
         // 优化3：使用单一动画队列而不是嵌套的延迟调用，减少动画竞争
@@ -2130,7 +2134,7 @@ struct FullscreenPostDetailView: View {
     }
     
     // 优化异步版本的图片预加载 - 使用批处理减少线程切换
-    private func preloadImagesForPostAsync(_ post: UserPostModel) async {
+    private func preloadImagesForPostAsync(_ post: UserPostModel) async -> Bool {
         // 创建一个批处理组，减少过多的线程切换
         var batchCounter = 0
         let batchSize = 3
@@ -2148,10 +2152,12 @@ struct FullscreenPostDetailView: View {
                 batchCounter = 0
             }
         }
+        
+        return true
     }
     
     // 优化异步版本的评论预加载
-    private func preloadCommentsForPostAsync(_ post: UserPostModel) async {
+    private func preloadCommentsForPostAsync(_ post: UserPostModel) async -> Bool {
         // 预加载评论数据
         _ = post.getTotalCommentsCount()
         let topLevelComments = post.getTopLevelComments()
@@ -2172,6 +2178,8 @@ struct FullscreenPostDetailView: View {
                 batchCounter = 0
             }
         }
+        
+        return true
     }
     
     // 恢复原位 - 当滑动不满足触发翻页条件时
@@ -2261,10 +2269,10 @@ struct FullscreenPostDetailView: View {
                     viewModel.preloadNextPost(nextPost)
                     
                     // 预加载图片和评论 - 使用新的异步函数
-                    await preloadImagesForPostAsync(nextPost)
+                    _ = await preloadImagesForPostAsync(nextPost)
                     print("⭐️ 下一篇帖子图片预加载完成: \(nextPost.id)")
                     
-                    await preloadCommentsForPostAsync(nextPost)
+                    _ = await preloadCommentsForPostAsync(nextPost)
                     print("⭐️ 下一篇帖子评论预加载完成: \(nextPost.id)")
                 }
             } else {
@@ -2302,10 +2310,10 @@ struct FullscreenPostDetailView: View {
                     viewModel.preloadPrevPost(prevPost)
                     
                     // 预加载图片和评论 - 使用新的异步函数
-                    await preloadImagesForPostAsync(prevPost)
+                    _ = await preloadImagesForPostAsync(prevPost)
                     print("⭐️ 上一篇帖子图片预加载完成: \(prevPost.id)")
                     
-                    await preloadCommentsForPostAsync(prevPost)
+                    _ = await preloadCommentsForPostAsync(prevPost)
                     print("⭐️ 上一篇帖子评论预加载完成: \(prevPost.id)")
                 }
             } else {

@@ -1,7 +1,8 @@
 import SwiftUI
 import Foundation
 
-// TimeSpaceEffectCenterTestView 已经在同一个模块中，不需要导入自己的模块
+// 导入测试视图
+@_implementationOnly import struct 虫遇.TimeSpaceEffectCenterTestView
 
 /**
  * 虫洞探索主视图
@@ -48,10 +49,8 @@ public struct WormholeExplorationView: View {
                     .onAppear {
                         // 计算黑洞中心位置
                         let centerX = geometry.frame(in: .global).midX
-                        let centerY = geometry.frame(in: .global).midY + geometry.size.height * 0.25 - 290
+                        let centerY = geometry.frame(in: .global).midY
                         blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
-                        
-                        print("黑洞中心位置设置为: x=\(centerX), y=\(centerY)")
                     }
             }
             
@@ -132,6 +131,21 @@ public struct WormholeExplorationView: View {
                 if let centerPosition = blackHoleCenterPosition {
                     // 如果黑洞中心位置可用，则使用它作为特效中心
                     TimeSpaceEffectView(isActive: $isShowingSpaceEffect, centerPosition: centerPosition) {
+                        // 当特效完成后，重置过渡状态
+                        withAnimation {
+                            isTransitioning = false
+                        }
+                        
+                        // 可以添加其他逻辑，例如导航到新页面等
+                        print("虫洞捕捉完成")
+                    }
+                    .edgesIgnoringSafeArea(.all)
+                    // 确保特效位于最顶层且全屏显示
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(100) // 确保在最上层显示
+                } else {
+                    // 如果黑洞中心位置不可用，则使用默认中心位置
+                    TimeSpaceEffectView(isActive: $isShowingSpaceEffect) {
                         // 当特效完成后，重置过渡状态
                         withAnimation {
                             isTransitioning = false

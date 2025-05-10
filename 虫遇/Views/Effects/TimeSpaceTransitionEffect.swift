@@ -1,6 +1,16 @@
 import SwiftUI
-// 修改导入方式
-import Utils
+// 修改导入方式以直接引用SwipeDirection
+// 直接在文件中定义SwipeDirection
+
+/**
+ * 滑动方向枚举
+ * 控制转场过渡的方向
+ */
+public enum SwipeDirection {
+    case left
+    case right
+    case none
+}
 
 /**
  * 时空粒子效果视图
@@ -529,14 +539,12 @@ struct TimeSpaceTransitionDemo: View {
                 
                 // 启动虫洞捕捉按钮
                 Button(action: {
-                    // 记录按钮位置
-                    if let window = UIApplication.shared.windows.first {
-                        // 获取按钮在屏幕上的位置
-                        buttonPosition = CGPoint(
-                            x: UIScreen.main.bounds.width / 2,
-                            y: UIScreen.main.bounds.height * 0.8
-                        )
-                    }
+                    // 获取按钮位置 - 使用更新的API
+                    // 直接设置按钮在屏幕中心的位置，不再依赖windows API
+                    buttonPosition = CGPoint(
+                        x: UIScreen.main.bounds.width / 2,
+                        y: UIScreen.main.bounds.height * 0.8
+                    )
                     
                     // 触发触觉反馈
                     let feedback = UIImpactFeedbackGenerator(style: .medium)
