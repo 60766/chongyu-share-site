@@ -156,8 +156,9 @@ struct FullscreenPostDetailView: View {
     // 添加新内容状态变量
     @State private var showAddContentView: Bool = false
     @State private var isLastPost: Bool = false
+    @State private var isFirstPost: Bool = false
     
-    // 边界状态变量
+    // 状态变量
     @State private var hasNextPost: Bool = true
     @State private var hasPrevPost: Bool = true
     
@@ -872,20 +873,36 @@ struct FullscreenPostDetailView: View {
                             // 处理右滑动作
                             print("⭐️ 处理普通右滑动作")
                             
+                            // 检查是否为第一篇帖子，如果是也显示探索虫洞深处页面
+                            if isFirstPost {
+                                print("⭐️ 第一篇帖子右滑，显示虫洞探索页面")
+                                
+                                // 添加振动反馈
+                                let feedback = UIImpactFeedbackGenerator(style: .medium)
+                                feedback.impactOccurred()
+                                
+                                // 显示虫洞探索页面
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    dragOffset = 0
+                                    showAddContentView = true
+                                }
+                                return
+                            }
+                            // 对于非首篇帖子，保持原有的向前翻页逻辑
                             // 直接尝试获取并显示上一篇帖子，简化决策
-                            if let onPrevPost = onPrevPost, let directPrevPost = onPrevPost(viewModel.post.id) {
+                            else if let onPrevPost = onPrevPost, let directPrevPost = onPrevPost(viewModel.post.id) {
                                 print("⭐️ 使用上一篇帖子: \(directPrevPost.id)")
                                 let generator = UIImpactFeedbackGenerator(style: .light)
                                 generator.impactOccurred()
                                 performPageTransition(direction: .right, nextPost: directPrevPost, velocity: speedAbsolute)
-                            } 
+                            }
                             // 如果没有找到上一篇但有缓存
                             else if let prevPost = nextPagePost {
                                 print("⭐️ 使用缓存的上一篇帖子: \(prevPost.id)")
                                 let generator = UIImpactFeedbackGenerator(style: .light)
                                 generator.impactOccurred()
                                 performPageTransition(direction: .right, nextPost: prevPost, velocity: speedAbsolute)
-                            } 
+                            }
                             // 没有上一篇
                             else {
                                 print("⭐️ 没有上一篇帖子，恢复原位")
@@ -1169,7 +1186,7 @@ struct FullscreenPostDetailView: View {
                                 .foregroundColor(.white.opacity(0.8))
                                 .padding(12)
                                 .background(Circle().fill(Color.black.opacity(0.3)))
-                                .offset(x: 20 + dragOffset * 0.1) // 跟随拖动稍微移动
+                                .offset(x: isDragging ? (20 + dragOffset * 0.1) : 20) // 拖动时跟随移动，提示时保持固定
                                 .opacity(isDragging ? min(1.0, dragOffset / 30) : 0.8) // 动态不透明度
                             
                             Spacer()
@@ -1177,6 +1194,26 @@ struct FullscreenPostDetailView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.leading, 16)
                         .opacity(showWormholeSwipeIndicator || (isDragging && dragOffset > 10) ? 0.8 : 0)
+                        .animation(.easeOut(duration: 0.2), value: showWormholeSwipeIndicator || isDragging)
+                    }
+                    
+                    // 左滑指示器 - 仅在开始拖动时显示或短暂提示时显示
+                    if (isDragging && dragOffset < 0 && swipeDirection == .left) || showWormholeSwipeIndicator {
+                        HStack {
+                            Spacer()
+                            
+                            // 右侧箭头指示器
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 28, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                                .padding(12)
+                                .background(Circle().fill(Color.black.opacity(0.3)))
+                                .offset(x: isDragging ? (-20 + dragOffset * 0.1) : -20) // 拖动时跟随移动，提示时保持固定
+                                .opacity(isDragging ? min(1.0, abs(dragOffset) / 30) : 0.8) // 动态不透明度
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.trailing, 16)
+                        .opacity(showWormholeSwipeIndicator || (isDragging && dragOffset < -10) ? 0.8 : 0)
                         .animation(.easeOut(duration: 0.2), value: showWormholeSwipeIndicator || isDragging)
                     }
                 }
@@ -1197,8 +1234,8 @@ struct FullscreenPostDetailView: View {
                             
                             // 只处理水平方向的滑动，并添加水平性检查
                             if abs(value.translation.height) < abs(value.translation.width) * 0.8 {
-                                // 对于右滑, 确保水平滑动为主
-                                if value.translation.width > 0 {
+                                // 对于右滑和左滑，确保水平滑动为主
+                                if value.translation.width > 0 || value.translation.width < 0 {
                                     // 使用与主视图完全相同的拖动偏移量计算方式
                                     let rawOffset = value.translation.width
                                     let screenWidth = UIScreen.main.bounds.width
@@ -1229,14 +1266,14 @@ struct FullscreenPostDetailView: View {
                                             generator.impactOccurred(intensity: 0.3)
                                         }
                                         
-                                        // 更新滑动方向为右滑
-                                        swipeDirection = .right
+                                        // 更新滑动方向
+                                        swipeDirection = rawOffset > 0 ? .right : .left
                                         
                                         // 显示时空效果 - 与主视图相同的时空效果
                                         if abs(dampedOffset) > screenWidth * 0.15 && !showingTimeSpaceEffect {
                                             withAnimation(.easeIn(duration: 0.1)) {
                                                 showingTimeSpaceEffect = true
-                                                timeSpaceDirection = .right
+                                                timeSpaceDirection = swipeDirection
                                             }
                                         }
                                     }
@@ -1259,16 +1296,21 @@ struct FullscreenPostDetailView: View {
                             // 使用与主视图相同的右滑判断逻辑
                             let validRightSwipe = finalOffset > screenWidth * 0.12 || (finalOffset > screenWidth * 0.05 && velocityX > 150)
                             
+                            // 添加左滑判断逻辑，与主视图保持一致
+                            let validLeftSwipe = finalOffset < -screenWidth * 0.08 || (finalOffset < -screenWidth * 0.02 && velocityX < -100)
+                            
                             // 重置拖动状态 - 提前重置，防止状态锁定
                             isDragging = false
                             
                             // 记录详细调试日志
-                            print("⭐️ 虫洞探索页面滑动结束 - validRightSwipe=\(validRightSwipe), dragOffset=\(finalOffset), velocityX=\(velocityX)")
+                            print("⭐️ 虫洞探索页面滑动结束 - validRightSwipe=\(validRightSwipe), validLeftSwipe=\(validLeftSwipe), dragOffset=\(finalOffset), velocityX=\(velocityX)")
                             
-                            // 强制右滑阈值，与主视图保持一致
+                            // 强制过渡阈值，与主视图保持一致
                             let forceTransitionThreshold = screenWidth * 0.4
                             let forceRightTransition = finalOffset > forceTransitionThreshold
+                            let forceLeftTransition = finalOffset < -forceTransitionThreshold
                             
+                            // 右滑返回
                             if validRightSwipe || forceRightTransition {
                                 print("⭐️ 虫洞探索页面右滑返回")
                                 
@@ -1317,7 +1359,55 @@ struct FullscreenPostDetailView: View {
                                         }
                                     }
                                 }
-                            } else {
+                            }
+                            // 左滑返回
+                            else if validLeftSwipe || forceLeftTransition {
+                                print("⭐️ 虫洞探索页面左滑返回")
+                                
+                                // 提供相同的触觉反馈
+                                let feedback = UIImpactFeedbackGenerator(style: .light)
+                                feedback.impactOccurred()
+                                
+                                // 关闭添加内容页面，使用与页面转场相同的动画效果
+                                isTransitioning = true
+                                
+                                // 时间参数与页面转场相同
+                                let initialEffectDuration: Double = 0.12
+                                let slideOutDuration: Double = 0.2
+                                
+                                // 使用与页面转场相同的动画序列
+                                withAnimation(.easeIn(duration: initialEffectDuration)) {
+                                    showingTimeSpaceEffect = true
+                                    timeSpaceDirection = .left
+                                }
+                                
+                                // 第二阶段动画
+                                DispatchQueue.main.asyncAfter(deadline: .now() + initialEffectDuration) {
+                                    // 滑出动画 - 向左滑出
+                                    withAnimation(.spring(response: slideOutDuration, dampingFraction: 0.85, blendDuration: 0.08)) {
+                                        dragOffset = -screenWidth // 向左滑出
+                                        showingTimeSpaceEffect = false
+                                    }
+                                    
+                                    // 动画完成后执行状态重置
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + slideOutDuration) {
+                                        // 关闭虫洞探索页面
+                                        showAddContentView = false
+                                        
+                                        // 重置所有状态
+                                        dragOffset = 0
+                                        swipeDirection = .none
+                                        isTransitioning = false
+                                        
+                                        // 恢复完整状态
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                            // 重置边界
+                                            checkBoundaries()
+                                        }
+                                    }
+                                }
+                            } 
+                            else {
                                 // 不满足右滑条件，复位
                                 resetPosition()
                             }
@@ -1343,6 +1433,26 @@ struct FullscreenPostDetailView: View {
                                 if showWormholeSwipeIndicator && !isDragging {
                                     withAnimation(.easeOut(duration: 0.3)) {
                                         showWormholeSwipeIndicator = false
+                                    }
+                                }
+                            }
+                            
+                            // 依次显示左右滑动提示
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                                // 确保用户没有正在滑动
+                                if showAddContentView && !isDragging && dragOffset == 0 {
+                                    withAnimation(.easeIn(duration: 0.3)) {
+                                        showWormholeSwipeIndicator = true
+                                    }
+                                    
+                                    // 短暂提示后隐藏
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                                        // 再次检查状态，避免与用户操作冲突
+                                        if showWormholeSwipeIndicator && !isDragging {
+                                            withAnimation(.easeOut(duration: 0.3)) {
+                                                showWormholeSwipeIndicator = false
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -2575,6 +2685,7 @@ struct FullscreenPostDetailView: View {
         hasNextPost = nextPostExists
         hasPrevPost = prevPostExists
         isLastPost = reallyLastPost
+        isFirstPost = !prevPostExists  // 如果没有上一篇帖子，则为第一篇
         
         // 确保状态一致性
         if hasNextPost && isLastPost {
@@ -2587,7 +2698,7 @@ struct FullscreenPostDetailView: View {
         
         // 如果状态发生了变化，记录日志
         if oldHasNextPost != hasNextPost || oldHasPrevPost != hasPrevPost || oldIsLastPost != isLastPost {
-            print("⭐️ 边界状态已更新: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost), isLastPost=\(isLastPost)")
+            print("⭐️ 边界状态已更新: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost), isLastPost=\(isLastPost), isFirstPost=\(isFirstPost)")
         }
     }
     
