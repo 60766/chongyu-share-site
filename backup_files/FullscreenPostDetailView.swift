@@ -942,7 +942,7 @@ struct FullscreenPostDetailView: View {
                         }
                     }
                     
-                    VStack(alignment: .center, spacing: 0) {
+                    VStack(spacing: 0) {
                         // 顶部区域 - 使用ZStack而不是HStack进行绝对定位
                         ZStack(alignment: .center) {
                             // 透明背景确保布局稳定
@@ -971,26 +971,25 @@ struct FullscreenPostDetailView: View {
                         Spacer()
                             .frame(minHeight: 0)
                         
-                        // 顶部间距 - 保持原有间距
+                        // 顶部间距 - 大幅增加空间
                         Spacer()
                             .frame(height: UIScreen.main.bounds.height * 0.05)
                         
-                        // 黑洞主视觉 - 保持原有高度
+                        // 黑洞主视觉 - 进一步减小高度
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.38)
+                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 增大黑洞视觉比例
                             .padding(.bottom, 16)
-                            .frame(width: UIScreen.main.bounds.width) // 确保黑洞视图宽度充满屏幕
                         
-                        // 固定高度的Spacer，保持原有间距
+                        // 删除原有的两行说明文字
+                        
+                        // 使用灵活的Spacer自动分配空间
                         Spacer()
-                            .frame(height: UIScreen.main.bounds.height * 0.04)
+                            .frame(minHeight: 0, idealHeight: UIScreen.main.bounds.height * 0.04)
                         
-                        // 文字提示和选择组件的容器 - 使用固定位置
+                        // 将说明文字移到按钮上方，并添加视觉增强效果
                         ZStack {
-                            // 文字内容 - 仅在非虫洞共鸣时显示
-                            ZStack {
-                                // 背景轻微高亮
+                            // 背景轻微高亮 - 优化为渐变并添加精致的边框
                             RoundedRectangle(cornerRadius: 15)
                                 .fill(
                                     LinearGradient(
@@ -1018,59 +1017,110 @@ struct FullscreenPostDetailView: View {
                                 )
                                 .frame(width: 332, height: 32)
                             
-                                // 文字内容
+                            // 文字内容 - 优化字重和透明度
                             Text("每种内容类型将带你进入不同的时空交流维度")
                                 .font(.system(size: 13, weight: .light, design: .rounded))
                                 .foregroundColor(.white.opacity(0.5))
-                                    .tracking(0.8)
+                                .tracking(0.8) // 增加字间距，提升未来感
                                 .multilineTextAlignment(.center)
                                 .frame(width: 300)
                                 .shadow(color: Color.black.opacity(0.5), radius: 0.5, x: 0, y: 0.5)
-                                    .shadow(color: Color.white.opacity(0.1), radius: 2, x: 0, y: 0)
-                            }
-                            .opacity(creationTypeManager.selectedIndex != 0 ? 1.0 : 0.0)
-                            
-                            // 情境和期望选择组件 - 仅在虫洞共鸣时显示（优化版本）
-                            if creationTypeManager.selectedIndex == 0 {
-                                // 构建获取黑洞视图中心坐标的几何读取器
-                                GeometryReader { geometry in
-                                    // 使用自适应布局管理器计算黑洞中心点坐标
-                                    let blackHoleCenterX = geometry.size.width / 2
-                                    let layoutManager = AdaptiveLayoutManager.shared
-                                    let blackHoleCenterY = geometry.size.height * layoutManager.blackHoleCenterYFactor()
-                                    
-                                    // 获取当前设备方向 - 移除未使用的变量
-                                    // let isPortrait = AdaptiveLayoutManager.Orientation.current() == .portrait
-                                    
-                                    SituationExpectationView(
-                                        selectedSituation: $selectedSituation,
-                                        selectedExpectation: $selectedExpectation,
-                                        situations: situations,
-                                        expectations: expectations,
-                                        centerPosition: CGPoint(x: blackHoleCenterX, y: blackHoleCenterY) // 传入计算得到的黑洞中心点
-                                    )
-                                    .frame(width: geometry.size.width, height: geometry.size.width) // 使用屏幕宽度作为高度，创建正方形布局
+                                .shadow(color: Color.white.opacity(0.1), radius: 2, x: 0, y: 0) // 微弱白色辉光
+                        }
+                        .padding(.bottom, 16)  // 减少与按钮的间距
+                        // 仅当不是虫洞共鸣时才显示
+                        .opacity(creationTypeManager.selectedIndex != 0 ? 1.0 : 0.0)
+                        .frame(height: creationTypeManager.selectedIndex != 0 ? nil : 0)
+                        
+                        // 使用ZStack来管理重叠布局，确保按钮位置不变
+                        ZStack(alignment: .top) {
+                            // 创作类型按钮 - 保持位置完全不变
+                            VStack {
+                                // 添加足够的空间，确保情境和期望选择器有足够位置
+                                if creationTypeManager.selectedIndex == 0 {
+                                    Spacer()
+                                        .frame(height: 90)
                                 }
-                                .frame(height: UIScreen.main.bounds.height * 0.38) // 匹配黑洞视图的高度
-                                .offset(y: AdaptiveLayoutManager.shared.componentYOffset()) // 使用自适应布局管理器计算偏移量
-                                .zIndex(200) // 确保按钮显示在黑洞上层
-                                // 添加设备方向变化监听
-                                .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
-                                    // 方向变化时触发重新布局
-                                    // 这里不需要额外代码，SwiftUI会自动重新计算GeometryReader中的值
+                                
+                                CreationTypeButtonsView()
+                                    .environmentObject(CreationTypeManager.shared)
+                                    .frame(height: 70)  // 保持按钮高度
+                            }
+                            
+                            // 情境和期望选择组件 - 放在四个按钮上方
+                            if creationTypeManager.selectedIndex == 0 {
+                                VStack(spacing: 6) {
+                                    // 第一行情境按钮
+                                    HStack(spacing: 12) {
+                                        ForEach(situations, id: \.self) { situation in
+                                            Button(action: {
+                                                withAnimation(.easeInOut(duration: 0.2)) {
+                                                    selectedSituation = situation
+                                                }
+                                                // 触觉反馈
+                                                let generator = UIImpactFeedbackGenerator(style: .light)
+                                                generator.impactOccurred(intensity: 0.3)
+                                            }) {
+                                                Text(situation)
+                                                    .font(.system(size: 13, weight: .light, design: .rounded))
+                                                    .foregroundColor(.white.opacity(selectedSituation == situation ? 0.9 : 0.5))
+                                                    .padding(.horizontal, 12)
+                                                    .padding(.vertical, 4)
+                                                    .background(
+                                                        Capsule()
+                                                            .fill(selectedSituation == situation 
+                                                                  ? Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.3) 
+                                                                  : Color.black.opacity(0.1))
+                                                            .overlay(
+                                                                Capsule()
+                                                                    .stroke(
+                                                                        Color.white.opacity(selectedSituation == situation ? 0.2 : 0.1),
+                                                                        lineWidth: 0.5
+                                                                    )
+                                                            )
+                                                    )
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal, 20)
+                                    
+                                    // 第二行期望按钮
+                                    HStack(spacing: 12) {
+                                        ForEach(expectations, id: \.self) { expectation in
+                                            Button(action: {
+                                                withAnimation(.easeInOut(duration: 0.2)) {
+                                                    selectedExpectation = expectation
+                                                }
+                                                // 触觉反馈
+                                                let generator = UIImpactFeedbackGenerator(style: .light)
+                                                generator.impactOccurred(intensity: 0.3)
+                                            }) {
+                                                Text(expectation)
+                                                    .font(.system(size: 13, weight: .light, design: .rounded))
+                                                    .foregroundColor(.white.opacity(selectedExpectation == expectation ? 0.9 : 0.5))
+                                                    .padding(.horizontal, 12)
+                                                    .padding(.vertical, 4)
+                                                    .background(
+                                                        Capsule()
+                                                            .fill(selectedExpectation == expectation 
+                                                                  ? Color(red: 0.58, green: 0.44, blue: 0.86, opacity: 0.3) 
+                                                                  : Color.black.opacity(0.1))
+                                                            .overlay(
+                                                                Capsule()
+                                                                    .stroke(
+                                                                        Color.white.opacity(selectedExpectation == expectation ? 0.2 : 0.1),
+                                                                        lineWidth: 0.5
+                                                                    )
+                                                            )
+                                                    )
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal, 20)
                                 }
                             }
                         }
-                        .frame(height: 32) // 保持固定容器高度
-                        .padding(.bottom, 16)
-                        .frame(width: UIScreen.main.bounds.width) // 确保整个容器宽度充满屏幕
-                        
-                        // 创作类型按钮 - 完全保持原有位置
-                        CreationTypeButtonsView()
-                            .environmentObject(CreationTypeManager.shared)
-                            .frame(height: 70)
-                            .padding(.bottom, 24)
-                            .frame(width: UIScreen.main.bounds.width) // 确保按钮视图宽度充满屏幕
+                        .padding(.bottom, 24)  // 增加与主按钮间的间距
                         
                         // 主按钮 - 开启时空对话
                         Button(action: {
@@ -1093,7 +1143,6 @@ struct FullscreenPostDetailView: View {
                             HStack(spacing: 10) {  // 增加图标与文字间距
                                 Image(systemName: "antenna.radiowaves.left.and.right")
                                     .font(.system(size: 18))  // 增大图标尺寸
-                                    .symbolRenderingMode(.hierarchical) // 使用分层渲染增强图标细节
                                 
                                 // 保持文字不变，无论选择哪个按钮
                                 Text("启动虫洞捕捉")
@@ -1153,7 +1202,6 @@ struct FullscreenPostDetailView: View {
                             )  // 增强边框对比度
                         }
                         .padding(.bottom, 40)  // 调整与底部的距离
-                        .frame(maxWidth: .infinity) // 确保按钮容器宽度充满屏幕，以实现水平居中
                         
                         // 底部空间，确保布局不贴底
                         Spacer()
@@ -1356,224 +1404,132 @@ struct FullscreenPostDetailView: View {
                     swipeDirection = .none
                 }
             }
-            
-            // 评论输入视图
-            CommentInputView(commentManager: viewModel.commentManager)
-                .background(
-                    // 添加背景和阴影，使其更清晰地与内容分离
-                    Color(.systemBackground)
-                        .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: -2)
-                        .edgesIgnoringSafeArea(.bottom)
-                )
-            
-            // 自定义时空特效覆盖层
-            if showCustomTimeSpaceEffect {
-                GeometryReader { geometry in
-                    // 计算黑洞中心位置 - 位于屏幕中央偏上的位置
-                    let centerX = geometry.size.width / 2
-                    // 向上调整Y轴位置，使特效从随机漫游按钮位置开始
-                    let centerY = geometry.size.height / 2 + geometry.size.height * 0.25 - 290 // 修改为与其他文件一致
-                    let blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
+            // 不使用有争议的修饰符，而是在其他视图元素上正确地限制交互
+            // 注释掉导致编译错误的背景修饰符
+            // .background(Color(.systemBackground).edgesIgnoringSafeArea(.all))
+            .onAppear {
+                // 为视图设置为活跃状态，用于任务循环
+                isViewActive = true
+                
+                // 添加系统级别返回按钮（比SwiftUI原生返回按钮更稳定）
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    addSystemLevelBackButton()
+                }
+                
+                // 检查边界状态前记录当前状态
+                print("⭐️ onAppear开始: 当前帖子ID: \(viewModel.post.id), hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost)")
+                
+                // 检查是否是最后一篇帖子 - 同步执行确保立即更新状态
+                checkBoundaries()
+                
+                // 记录检查后的状态
+                print("⭐️ onAppear检查边界后: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost)")
+                
+                // 预加载下一篇和上一篇动态，实现滑动时的无缝切换
+                preloadAdjacentPosts()
+                
+                // 打印当前状态，用于调试
+                print("⭐️ 视图出现 - 初始帖子ID: \(initialPostId.uuidString)")
+                
+                // 检查初始帖子ID与viewModel中的帖子ID是否一致
+                if initialPostId.uuidString != viewModel.post.id.uuidString {
+                    print("⚠️ 警告：初始帖子ID与viewModel帖子ID不一致！进行强制同步")
+                    // 强制更新viewModel中的帖子 - 这通常不应该发生，但添加以防万一
+                    viewModel.synchronizePost(id: initialPostId)
+                }
+                
+                // 隐藏TabBar
+                tabBarManager.pushHideState()
+                
+                // 显示时进行边界检查和预加载
+                DispatchQueue.main.async {
+                    // 异步执行，确保视图完全加载后运行
+                    checkBoundaries()
+                    preloadAdjacentPosts()
+                }
+            }
+            .onDisappear {
+                print("⭐️ FullscreenPostDetailView 消失")
+                // 停止task的循环检查
+                isViewActive = false
+                
+                // 恢复底部标签栏 - 使用popHideState()恢复底部导航栏
+                tabBarManager.popHideState()
+                
+                // 清理返回按钮窗口
+                if let window = systemBackButtonWindow {
+                    // 立即隐藏窗口
+                    window.isHidden = true
+                    window.rootViewController?.view.subviews.forEach { $0.removeFromSuperview() }
+                    window.rootViewController = nil
                     
-                    // 使用自定义位置的TimeSpaceEffectView
-                    TimeSpaceEffectView(
-                        isActive: $showCustomTimeSpaceEffect, 
-                        centerPosition: blackHoleCenterPosition
-                    ) {
-                        // 特效完成后的回调
-                        print("⭐️ 时空特效完成，准备生成帖子并返回主页面")
-                        
-                        // 获取PostViewModel的实例
-                        let postViewModel = PostViewModel.shared
-                        
-                        // 获取选中的创作类型索引
-                        let typeIndex = CreationTypeManager.shared.selectedIndex
-                        print("⭐️ 当前选中的创作类型索引: \(typeIndex)")
-                        
-                        // 生成帖子并添加到数据模型中
-                        DispatchQueue.main.async {
-                            print("⭐️ 开始生成帖子...")
-                            
-                            // 根据创作类型生成帖子
-                            var newPosts: [UserPostModel] = []
-                            
-                            // 如果是虫洞共鸣类型，使用新的生成方法
-                            if typeIndex == 0 {
-                                // 使用虫洞共鸣生成方法
-                                newPosts = postViewModel.generateResonancePosts(
-                                    situation: selectedSituation,
-                                    expectation: selectedExpectation,
-                                    keyword: explorationKeyword.isEmpty ? nil : explorationKeyword
-                                )
-                                print("⭐️ 使用虫洞共鸣生成方法，情境: \(selectedSituation), 期望: \(selectedExpectation)")
-                            } else {
-                                // 使用原有的生成方法
-                                newPosts = postViewModel.generatePostsByCreationType(typeIndex: typeIndex)
-                            }
-                            
-                            print("⭐️ 成功生成 \(newPosts.count) 篇新帖子")
-                            
-                            // 添加到数据模型
-                            if !newPosts.isEmpty {
-                                print("⭐️ 将新帖子添加到数据模型")
-                                postViewModel.addPosts(newPosts)
-                                
-                                // 发送通知，通知主页刷新
-                                print("⭐️ 发送通知刷新主页")
-                                NotificationCenter.default.post(name: NSNotification.Name("NewPostsGenerated"), object: nil)
-                                NotificationCenter.default.post(name: NSNotification.Name("PostsUpdated"), object: nil)
-                            } else {
-                                print("⚠️ 生成的帖子数组为空")
-                            }
-                            
-                            // 确保0.5秒后关闭虫洞探索页面
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                // 关闭虫洞探索页面
-                                showAddContentView = false
-                                
-                                // 重置状态
-                                dragOffset = 0
-                                swipeDirection = .none
-                                isTransitioning = false
-                                
-                                // 延迟一点调用onDismiss
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    print("⭐️ 调用onDismiss回调")
-                                    onDismiss?()
-                                }
-                            }
-                        }
+                    // 立即清除引用
+                    systemBackButtonWindow = nil
+                    
+                    // 发送消失通知，通知其他可能持有引用的组件
+                    NotificationCenter.default.post(name: NSNotification.Name("ViewWillDisappear"), object: nil)
+                }
+            }
+            // 添加一个任务，确保无论何时都保持TabBar隐藏状态
+            .task {
+                // 视图加载后，确保TabBar物理隐藏
+                tabBarManager.pushHideState()
+                
+                // 每隔一段时间检查一次TabBar状态，确保它始终隐藏
+                while isViewActive {
+                    try? await Task.sleep(for: .seconds(2.0)) // 将间隔从0.5秒增加到2秒
+                    
+                    // 如果视图已不再活跃，停止循环
+                    if !isViewActive {
+                        break
+                    }
+                    
+                    // 使用isFullyHidden检查是否完全隐藏，如果不是则重新隐藏
+                    if !tabBarManager.isFullyHidden {
+                        print("⭐️ 发现TabBar未完全隐藏，重新隐藏")
+                        tabBarManager.pushHideState()
                     }
                 }
-                .edgesIgnoringSafeArea(.all)
-                .zIndex(1000) // 确保特效显示在最上层
-            }
-        }
-        // 禁用用户交互当正在过渡中
-        .disabled(isTransitioning)
-        .background(Color(.systemBackground).edgesIgnoringSafeArea(.all))
-        .onAppear {
-            // 为视图设置为活跃状态，用于任务循环
-            isViewActive = true
-            
-            // 添加系统级别返回按钮（比SwiftUI原生返回按钮更稳定）
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                addSystemLevelBackButton()
-            }
-            
-            // 检查边界状态前记录当前状态
-            print("⭐️ onAppear开始: 当前帖子ID: \(viewModel.post.id), hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost)")
-            
-            // 检查是否是最后一篇帖子 - 同步执行确保立即更新状态
-            checkBoundaries()
-            
-            // 记录检查后的状态
-            print("⭐️ onAppear检查边界后: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost)")
-            
-            // 预加载下一篇和上一篇动态，实现滑动时的无缝切换
-            preloadAdjacentPosts()
-            
-            // 打印当前状态，用于调试
-            print("⭐️ 视图出现 - 初始帖子ID: \(initialPostId.uuidString)")
-            
-            // 检查初始帖子ID与viewModel中的帖子ID是否一致
-            if initialPostId.uuidString != viewModel.post.id.uuidString {
-                print("⚠️ 警告：初始帖子ID与viewModel帖子ID不一致！进行强制同步")
-                // 强制更新viewModel中的帖子 - 这通常不应该发生，但添加以防万一
-                viewModel.synchronizePost(id: initialPostId)
-            }
-            
-            // 隐藏TabBar
-            tabBarManager.pushHideState()
-            
-            // 显示时进行边界检查和预加载
-            DispatchQueue.main.async {
-                // 异步执行，确保视图完全加载后运行
-                checkBoundaries()
-                preloadAdjacentPosts()
-            }
-        }
-        .onDisappear {
-            print("⭐️ FullscreenPostDetailView 消失")
-            // 停止task的循环检查
-            isViewActive = false
-            
-            // 恢复底部标签栏 - 使用popHideState()恢复底部导航栏
-            tabBarManager.popHideState()
-            
-            // 清理返回按钮窗口
-            if let window = systemBackButtonWindow {
-                // 立即隐藏窗口
-                window.isHidden = true
-                window.rootViewController?.view.subviews.forEach { $0.removeFromSuperview() }
-                window.rootViewController = nil
                 
-                // 立即清除引用
-                systemBackButtonWindow = nil
-                
-                // 发送消失通知，通知其他可能持有引用的组件
-                NotificationCenter.default.post(name: NSNotification.Name("ViewWillDisappear"), object: nil)
-            }
-        }
-        // 添加一个任务，确保无论何时都保持TabBar隐藏状态
-        .task {
-            // 视图加载后，确保TabBar物理隐藏
-            tabBarManager.pushHideState()
-            
-            // 每隔一段时间检查一次TabBar状态，确保它始终隐藏
-            while isViewActive {
-                try? await Task.sleep(for: .seconds(2.0)) // 将间隔从0.5秒增加到2秒
-                
-                // 如果视图已不再活跃，停止循环
+                // 视图任务结束时确保TabBar可见
                 if !isViewActive {
-                    break
-                }
-                
-                // 使用isFullyHidden检查是否完全隐藏，如果不是则重新隐藏
-                if !tabBarManager.isFullyHidden {
-                    print("⭐️ 发现TabBar未完全隐藏，重新隐藏")
-                    tabBarManager.pushHideState()
+                    print("⭐️ 视图任务结束，确保TabBar可见")
+                    tabBarManager.popHideState()
                 }
             }
-            
-            // 视图任务结束时确保TabBar可见
-            if !isViewActive {
-                print("⭐️ 视图任务结束，确保TabBar可见")
-                tabBarManager.popHideState()
-            }
+            // 使用更稳定的滑动指示器实现
+            .overlay(
+                ZStack {
+                    // 左侧指示器（向右滑）- 完全平滑过渡
+                    HStack {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(12)
+                            .background(Circle().fill(Color.black.opacity(0.15)))
+                            .padding(.leading, 20)
+                        Spacer()
+                    }
+                    // 关键改进：使用平滑连续的不透明度函数
+                    .opacity(max(0, min(dragOffset * 0.01, 0.7)))
+                    
+                    // 右侧指示器（向左滑）- 完全平滑过渡
+                    HStack {
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(12)
+                            .background(Circle().fill(Color.black.opacity(0.15)))
+                            .padding(.trailing, 20)
+                    }
+                    // 关键改进：使用平滑连续的不透明度函数
+                    .opacity(max(0, min(dragOffset * -0.01, 0.7)))
+                }
+                // 无需额外动画，跟随拖动实时更新
+                .opacity(isTransitioning ? 0 : 1)
+            )
         }
-        // 使用更稳定的滑动指示器实现
-        .overlay(
-            ZStack {
-                // 左侧指示器（向右滑）- 完全平滑过渡
-                HStack {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(12)
-                        .background(Circle().fill(Color.black.opacity(0.15)))
-                        .padding(.leading, 20)
-                    Spacer()
-                }
-                // 关键改进：使用平滑连续的不透明度函数
-                .opacity(max(0, min(dragOffset * 0.01, 0.7)))
-                
-                // 右侧指示器（向左滑）- 完全平滑过渡
-                HStack {
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(12)
-                        .background(Circle().fill(Color.black.opacity(0.15)))
-                        .padding(.trailing, 20)
-                }
-                // 关键改进：使用平滑连续的不透明度函数
-                .opacity(max(0, min(dragOffset * -0.01, 0.7)))
-            }
-            // 无需额外动画，跟随拖动实时更新
-            .opacity(isTransitioning ? 0 : 1)
-        )
     }
     
     // MARK: - 子视图组件
@@ -2776,865 +2732,5 @@ struct BlackHoleParticleRing: View {
     
     private func getFrame() -> CGRect {
         return CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width * 0.65, height: UIScreen.main.bounds.width * 0.65)
-    }
-}
-
-// MARK: - 辅助视图组件
-
-/**
- * 情境和期望选择视图
- * 将复杂的嵌套视图分解为更简单的子视图
- */
-struct SituationExpectationView: View {
-    @Binding var selectedSituation: String
-    @Binding var selectedExpectation: String
-    let situations: [String]
-    let expectations: [String]
-    let centerPosition: CGPoint // 新增参数，接收黑洞中心点坐标
-    
-    // 状态变量，用于控制提示的显示
-    @State private var showHint: Bool = true
-    
-    var body: some View {
-        ZStack {
-            // 情境选择 - 上半部环绕
-            OrbitalSelectionView(
-                items: situations,
-                selectedItem: $selectedSituation,
-                icon: "brain",
-                title: "此刻我正在...",
-                angleRange: 205.0...335.0,  // 修改角度范围，将上部区域集中在正上方
-                radius: AdaptiveLayoutManager.shared.orbitalRadius(),  // 使用自适应布局管理器计算半径
-                themeColor: Color(red: 0.2, green: 0.4, blue: 0.8), // 更柔和的蓝色调
-                centerPosition: centerPosition // 传入黑洞中心点
-            )
-            
-            // 期望选择 - 下半部环绕
-            OrbitalSelectionView(
-                items: expectations,
-                selectedItem: $selectedExpectation,
-                icon: "sparkles",
-                title: "希望得到的是...",
-                angleRange: 25.0...155.0,  // 修改角度范围，将下部区域集中在正下方
-                radius: AdaptiveLayoutManager.shared.orbitalRadius(),  // 使用自适应布局管理器计算半径
-                themeColor: Color(red: 0.6, green: 0.3, blue: 0.7), // 更柔和的紫色调
-                centerPosition: centerPosition // 传入黑洞中心点
-            )
-            
-            // 使用提示 - 仅在初次显示时出现
-            if showHint {
-                VStack(spacing: 4) {
-                    Text("请从上下环绕的按钮中选择")
-                        .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundColor(.white.opacity(0.8))
-                    
-                    Text("点击按钮即可选择对应选项")
-                        .font(.system(size: 11, weight: .light, design: .rounded))
-                        .foregroundColor(.white.opacity(0.6))
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.black.opacity(0.5))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
-                        )
-                )
-                .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
-                .position(x: centerPosition.x, y: centerPosition.y)
-                .opacity(showHint ? 1 : 0)
-                .onAppear {
-                    // 3秒后自动隐藏提示
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                        withAnimation(.easeOut(duration: 0.5)) {
-                            showHint = false
-                        }
-                    }
-                }
-                // 点击任何地方隐藏提示
-                .onTapGesture {
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        showHint = false
-                    }
-                }
-            }
-        }
-        // 添加设备方向变化监听
-        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
-            // 方向变化时触发重新布局
-            // 这里不需要额外代码，SwiftUI会自动重新计算布局
-        }
-        // 当选择改变时隐藏提示
-        .onChange(of: selectedSituation) { _, _ in
-            if showHint {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    showHint = false
-                }
-            }
-        }
-        .onChange(of: selectedExpectation) { _, _ in
-            if showHint {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    showHint = false
-                }
-            }
-        }
-    }
-}
-
-// 优化环绕式选择视图
-struct OrbitalSelectionView: View {
-    let items: [String]
-    @Binding var selectedItem: String
-    let icon: String
-    let title: String
-    let angleRange: ClosedRange<Double>
-    let radius: CGFloat
-    let themeColor: Color
-    let centerPosition: CGPoint // 接收黑洞中心点坐标
-    
-    // 状态变量，控制初始动画效果
-    @State private var showInitialAnimation = true
-    
-    // 获取当前设备类型
-    private var deviceType: AdaptiveLayoutManager.DeviceType {
-        return AdaptiveLayoutManager.DeviceType.current()
-    }
-    
-    // 获取当前屏幕方向
-    private var orientation: AdaptiveLayoutManager.Orientation {
-        return AdaptiveLayoutManager.Orientation.current()
-    }
-    
-    // 计算标签偏移量 - 根据设备类型和方向动态调整
-    private var labelOffset: CGFloat {
-        switch (deviceType, orientation) {
-        case (.smallPhone, _):
-            return 35
-        case (.mediumPhone, _):
-            return 40
-        case (.largePhone, _):
-            return 45
-        case (.tablet, _):
-            return 50
-        }
-    }
-    
-    // 计算按钮字体大小 - 根据设备类型和方向动态调整
-    private var buttonFontSize: CGFloat {
-        switch (deviceType, orientation) {
-        case (.smallPhone, _):
-            return 10 // 减小字体大小
-        case (.mediumPhone, _):
-            return 11 // 减小字体大小
-        case (.largePhone, _):
-            return 12 // 减小字体大小
-        case (.tablet, _):
-            return 13 // 减小字体大小
-        }
-    }
-    
-    // 计算按钮内边距 - 根据设备类型和方向动态调整
-    private var buttonPadding: (vertical: CGFloat, horizontal: CGFloat) {
-        switch (deviceType, orientation) {
-        case (.smallPhone, _):
-            return (3, 8) // 减小内边距
-        case (.mediumPhone, _):
-            return (4, 10) // 减小内边距
-        case (.largePhone, _):
-            return (5, 12) // 减小内边距
-        case (.tablet, _):
-            return (6, 14) // 减小内边距
-        }
-    }
-    
-    var body: some View {
-        OrbitalSelectionContent(
-            title: title,
-            icon: icon,
-            items: items,
-            selectedItem: $selectedItem,
-            showInitialAnimation: $showInitialAnimation,
-            centerPosition: centerPosition,
-            radius: radius,
-            labelOffset: labelOffset,
-            angleRange: angleRange,
-            themeColor: themeColor,
-            deviceType: deviceType,
-            orientation: orientation,
-            buttonFontSize: buttonFontSize,
-            buttonPadding: buttonPadding
-        )
-        .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.width)
-        // 添加设备方向变化监听
-        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
-            // 方向变化时触发重新布局
-            // 这里不需要额外代码，SwiftUI会自动重新计算布局
-        }
-    }
-}
-
-/**
- * 轨道选择视图内容
- * 将复杂视图拆分为更小的组件，以便编译器更好地进行类型检查
- */
-private struct OrbitalSelectionContent: View {
-    let title: String
-    let icon: String
-    let items: [String]
-    @Binding var selectedItem: String
-    @Binding var showInitialAnimation: Bool
-    let centerPosition: CGPoint
-    let radius: CGFloat
-    let labelOffset: CGFloat
-    let angleRange: ClosedRange<Double>
-    let themeColor: Color
-    let deviceType: AdaptiveLayoutManager.DeviceType
-    let orientation: AdaptiveLayoutManager.Orientation
-    let buttonFontSize: CGFloat
-    let buttonPadding: (vertical: CGFloat, horizontal: CGFloat)
-    
-    var body: some View {
-        ZStack {
-            // 标签部分
-            CategoryLabel(
-                title: title,
-                icon: icon,
-                centerPosition: centerPosition,
-                radius: radius,
-                labelOffset: labelOffset,
-                angleRange: angleRange,
-                themeColor: themeColor
-            )
-            
-            // 按钮部分
-            ButtonsLayout(
-                items: items,
-                selectedItem: $selectedItem,
-                showInitialAnimation: $showInitialAnimation,
-                centerPosition: centerPosition,
-                radius: radius,
-                angleRange: angleRange,
-                themeColor: themeColor,
-                buttonFontSize: buttonFontSize,
-                buttonPadding: buttonPadding
-            )
-        }
-    }
-}
-
-/**
- * 类别标签组件
- * 显示轨道选择视图的标题
- */
-private struct CategoryLabel: View {
-    let title: String
-    let icon: String
-    let centerPosition: CGPoint
-    let radius: CGFloat
-    let labelOffset: CGFloat
-    let angleRange: ClosedRange<Double>
-    let themeColor: Color
-    
-    // 计算标签的背景颜色 - 使用更中性的色调
-    private var labelBackgroundColor: Color {
-        // 采用更符合Apple设计的中性半透明背景
-        if title.contains("此刻") {
-            return Color(red: 0.2, green: 0.2, blue: 0.25).opacity(0.4)  // 深蓝灰色
-        } else if title.contains("希望") {
-            return Color(red: 0.25, green: 0.2, blue: 0.25).opacity(0.4)  // 深紫灰色
-        } else {
-            return Color.black.opacity(0.4)  // 其他标签使用深黑色
-        }
-    }
-    
-    // 计算标签的边框颜色 - 使用柔和的分隔色调
-    private var labelBorderColor: Color {
-        if title.contains("此刻") {
-            return Color(red: 0.3, green: 0.5, blue: 0.9).opacity(0.25)  // 淡蓝色边框
-        } else if title.contains("希望") {
-            return Color(red: 0.6, green: 0.3, blue: 0.7).opacity(0.25)  // 淡紫色边框
-        } else {
-            return Color.white.opacity(0.2)  // 其他标签使用淡白色
-        }
-    }
-    
-    // 计算标签的位置偏移
-    private var additionalOffset: CGFloat {
-        if title.contains("此刻") || title.contains("希望") {
-            return 15  // 保持与交互区域的距离
-        } else {
-            return 0
-        }
-    }
-    
-    // 计算图标颜色 - 使用更柔和的颜色
-    private var iconColor: Color {
-        if title.contains("此刻") {
-            return Color(red: 0.4, green: 0.6, blue: 1.0).opacity(0.7)  // 柔和蓝色
-        } else if title.contains("希望") {
-            return Color(red: 0.7, green: 0.4, blue: 0.9).opacity(0.7)  // 柔和紫色
-        } else {
-            return Color.white.opacity(0.7)  // 其他图标使用白色
-        }
-    }
-    
-    // 计算文本颜色 - 确保在任何背景下都能清晰阅读
-    private var textColor: Color {
-        return Color.white.opacity(0.85)  // 所有文本使用高对比度白色
-    }
-    
-    var body: some View {
-        VStack(spacing: 2) {
-            HStack(spacing: 3) {
-                Image(systemName: icon)
-                    .font(.system(size: 10, weight: .regular))
-                    .foregroundColor(iconColor)
-                
-                Text(title)
-                    .font(.system(size: 11, weight: .regular, design: .rounded))
-                    .foregroundColor(textColor)
-                    .tracking(0.3)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(
-                Capsule()
-                    .fill(labelBackgroundColor)
-                    .overlay(
-                        Capsule()
-                            .stroke(labelBorderColor, lineWidth: 0.8)
-                    )
-            )
-            // 使用更微妙的阴影，增强深色背景下的可见性
-            .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
-        }
-        .position(
-            x: centerPosition.x + CGFloat(cos((angleRange.lowerBound + angleRange.upperBound) * 0.5 * .pi / 180.0)) * (radius + labelOffset + additionalOffset),
-            y: centerPosition.y + CGFloat(sin((angleRange.lowerBound + angleRange.upperBound) * 0.5 * .pi / 180.0)) * (radius + labelOffset + additionalOffset)
-        )
-        .opacity(0.85)
-        .scaleEffect(0.95)
-        .accessibilityLabel(Text("\(title) 分类"))
-        .accessibilityAddTraits(.isHeader)
-        .accessibilityAddTraits(.isStaticText)
-    }
-}
-
-/**
- * 按钮布局组件
- * 处理轨道选择视图中的按钮布局
- */
-private struct ButtonsLayout: View {
-    let items: [String]
-    @Binding var selectedItem: String
-    @Binding var showInitialAnimation: Bool
-    let centerPosition: CGPoint
-    let radius: CGFloat
-    let angleRange: ClosedRange<Double>
-    let themeColor: Color
-    let buttonFontSize: CGFloat
-    let buttonPadding: (vertical: CGFloat, horizontal: CGFloat)
-    
-    var body: some View {
-        ForEach(items.indices, id: \.self) { index in
-            let item = items[index]
-            let isSelected = selectedItem == item
-            
-            // 计算按钮位置
-            let position = calculateButtonPosition(for: index)
-            
-            // 按钮视图
-            OrbitalButton(
-                item: item,
-                isSelected: isSelected,
-                index: index,
-                position: position,
-                showInitialAnimation: $showInitialAnimation,
-                themeColor: themeColor,
-                buttonFontSize: buttonFontSize,
-                buttonPadding: buttonPadding,
-                onSelect: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedItem = item
-                        if showInitialAnimation {
-                            showInitialAnimation = false
-                        }
-                    }
-                }
-            )
-        }
-    }
-    
-    // 计算按钮位置
-    private func calculateButtonPosition(for index: Int) -> CGPoint {
-        let totalAngle = angleRange.upperBound - angleRange.lowerBound
-        
-        // 根据按钮数量动态调整角度分布
-        let angle: Double
-        if items.count <= 3 {
-            // 按钮较少时，分布得更开
-            let segmentAngle = totalAngle / Double(max(1, items.count + 1))
-            let startAngle = angleRange.lowerBound + segmentAngle
-            angle = startAngle + Double(index) * segmentAngle
-        } else {
-            // 按钮较多时，均匀分布
-            let segmentAngle = totalAngle / Double(max(1, items.count - 1))
-            angle = angleRange.lowerBound + Double(index) * segmentAngle
-        }
-        
-        // 计算位置
-        let radian = angle * .pi / 180.0
-        let x = centerPosition.x + cos(radian) * radius
-        let y = centerPosition.y + sin(radian) * radius
-        
-        return CGPoint(x: x, y: y)
-    }
-}
-
-/**
- * 轨道按钮组件
- * 表示轨道选择视图中的单个按钮
- */
-private struct OrbitalButton: View {
-    let item: String
-    let isSelected: Bool
-    let index: Int
-    let position: CGPoint
-    @Binding var showInitialAnimation: Bool
-    let themeColor: Color
-    let buttonFontSize: CGFloat
-    let buttonPadding: (vertical: CGFloat, horizontal: CGFloat)
-    let onSelect: () -> Void
-    
-    var body: some View {
-        Button(action: {
-            onSelect()
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred(intensity: 0.4)
-        }) {
-            ButtonContent(
-                text: item,
-                isSelected: isSelected,
-                fontSize: buttonFontSize,
-                padding: buttonPadding,
-                themeColor: themeColor
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-        .position(position)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
-        .accessibilityLabel(Text(item))
-        .accessibilityHint(Text(isSelected ? "已选择" : "点击选择"))
-        .accessibilityAddTraits(.isButton)
-        .modifier(ButtonAnimationModifier(
-            showAnimation: showInitialAnimation && !isSelected,
-            index: index,
-            themeColor: themeColor,
-            animationState: $showInitialAnimation,
-            buttonText: item
-        ))
-    }
-}
-
-/**
- * 情境按钮组件 - 保留但不直接使用
- */
-struct SituationButton: View {
-    let situation: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(situation)
-                .font(.system(size: 11, weight: isSelected ? .semibold : .regular, design: .rounded))
-                .foregroundColor(isSelected ? .white : .white.opacity(0.7))
-                .padding(.vertical, 4)
-                .padding(.horizontal, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 13)
-                        .fill(isSelected ? Color.white.opacity(0.25) : Color.clear)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 13)
-                                .stroke(isSelected ? Color.white.opacity(0.6) : Color.white.opacity(0.3), lineWidth: 1)
-                        )
-                )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-/**
- * 期望按钮组件 - 保留但不直接使用
- */
-struct ExpectationButton: View {
-    let expectation: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(expectation)
-                .font(.system(size: 11, weight: isSelected ? .semibold : .regular, design: .rounded))
-                .foregroundColor(isSelected ? .white : .white.opacity(0.7))
-                .padding(.vertical, 4)
-                .padding(.horizontal, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 13)
-                        .fill(isSelected ? Color.white.opacity(0.25) : Color.clear)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 13)
-                                .stroke(isSelected ? Color.white.opacity(0.6) : Color.white.opacity(0.3), lineWidth: 1)
-                        )
-                )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-/**
- * 自适应布局管理器
- * 根据设备特性和屏幕方向动态计算布局参数
- */
-class AdaptiveLayoutManager {
-    static let shared = AdaptiveLayoutManager()
-    
-    // 用户偏好键
-    private enum UserPreferenceKeys {
-        static let centerYOffset = "layout.centerYOffset"
-        static let componentOffset = "layout.componentOffset"
-        static let orbitalRadius = "layout.orbitalRadius"
-        static let useCustomLayout = "layout.useCustomLayout"
-    }
-    
-    // 设备类型枚举
-    enum DeviceType {
-        case smallPhone    // iPhone SE, 5s等
-        case mediumPhone   // iPhone 8, XR, 11等
-        case largePhone    // iPhone Pro Max系列
-        case tablet        // iPad系列
-        
-        // 根据屏幕尺寸判断设备类型
-        static func current() -> DeviceType {
-            let screenHeight = UIScreen.main.bounds.height
-            let idiom = UIDevice.current.userInterfaceIdiom
-            
-            if idiom == .pad {
-                return .tablet
-            } else {
-                if screenHeight < 700 {
-                    return .smallPhone
-                } else if screenHeight < 800 {
-                    return .mediumPhone
-                } else {
-                    return .largePhone
-                }
-            }
-        }
-    }
-    
-    // 屏幕方向枚举
-    enum Orientation {
-        case portrait
-        case landscape
-        
-        // 获取当前屏幕方向
-        static func current() -> Orientation {
-            let screenSize = UIScreen.main.bounds.size
-            return screenSize.width < screenSize.height ? .portrait : .landscape
-        }
-    }
-    
-    // 获取当前设备的安全区域
-    var safeAreaInsets: UIEdgeInsets {
-        // 兼容iOS 15及以上版本
-        if #available(iOS 15.0, *) {
-            // 使用新API获取窗口场景
-            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let window = windowScene.windows.first(where: { $0.isKeyWindow }) else {
-                // 提供默认值
-                return UIEdgeInsets(top: 44, left: 0, bottom: 34, right: 0)
-            }
-            return window.safeAreaInsets
-        } else {
-            // 旧版本继续使用旧API
-            let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow })
-            return window?.safeAreaInsets ?? UIEdgeInsets(top: 44, left: 0, bottom: 34, right: 0)
-        }
-    }
-    
-    // 是否使用自定义布局
-    var useCustomLayout: Bool {
-        get {
-            return UserDefaults.standard.bool(forKey: UserPreferenceKeys.useCustomLayout)
-        }
-        set {
-            UserDefaults.standard.set(newValue, forKey: UserPreferenceKeys.useCustomLayout)
-        }
-    }
-    
-    // 计算黑洞中心Y坐标因子
-    func blackHoleCenterYFactor() -> CGFloat {
-        // 如果使用自定义布局，从UserDefaults获取
-        if useCustomLayout, let customValue = UserDefaults.standard.object(forKey: UserPreferenceKeys.centerYOffset) as? CGFloat {
-            return customValue
-        }
-        
-        // 否则使用默认计算
-        let deviceType = DeviceType.current()
-        let orientation = Orientation.current()
-        let safeAreaTop = safeAreaInsets.top
-        
-        // 根据设备类型和方向动态调整
-        switch (deviceType, orientation) {
-        case (.smallPhone, .portrait):
-            return 0.14 + (safeAreaTop > 20 ? 0.01 : 0)
-        case (.mediumPhone, .portrait):
-            return 0.12 + (safeAreaTop > 20 ? 0.01 : 0)
-        case (.largePhone, .portrait):
-            return 0.11 + (safeAreaTop > 20 ? 0.01 : 0)
-        case (.tablet, .portrait):
-            return 0.1
-        case (_, .landscape):
-            // 横屏时调整位置更靠近顶部
-            return 0.08
-        }
-    }
-    
-    // 计算整体组件的Y轴偏移量
-    func componentYOffset() -> CGFloat {
-        // 如果使用自定义布局，从UserDefaults获取
-        if useCustomLayout, let customValue = UserDefaults.standard.object(forKey: UserPreferenceKeys.componentOffset) as? CGFloat {
-            return customValue
-        }
-        
-        // 否则使用默认计算
-        let deviceType = DeviceType.current()
-        let orientation = Orientation.current()
-        let screenHeight = UIScreen.main.bounds.height
-        
-        // 根据设备类型和方向动态调整
-        switch (deviceType, orientation) {
-        case (.smallPhone, .portrait):
-            return -screenHeight * 0.08
-        case (.mediumPhone, .portrait):
-            return -screenHeight * 0.1
-        case (.largePhone, .portrait):
-            return -screenHeight * 0.12
-        case (.tablet, .portrait):
-            return -screenHeight * 0.1
-        case (_, .landscape):
-            // 横屏时减小偏移量
-            return -screenHeight * 0.06
-        }
-    }
-    
-    // 计算按钮环绕半径
-    func orbitalRadius() -> CGFloat {
-        // 如果使用自定义布局，从UserDefaults获取
-        if useCustomLayout, let customValue = UserDefaults.standard.object(forKey: UserPreferenceKeys.orbitalRadius) as? CGFloat {
-            return customValue
-        }
-        
-        // 否则使用默认计算
-        let deviceType = DeviceType.current()
-        let orientation = Orientation.current()
-        let screenWidth = UIScreen.main.bounds.width
-        
-        // 根据设备类型和方向动态调整 - 减小半径值以确保按钮不会超出屏幕
-        switch (deviceType, orientation) {
-        case (.smallPhone, _):
-            return screenWidth * 0.32 // 从0.36减小到0.32
-        case (.mediumPhone, _):
-            return screenWidth * 0.34 // 从0.38减小到0.34
-        case (.largePhone, _):
-            return screenWidth * 0.36 // 从0.4减小到0.36
-        case (.tablet, .portrait):
-            return screenWidth * 0.28 // 从0.3减小到0.28
-        case (.tablet, .landscape):
-            return screenWidth * 0.22 // 从0.25减小到0.22
-        }
-    }
-    
-    // 保存自定义布局设置
-    func saveCustomLayout(centerYFactor: CGFloat, componentOffset: CGFloat, radius: CGFloat) {
-        UserDefaults.standard.set(centerYFactor, forKey: UserPreferenceKeys.centerYOffset)
-        UserDefaults.standard.set(componentOffset, forKey: UserPreferenceKeys.componentOffset)
-        UserDefaults.standard.set(radius, forKey: UserPreferenceKeys.orbitalRadius)
-        useCustomLayout = true
-    }
-    
-    // 重置为默认布局
-    func resetToDefaultLayout() {
-        UserDefaults.standard.removeObject(forKey: UserPreferenceKeys.centerYOffset)
-        UserDefaults.standard.removeObject(forKey: UserPreferenceKeys.componentOffset)
-        UserDefaults.standard.removeObject(forKey: UserPreferenceKeys.orbitalRadius)
-        useCustomLayout = false
-    }
-    
-    // 获取当前布局设置
-    func getCurrentLayoutSettings() -> (centerYFactor: CGFloat, componentOffset: CGFloat, radius: CGFloat) {
-        return (
-            centerYFactor: blackHoleCenterYFactor(),
-            componentOffset: componentYOffset(),
-            radius: orbitalRadius()
-        )
-    }
-    
-    private init() {}
-}
-
-/**
- * 按钮内容视图
- * 封装了按钮的外观样式
- */
-private struct ButtonContent: View {
-    let text: String
-    let isSelected: Bool
-    let fontSize: CGFloat
-    let padding: (vertical: CGFloat, horizontal: CGFloat)
-    let themeColor: Color
-    
-    // 判断按钮所属的类别
-    private var isPartOfSituation: Bool {
-        // 基于已知的情境选项判断
-        let situationOptions = ["寻找答案", "做决定", "需要灵感", "思考人生"]
-        return situationOptions.contains(text)
-    }
-    
-    private var isPartOfExpectation: Bool {
-        // 基于已知的期望选项判断
-        let expectationOptions = ["被看见", "新视角", "实用建议", "共鸣与安慰"]
-        return expectationOptions.contains(text)
-    }
-    
-    // 根据按钮所属类别确定颜色
-    private var buttonThemeColor: Color {
-        if isPartOfSituation {
-            return Color(red: 0.2, green: 0.4, blue: 0.8) // 使用更柔和的蓝色
-        } else if isPartOfExpectation {
-            return Color(red: 0.6, green: 0.3, blue: 0.7) // 使用更柔和的紫色
-        } else {
-            return themeColor // 其他情况使用传入的主题色
-        }
-    }
-    
-    // 按钮背景色 - 提供更好的反馈
-    private var buttonBackgroundColor: Color {
-        if isSelected {
-            // 选中状态使用更高饱和度
-            return buttonThemeColor.opacity(0.45)
-        } else {
-            // 未选中状态使用统一的暗色调
-            return Color(white: 0.12, opacity: 0.6)
-        }
-    }
-    
-    // 按钮边框色 - 增强可见性和层次感
-    private var buttonBorderColor: Color {
-        if isSelected {
-            return buttonThemeColor.opacity(0.7)
-        } else {
-            return Color.white.opacity(0.25)
-        }
-    }
-    
-    var body: some View {
-        Text(text)
-            .font(.system(size: fontSize, weight: isSelected ? .medium : .regular, design: .rounded))
-            .foregroundColor(isSelected ? .white : .white.opacity(0.85))
-            .padding(.vertical, padding.vertical)
-            .padding(.horizontal, padding.horizontal)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(buttonBackgroundColor)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(
-                                buttonBorderColor, 
-                                lineWidth: isSelected ? 1.0 : 0.7
-                            )
-                    )
-            )
-            // 使用更微妙的阴影效果，符合iOS设计语言
-            .shadow(
-                color: isSelected ? buttonThemeColor.opacity(0.4) : Color.black.opacity(0.2), 
-                radius: isSelected ? 4 : 2, 
-                x: 0, 
-                y: 0
-            )
-            // 缩小选中状态的放大效果，更加微妙
-            .scaleEffect(isSelected ? 1.08 : 1.0)
-    }
-}
-
-/**
- * 按钮动画修饰符
- * 封装了按钮的脉冲动画效果
- */
-private struct ButtonAnimationModifier: ViewModifier {
-    let showAnimation: Bool
-    let index: Int
-    let themeColor: Color
-    @Binding var animationState: Bool
-    let buttonText: String
-    
-    // 判断按钮所属的类别
-    private var isPartOfSituation: Bool {
-        // 基于已知的情境选项判断
-        let situationOptions = ["寻找答案", "做决定", "需要灵感", "思考人生"]
-        return situationOptions.contains(buttonText)
-    }
-    
-    private var isPartOfExpectation: Bool {
-        // 基于已知的期望选项判断
-        let expectationOptions = ["被看见", "新视角", "实用建议", "共鸣与安慰"]
-        return expectationOptions.contains(buttonText)
-    }
-    
-    // 根据按钮所属类别确定动画颜色
-    private var animationColor: Color {
-        if isPartOfSituation {
-            return Color(red: 0.2, green: 0.4, blue: 0.8).opacity(0.5) // 使用更柔和的蓝色
-        } else if isPartOfExpectation {
-            return Color(red: 0.6, green: 0.3, blue: 0.7).opacity(0.5) // 使用更柔和的紫色
-        } else {
-            return themeColor.opacity(0.5) // 其他情况使用传入的主题色
-        }
-    }
-    
-    func body(content: Content) -> some View {
-        content.overlay(
-            Group {
-                if showAnimation {
-                    // 创建一个简化的圆形动画
-                    let animationDuration: Double = 1.5
-                    let repeatCount: Int = 3
-                    let animationDelay: Double = Double(index) * 0.2
-                    
-                    Circle()
-                        .stroke(animationColor, lineWidth: 1.2)
-                        .scaleEffect(1.2)
-                        .opacity(0)
-                        .animation(
-                            Animation.easeInOut(duration: animationDuration)
-                                .repeatCount(repeatCount)
-                                .delay(animationDelay),
-                            value: showAnimation
-                        )
-                        .onAppear {
-                            // 减少自动关闭时间，提高响应性
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-                                withAnimation {
-                                    self.animationState = false
-                                }
-                            }
-                        }
-                }
-            }
-        )
     }
 }

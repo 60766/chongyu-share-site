@@ -15,251 +15,349 @@ struct CommentInputView: View {
     @State private var keyboardHeight: CGFloat = 0
     @State private var keyboardVisible = false
     @State private var bottomPadding: CGFloat = 0
+    @State private var isExpanded: Bool = false // 新增：控制是否展开全屏模式
     
     // @功能状态
     @State private var showMentionPicker = false
     @State private var mentionSearchText = ""
     
     var body: some View {
-        VStack(spacing: 0) {
-            // 显示正在回复的状态
-            if let replyingTo = commentManager.replyingToComment {
-                HStack {
-                    Text("回复：")
-                        .font(.system(size: 13))
-                        .foregroundColor(.gray)
+        ZStack {
+            if isExpanded {
+                // 全屏评论编辑模式
+                VStack(spacing: 0) {
+                    // 顶部导航栏
+                    HStack {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isExpanded = false
+                                isInputFocused = false
+                            }
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(.leading)
+                        
+                        Spacer()
+                        
+                        Text("添加评论")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            if !commentManager.commentText.isEmpty {
+                                submitComment()
+                            }
+                        }) {
+                            Text("发送")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(commentManager.commentText.isEmpty ? .gray : .blue)
+                        }
+                        .disabled(commentManager.commentText.isEmpty)
+                        .padding(.trailing)
+                    }
+                    .padding(.vertical, 12)
+                    .background(Color(.systemBackground))
+                    .overlay(
+                        Rectangle()
+                            .frame(height: 0.5)
+                            .foregroundColor(Color.gray.opacity(0.3)),
+                        alignment: .bottom
+                    )
                     
-                    Text(replyingTo.username)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.primary)
+                    // 如果有回复对象，显示回复信息
+                    if let replyingTo = commentManager.replyingToComment {
+                        HStack {
+                            Text("回复：")
+                                .font(.system(size: 13))
+                                .foregroundColor(.gray)
+                            
+                            Text(replyingTo.username)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                commentManager.cancelReply()
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.gray.opacity(0.06))
+                    }
+                    
+                    // 评论输入区域
+                    ZStack(alignment: .topLeading) {
+                        if commentManager.commentText.isEmpty {
+                            Text("跨越时空的对话...")
+                                .foregroundColor(.gray.opacity(0.7))
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
+                        }
+                        
+                        TextEditor(text: $commentManager.commentText)
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 100)
+                            .focused($isInputFocused)
+                            .background(Color(.systemBackground))
+                    }
+                    .background(Color(.systemBackground))
+                    
+                    // @人物选择器
+                    if showMentionPicker {
+                        VStack(spacing: 0) {
+                            // 搜索区域
+                            HStack {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                
+                                TextField("搜索历史人物", text: $mentionSearchText)
+                                    .font(.system(size: 14))
+                                
+                                if !mentionSearchText.isEmpty {
+                                    Button(action: { mentionSearchText = "" }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(16)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                            
+                            // 人物列表
+                            ScrollView {
+                                LazyVStack(spacing: 0) {
+                                    ForEach(filteredCharacters(), id: \.id) { character in
+                                        Button(action: {
+                                            // 添加@提及
+                                            insertMention(character)
+                                            withAnimation {
+                                                showMentionPicker = false
+                                            }
+                                            isInputFocused = true
+                                        }) {
+                                            characterRow(character)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                        
+                                        if character.id != filteredCharacters().last?.id {
+                                            Divider()
+                                                .padding(.leading, 60)
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(height: min(CGFloat(filteredCharacters().count) * 48, 220))
+                            .padding(.top, 8)
+                        }
+                        .background(Color(.systemBackground))
+                        .cornerRadius(16)
+                        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 4)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    
+                    // 底部工具栏
+                    HStack(spacing: 16) {
+                        // @按钮
+                        Button(action: {
+                            hapticFeedback(style: .light)
+                            withAnimation {
+                                showMentionPicker.toggle()
+                                mentionSearchText = ""
+                            }
+                        }) {
+                            Image(systemName: "at")
+                                .font(.system(size: 18))
+                                .foregroundColor(.gray)
+                        }
+                        
+                        Spacer()
+                        
+                        // 字数提示
+                        if !commentManager.commentText.isEmpty {
+                            Text("\(commentManager.commentText.count)/200")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(.systemBackground))
                     
                     Spacer()
-                    
-                    Button(action: {
-                        commentManager.cancelReply()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 15))
-                            .foregroundColor(.gray)
-                    }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color.gray.opacity(0.06))
-            }
-            
-            // 输入框和发送按钮 - 优化布局
-            HStack(alignment: .center, spacing: 10) {
-                // 评论输入框 - 更圆润的设计
-                ZStack(alignment: .leading) {
-                    if commentManager.commentText.isEmpty && !isInputFocused {
-                        Text("跨越时空的对话...")
-                            .font(.system(size: 15))
-                            .foregroundColor(.gray.opacity(0.7))
-                            .padding(.leading, 6)
-                    }
-                    
-                    // 输入框与功能按钮的组合
-                    HStack(spacing: 0) {
-                        TextField("", text: $commentManager.commentText)
-                            .font(.system(size: 15))
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 16)
-                            .focused($isInputFocused)
-                        
-                        // 右侧功能区域
-                        if isInputFocused {
-                            HStack(spacing: 12) {
-                                // @按钮
-                                Button(action: {
-                                    hapticFeedback(style: .light)
-                                    withAnimation {
-                                        showMentionPicker.toggle()
-                                        mentionSearchText = ""
-                                    }
-                                }) {
-                                    Image(systemName: "at")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.gray.opacity(0.8))
-                                }
-                                
-                                // 表情按钮
-                                Button(action: {
-                                    // 暂时保留原功能，但调整样式
-                                    hapticFeedback(style: .light)
-                                }) {
-                                    Image(systemName: "face.smiling")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.gray.opacity(0.8))
-                                }
-                            }
-                            .padding(.trailing, 12)
-                        }
-                    }
-                }
-                .frame(height: 44)
-                .background(
-                    RoundedRectangle(cornerRadius: 22) // 更圆润的边角
-                        .fill(Color(.systemGray6).opacity(isInputFocused ? 1.0 : 0.6))
-                )
+                .background(Color(.systemBackground))
+                .edgesIgnoringSafeArea(.bottom)
                 .onTapGesture {
-                    isInputFocused = true
+                    // 点击背景关闭@选择器
+                    if showMentionPicker {
+                        showMentionPicker = false
+                    }
                 }
-                
-                // 发送按钮 - 仅在有内容且输入框聚焦时显示
-                if !commentManager.commentText.isEmpty && isInputFocused {
-                    Button(action: {
-                        if !commentManager.commentText.isEmpty {
-                            commentManager.submitComment()
-                            // 提交后取消焦点
-                            isInputFocused = false
+            } else {
+                // 非展开模式 - 底部输入框
+                VStack(spacing: 0) {
+                    // 显示正在回复的状态
+                    if let replyingTo = commentManager.replyingToComment {
+                        HStack {
+                            Text("回复：")
+                                .font(.system(size: 13))
+                                .foregroundColor(.gray)
                             
-                            // 处理@提及并触发虚拟角色回复
-                            Task {
-                                // 提交后延迟一小段时间再触发虚拟回复，模拟更真实的交互
-                                try? await Task.sleep(nanoseconds: UInt64(0.5 * 1_000_000_000))
-                                await commentManager.generateVirtualReply()
+                            Text(replyingTo.username)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                commentManager.cancelReply()
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.gray)
                             }
                         }
-                    }) {
-                        Text("发送")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12) // 调整高度与输入框一致
-                            .background(Color.blue) // 使用更柔和的蓝色
-                            .cornerRadius(22) // 统一圆角
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.gray.opacity(0.06))
                     }
-                    .transition(.scale.combined(with: .opacity))
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color(.systemBackground))
-            .animation(.easeInOut(duration: 0.15), value: commentManager.commentText)
-            .animation(.easeInOut(duration: 0.15), value: isInputFocused)
-            .overlay(
-                Rectangle()
-                    .frame(height: 0.5)
-                    .foregroundColor(Color.gray.opacity(0.15))
-                    .offset(y: -0.5),
-                alignment: .top
-            )
-            
-            // @人物选择器 - 只在显示时展示
-            if showMentionPicker {
-                VStack(spacing: 0) {
-                    // 搜索区域
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                        
-                        TextField("搜索历史人物", text: $mentionSearchText)
-                            .font(.system(size: 14))
-                        
-                        if !mentionSearchText.isEmpty {
-                            Button(action: { mentionSearchText = "" }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.secondary)
+                    
+                    // 输入框和发送按钮
+                    HStack(alignment: .center, spacing: 10) {
+                        // 评论输入框
+                        ZStack(alignment: .leading) {
+                            if commentManager.commentText.isEmpty && !isInputFocused {
+                                Text("跨越时空的对话...")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.gray.opacity(0.7))
+                                    .padding(.leading, 6)
                             }
+                            
+                            TextField("", text: $commentManager.commentText)
+                                .font(.system(size: 15))
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 16)
+                                .focused($isInputFocused)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isExpanded = true
+                                        isInputFocused = true
+                                    }
+                                }
+                        }
+                        .frame(height: 44)
+                        .background(
+                            RoundedRectangle(cornerRadius: 22)
+                                .fill(Color(.systemGray6).opacity(isInputFocused ? 1.0 : 0.6))
+                        )
+                        
+                        // 发送按钮
+                        if !commentManager.commentText.isEmpty && isInputFocused {
+                            Button(action: {
+                                if !commentManager.commentText.isEmpty {
+                                    submitComment()
+                                }
+                            }) {
+                                Text("发送")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background(Color.blue)
+                                    .cornerRadius(22)
+                            }
+                            .transition(.scale.combined(with: .opacity))
                         }
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(16) // 更圆润的边角
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    
-                    // 人物列表
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(filteredCharacters(), id: \.id) { character in
-                                Button(action: {
-                                    // 添加@提及
-                                    insertMention(character)
-                                    withAnimation {
-                                        showMentionPicker = false
-                                    }
-                                    isInputFocused = true
-                                }) {
-                                    HStack(alignment: .center, spacing: 12) {
-                                        // 头像
-                                        Circle()
-                                            .fill(character.color.opacity(0.2))
-                                            .frame(width: 32, height: 32)
-                                            .overlay(
-                                                Text(String(character.name.prefix(1)))
-                                                    .font(.system(size: 14, weight: .medium))
-                                                    .foregroundColor(character.color)
-                                            )
-                                        
-                                        // 名称和类别
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(character.name)
-                                                .font(.system(size: 14, weight: .medium))
-                                            
-                                            Text(character.category)
-                                                .font(.system(size: 12))
-                                                .foregroundColor(.secondary)
-                                        }
-                                        
-                                        Spacer()
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                
-                                if character.id != filteredCharacters().last?.id {
-                                    Divider()
-                                        .padding(.leading, 60)
-                                }
-                            }
-                        }
-                    }
-                    .frame(height: min(CGFloat(filteredCharacters().count) * 48, 220))
-                    .padding(.top, 8)
+                    .background(Color(.systemBackground))
+                    .animation(.easeInOut(duration: 0.15), value: commentManager.commentText)
+                    .animation(.easeInOut(duration: 0.15), value: isInputFocused)
+                    .overlay(
+                        Rectangle()
+                            .frame(height: 0.5)
+                            .foregroundColor(Color.gray.opacity(0.15))
+                            .offset(y: -0.5),
+                        alignment: .top
+                    )
                 }
-                .background(Color(.systemBackground))
-                .cornerRadius(16) // 更圆润的边角
-                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                .padding(.horizontal, 12)
-                .padding(.top, 4)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .keyboardAdaptive(
-            enabled: true, 
-            adjustLayout: false, 
-            dismissOnTap: true
-        ) // 使用增强版KeyboardAdaptive，不调整布局但启用点击关闭功能
-        .onReceive(Publishers.keyboardHeight) { height in
-            keyboardVisible = height > 0
-            keyboardHeight = height
-        }
-        .animation(.easeInOut(duration: 0.2), value: showMentionPicker)
-        // 保留对外部点击的处理
-        .onAppear {
-            // 添加对外部点击的处理
-            NotificationCenter.default.addObserver(
-                forName: UITapGestureRecognizer.dismissKeyboardNotification,
-                object: nil,
-                queue: .main
-            ) { _ in
-                self.isInputFocused = false
+        .onChange(of: isInputFocused) { oldValue, newValue in
+            if !newValue && isExpanded {
+                // 如果失去焦点且处于展开状态，可能需要延迟关闭
+                // 这里可以添加一些逻辑来决定是否关闭展开状态
             }
         }
-        .onDisappear {
-            // 移除外部点击观察者
-            NotificationCenter.default.removeObserver(
-                self,
-                name: UITapGestureRecognizer.dismissKeyboardNotification,
-                object: nil
-            )
+    }
+    
+    // 提交评论并重置状态
+    private func submitComment() {
+        commentManager.submitComment()
+        
+        // 提交后清空输入框并关闭键盘
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isExpanded = false
+            isInputFocused = false
         }
+        
+        // 为确保评论显示，延迟关闭评论输入框
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            // 强制更新评论列表
+            commentManager.updateCommentLists()
+            
+            // 在主线程生成虚拟角色回复
+            Task {
+                await commentManager.generateVirtualReply()
+            }
+        }
+    }
+    
+    // 角色行视图
+    private func characterRow(_ character: CommentCharacter) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            // 头像
+            Circle()
+                .fill(character.color.opacity(0.2))
+                .frame(width: 32, height: 32)
+                .overlay(
+                    Text(String(character.name.prefix(1)))
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(character.color)
+                )
+            
+            // 名称和类别
+            VStack(alignment: .leading, spacing: 2) {
+                Text(character.name)
+                    .font(.system(size: 14, weight: .medium))
+                
+                Text(character.category)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
     }
     
     // @虚拟人物相关方法

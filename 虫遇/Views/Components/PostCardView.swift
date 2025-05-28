@@ -225,16 +225,14 @@ class CommentLoader: ObservableObject {
     
     // 模拟添加评论
     func addComment(_ comment: UserCommentModel) {
-        isLoading = true
+        // 添加到所有评论列表
+        allComments.insert(comment, at: 0)
         
-        // 模拟网络延迟
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                // 在评论列表顶部插入新评论
-                self.loadedComments.insert(comment, at: 0)
-            }
-            self.isLoading = false
-        }
+        // 添加到已加载的评论列表（确保显示在最前面）
+        loadedComments.insert(comment, at: 0)
+        
+        // 更新分页状态
+        hasMoreComments = allComments.count > loadedComments.count
     }
 }
 
@@ -245,6 +243,9 @@ class CommentLoader: ObservableObject {
 struct PostCardView: View {
     // 帖子数据
     let post: UserPostModel
+    
+    // 环境对象
+    @EnvironmentObject var viewModel: PostViewModel
     
     // 状态属性
     @State private var isExpanded: Bool = false
@@ -2002,23 +2003,36 @@ struct PostCardView: View {
         // 设置提交状态
         isCommentSubmitting = true
         
-        // 构建评论对象 - 根据UserPostModel中的定义调整参数
-        let newComment = UserCommentModel(
-            username: "当前用户",
-            userAvatar: "person.crop.circle.fill",
-            content: trimmedText,
-            datePosted: Date(),
-            likes: 0,
-            isVirtualCharacter: false,
-            characterID: nil
-        )
-        
         // 模拟网络提交
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            // 添加到评论列表
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                // 可以改用评论加载器的添加方法
-                commentLoader.addComment(newComment)
+            // 处理回复逻辑
+            if let replyingToComment = replyingTo {
+                // 如果是回复评论，使用回调
+                onAddComment?(post, trimmedText, replyingToComment.id.uuidString)
+                
+                // 更新本地评论加载器
+                if let updatedPost = viewModel.posts.first(where: { $0.id == post.id }) {
+                    commentLoader.initialize(with: updatedPost.comments)
+                }
+            } else {
+                // 如果是新评论
+                let newComment = UserCommentModel(
+                    username: "当前用户",
+                    userAvatar: "person.crop.circle.fill",
+                    content: trimmedText,
+                    datePosted: Date(),
+                    likes: 0,
+                    isVirtualCharacter: false,
+                    characterID: nil
+                )
+                
+                // 添加到评论列表
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    commentLoader.addComment(newComment)
+                    
+                    // 使用回调而不是直接访问viewModel
+                    onAddComment?(post, trimmedText, nil)
+                }
             }
             
             // 重置状态

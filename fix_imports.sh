@@ -1,18 +1,24 @@
 #!/bin/bash
+# 设置文件路径
+FILE="虫遇/Views/Components/FullscreenPostDetailView.swift"
+BACKUP="${FILE}.backup_$(date +%Y%m%d%H%M%S)"
 
-# 项目根目录
-PROJECT_DIR="/Users/lishilong/IOS开发/虫遇/虫遇"
+# 创建备份
+cp "$FILE" "$BACKUP"
+echo "已创建备份: $BACKUP"
 
-echo "=== 检查导入问题 ==="
-grep -r "import 虫遇" --include="*.swift" $PROJECT_DIR
+# 创建临时文件
+cat > temp_fix.swift << "END"
+import SwiftUI
+import Combine
+import UIKit
+import SwiftData
+import AVKit
+import TimeSpaceTransitionEffect
 
-echo -e "\n=== 检查@main属性冲突 ==="
-grep -r "@main" --include="*.swift" $PROJECT_DIR
+// 导入NavigationHelper
+// 由于无法直接导入Utils模块，我们在此处定义所需的辅助类
+END
 
-echo -e "\n=== 检查SwipeDirection定义 ==="
-grep -r "enum SwipeDirection" --include="*.swift" $PROJECT_DIR
-
-echo -e "\n=== 检查TimeSpaceParticleView定义 ==="
-grep -r "struct TimeSpaceParticleView" --include="*.swift" $PROJECT_DIR
-
-echo -e "\n=== 完成 ===" 
+# 提取FPDVNavigationHelper类及其后的所有内容
+sed -n '/fileprivate class FPDVNavigationHelper/,$p' "$FILE" >> temp_fix.swift

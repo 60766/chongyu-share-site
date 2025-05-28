@@ -170,84 +170,173 @@ public struct WormholeExplorationView: View {
                         centerPosition: centerPosition
                     ) {
                         // 特效完成后的回调
+                        print("🚀 TimeSpaceEffectView回调开始 - 特效完成，准备生成帖子")
                         withAnimation {
                             isTransitioning = false
                             showGeneratedPostsMessage = true
                         }
                         
-                        // 添加打印信息，跟踪执行情况
-                        print("🚀 时空效果完成，准备生成帖子，当前选择的创作类型索引: \(typeManager.selectedIndex)")
-                        
-                        // 生成基于当前所选创作类型的5个帖子
-                        let typeIndex = typeManager.selectedIndex
-                        let posts = postViewModel.generatePostsByCreationType(typeIndex: typeIndex)
-                        
-                        // 验证生成的帖子
-                        if posts.isEmpty {
-                            print("⚠️ 严重错误：没有生成任何帖子！")
-                        } else {
-                            print("✅ 成功生成 \(posts.count) 个帖子，创作类型: \(typeManager.types[typeIndex])")
+                        // 创建单独的函数处理帖子生成，以简化回调逻辑
+                        DispatchQueue.main.async {
+                            // 获取选中的创作类型索引
+                            let typeIndex = typeManager.selectedIndex
+                            print("🚀 当前选择的创作类型索引: \(typeIndex)")
                             
-                            // 检查帖子内容有效性
-                            for (index, post) in posts.enumerated() {
-                                print("📝 帖子 #\(index+1): ID=\(post.id), 内容=\(post.content.prefix(30))...")
+                            // 生成基于当前所选创作类型的帖子
+                            print("🚀 开始生成帖子...")
+                            var posts = postViewModel.generatePostsByCreationType(typeIndex: typeIndex)
+                            print("🚀 generatePostsByCreationType返回了 \(posts.count) 篇帖子")
+                            
+                            // 检查帖子是否生成成功 - 增加保障措施，确保生成的帖子有效
+                            if posts.isEmpty {
+                                print("⚠️ 严重错误：第一次尝试未生成任何帖子！重试...")
+                                // 重试一次
+                                posts = postViewModel.generatePostsByCreationType(typeIndex: typeIndex)
+                                
+                                if posts.isEmpty {
+                                    print("⚠️⚠️ 严重错误：第二次尝试仍未生成任何帖子！")
+                                    // 最后尝试通过强制索引生成
+                                    posts = postViewModel.generatePostsByCreationType(typeIndex: 0)
+                                    
+                                    if posts.isEmpty {
+                                        print("⚠️⚠️⚠️ 致命错误：无法生成任何帖子，可能是PostViewModel出现问题")
+                                        // 作为最后的尝试，手动创建一个带有评论的帖子
+                                        print("🔄 尝试创建备用帖子作为最后的尝试...")
+
+                                        // 选择一位历史人物作为评论者
+                                        let historicalFigures = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "牛顿", "李白"]
+                                        let avatarSymbols = ["atom", "book.fill", "paintpalette.fill", "scroll.fill", "graduationcap.fill", "text.book.closed.fill"]
+                                        
+                                        let commenterIndex = Int.random(in: 0..<historicalFigures.count)
+                                        let commenterName = historicalFigures[commenterIndex]
+                                        let commenterAvatar = avatarSymbols[commenterIndex]
+                                        
+                                        // 创建两条历史人物评论
+                                        let comment1 = UserCommentModel(
+                                            username: commenterName,
+                                            userAvatar: commenterAvatar,
+                                            content: "作为\(commenterName)，我对这个虫洞探索非常感兴趣。跨越时空的体验总是让我思考宇宙的本质。",
+                                            datePosted: Date().addingTimeInterval(-Double.random(in: 0...1800)),
+                                            likes: Int.random(in: 5...25),
+                                            isVirtualCharacter: true,
+                                            characterID: commenterName.lowercased()
+                                        )
+                                        
+                                        // 选择另一位历史人物
+                                        var secondCommenterIndex = Int.random(in: 0..<historicalFigures.count)
+                                        while secondCommenterIndex == commenterIndex {
+                                            secondCommenterIndex = Int.random(in: 0..<historicalFigures.count)
+                                        }
+                                        let secondCommenterName = historicalFigures[secondCommenterIndex]
+                                        let secondCommenterAvatar = avatarSymbols[secondCommenterIndex]
+                                        
+                                        let comment2 = UserCommentModel(
+                                            username: secondCommenterName,
+                                            userAvatar: secondCommenterAvatar,
+                                            content: "\(commenterName)的观点很有启发性。我也想补充，从\(secondCommenterName)的视角看，这种跨维度的体验展示了思维的无限可能。",
+                                            datePosted: Date().addingTimeInterval(-Double.random(in: 0...900)),
+                                            likes: Int.random(in: 3...20),
+                                            isVirtualCharacter: true,
+                                            characterID: secondCommenterName.lowercased()
+                                        )
+                                        
+                                        // 创建最终备用帖子
+                                        let backupPost = UserPostModel(
+                                            id: UUID(),
+                                            username: "虫遇探索者",
+                                            userAvatar: "person.fill",
+                                            content: "穿越虫洞漫游时，遭遇了一个特殊的时空节点，那里的物理规则与我们的主宇宙完全不同。思维在那里可以直接影响现实...",
+                                            images: [],
+                                            datePosted: Date(),
+                                            likes: Int.random(in: 10...30),
+                                            comments: [comment1, comment2],
+                                            isLikedByCurrentUser: false,
+                                            isBookmarkedByCurrentUser: false
+                                        )
+                                        
+                                        posts = [backupPost]
+                                        print("✅ 已创建包含\(backupPost.comments.count)条评论的备用帖子: \(backupPost.id)")
+                                        
+                                        // 显示错误信息后立即关闭，避免错误状态持续
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                            withAnimation {
+                                                showGeneratedPostsMessage = false
+                                            }
+                                        }
+                                        // 不提前返回，尝试使用这个备用帖子
+                                    }
+                                }
                             }
                             
-                            // 捕获当前帖子数量
+                            // 更新生成成功的帖子数量
+                            generatedPostsCount = posts.count
+                            print("✅ 成功生成 \(posts.count) 篇帖子，创作类型: \(typeManager.types[typeIndex])")
+                            
+                            // 捕获当前帖子数量用于验证
                             let beforeCount = postViewModel.posts.count
                             print("📊 添加前帖子总数: \(beforeCount)")
                             
-                            // 添加到现有帖子列表的前面
-                            postViewModel.addPosts(posts)
-                            
-                            // 验证添加成功
-                            let afterCount = postViewModel.posts.count
-                            let expectedCount = beforeCount + posts.count
-                            print("📊 添加后帖子总数: \(afterCount)，预期总数: \(expectedCount)")
-                            
-                            if afterCount != expectedCount {
-                                print("⚠️ 错误：帖子添加异常！预期添加后总数\(expectedCount)，实际\(afterCount)")
-                            } else {
-                                print("✅ 帖子添加成功，从索引0开始新增了\(posts.count)个帖子")
+                            // 在主线程上添加帖子
+                            DispatchQueue.main.async {
+                                print("🚀 开始添加帖子到PostViewModel...")
+                                postViewModel.addPosts(posts)
                                 
-                                // 确认首篇帖子内容
-                                if !postViewModel.posts.isEmpty {
-                                    let firstPost = postViewModel.posts[0]
-                                    print("📝 当前首篇帖子: ID=\(firstPost.id), 内容=\(firstPost.content.prefix(30))...")
+                                // 验证添加成功
+                                let afterCount = postViewModel.posts.count
+                                print("📊 添加后帖子总数: \(afterCount)，添加了 \(posts.count) 篇帖子")
+                                
+                                // 发送多个通知，确保主页面能收到更新
+                                print("📣 发送NewPostsGenerated通知")
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("NewPostsGenerated"),
+                                    object: nil
+                                )
+                                
+                                print("📣 发送PostsUpdated通知")
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("PostsUpdated"),
+                                    object: nil
+                                )
+                                
+                                // 0.3秒后再次发送通知
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    print("📣 延迟0.3秒后再次发送通知")
+                                    NotificationCenter.default.post(
+                                        name: NSNotification.Name("NewPostsGenerated"),
+                                        object: nil
+                                    )
+                                    NotificationCenter.default.post(
+                                        name: NSNotification.Name("PostsUpdated"),
+                                        object: nil
+                                    )
+                                }
+                                
+                                // 再次0.5秒后最后一次发送通知
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    print("📣 延迟0.5秒后最后一次发送通知")
+                                    NotificationCenter.default.post(
+                                        name: NSNotification.Name("NewPostsGenerated"),
+                                        object: nil
+                                    )
+                                    NotificationCenter.default.post(
+                                        name: NSNotification.Name("PostsUpdated"),
+                                        object: nil
+                                    )
+                                    
+                                    print("✨ 所有生成和通知步骤已完成")
                                 }
                             }
-                        }
-                        
-                        // 发送通知，让其他视图知道新内容已生成
-                        generatedPostsCount = posts.count
-                        
-                        let userInfo: [String: Any] = [
-                            "count": posts.count,
-                            "typeIndex": typeIndex,
-                            "timestamp": Date().timeIntervalSince1970
-                        ]
-                        
-                        print("📣 准备发送NewPostsGenerated通知，\(posts.count)个新帖子")
-                        
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("NewPostsGenerated"),
-                            object: self, // 使用self作为通知来源
-                            userInfo: userInfo
-                        )
-                        
-                        print("📣 成功发送NewPostsGenerated通知")
-                        
-                        // 显示成功信息一段时间后关闭
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                            withAnimation {
-                                showGeneratedPostsMessage = false
+                            
+                            // 显示成功信息一段时间后关闭
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                withAnimation {
+                                    showGeneratedPostsMessage = false
+                                }
+                                
+                                // 提供触觉反馈
+                                let successFeedback = UINotificationFeedbackGenerator()
+                                successFeedback.notificationOccurred(.success)
                             }
-                            
-                            // 提供额外的视觉和触觉反馈
-                            let successFeedback = UINotificationFeedbackGenerator()
-                            successFeedback.notificationOccurred(.success)
-                            
-                            print("✨ 所有生成和通知步骤已完成，即将返回主界面")
                         }
                     }
                     .edgesIgnoringSafeArea(.all)

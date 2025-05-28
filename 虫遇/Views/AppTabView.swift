@@ -117,6 +117,19 @@ struct AppTabView: View {
         // 不再需要手动更新安全区域高度，TabBarManager现在会自动计算
         .edgesIgnoringSafeArea(.bottom) // 确保视图能延伸到屏幕底部
         .environmentObject(tabBarManager) // 确保TabBarManager在所有子视图中可用
+        .onAppear {
+            // 添加通知监听，处理返回首页的请求
+            NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("NavigateToHomeTab"),
+                object: nil,
+                queue: .main
+            ) { _ in
+                // 切换到首页标签
+                withAnimation {
+                    selectedTab = 0
+                }
+            }
+        }
     }
 }
 

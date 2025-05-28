@@ -9,7 +9,7 @@ public class CreationTypeManager: ObservableObject {
     public static let shared = CreationTypeManager()
     
     // 探索方向数据
-    public let types = ["随机漫游", "日常心情", "古今对望", "奇思妙想", "时空记事"]
+    public let types = ["虫洞共鸣", "日常心情", "古今对望", "奇思妙想", "时空记事"]
     public let icons = ["waveform.path.ecg", "heart.circle", "hourglass", "sparkles", "infinity"]
     
     @Published public var selectedIndex: Int = 0
@@ -602,6 +602,7 @@ public struct CreationTypeButtonsView: View {
             }
         }
         .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, alignment: .center) // 确保HStack在容器中居中
         .onAppear {
             // 初始化
             initializeButtonLayout()
