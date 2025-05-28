@@ -711,7 +711,12 @@ struct CosmicTabView: View {
     private func setupTabBarAppearance() {
         // 设置tabBar的外观
         let appearance = UITabBarAppearance()
-        appearance.configureWithDefaultBackground()
+        appearance.configureWithTransparentBackground()
+        
+        // 增强磨砂玻璃效果
+        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+        // 添加轻微的背景色以增强磨砂质感
+        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.3)
         
         // 设置颜色属性
         let normalAttributes = createTabBarAttributes(isSelected: false)
