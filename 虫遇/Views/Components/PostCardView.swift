@@ -1,39 +1,242 @@
 import SwiftUI
 import Foundation
-
-
+import UIKit
+import Combine
 
 /**
  * 后台数据加载器
  * 用于将数据加载从UI线程分离，优化性能
  */
 class CommentLoader: ObservableObject {
-    @Published var loadedComments: [UserCommentModel] = []
+    @Published var loadedComments: [DetailedCommentModel] = []
     @Published var isLoading: Bool = false
-    @Published var hasMoreComments: Bool = true
-    @Published var isPreloaded: Bool = false  // 标记是否已预加载
-    @Published var errorMessage: String? = nil // 错误信息
-    @Published var currentPage = 1
-    @Published var isInitialized: Bool = false  // 添加isInitialized属性
-    private var pageSize = 10
-    private var isInitialLoad = true
+    @Published var hasMoreComments: Bool = false
+    @Published var errorMessage: String? = nil
+    @Published var isInitialized: Bool = false
+    @Published var isPreloaded: Bool = false
     
-    // 兼容性属性 - 支持新的属性名
-    var hasMoreToLoad: Bool { 
-        return hasMoreComments 
+    // 加载控制
+    private var loadingTask: Task<Void, Never>? = nil
+    private var allComments: [DetailedCommentModel] = []
+    private var currentPage: Int = 1
+    private var pageSize: Int = 10
+    private var isInitialLoad: Bool = true
+    private var currentPostID: UUID? = nil
+    
+    // 初始化
+    init() {
+        print("🏗️ CommentLoader: 初始化")
+        setupNotifications()
     }
     
-    private var allComments: [UserCommentModel] = []
-    private var loadingTask: Task<Void, Never>? = nil // 跟踪当前加载任务
-    
-    // 析构函数，取消所有任务
     deinit {
+        print("🗑️ CommentLoader: 清理资源")
+        removeNotifications()
+        cancelLoading()
+    }
+    
+    // 设置通知监听
+    private func setupNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCommentsUpdated(_:)),
+            name: NSNotification.Name("PostCommentsUpdated"),
+            object: nil
+        )
+        
+        // 添加对角色回复生成完成的通知监听
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCharacterReplyGenerated(_:)),
+            name: NSNotification.Name("CharacterReplyGenerated"),
+            object: nil
+        )
+        
+        print("📡 CommentLoader: 已注册PostCommentsUpdated和CharacterReplyGenerated通知监听")
+    }
+    
+    // 移除通知监听
+    private func removeNotifications() {
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSNotification.Name("PostCommentsUpdated"),
+            object: nil
+        )
+        
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSNotification.Name("CharacterReplyGenerated"),
+            object: nil
+        )
+        
+        print("🔕 CommentLoader: 已移除所有通知监听")
+    }
+    
+    // 取消加载任务
+    private func cancelLoading() {
         loadingTask?.cancel()
+        loadingTask = nil
+    }
+    
+    // 处理评论更新通知
+    @objc private func handleCommentsUpdated(_ notification: Notification) {
+        // 提取通知中的帖子ID
+        guard let userInfo = notification.userInfo,
+              let postIDString = userInfo["postID"] as? String,
+              let postID = UUID(uuidString: postIDString) else {
+            print("⚠️ CommentLoader: 收到评论更新通知，但缺少有效的帖子ID")
+            return
+        }
+        
+        print("📣 CommentLoader: 收到评论更新通知，帖子ID: \(postIDString)")
+        
+        // 检查是否与当前加载的帖子匹配
+        if let currentID = currentPostID, currentID == postID {
+            print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，即将刷新评论")
+            
+            // 在主线程执行UI更新
+            DispatchQueue.main.async {
+                self.refreshComments()
+            }
+        } else {
+            print("ℹ️ CommentLoader: 评论更新通知与当前加载的帖子不匹配")
+            print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
+            print("  通知帖子ID: \(postIDString)")
+        }
+    }
+    
+    // 处理角色回复生成完成的通知
+    @objc private func handleCharacterReplyGenerated(_ notification: Notification) {
+        // 提取通知中的帖子ID和回复内容
+        guard let userInfo = notification.userInfo,
+              let postID = userInfo["postID"] as? String,
+              let characterID = userInfo["characterID"] as? String,
+              let replyContent = userInfo["reply"] as? String else {
+            print("⚠️ CommentLoader: 收到角色回复生成通知，但缺少必要信息")
+            return
+        }
+        
+        print("📣 CommentLoader: 收到角色回复生成通知 - 帖子ID: \(postID), 角色ID: \(characterID)")
+        print("💬 回复内容: \"\(String(replyContent.prefix(50)))...\"")
+        
+        // 检查是否与当前加载的帖子匹配
+        if let currentID = currentPostID, currentID.uuidString == postID {
+            print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，添加角色回复")
+            
+            // 在主线程执行UI更新
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                
+                // 创建虚拟角色评论对象
+                let comment = DetailedCommentModel(
+                    username: self.getCharacterName(for: characterID),
+                    userAvatar: self.getCharacterAvatar(for: characterID),
+                    content: replyContent,
+                    datePosted: Date(),
+                    isVirtualCharacter: true,
+                    characterID: characterID,
+                    likes: 0
+                )
+                
+                // 添加到评论列表
+                self.addComment(comment)
+                
+                print("✅ CommentLoader: 角色回复已添加到评论列表")
+            }
+        } else {
+            print("ℹ️ CommentLoader: 角色回复通知与当前加载的帖子不匹配")
+            print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
+            print("  通知帖子ID: \(postID)")
+        }
+    }
+    
+    // 刷新评论内容
+    func refreshComments() {
+        print("🔄 CommentLoader: 开始刷新评论...")
+        
+        // 取消正在进行的加载任务
+        loadingTask?.cancel()
+        
+        // 重置加载状态
+        currentPage = 1
+        loadedComments = []
+        isLoading = true
+        
+        // 创建刷新任务
+        loadingTask = Task { @MainActor in
+            // 检查任务是否被取消
+            if Task.isCancelled {
+                print("❌ CommentLoader: 刷新任务被取消")
+                return
+            }
+            
+            do {
+                // 短暂延迟，避免UI抖动
+                print("⏳ CommentLoader: 短暂延迟以避免UI抖动...")
+                try await Task.sleep(nanoseconds: 200_000_000)
+                
+                // 检查任务是否被取消
+                if Task.isCancelled {
+                    print("❌ CommentLoader: 延迟后任务被取消")
+                    return
+                }
+                
+                // 检查我们是否有评论可以加载
+                if allComments.isEmpty {
+                    print("ℹ️ CommentLoader: 无评论可加载，帖子评论列表为空")
+                    self.loadedComments = []
+                    self.hasMoreComments = false
+                    self.isLoading = false
+                    return
+                }
+                
+                // 重新加载评论
+                let preloadCount = min(5, self.allComments.count)
+                let preloadedComments = Array(self.allComments.prefix(preloadCount))
+                
+                self.loadedComments = preloadedComments
+                self.currentPage = 1
+                self.hasMoreComments = preloadCount < self.allComments.count
+                self.isPreloaded = true
+                self.isLoading = false
+                
+                // 打印刷新后的评论信息
+                print("✅ CommentLoader: 评论列表已刷新，共加载\(preloadedComments.count)条评论")
+                print("📊 CommentLoader: 当前评论总数: \(self.allComments.count), 已加载: \(self.loadedComments.count)")
+                
+                // 打印评论内容日志
+                if !self.loadedComments.isEmpty {
+                    print("📝 CommentLoader: 已加载评论预览:")
+                    for (index, comment) in self.loadedComments.enumerated() {
+                        let isVirtual = comment.isVirtualCharacter ? "虚拟角色" : "用户"
+                        print("  \(index+1). [\(isVirtual)] \(comment.username): \(comment.content.prefix(20))...")
+                    }
+                }
+            } catch {
+                // 错误处理
+                if error is CancellationError {
+                    print("❌ CommentLoader: 刷新任务被取消")
+                } else {
+                    print("⚠️ CommentLoader: 刷新评论时发生错误 - \(error.localizedDescription)")
+                    self.errorMessage = "加载评论时出错: \(error.localizedDescription)"
+                    self.isLoading = false
+                }
+            }
+        }
     }
     
     // 初始化加载器
-    func initialize(with comments: [UserCommentModel]) {
-        guard !isInitialized else { return }
+    func initialize(with comments: [DetailedCommentModel], postID: UUID? = nil) {
+        print("🚀 CommentLoader: 初始化评论加载器...")
+        
+        // 记录当前帖子ID
+        if let id = postID {
+            print("🔑 CommentLoader: 设置帖子ID: \(id)")
+            self.currentPostID = id
+        } else {
+            print("⚠️ CommentLoader: 警告 - 未提供帖子ID")
+            self.currentPostID = nil
+        }
         
         self.allComments = comments
         self.loadedComments = []
@@ -42,9 +245,21 @@ class CommentLoader: ObservableObject {
         self.isInitialized = true
         self.errorMessage = nil
         
+        // 记录评论数量信息
+        print("📊 CommentLoader: 初始化了 \(comments.count) 条评论")
+        
+        // 如果有虚拟角色评论，单独记录
+        let virtualComments = comments.filter { $0.isVirtualCharacter }
+        if !virtualComments.isEmpty {
+            print("🤖 CommentLoader: 包含 \(virtualComments.count) 条虚拟角色评论")
+        }
+        
         // 自动预加载评论
         if !comments.isEmpty {
+            print("⏳ CommentLoader: 即将预加载初始评论...")
             preloadFirstComments()
+        } else {
+            print("ℹ️ CommentLoader: 无评论可预加载")
         }
     }
     
@@ -118,13 +333,24 @@ class CommentLoader: ObservableObject {
             if Task.isCancelled { return }
             
             do {
-                // 模拟网络延迟，但保持短暂，不影响用户体验
-                try await Task.sleep(nanoseconds: 100_000_000)
+                // 先设置加载状态，让UI有反馈
+                isLoading = true
+                
+                // 提供触觉反馈
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                
+                // 延迟执行实际加载，避免UI卡顿
+                try await Task.sleep(nanoseconds: 100_000_000) // 100毫秒
                 
                 // 检查任务是否被取消
-                if Task.isCancelled { return }
+                if Task.isCancelled { 
+                    isLoading = false
+                    return 
+                }
                 
-                let pageSize = 5  // 合理的批量加载大小，避免一次加载过多
+                // 减少每页加载的评论数量
+                let pageSize = 2  // 原来是3，减少到2
                 let startIndex = self.currentPage * pageSize
                 let endIndex = min(startIndex + pageSize, self.allComments.count)
                 
@@ -139,8 +365,10 @@ class CommentLoader: ObservableObject {
                 let safeEndIndex = min(endIndex, self.allComments.count)
                 let newComments = Array(self.allComments[startIndex..<safeEndIndex])
                 
-                // 更新状态
+                // 不使用分批加载和动画，直接添加所有评论
                 self.loadedComments.append(contentsOf: newComments)
+                
+                // 更新状态
                 self.currentPage += 1
                 self.hasMoreComments = endIndex < self.allComments.count
                 self.isLoading = false
@@ -176,7 +404,7 @@ class CommentLoader: ObservableObject {
         // 模拟网络延迟
         DispatchQueue.main.asyncAfter(deadline: .now() + (isInitialLoad ? 0.5 : 0.8)) {
             // 使用虚拟数据（实际应用中应当从API获取）
-            var newComments: [UserCommentModel] = []
+            var newComments: [DetailedCommentModel] = []
             
             // 内容量基于分页加载
             let start = (self.currentPage - 1) * self.pageSize
@@ -224,7 +452,9 @@ class CommentLoader: ObservableObject {
     }
     
     // 模拟添加评论
-    func addComment(_ comment: UserCommentModel) {
+    func addComment(_ comment: DetailedCommentModel) {
+        print("➕ CommentLoader: 添加新评论...")
+        
         // 添加到所有评论列表
         allComments.insert(comment, at: 0)
         
@@ -233,6 +463,80 @@ class CommentLoader: ObservableObject {
         
         // 更新分页状态
         hasMoreComments = allComments.count > loadedComments.count
+        
+        // 打印添加的评论信息
+        let commentType = comment.isVirtualCharacter ? "虚拟角色评论" : "用户评论"
+        let characterInfo = comment.isVirtualCharacter ? "(角色ID: \(comment.characterID ?? "未知"))" : ""
+        print("✅ CommentLoader: 新\(commentType)已添加\(characterInfo)")
+        print("📝 评论内容: \(comment.content)")
+        print("👤 评论者: \(comment.username)")
+        print("📊 CommentLoader: 当前评论总数: \(allComments.count), 已加载: \(loadedComments.count)")
+        
+        // 如果有帖子ID，发送通知以更新其他可能显示此帖子的视图
+        if let postID = currentPostID {
+            print("📣 CommentLoader: 发送评论更新通知，帖子ID: \(postID)")
+            
+            // 在主线程上发送通知
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PostCommentsUpdated"),
+                    object: nil,
+                    userInfo: ["postID": postID.uuidString]
+                )
+            }
+        }
+    }
+    
+    // 获取角色名称
+    private func getCharacterName(for characterID: String) -> String {
+        switch characterID.lowercased() {
+        case "einstein":
+            return "爱因斯坦"
+        case "shakespeare":
+            return "莎士比亚"
+        case "davinci":
+            return "达芬奇"
+        case "goku":
+            return "孙悟空"
+        case "holmes":
+            return "福尔摩斯"
+        case "naruto":
+            return "漩涡鸣人"
+        case "confucius":
+            return "孔子"
+        case "newton":
+            return "牛顿"
+        case "libai":
+            return "李白"
+        default:
+            return "虚拟角色"
+        }
+    }
+    
+    // 获取角色头像
+    private func getCharacterAvatar(for characterID: String) -> String {
+        switch characterID.lowercased() {
+        case "einstein":
+            return "atom" 
+        case "shakespeare":
+            return "book.fill"
+        case "davinci":
+            return "paintpalette.fill"
+        case "goku":
+            return "person.fill.viewfinder"
+        case "holmes":
+            return "magnifyingglass"
+        case "naruto":
+            return "tornado"
+        case "confucius":
+            return "scroll.fill"
+        case "newton":
+            return "arrow.down.circle.fill"
+        case "libai":
+            return "text.book.closed.fill"
+        default:
+            return "person.circle.fill"
+        }
     }
 }
 
@@ -255,8 +559,9 @@ struct PostCardView: View {
     @State private var showImageViewer: Bool = false
     @State private var selectedImageIndex: Int = 0
     @State private var commentText: String = ""  // 新增：评论文本
-    @State private var replyingTo: UserCommentModel? = nil  // 新增：回复对象
+    @State private var replyingTo: DetailedCommentModel? = nil  // 新增：回复对象
     @State private var isSharePresented: Bool = false // 新增：分享菜单展示状态
+    @State private var showPostOptions: Bool = false // 新增：帖子选项展示状态
     
     // 评论加载器
     @StateObject private var commentLoader = CommentLoader()
@@ -277,8 +582,8 @@ struct PostCardView: View {
     
     // 配置参数
     var showUserInfo: Bool = true
-    var maxPreviewLines: Int = 5
-    var maxPreviewLength: Int = 120
+    var maxPreviewLines: Int = 5  // 默认显示5行，适合中等长度内容
+    var maxPreviewLength: Int = 250  // 增加默认阈值从100到250字符，让中等长度内容也完整显示
     var showActions: Bool = true
     var showCommentSection: Bool = true
     var fullWidthImages: Bool = false
@@ -294,8 +599,51 @@ struct PostCardView: View {
     // 显示模式，默认为预览模式
     var displayMode: DisplayMode = .preview
     
+    // 新增：智能内容显示计算属性
+    private var shouldShowExpandButton: Bool {
+        // 详情视图不需要展开按钮
+        if isDetailView { return false }
+        
+        // 内容少于250字符，不需要展开按钮，直接完整显示
+        // 这样中等长度内容（如200字左右）也会直接完整显示
+        if post.content.count < maxPreviewLength { return false }
+        
+        // 估算行数，如果内容估计不超过显示行数，不需要展开按钮
+        let estimatedLines = estimateTextLines(post.content)
+        return estimatedLines > 15 // 设置更高的行数阈值，避免中等长度内容被截断
+    }
+    
+    // 估算文本行数的辅助方法
+    private func estimateTextLines(_ text: String) -> Int {
+        // 假设每行平均字符数(中文约15-20字，英文35-40字)
+        let chineseCharsPerLine = 18
+        let englishCharsPerLine = 40
+        
+        // 估算中文字符数
+        var chineseCharCount = 0
+        for char in text {
+            if String(char).unicodeScalars.contains(where: { 
+                // 基本汉字范围
+                ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
+                // 扩展汉字范围
+                ($0.value >= 0x3400 && $0.value <= 0x4DBF)
+            }) {
+                chineseCharCount += 1
+            }
+        }
+        
+        // 估算英文字符数(包括标点符号和空格)
+        let englishCharCount = text.count - chineseCharCount
+        
+        // 综合计算估计行数
+        let estimatedChineseLines = Double(chineseCharCount) / Double(chineseCharsPerLine)
+        let estimatedEnglishLines = Double(englishCharCount) / Double(englishCharsPerLine)
+        
+        return max(1, Int(ceil(estimatedChineseLines + estimatedEnglishLines)))
+    }
+    
     // 新增：评论预览获取逻辑
-    private var previewComments: [UserCommentModel] {
+    private var previewComments: [DetailedCommentModel] {
         // 只在预览模式下限制评论数量
         if displayMode == .preview {
             // 获取一条历史人物的评论
@@ -339,8 +687,8 @@ struct PostCardView: View {
         onShare: (() -> Void)? = nil,
         onAddComment: ((UserPostModel, String, String?) -> Void)? = nil,
         showUserInfo: Bool = true,
-        maxPreviewLines: Int = 5,
-        maxPreviewLength: Int = 120,
+        maxPreviewLines: Int = 5,  // 默认显示5行，适合中等长度内容
+        maxPreviewLength: Int = 250,  // 增加默认阈值从100到250字符，让中等长度内容也完整显示
         showActions: Bool = true,
         showCommentSection: Bool = true,
         fullWidthImages: Bool = false,
@@ -428,7 +776,7 @@ struct PostCardView: View {
         }
         .onAppear {
             // 初始化评论加载器
-            commentLoader.initialize(with: post.comments)
+            commentLoader.initialize(with: post.comments, postID: post.id)
             
             // 只在详情模式下预加载评论
             if displayMode == .detail && showCommentSection {
@@ -448,12 +796,8 @@ struct PostCardView: View {
     // 用户信息区域
     private var userInfoSection: some View {
         HStack(alignment: .center, spacing: 12) {
-            // 用户头像 - 简化设计
-            Image(post.userAvatar)
-                .resizable()
-                    .aspectRatio(contentMode: .fill)
-                .frame(width: 46.0, height: 46.0)
-                .clipShape(Circle())
+            // 用户头像 - 使用 Avatar 组件，支持系统符号
+            Avatar(url: post.userAvatar, size: 46.0)
                 .overlay(
                     Circle()
                         .stroke(DesignSystem.Colors.divider, lineWidth: 0.5)
@@ -463,7 +807,7 @@ struct PostCardView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     // 用户名 - 增加字体粗细区分
-                Text(post.username)
+                    Text(post.username)
                         .font(.system(size: 16.0, weight: .semibold))
                         .foregroundColor(DesignSystem.Colors.primaryText)
                     
@@ -474,17 +818,20 @@ struct PostCardView: View {
                     
                     Spacer()
                 
-                    // 菜单按钮移至用户信息行内，更加整洁
-            Button(action: {
+                    // 使用独立组件处理选项按钮
+                    PostOptionsButton(
+                        post: post,
+                        onDislikeCharacter: dislikeCharacter,
+                        onReport: {
+                            // 举报内容的逻辑
                             feedbackGenerator.impactOccurred(intensity: 0.4)
-            }) {
-                Image(systemName: "ellipsis")
-                            .font(.system(size: 16.0))
-                                .foregroundColor(DesignSystem.Colors.secondaryText)
-                            .padding(6.0)
+                        },
+                        onFollowCharacter: { isFollowed in
+                            // 关注角色的逻辑
+                            feedbackGenerator.impactOccurred(intensity: 0.4)
                         }
-                        .buttonStyle(PlainButtonStyle())
-                    }
+                    )
+                }
                 
                 // 发布时间与内容类型简化为一行，字体更小但确保可读性
                 HStack(spacing: 6) {
@@ -516,18 +863,23 @@ struct PostCardView: View {
                 Text(post.content)
                     .font(.system(size: 16.0, weight: .regular))
                     .foregroundColor(DesignSystem.Colors.primaryText)
-                    .lineLimit(isExpanded || isDetailView ? nil : maxPreviewLines)
+                    // 修复lineLimit条件，确保短内容显示完整
+                    .lineLimit(isExpanded || isDetailView || !shouldShowExpandButton ? nil : maxPreviewLines)
                     .lineSpacing(6.0) // 增加行间距提高可读性
                     .fixedSize(horizontal: false, vertical: true) // 确保文本正确换行
                     .padding(.bottom, 2.0) // 为文本添加底部间距
                 
-                // 仅在内容较长且非详情视图时显示展开/收起按钮
-                if post.content.count > maxPreviewLength && !isDetailView {
+                // 仅在需要展开按钮时显示
+                if shouldShowExpandButton && !isDetailView {
                     Button(action: {
-                        withAnimation(DesignSystem.Animations.quick) {
+                        // 立即提供触觉反馈
+                        feedbackGenerator.impactOccurred(intensity: 0.3)
+                        
+                        // 延迟状态更新，给UI线程留出响应时间
+                        DispatchQueue.main.async {
+                            // 直接切换状态，避免复杂的动画计算
                             isExpanded.toggle()
                         }
-                        feedbackGenerator.impactOccurred(intensity: 0.3)
                     }) {
                         HStack(spacing: 4) {
                             Text(isExpanded ? "收起" : "显示更多")
@@ -537,7 +889,7 @@ struct PostCardView: View {
                             // 添加方向指示图标
                             Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                                 .font(.system(size: 12.0, weight: .medium))
-                        .foregroundColor(DesignSystem.Colors.primary)
+                                .foregroundColor(DesignSystem.Colors.primary)
                         }
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -1124,7 +1476,7 @@ struct PostCardView: View {
     }
     
     // 获取精选评论 - 按照优先级排序
-    private func getFeaturedComment() -> UserCommentModel? {
+    private func getFeaturedComment() -> DetailedCommentModel? {
         // 优先选择有回复的虚拟角色评论
         if let virtualComment = post.comments.first(where: { 
             $0.isVirtualCharacter && !$0.replies.isEmpty 
@@ -1145,7 +1497,7 @@ struct PostCardView: View {
     }
     
     // 评论按钮区
-    private func commentButtonSection(for comment: UserCommentModel) -> some View {
+    private func commentButtonSection(for comment: DetailedCommentModel) -> some View {
         HStack(spacing: 20) {
             // 点赞按钮
             Button(action: {
@@ -1240,7 +1592,7 @@ struct PostCardView: View {
     // MARK: - 评论行子组件
     
     // 评论按钮区域
-    private func buttonSection(for comment: UserCommentModel) -> some View {
+    private func buttonSection(for comment: DetailedCommentModel) -> some View {
         HStack(spacing: 20) { // 增加按钮间距
             // 点赞按钮
             Button(action: {
@@ -1349,7 +1701,7 @@ struct PostCardView: View {
     }
     
     // 评论背景
-    private func commentBackground(for comment: UserCommentModel) -> some View {
+    private func commentBackground(for comment: DetailedCommentModel) -> some View {
         Group {
             if comment.isVirtualCharacter {
                 getCharacterColor(for: comment.characterID ?? "").opacity(0.03)
@@ -1360,7 +1712,7 @@ struct PostCardView: View {
     }
     
     // 评论左侧边框
-    private func commentLeftBorder(for comment: UserCommentModel) -> some View {
+    private func commentLeftBorder(for comment: DetailedCommentModel) -> some View {
         Group {
             if comment.isVirtualCharacter {
                 HStack {
@@ -1377,7 +1729,7 @@ struct PostCardView: View {
     }
     
     // 评论边框
-    private func commentBorder(for comment: UserCommentModel) -> some View {
+    private func commentBorder(for comment: DetailedCommentModel) -> some View {
         RoundedRectangle(cornerRadius: 12.0)
             .stroke(
                 comment.isVirtualCharacter ?
@@ -1546,7 +1898,7 @@ struct PostCardView: View {
     
     // 拆分复杂表达式 - 修复第623行的问题
     // 单独定义评论行子组件
-    private func CommentRow(comment: UserCommentModel, onReply: @escaping () -> Void) -> some View {
+    private func CommentRow(comment: DetailedCommentModel, onReply: @escaping () -> Void) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 10) {
                 // 用户头像
@@ -1601,7 +1953,7 @@ struct PostCardView: View {
     
     // 修复从第721行开始的错误，将它们移入正确的上下文
     // 获取评论背景色
-    private func getCommentBackground(for comment: UserCommentModel) -> some View {
+    private func getCommentBackground(for comment: DetailedCommentModel) -> some View {
         Group {
             if comment.isVirtualCharacter {
                 getCharacterColor(for: comment.characterID ?? "").opacity(0.03)
@@ -1612,7 +1964,7 @@ struct PostCardView: View {
     }
     
     // 获取评论左侧边框
-    private func getCommentLeftBorder(for comment: UserCommentModel) -> some View {
+    private func getCommentLeftBorder(for comment: DetailedCommentModel) -> some View {
         Group {
             if comment.isVirtualCharacter {
                 HStack {
@@ -1629,7 +1981,7 @@ struct PostCardView: View {
     }
     
     // 获取评论边框
-    private func getCommentBorder(for comment: UserCommentModel) -> some View {
+    private func getCommentBorder(for comment: DetailedCommentModel) -> some View {
         RoundedRectangle(cornerRadius: 12.0)
             .stroke(
                 comment.isVirtualCharacter ?
@@ -1672,7 +2024,7 @@ struct PostCardView: View {
     }
     
     // 用户头像视图
-    private func avatarView(for comment: UserCommentModel) -> some View {
+    private func avatarView(for comment: DetailedCommentModel) -> some View {
         Group {
             if comment.isVirtualCharacter {
                 // 虚拟角色头像
@@ -1690,7 +2042,7 @@ struct PostCardView: View {
     }
     
     // 角色头像
-    private func characterAvatar(for comment: UserCommentModel) -> some View {
+    private func characterAvatar(for comment: DetailedCommentModel) -> some View {
         ZStack {
             Circle()
                 .fill(comment.isVirtualCharacter 
@@ -2012,18 +2364,18 @@ struct PostCardView: View {
                 
                 // 更新本地评论加载器
                 if let updatedPost = viewModel.posts.first(where: { $0.id == post.id }) {
-                    commentLoader.initialize(with: updatedPost.comments)
+                    commentLoader.initialize(with: updatedPost.comments, postID: updatedPost.id)
                 }
             } else {
                 // 如果是新评论
-                let newComment = UserCommentModel(
+                let newComment = DetailedCommentModel(
                     username: "当前用户",
                     userAvatar: "person.crop.circle.fill",
                     content: trimmedText,
                     datePosted: Date(),
-                    likes: 0,
                     isVirtualCharacter: false,
-                    characterID: nil
+                    characterID: nil,
+                    likes: 0
                 )
                 
                 // 添加到评论列表
@@ -2077,6 +2429,34 @@ struct PostCardView: View {
         // 使用ModelData中的样本图片描述
         return ModelData.sampleImages[imageName]
     }
+    
+    // 处理不喜欢角色的逻辑
+    private func dislikeCharacter() {
+        // 给予触感反馈
+        feedbackGenerator.impactOccurred(intensity: 0.6)
+        
+        // 获取当前帖子的角色ID（优先使用characterID，如果不存在则使用username）
+        let characterID = post.characterID ?? post.username
+        
+        // 调用角色轮换系统来标记不喜欢的角色
+        CharacterRotationSystem.shared.dislikeCharacter(characterID)
+        
+        // 显示确认提示
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        
+        // 显示Toast提示
+        ToastManager.shared.showToast(message: "已减少推荐\"\(post.username)\"")
+        
+        // 获取内容类型并调用ContentTypeWeightManager减少权重
+        if let contentTypeString = post.contentType,
+           let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) {
+            ContentTypeWeightManager.shared.reduceContentType(contentType)
+            ToastManager.shared.showToast(message: "已减少\"\(contentTypeString)\"类型内容")
+        } else {
+            ToastManager.shared.showToast(message: "无法识别内容类型")
+        }
+    }
 }
 
 // MARK: - 预览
@@ -2093,5 +2473,815 @@ struct ZoomableImageView: View {
     
     var body: some View {
         Text("图片查看器")
+    }
+}
+
+// MARK: - 帖子选项按钮 (使用原生Popover)
+struct PostOptionsButton: View {
+    var post: UserPostModel? // 添加post参数
+    var onDislikeCharacter: () -> Void
+    var onReport: () -> Void
+    var onFollowCharacter: ((Bool) -> Void)? = nil // 添加关注回调
+    var isOneKeyGeneration: Bool = false // 添加是否为一键生成模式的标志
+    
+    @State private var isPressed: Bool = false
+    @State private var showMenu: Bool = false
+    @State private var isFollowed: Bool = false // 添加关注状态
+    @State private var isBlocked: Bool = false // 添加屏蔽状态
+    @State private var contentTypePercentage: Double = 0 // 内容类型占比
+    @State private var contentTypeCount: Int = 0 // 内容类型数量
+    @State private var totalContentCount: Int = 0 // 总内容数量
+    @State private var estimatedAfterCount: Int = 0 // 减少后预计数量
+    @State private var currentCount: Int = 6 // 添加当前数量变量
+    
+    // 修复isOneKeyGeneration判断逻辑
+    // 添加一个计算属性来判断是否为虫洞探索（单独生成）模式
+    private var isWormholeExploration: Bool {
+        // 简化逻辑，移除调试日志
+        return post?.username == "虫洞探索" || post?.characterID == "虫洞探索" || post?.characterID == "wormhole"
+    }
+    
+    // 添加计算属性，确保虫洞探索模式总是显示数量控制
+    private var shouldShowCountControl: Bool {
+        // 简化逻辑，虫洞共鸣帖子直接显示数值组件
+        return true
+        
+        // 以下是旧代码，已移除
+        // 详细调试日志
+        // print("🔍 shouldShowCountControl开始计算")
+        // print("🔍 - post为nil? \(post == nil ? "是" : "否")")
+        
+        // guard let post = post else {
+        //     print("🔍 - post为nil，返回false")
+        //     return false
+        // }
+        
+        // print("🔍 - post.source = \(post.source ?? "nil")")
+        // print("🔍 - post.contentType = \(post.contentType ?? "nil")")
+        // print("🔍 - post.username = \(post.username)")
+        // print("🔍 - post.characterID = \(post.characterID ?? "nil")")
+        
+        // // 判断逻辑：来源是wormhole的帖子（虫洞探索生成的）或sample的帖子（预设示例帖子）
+        // let result = post.source == "wormhole" || post.source == "sample"
+        // print("🔍 shouldShowCountControl最终结果: \(result)")
+        // return result
+    }
+    
+    // 添加计算属性，确保一键生成模式总是显示权重控制
+    private var shouldShowWeightControl: Bool {
+        // 简化逻辑，只有一键生成的帖子才显示权重控制
+        guard let post = post else {
+            return false
+        }
+        
+        // 判断逻辑：只有来源是onekey的帖子（一键生成的）才显示权重控制
+        return post.source == "onekey"
+        
+        // 以下是旧代码，已移除
+        // 详细调试日志
+        // print("🔍 shouldShowWeightControl开始计算")
+        // print("🔍 - post为nil? \(post == nil ? "是" : "否")")
+        
+        // guard let post = post else {
+        //     print("🔍 - post为nil，返回false")
+        //     return false
+        // }
+        
+        // print("🔍 - post.source = \(post.source ?? "nil")")
+        // print("🔍 - post.contentType = \(post.contentType ?? "nil")")
+        // print("🔍 - post.username = \(post.username)")
+        // print("🔍 - post.characterID = \(post.characterID ?? "nil")")
+        
+        // // 判断逻辑：只有来源是onekey的帖子（一键生成的）才显示权重控制
+        // let result = post.source == "onekey"
+        // print("🔍 shouldShowWeightControl最终结果: \(result)")
+        // return result
+    }
+    
+    private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+    
+    var body: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.2)) {
+                isPressed = true
+                feedbackGenerator.impactOccurred(intensity: 0.2)
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.spring(response: 0.15)) {
+                    isPressed = false
+                }
+                showMenu = true
+            }
+        }) {
+            ZStack {
+                if isPressed {
+                    Circle()
+                        .fill(Color(.systemGray5).opacity(0.5))
+                        .frame(width: 28, height: 28)
+                }
+                
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 15.0, weight: .medium))
+                    .foregroundColor(DesignSystem.Colors.secondaryText)
+            }
+            .frame(width: 28, height: 28)
+            .contentShape(Circle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .popover(isPresented: $showMenu, arrowEdge: .top) {
+            VStack(spacing: 0) {
+                // 关注角色按钮 - 根据关注状态显示不同UI
+                Button(action: {
+                    showMenu = false
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        // 切换关注状态
+                        isFollowed.toggle()
+                        HapticFeedbackManager.shared.menuSelection()
+                        
+                        // 使用回调通知外部状态变化
+                        onFollowCharacter?(isFollowed)
+                        
+                        // 显示操作反馈
+                        ToastManager.shared.showToast(
+                            message: isFollowed ? "已关注「\(post?.username ?? "该角色")」" : "已取消关注"
+                        )
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: isFollowed ? "person.badge.minus" : "person.badge.plus")
+                            .font(.system(size: 12))
+                            .foregroundColor(isFollowed ? Color.red.opacity(0.7) : Color.primaryColor)
+                            .frame(width: 16, alignment: .center)
+                        
+                        Spacer()
+                        
+                        Text(isFollowed ? "取消关注" : "关注角色")
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundColor(DesignSystem.Colors.secondaryText)
+                            .padding(.trailing, 4)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Divider()
+                    .frame(width: 110)
+                
+                // 屏蔽此角色按钮
+                Button(action: {
+                    showMenu = false
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        // 切换屏蔽状态
+                        isBlocked.toggle()
+                        HapticFeedbackManager.shared.menuSelection()
+                        
+                        // 调用屏蔽回调
+                        onDislikeCharacter()
+                        
+                        // 显示操作反馈
+                        ToastManager.shared.showToast(
+                            message: isBlocked ? "已屏蔽「\(post?.username ?? "该角色")」" : "已取消屏蔽"
+                        )
+                        
+                        // 更新本地存储
+                        updateBlockedCharacters(post?.characterID ?? post?.username ?? "", isBlocked: isBlocked)
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: isBlocked ? "eye.slash.fill" : "eye.slash")
+                            .font(.system(size: 12))
+                            .foregroundColor(isBlocked ? Color.red.opacity(0.7) : Color.orange.opacity(0.8))
+                            .frame(width: 16, alignment: .center)
+                        
+                        Spacer()
+                        
+                        Text(isBlocked ? "已屏蔽角色" : "屏蔽此角色")
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundColor(DesignSystem.Colors.secondaryText)
+                            .padding(.trailing, 4)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Divider()
+                    .frame(width: 110)
+                
+                // 根据模式显示不同的功能
+                if shouldShowWeightControl {
+                    // 一键生成模式：显示减少此类内容功能
+                    Button(action: {
+                        // 不再关闭菜单
+                        // showMenu = false
+                        
+                        // 直接执行减少/恢复操作
+                        if let contentTypeString = post?.contentType,
+                           let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) {
+                            // 检查当前权重，如果为0则恢复为100%
+                            let currentWeight = ContentTypeWeightManager.shared.getWeight(for: contentType)
+                            
+                            if currentWeight <= 0.01 {
+                                // 权重接近0时，恢复为100%
+                                ContentTypeWeightManager.shared.resetContentType(contentType)
+                                
+                                // 显示操作反馈
+                                ToastManager.shared.showToast(
+                                    message: "已恢复「\(contentTypeString)」类型内容权重"
+                                )
+                            } else {
+                                // 正常减少权重
+                                ContentTypeWeightManager.shared.reduceContentType(contentType)
+                                
+                                // 显示操作反馈
+                                ToastManager.shared.showToast(
+                                    message: "已减少「\(contentTypeString)」类型内容"
+                                )
+                            }
+                            
+                            // 更新UI数据
+                            updateContentTypePercentage()
+                            updateContentStats()
+                            
+                            // 触觉反馈
+                            HapticFeedbackManager.shared.notifySuccess()
+                        }
+                    }) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            // 第一行：图标 + 文字 - 与上面的选项保持一致
+                            HStack(spacing: 4) {
+                                Image(systemName: contentTypePercentage <= 1 ? "arrow.clockwise" : "circle.slash")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(contentTypePercentage <= 1 ? Color.blue.opacity(0.7) : Color.green.opacity(0.7))
+                                    .frame(width: 16, alignment: .center)
+                                
+                                Spacer()
+                                
+                                Text(contentTypePercentage <= 1 ? "恢复此类内容" : "减少此类内容")
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(DesignSystem.Colors.secondaryText)
+                                    .padding(.trailing, 4)
+                            }
+                            
+                            // 第二行：进度条 - 居中显示
+                            HStack(alignment: .center, spacing: 4) {
+                                Spacer()
+                                
+                                // 进度条
+                                ZStack(alignment: .leading) {
+                                    // 背景条
+                                    Capsule()
+                                        .fill(Color.gray.opacity(0.2))
+                                        .frame(height: 4)
+                                    
+                                    // 前景条 - 最终正确版本
+                                    Capsule()
+                                        .fill(contentTypePercentage <= 1 ? Color.blue : Color.green)
+                                        .frame(width: min(97, max(0, contentTypePercentage)) * 0.01 * 97, height: 4)
+                                }
+                                .frame(width: 97)
+                                
+                                // 百分比文本
+                                Text("\(Int(contentTypePercentage))%")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(DesignSystem.Colors.secondaryText)
+                                    .frame(width: 30, alignment: .trailing)
+                            }
+                            
+                            // 第三行：当前占比和减少后预计 - 靠右对齐，缩小间距
+                            HStack(spacing: 1) {
+                                Spacer()
+                                
+                                Text("当前占比：")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(DesignSystem.Colors.tertiaryText)
+                                
+                                Text("\(contentTypeCount)/\(totalContentCount)篇")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color.black.opacity(0.8))
+                                
+                                Text("减少后")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(DesignSystem.Colors.tertiaryText)
+                                    .padding(.leading, 2)
+                                
+                                Text("\(estimatedAfterCount)篇")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color.red.opacity(0.9))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 12)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .onAppear {
+                        // 更新内容类型百分比和统计数据
+                        updateContentTypePercentage()
+                        updateContentStats()
+                    }
+                } else if shouldShowCountControl {
+                    // 单独生成模式：显示调整生成数量功能
+                    VStack(alignment: .trailing, spacing: 8) {
+                        // 第一行：图标 + 文字
+                        HStack(spacing: 4) {
+                            Image(systemName: "text.badge.plus")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color(red: 90/255, green: 140/255, blue: 230/255).opacity(0.75))
+                                .frame(width: 16, alignment: .center)
+                            
+                            Spacer()
+                            
+                            Text("调整生成数量")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(DesignSystem.Colors.secondaryText)
+                                .padding(.trailing, 4)
+                        }
+                        
+                        // 第二行：加减按钮和数量显示
+                        HStack(alignment: .center, spacing: 8) {
+                            Spacer()
+                                .frame(width: 22)
+                            
+                            // 减号按钮 - 使用Button组件替代点击手势
+                            Button(action: {
+                                print("🔴🔴🔴 减号按钮被点击 - Button action触发")
+                                if currentCount > 1 {
+                                    print("🔴 减号按钮被点击 - 条件通过")
+                                    decreaseCount()
+                                } else {
+                                    print("⚠️ 减号按钮被点击 - 但当前数量已是最小值: \(currentCount)")
+                                }
+                            }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(currentCount > 1 ? 
+                                              Color(red: 90/255, green: 140/255, blue: 230/255).opacity(0.12) : 
+                                              Color.gray.opacity(0.08))
+                                        .frame(width: 26, height: 26)
+                                    
+                                    Image(systemName: "minus")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(currentCount > 1 ? 
+                                                        Color(red: 90/255, green: 140/255, blue: 230/255).opacity(0.9) : 
+                                                        Color.gray.opacity(0.4))
+                                }
+                            }
+                            .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                            
+                            // 数量显示
+                            Text("\(currentCount)")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(DesignSystem.Colors.primaryText)
+                                .frame(width: 30, alignment: .center)
+                            
+                            // 加号按钮 - 使用Button组件替代点击手势
+                            Button(action: {
+                                print("🔵🔵🔵 加号按钮被点击 - Button action触发")
+                                if currentCount < 12 {
+                                    print("🔵 加号按钮被点击 - 条件通过")
+                                    increaseCount()
+                                } else {
+                                    print("⚠️ 加号按钮被点击 - 但当前数量已是最大值: \(currentCount)")
+                                }
+                            }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(currentCount < 12 ? 
+                                              Color(red: 90/255, green: 140/255, blue: 230/255).opacity(0.12) : 
+                                              Color.gray.opacity(0.08))
+                                        .frame(width: 26, height: 26)
+                                    
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(currentCount < 12 ? 
+                                                        Color(red: 90/255, green: 140/255, blue: 230/255).opacity(0.9) : 
+                                                        Color.gray.opacity(0.4))
+                                }
+                            }
+                            .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
+                            
+                            Text("篇")
+                                .font(.system(size: 14))
+                                .foregroundColor(DesignSystem.Colors.secondaryText)
+                        }
+                        
+                        // 第三行：提示文本
+                        HStack {
+                            Spacer()
+                                .frame(width: 22)
+                            
+                            Text("范围：1-12篇")
+                                .font(.system(size: 10))
+                                .foregroundColor(DesignSystem.Colors.tertiaryText)
+                                .padding(.trailing, 4)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .contentShape(Rectangle())
+                    .onAppear {
+                        // 确保显示菜单时加载当前数量设置
+                        loadCurrentCount()
+                        print("📊 调整生成数量菜单显示，当前数量: \(currentCount)")
+                    }
+                }
+            }
+            .frame(width: 170)
+            .background(
+                ZStack {
+                    // 磨砂玻璃背景
+                    if #available(iOS 15.0, *) {
+                        UltraVisualEffectView(blurStyle: .systemMaterial)
+                    } else {
+                        Color(.systemBackground)
+                    }
+                }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .presentationCompactAdaptation(.none)
+        }
+        // 适配iOS 16及以上版本
+        .if16Available {
+            $0.presentationCompactAdaptation(.none)
+               .presentationBackgroundInteraction(.enabled)
+               .presentationCornerRadius(8)
+               .shadowVisibility(.hidden)
+        }
+        .onAppear {
+            // 检查是否已关注该角色
+            checkIfFollowed()
+            // 检查是否已屏蔽该角色
+            checkIfBlocked()
+            // 加载当前生成数量设置
+            loadCurrentCount()
+        }
+    }
+    
+    // 检查是否已关注该角色
+    private func checkIfFollowed() {
+        guard let post = post else { return }
+        
+        // 获取当前用户关注的角色列表
+        let characterID = post.characterID ?? post.username
+        let followedCharacters = UserDefaults.standard.stringArray(forKey: "FollowedCharacters") ?? []
+        
+        // 更新关注状态
+        isFollowed = followedCharacters.contains(characterID)
+    }
+    
+    // 检查是否已屏蔽该角色
+    private func checkIfBlocked() {
+        guard let post = post else { return }
+        
+        // 获取当前用户屏蔽的角色列表
+        let characterID = post.characterID ?? post.username
+        let blockedCharacters = UserDefaults.standard.stringArray(forKey: "BlockedCharacters") ?? []
+        
+        // 更新屏蔽状态
+        isBlocked = blockedCharacters.contains(characterID)
+    }
+    
+    // 加载当前生成数量设置
+    private func loadCurrentCount() {
+        guard let post = post,
+              let contentTypeString = post.contentType,
+              let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) else {
+            currentCount = 6
+            return
+        }
+        currentCount = ExplorationCountManager.shared.getCount(for: contentType)
+    }
+    
+    // 增加生成数量
+    private func increaseCount() {
+        print("🔼🔼🔼 尝试增加生成数量，当前值: \(currentCount)")
+        
+        // 调试：检查post是否为nil
+        if post == nil {
+            print("⚠️⚠️⚠️ 严重错误: post为nil")
+            return
+        }
+        
+        // 调试：检查contentType
+        if let contentTypeString = post?.contentType {
+            print("📌📌📌 内容类型字符串: \(contentTypeString)")
+            
+            if let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) {
+                print("✅✅✅ 成功获取ContentType: \(contentType)")
+                
+                // 调用管理器增加数量
+                let newCount = ExplorationCountManager.shared.increaseCount(for: contentType)
+                print("📈📈📈 增加后的新数量: \(newCount)")
+                
+                // 更新UI显示的数值
+                withAnimation(.spring(response: 0.3)) {
+                    currentCount = newCount
+                }
+                
+                // 提供触觉反馈
+                print("👆👆👆 触发触觉反馈")
+                HapticFeedbackManager.shared.lightImpact()
+                
+                // 显示提示
+                print("🗣️🗣️🗣️ 显示Toast提示")
+                ToastManager.shared.showToast(message: "已设置为生成\(currentCount)条内容")
+                
+                print("✅✅✅ 增加成功：\(contentTypeString) 类型现在生成 \(currentCount) 条内容")
+            } else {
+                print("⚠️⚠️⚠️ 错误: 无法从字符串创建ContentType: \(contentTypeString)")
+                // 尝试直接使用字符串作为ContentType
+                handleContentTypeDirectly(contentTypeString, isIncrease: true)
+            }
+        } else {
+            print("⚠️⚠️⚠️ 错误: post.contentType为nil")
+            // 当contentType为nil时，尝试从其他属性推断内容类型
+            inferContentTypeAndIncrease()
+        }
+    }
+    
+    // 减少生成数量
+    private func decreaseCount() {
+        print("🔽🔽🔽 尝试减少生成数量，当前值: \(currentCount)")
+        
+        // 调试：检查post是否为nil
+        if post == nil {
+            print("⚠️⚠️⚠️ 严重错误: post为nil")
+            return
+        }
+        
+        // 调试：检查contentType
+        if let contentTypeString = post?.contentType {
+            print("📌📌📌 内容类型字符串: \(contentTypeString)")
+            
+            if let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) {
+                print("✅✅✅ 成功获取ContentType: \(contentType)")
+                
+                // 调用管理器减少数量
+                let newCount = ExplorationCountManager.shared.decreaseCount(for: contentType)
+                print("📉📉📉 减少后的新数量: \(newCount)")
+                
+                // 更新UI显示的数值
+                withAnimation(.spring(response: 0.3)) {
+                    currentCount = newCount
+                }
+                
+                // 提供触觉反馈
+                print("👆👆👆 触发触觉反馈")
+                HapticFeedbackManager.shared.lightImpact()
+                
+                // 显示提示
+                print("🗣️🗣️🗣️ 显示Toast提示")
+                ToastManager.shared.showToast(message: "已设置为生成\(currentCount)条内容")
+                
+                print("✅✅✅ 减少成功：\(contentTypeString) 类型现在生成 \(currentCount) 条内容")
+            } else {
+                print("⚠️⚠️⚠️ 错误: 无法从字符串创建ContentType: \(contentTypeString)")
+                // 尝试直接使用字符串作为ContentType
+                handleContentTypeDirectly(contentTypeString, isIncrease: false)
+            }
+        } else {
+            print("⚠️⚠️⚠️ 错误: post.contentType为nil")
+            // 当contentType为nil时，尝试从其他属性推断内容类型
+            inferContentTypeAndDecrease()
+        }
+    }
+    
+    // 新增：当contentType为nil时，尝试从其他属性推断内容类型并增加数量
+    private func inferContentTypeAndIncrease() {
+        print("🔍 尝试推断内容类型并增加数量")
+        
+        // 默认使用"resonance"作为内容类型
+        let defaultContentType = ContentGeneratorService.ContentType.resonance
+        
+        // 调用管理器增加数量
+        let newCount = ExplorationCountManager.shared.increaseCount(for: defaultContentType)
+        
+        // 更新UI显示的数值
+        withAnimation(.spring(response: 0.3)) {
+            currentCount = newCount
+        }
+        
+        // 提供触觉反馈
+        HapticFeedbackManager.shared.lightImpact()
+        
+        // 显示提示
+        ToastManager.shared.showToast(message: "已设置为生成\(currentCount)条内容")
+        
+        print("✅ 使用默认类型增加成功：当前生成 \(currentCount) 条内容")
+    }
+    
+    // 新增：当contentType为nil时，尝试从其他属性推断内容类型并减少数量
+    private func inferContentTypeAndDecrease() {
+        print("🔍 尝试推断内容类型并减少数量")
+        
+        // 默认使用"resonance"作为内容类型
+        let defaultContentType = ContentGeneratorService.ContentType.resonance
+        
+        // 调用管理器减少数量
+        let newCount = ExplorationCountManager.shared.decreaseCount(for: defaultContentType)
+        
+        // 更新UI显示的数值
+        withAnimation(.spring(response: 0.3)) {
+            currentCount = newCount
+        }
+        
+        // 提供触觉反馈
+        HapticFeedbackManager.shared.lightImpact()
+        
+        // 显示提示
+        ToastManager.shared.showToast(message: "已设置为生成\(currentCount)条内容")
+        
+        print("✅ 使用默认类型减少成功：当前生成 \(currentCount) 条内容")
+    }
+    
+    // 新增：直接处理contentType字符串
+    private func handleContentTypeDirectly(_ contentTypeString: String, isIncrease: Bool) {
+        print("🔧 尝试直接处理内容类型字符串: \(contentTypeString)")
+        
+        // 创建一个临时的ContentType枚举实例
+        let tempContentType = ContentGeneratorService.ContentType.resonance
+        
+        // 根据操作类型调用相应方法
+        let newCount: Int
+        if isIncrease {
+            newCount = ExplorationCountManager.shared.increaseCount(for: tempContentType)
+            print("📈 增加后的新数量: \(newCount)")
+        } else {
+            newCount = ExplorationCountManager.shared.decreaseCount(for: tempContentType)
+            print("📉 减少后的新数量: \(newCount)")
+        }
+        
+        // 更新UI显示的数值
+        withAnimation(.spring(response: 0.3)) {
+            currentCount = newCount
+        }
+        
+        // 提供触觉反馈
+        HapticFeedbackManager.shared.lightImpact()
+        
+        // 显示提示
+        ToastManager.shared.showToast(message: "已设置为生成\(currentCount)条内容")
+        
+        print("✅ 直接处理成功：\(contentTypeString) 类型现在生成 \(currentCount) 条内容")
+    }
+    
+    // 更新内容类型占比
+    private func updateContentTypePercentage() {
+        guard let post = post,
+              let contentTypeString = post.contentType,
+              let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) else {
+            contentTypePercentage = 100 // 默认显示100%
+            return
+        }
+        
+        // 使用ContentTypeWeightManager获取权重并转换为百分比
+        let weight = ContentTypeWeightManager.shared.getWeight(for: contentType)
+        contentTypePercentage = weight * 100
+        
+        print("📊 [PostOptionsButton] 内容类型[\(contentTypeString)]权重: \(weight), 显示百分比: \(contentTypePercentage)%")
+    }
+    
+    // 更新内容统计数据
+    private func updateContentStats() {
+        guard let post = post,
+              let contentTypeString = post.contentType,
+              let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) else {
+            contentTypeCount = 0
+            totalContentCount = 12 // 总内容数固定为12篇
+            estimatedAfterCount = 0
+            return
+        }
+        
+        // 从ContentTypeWeightManager获取实际权重
+        let weight = ContentTypeWeightManager.shared.getWeight(for: contentType)
+        
+        // 添加调试输出
+        print("📊 [OptionsMenuView] 内容类型[\(contentTypeString)]当前权重: \(weight), 百分比: \(weight * 100)%")
+        
+        // 总内容数固定为12篇（一轮推荐的总数）
+        totalContentCount = 12
+        
+        // 计算当前类型的内容数量
+        // 使用基于权重的分级计算方法
+        if weight >= 1.0 {
+            // 默认权重（未减少过）
+            contentTypeCount = 3 // 基础数量
+        } else if weight >= 0.5 {
+            // 减少一次后的权重 (降低50%)
+            contentTypeCount = 2
+        } else if weight >= 0.25 {
+            // 减少两次后的权重 (降低75%)
+            contentTypeCount = 1
+        } else if weight > 0 {
+            // 极低权重但不为0
+            contentTypeCount = 1 // 最低保留1篇
+        } else {
+            // 权重为0，不显示任何内容
+            contentTypeCount = 0 // 完全不显示
+        }
+        
+        // 计算减少后预计数量（基于当前权重再次减少）
+        // 当前权重乘以0.5就是下一次减少后的权重
+        let nextWeight = max(0.0, weight * 0.5) // 最低可以为0
+        
+        // 添加调试输出
+        print("📉 [OptionsMenuView] 内容类型[\(contentTypeString)]下次权重: \(nextWeight), 百分比: \(nextWeight * 100)%")
+        
+        if nextWeight >= 0.5 {
+            estimatedAfterCount = 2
+        } else if nextWeight >= 0.25 {
+            estimatedAfterCount = 1
+        } else if nextWeight > 0 {
+            estimatedAfterCount = 1 // 最低保留1篇
+        } else {
+            estimatedAfterCount = 0 // 完全不显示
+        }
+        
+        // 添加调试输出
+        print("📈 [OptionsMenuView] 内容类型[\(contentTypeString)]当前数量: \(contentTypeCount), 减少后预计: \(estimatedAfterCount)")
+    }
+    
+    // 更新关注的角色列表
+    private func updateFollowedCharacters(_ characterID: String, isFollowed: Bool) {
+        // 获取当前关注列表
+        var followedCharacters = UserDefaults.standard.stringArray(forKey: "FollowedCharacters") ?? []
+        
+        if isFollowed {
+            // 添加到关注列表（避免重复）
+            if !followedCharacters.contains(characterID) {
+                followedCharacters.append(characterID)
+            }
+        } else {
+            // 从关注列表中移除
+            followedCharacters.removeAll { $0 == characterID }
+        }
+        
+        // 保存更新后的列表
+        UserDefaults.standard.set(followedCharacters, forKey: "FollowedCharacters")
+    }
+    
+    // 更新屏蔽的角色列表
+    private func updateBlockedCharacters(_ characterID: String, isBlocked: Bool) {
+        // 获取当前屏蔽列表
+        var blockedCharacters = UserDefaults.standard.stringArray(forKey: "BlockedCharacters") ?? []
+        
+        if isBlocked {
+            // 添加到屏蔽列表（避免重复）
+            if !blockedCharacters.contains(characterID) {
+                blockedCharacters.append(characterID)
+            }
+        } else {
+            // 从屏蔽列表中移除
+            blockedCharacters.removeAll { $0 == characterID }
+        }
+        
+        // 保存更新后的列表
+        UserDefaults.standard.set(blockedCharacters, forKey: "BlockedCharacters")
+    }
+    
+    // 获取内容类型百分比的方法
+    private func getContentTypePercentage(for type: ContentGeneratorService.ContentType) -> Double {
+        // 使用新添加的getWeightPercentage方法
+        return ContentTypeWeightManager.shared.getWeightPercentage(for: type)
+    }
+}
+
+// 适配iOS 16+的阴影修饰符扩展
+extension View {
+    @ViewBuilder
+    func if16Available<Content: View>(_ transform: (Self) -> Content) -> some View {
+        if #available(iOS 16.0, *) {
+            transform(self)
+        } else {
+            self
+        }
+    }
+    
+    @ViewBuilder
+    func shadowVisibility(_ visibility: Visibility) -> some View {
+        if #available(iOS 16.0, *) {
+            self.shadow(color: .clear, radius: 0)
+        } else {
+            self
+        }
+    }
+}
+
+// 添加重置内容类型权重的方法到ContentTypeWeightManager类中
+extension ContentTypeWeightManager {
+    func resetContentType(_ type: ContentGeneratorService.ContentType) {
+        // 重置权重为1.0（100%）
+        setWeight(1.0, for: type)
     }
 }
