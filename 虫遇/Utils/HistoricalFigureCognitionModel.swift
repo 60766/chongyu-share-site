@@ -10,8 +10,8 @@ class HistoricalFigureCognitionModel {
     static let shared = HistoricalFigureCognitionModel()
     
     // 历史人物基本信息
-    private let historicalFigures = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "牛顿", "李白"]
-    private let avatarSymbols = ["atom", "book.fill", "paintpalette.fill", "scroll.fill", "graduationcap.fill", "text.book.closed.fill"]
+    private let historicalFigures = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "牛顿", "李白", "哈利·波特", "钢铁侠", "柯南", "哆啦A梦", "赫敏·格兰杰", "宫崎骏", "漩涡鸣人", "灭霸", "宋江", "武松"]
+    private let avatarSymbols = ["atom", "book.fill", "paintpalette.fill", "scroll.fill", "graduationcap.fill", "text.book.closed.fill", "bolt.fill", "suit.heart.fill", "magnifyingglass.circle.fill", "clock.fill", "wand.and.stars", "cloud.sun.fill", "flame.fill", "hand.raised.fill", "crown.fill", "figure.walk"]
     
     // 历史人物详细特征映射
     private let figureTraits: [String: (

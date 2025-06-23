@@ -58,7 +58,7 @@ struct PHImagePicker: UIViewControllerRepresentable {
                 return
             }
             
-            var images: [UIImage] = []
+            var newImages: [UIImage] = []
             let dispatchGroup = DispatchGroup()
             
             for result in results {
@@ -71,7 +71,7 @@ struct PHImagePicker: UIViewControllerRepresentable {
                         if let image = image as? UIImage {
                             // 在实际应用中可能需要压缩图片
                             let processedImage = self.processImage(image)
-                            images.append(processedImage)
+                            newImages.append(processedImage)
                         } else if let error = error {
                             print("图片加载错误: \(error.localizedDescription)")
                         }
@@ -82,8 +82,21 @@ struct PHImagePicker: UIViewControllerRepresentable {
             }
             
             dispatchGroup.notify(queue: .main) {
-                self.parent.selectedImages = images
-                self.parent.completion(images)
+                // 保留原有图片，添加新选择的图片
+                var updatedImages = self.parent.selectedImages
+                
+                // 确保不超过最大选择数量
+                let remainingSlots = self.parent.maxSelectionCount - updatedImages.count
+                if remainingSlots > 0 {
+                    // 只添加能容纳的数量
+                    let imagesToAdd = Array(newImages.prefix(remainingSlots))
+                    updatedImages.append(contentsOf: imagesToAdd)
+                    self.parent.selectedImages = updatedImages
+                    self.parent.completion(imagesToAdd)
+                } else {
+                    // 已达到最大数量，不添加新图片
+                    self.parent.completion([])
+                }
             }
         }
         

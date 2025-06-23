@@ -8,9 +8,9 @@ import Combine
 public class CreationTypeManager: ObservableObject {
     public static let shared = CreationTypeManager()
     
-    // 探索方向数据
-    public let types = ["虫洞共鸣", "日常心情", "古今对望", "奇思妙想", "时空记事"]
-    public let icons = ["waveform.path.ecg", "heart.circle", "hourglass", "sparkles", "infinity"]
+    // 探索方向数据 - 确保与ContentGeneratorService.ContentType的rawValue一致
+    public let types = ["虫洞共鸣", "日常心情", "古潮新语", "穿越吐槽", "时空记事"]
+    public let icons = ["waveform.path.ecg", "heart.circle", "hourglass", "bubble.left", "infinity"]
     
     @Published public var selectedIndex: Int = 0
     
@@ -20,7 +20,17 @@ public class CreationTypeManager: ObservableObject {
         }
     }
     
-    private init() {}
+    private init() {
+        // 初始化时验证类型是否与ContentGeneratorService.ContentType一致
+        print("📊 CreationTypeManager初始化，验证类型一致性：")
+        for (_, type) in types.enumerated() {
+            if ContentGeneratorService.ContentType(rawValue: type) != nil {
+                print("  ✅ 类型[\(type)]可以成功映射到ContentGeneratorService.ContentType")
+            } else {
+                print("  ⚠️ 警告：类型[\(type)]无法映射到ContentGeneratorService.ContentType")
+            }
+        }
+    }
 }
 
 /**

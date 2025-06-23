@@ -9,7 +9,7 @@ import SwiftUI
  */
 struct CommentsContainerView: View {
     // 评论数据
-    let comments: [UserCommentModel]
+    let comments: [DetailedCommentModel]
     
     // 展示控制
     @State private var showAllComments: Bool = false
@@ -17,15 +17,15 @@ struct CommentsContainerView: View {
     @State private var animateButton: Bool = false
     
     // 事件回调
-    let onReply: (UserCommentModel) -> Void
-    let onLike: (UserCommentModel) -> Void
+    let onReply: (DetailedCommentModel) -> Void
+    let onLike: (DetailedCommentModel) -> Void
     let onViewAllComments: () -> Void
     
     // 默认显示的评论数量
     let defaultCommentsToShow: Int = 2
     
     // 筛选出精彩评论(历史人物且点赞高)
-    private var featuredComments: [UserCommentModel] {
+    private var featuredComments: [DetailedCommentModel] {
         comments
             .filter { $0.isVirtualCharacter && $0.likes > 30 }
             .sorted(by: { $0.likes > $1.likes })
@@ -44,7 +44,7 @@ struct CommentsContainerView: View {
     }
     
     // 计算包含回复的完整评论列表
-    private var commentsWithReplies: [UserCommentModel] {
+    private var commentsWithReplies: [DetailedCommentModel] {
         comments
     }
     
@@ -174,51 +174,51 @@ struct CommentsContainerView_Previews: PreviewProvider {
         // 创建测试数据
         let comments = [
             // 虚拟角色评论
-            UserCommentModel(
+            DetailedCommentModel(
                 username: "爱因斯坦",
                 userAvatar: "person.circle.fill",
                 content: "从相对论的角度来看，时间确实是一个相对的概念。在高速运动的情况下，时间会变慢，这就是著名的钟慢效应。",
                 datePosted: Date().addingTimeInterval(-3600),
-                likes: 128,
                 isVirtualCharacter: true,
-                characterID: "einstein"
+                characterID: "einstein",
+                likes: 128
             ),
-            UserCommentModel(
+            DetailedCommentModel(
                 username: "莎士比亚",
                 userAvatar: "person.circle.fill",
                 content: "啊，时间！你是最伟大的魔术师，让一切都在你的魔法中流转。让我们珍惜每一刻，因为时间就像沙漏中的沙，一去不复返。",
                 datePosted: Date().addingTimeInterval(-7200),
-                likes: 95,
                 isVirtualCharacter: true,
-                characterID: "shakespeare"
+                characterID: "shakespeare",
+                likes: 95
             ),
             // 普通用户评论
-            UserCommentModel(
+            DetailedCommentModel(
                 username: "思考者",
                 userAvatar: "person.circle.fill",
                 content: "感谢分享！我想补充一下关于这个话题的另一个观点...",
                 datePosted: Date().addingTimeInterval(-86400),
-                likes: 15,
                 isVirtualCharacter: false,
-                characterID: nil
+                characterID: nil,
+                likes: 15
             ),
-            UserCommentModel(
+            DetailedCommentModel(
                 username: "科学爱好者",
                 userAvatar: "person.circle.fill",
                 content: "这个解释非常清晰，让我对相对论有了更深的理解！",
                 datePosted: Date().addingTimeInterval(-43200),
-                likes: 8,
                 isVirtualCharacter: false,
-                characterID: nil
+                characterID: nil,
+                likes: 8
             ),
-            UserCommentModel(
+            DetailedCommentModel(
                 username: "文学爱好者",
                 userAvatar: "person.circle.fill",
                 content: "莎士比亚的比喻真是太精彩了，文学就是能用优美的语言表达深刻的道理。",
                 datePosted: Date().addingTimeInterval(-21600),
-                likes: 12,
                 isVirtualCharacter: false,
-                characterID: nil
+                characterID: nil,
+                likes: 12
             )
         ]
         

@@ -1,6 +1,10 @@
 import SwiftUI
 import SwiftData
 import Combine
+import UIKit
+
+// 导入自定义组件
+// 注意：CosmicGenerateButton是在项目内部定义的，不需要特殊导入
 
 /**
  * 历史人物选择器视图
@@ -305,7 +309,7 @@ struct CharacterPickerView: View {
             )
             .contentShape(Rectangle())
         }
-        .buttonStyle(ScaleButtonStyle(scaleAmount: 0.97))
+        .buttonStyle(HomeScaleButtonStyle(scaleAmount: 0.97))
     }
 }
 
@@ -698,10 +702,27 @@ class HomeViewNotificationManager: ObservableObject {
 }
 
 /**
+ * 主页按钮缩放样式
+ * 用于主页上的按钮交互效果
+ */
+struct HomeScaleButtonStyle: ButtonStyle {
+    let scaleAmount: CGFloat
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scaleAmount : 1.0)
+            .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
+    }
+}
+
+/**
  * 首页视图
  * 显示历史人物角色和动态内容
  */
 struct HomeView: View {
+    // 添加场景状态环境变量
+    @Environment(\.scenePhase) private var scenePhase
+    
     /// 当前选中的标签
     @State private var selectedTab: HomeTab = .recommended
     /// 历史人物数据
@@ -716,7 +737,7 @@ struct HomeView: View {
     }
     /// 评论相关状态
     @State private var commentText: String = ""
-    @State private var replyingTo: UserCommentModel? = nil
+    @State private var replyingTo: DetailedCommentModel? = nil
     @State private var expandedPostID: UUID? = nil
     @State private var showCharacterSelector: Bool = false
     @State private var selectedPost: UserPostModel?
@@ -752,6 +773,19 @@ struct HomeView: View {
     // 添加存储subscribers的属性
     @State private var cancellables = Set<AnyCancellable>()
     
+    // 添加一键生成帖子相关的状态变量
+    @State private var showGenerateSuccess = false
+    @State private var showGenerateError = false
+    @State private var generateError = ""
+    @State private var isGeneratingPosts = false
+    @State private var generatePostsTask: Task<Void, Never>? = nil
+    
+    // 帖子操作相关
+    @State private var editingPost: UserPostModel? = nil
+    @State private var showEditPostView: Bool = false
+    @State private var showDeleteConfirmation: Bool = false
+    @State private var postToDelete: UserPostModel? = nil
+    
     // 移除原来的初始化方法，改用新的初始化器
     init() {
         // 使用 _notificationManager 直接初始化 @StateObject
@@ -762,16 +796,17 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                // 背景色 - 使用微妙的渐变增加空间感
+                // 背景色 - 更加接近白色的淡色渐变
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(red: 246/255, green: 248/255, blue: 252/255),
-                        Color(red: 250/255, green: 250/255, blue: 252/255)
+                        Color(red: 255/255, green: 248/255, blue: 245/255),  // 极淡的暖白色
+                        Color(red: 245/255, green: 248/255, blue: 255/255)   // 极淡的蓝白色
                     ]),
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .ignoresSafeArea()
+                
                 
                 // 主滚动视图
                 ScrollView {
@@ -820,17 +855,17 @@ struct HomeView: View {
                                             VStack(spacing: 4) {
                                                 ZStack {
                                                     Circle()
-                                                        .fill(Color.gray.opacity(0.1))
+                                                        .fill(Color(red: 220/255, green: 230/255, blue: 250/255))
                                                         .frame(width: 48, height: 48)
                                                     
                                                     Image(systemName: "ellipsis")
                                                         .font(.system(size: 18))
-                                                        .foregroundColor(.primary.opacity(0.7))
+                                                        .foregroundColor(Color(red: 80/255, green: 120/255, blue: 210/255))
                                                 }
                                                 
                                                 Text("查看全部")
                                                     .font(.system(size: 12))
-                                                    .foregroundColor(.secondary)
+                                                    .foregroundColor(Color(red: 80/255, green: 100/255, blue: 180/255))
                                             }
                                             .frame(width: 50)
                                         }
@@ -847,7 +882,6 @@ struct HomeView: View {
                                 }
                             }
                         }
-                        .background(Color.white) // 整个顶部区域使用统一背景色
                         .opacity(showNavBar ? 1 : 0)
                         .offset(y: showNavBar ? 0 : -20)
                         .animation(.easeInOut(duration: 0.3), value: showNavBar)
@@ -868,31 +902,100 @@ struct HomeView: View {
                     }
                 }
                 
-                // 添加手动刷新按钮（可选，仅用于调试）
+                // 添加一键生成内容按钮
                 VStack {
                     Spacer()
                     
                     HStack {
                         Spacer()
                         
-                        Button(action: {
-                            print("🔄 手动强制刷新HomeView")
-                            // 更新ID触发视图刷新
-                            forceRefreshID = UUID()
-                            // 强制触发数据模型更新
-                            postViewModel.objectWillChange.send()
-                        }) {
-                            Image(systemName: "arrow.clockwise.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundColor(.white)
-                                .padding(12)
-                                .background(Color.blue)
-                                .clipShape(Circle())
-                                .shadow(radius: 3)
+                        // 使用新的宇宙球体按钮，生成中保持位置不变
+                        CosmicGenerateButton(isGenerating: $isGeneratingPosts, isHalfHidden: !isGeneratingPosts && !showGenerateError) {
+                            // 添加震动反馈，使用统一的反馈管理器
+                            HapticFeedback.medium()
+                            
+                            // 显示加载状态
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                isGeneratingPosts = true
+                            }
+                            
+                            // 取消之前可能存在的任务
+                            generatePostsTask?.cancel()
+                            
+                            // 创建新任务并保存引用
+                            generatePostsTask = Task {
+                                // 使用ContentGeneratorService生成随机内容
+                                await generateAndAddPosts()
+                                
+                                // 检查任务是否已取消，如果取消则不更新UI
+                                if !Task.isCancelled {
+                                    // 在主线程更新UI状态
+                                    await MainActor.run {
+                                        // 延迟3秒后隐藏按钮
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                                                print("⏱️ 延迟3秒后隐藏按钮，设置isGeneratingPosts = false")
+                                                isGeneratingPosts = false
+                                            }
+                                        }
+                                        
+                                        // 强制刷新视图
+                                        forceRefreshID = UUID()
+                                        
+                                        // 成功生成时的触觉反馈
+                                        HapticFeedback.success()
+                                    }
+                                }
+                            }
                         }
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 80) // 避免遮挡TabBar
+                        .padding(.trailing, 0) // 靠近右边缘，不需要额外的padding
+                        .padding(.bottom, 200) // 避免遮挡TabBar，并提高位置方便手指触及
+                        .disabled(isGeneratingPosts) // 生成过程中禁用按钮
                     }
+                }
+                
+                // 错误提示 - 从按钮区域移到屏幕中央，作为全局浮动提示
+                if showGenerateError {
+                    VStack {
+                        Spacer()
+                        
+                        // 网络错误提示卡片 - 优化设计
+                        HStack(spacing: 8) {
+                            // 错误图标
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.system(size: 16))
+                                .foregroundColor(Color(red: 0.95, green: 0.4, blue: 0.4))
+                            
+                            // 错误文本
+                            Text(generateError.isEmpty ? "网络连接失败" : generateError)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.primary)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemBackground).opacity(0.9))
+                                .background(
+                                    .ultraThinMaterial,
+                                    in: RoundedRectangle(cornerRadius: 16)
+                                )
+                                .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 1)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color(red: 0.95, green: 0.4, blue: 0.4).opacity(0.3), lineWidth: 0.5)
+                        )
+                        .frame(maxWidth: 280)
+                        
+                        Spacer()
+                            .frame(height: 220) // 位置调整，确保在按钮上方显示
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.spring(response: 0.4, dampingFraction: 0.75), value: showGenerateError)
+                    .zIndex(1000) // 确保在最上层显示
                 }
                 
                 // 历史人物选择器（全屏模态）
@@ -915,7 +1018,19 @@ struct HomeView: View {
                 }
             }
             .onAppear {
+                // 确保数据存在
+                postViewModel.ensureDataExists()
                 loadSampleData()
+                
+                // 在视图重新出现时添加延迟检查，防止切换回来显示空白
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    // 二次确认数据存在并触发UI刷新
+                    if postViewModel.posts.isEmpty {
+                        postViewModel.posts = ModelData.samplePosts
+                        // 生成新的刷新ID触发界面更新
+                        forceRefreshID = UUID()
+                    }
+                }
                 
                 // 内容出现动画
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -924,32 +1039,11 @@ struct HomeView: View {
                     }
                 }
                 
-                // 检查PostViewModel状态
-                print("🏠 HomeView.onAppear: 当前帖子数量 = \(postViewModel.posts.count)")
-                if !postViewModel.posts.isEmpty {
-                    print("🏠 HomeView.onAppear: 首篇帖子ID = \(postViewModel.posts[0].id)")
-                    print("🏠 HomeView.onAppear: 首篇帖子内容 = \(postViewModel.posts[0].content.prefix(50))...")
-                    
-                    // 打印所有帖子的ID和内容前缀，方便调试
-                    for (index, post) in postViewModel.posts.enumerated() {
-                        print("🏠 HomeView.onAppear: 帖子[\(index)] ID = \(post.id), 内容 = \(post.content.prefix(30))...")
-                    }
-                }
-                
                 // 注册为publisher的订阅者，确保数据变化时能收到通知
-                // 这是额外的保障措施，确保能接收到更新
                 postViewModel.objectWillChange
                     .sink { _ in
-                        print("🏠 HomeView.onAppear中的sink: 收到postViewModel更新")
                         // 强制刷新视图
                         forceRefreshID = UUID()
-                        
-                        // 打印当前帖子信息
-                        print("🏠 HomeView: 接收到postViewModel的objectWillChange信号")
-                        print("🏠 HomeView: 当前帖子数量: \(postViewModel.posts.count)")
-                        if !postViewModel.posts.isEmpty {
-                            print("🏠 HomeView: 首篇帖子: \(postViewModel.posts[0].content.prefix(50))...")
-                        }
                     }
                     .store(in: &cancellables)
                 
@@ -957,19 +1051,17 @@ struct HomeView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     // 强制发出objectWillChange信号，确保视图刷新
                     forceRefreshID = UUID()
-                    
-                    // 显示首篇帖子信息
-                    if !postViewModel.posts.isEmpty {
-                        print("🏠 首篇帖子已显示: \(postViewModel.posts[0].id) - \(postViewModel.posts[0].content.prefix(50))...")
-                    } else {
-                        print("⚠️ HomeView: 帖子列表为空!")
-                    }
                 }
             }
             .onDisappear {
                 // 在视图消失时清理资源
                 cancellables.removeAll()
-                print("🏠 HomeView: onDisappear，已清理订阅")
+                
+                // 取消生成任务
+                if let task = generatePostsTask {
+                    task.cancel()
+                    generatePostsTask = nil
+                }
             }
             // 使用水平模态过渡代替全屏覆盖
             .fullscreenHorizontalModal(
@@ -990,23 +1082,12 @@ struct HomeView: View {
                             handleLikeComment(post: post, comment: comment)
                         },
                         onNextPost: { currentPostId in
-                            // 打印当前帖子ID - 使用传入的post参数
-                            print("🔎 当前查找帖子ID: \(currentPostId.uuidString)")
-                            
-                            // 查找当前帖子索引 - 使用更严格的ID比较
-                            let currentIndex = postViewModel.posts.firstIndex { currentPost in
-                                let matchFound = currentPost.id.uuidString == currentPostId.uuidString
-                                print("📊 比较索引 - 当前遍历ID: \(currentPost.id.uuidString) vs 当前帖子ID: \(currentPostId.uuidString) = \(matchFound ? "匹配" : "不匹配")")
-                                return matchFound
-                            }
+                            // 查找当前帖子索引
+                            let currentIndex = postViewModel.posts.firstIndex { $0.id.uuidString == currentPostId.uuidString }
                             
                             guard let safeIndex = currentIndex else {
-                                print("❌ 无法找到当前帖子索引! ID: \(currentPostId.uuidString)")
                                 return nil
                             }
-                            
-                            // 确保索引有效并输出调试信息
-                            print("🔍 当前帖子索引: \(safeIndex), 总帖子数: \(postViewModel.posts.count)")
                             
                             // 检查是否有下一篇帖子
                             let nextIndex = safeIndex + 1
@@ -1015,45 +1096,27 @@ struct HomeView: View {
                                 
                                 // 确保不返回相同ID的帖子
                                 if nextPost.id.uuidString == currentPostId.uuidString {
-                                    print("⚠️ 警告：下一篇帖子ID与当前帖子ID相同，跳过")
-                                    
                                     // 尝试获取下下篇帖子
                                     if nextIndex + 1 < postViewModel.posts.count {
-                                        print("🔄 跳过ID相同的帖子，尝试获取下下篇帖子")
                                         let nextNextPost = postViewModel.posts[nextIndex + 1]
-                                        print("✅ 找到下下篇帖子ID: \(nextNextPost.id.uuidString)")
                                         return nextNextPost
                                     } else {
-                                        print("❌ 已经是最后一篇帖子!")
                                         return nil
                                     }
                                 }
                                 
-                                print("✅ 找到下一篇帖子: \(nextPost.id.uuidString)")
                                 return nextPost
                             } else {
-                                print("❌ 已经是最后一篇帖子! 索引: \(safeIndex)")
                                 return nil // 如果是最后一篇，返回nil
                             }
                         },
                         onPrevPost: { currentPostId in
-                            // 打印当前帖子ID - 使用传入的post参数
-                            print("🔎 当前查找帖子ID: \(currentPostId.uuidString)")
-                            
-                            // 查找当前帖子索引 - 使用更严格的ID比较
-                            let currentIndex = postViewModel.posts.firstIndex { currentPost in 
-                                let matchFound = currentPost.id.uuidString == currentPostId.uuidString
-                                print("📊 比较索引 - 当前遍历ID: \(currentPost.id.uuidString) vs 当前帖子ID: \(currentPostId.uuidString) = \(matchFound ? "匹配" : "不匹配")")
-                                return matchFound
-                            }
+                            // 查找当前帖子索引
+                            let currentIndex = postViewModel.posts.firstIndex { $0.id.uuidString == currentPostId.uuidString }
                             
                             guard let safeIndex = currentIndex else {
-                                print("❌ 无法找到当前帖子索引! ID: \(currentPostId.uuidString)")
                                 return nil
                             }
-                            
-                            // 确保索引有效并输出调试信息
-                            print("🔍 当前帖子索引: \(safeIndex), 总帖子数: \(postViewModel.posts.count)")
                             
                             // 检查是否有上一篇帖子
                             if safeIndex > 0 {
@@ -1061,30 +1124,82 @@ struct HomeView: View {
                                 
                                 // 确保不返回相同ID的帖子
                                 if prevPost.id.uuidString == currentPostId.uuidString {
-                                    print("⚠️ 警告：上一篇帖子ID与当前帖子ID相同，跳过")
-                                    
                                     // 尝试获取上上篇帖子
                                     if safeIndex - 2 >= 0 {
-                                        print("🔄 跳过ID相同的帖子，尝试获取上上篇帖子")
                                         let prevPrevPost = postViewModel.posts[safeIndex - 2]
-                                        print("✅ 找到上上篇帖子ID: \(prevPrevPost.id.uuidString)")
                                         return prevPrevPost
                                     } else {
-                                        print("❌ 已经是第一篇帖子!")
                                         return nil
                                     }
                                 }
                                 
-                                print("✅ 找到上一篇帖子: \(prevPost.id.uuidString)")
                                 return prevPost
                             } else {
-                                print("❌ 已经是第一篇帖子! 索引: \(safeIndex)")
                                 return nil // 如果是第一篇，返回nil
                             }
                         }
                     )
                 }
             }
+        }
+        // 移除调试按钮
+        
+        // 监听场景状态变化，优化性能
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            switch newPhase {
+            case .active:
+                // 应用进入前台，恢复数据加载
+                if postViewModel.posts.isEmpty {
+                    postViewModel.ensureDataExists()
+                }
+                
+            case .inactive, .background:
+                // 应用进入后台，取消正在进行的生成任务
+                if isGeneratingPosts {
+                    // 保存当前状态，在可能的情况下
+                    generatePostsTask?.cancel()
+                }
+                
+            @unknown default:
+                break
+            }
+        }
+        
+        // 添加编辑帖子视图的sheet
+        .sheet(item: $editingPost) { post in
+            EditPostView(
+                post: post,
+                onClose: {
+                    print("关闭编辑视图")
+                    editingPost = nil
+                },
+                onUpdate: { newContent, newImages in
+                    print("更新帖子内容，新内容长度: \(newContent.count), 图片数: \(newImages.count)")
+                    updatePost(post, content: newContent, images: newImages)
+                }
+            )
+            .presentationDetents([.height(550), .large])
+            .onAppear {
+                // 添加延迟，确保视图完全加载
+                print("EditPostView 开始加载，帖子ID: \(post.id)")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    print("EditPostView 已完全加载")
+                }
+            }
+        }
+        // 添加删除确认对话框
+        .alert("确认删除", isPresented: $showDeleteConfirmation) {
+            Button("取消", role: .cancel) {
+                postToDelete = nil
+            }
+            Button("删除", role: .destructive) {
+                if let post = postToDelete {
+                    deletePost(post)
+                    postToDelete = nil
+                }
+            }
+        } message: {
+            Text("确认删除这条帖子吗？此操作不可撤销。")
         }
     }
     
@@ -1094,12 +1209,12 @@ struct HomeView: View {
             // 应用标题 - 简洁扁平风格
             Text("虫遇")
                 .font(.system(size: 24, weight: .semibold))
-                .foregroundColor(Color.primaryColor)
+                .foregroundColor(Color(red: 90/255, green: 120/255, blue: 190/255))
             
             // 应用副标题 - 轻量化设计
             Text("·穿越时空对话")
                 .font(.system(size: 13, weight: .light))
-                .foregroundColor(Color(hex: "A190B2").opacity(0.75))
+                .foregroundColor(Color(red: 130/255, green: 150/255, blue: 200/255))
                 .kerning(0.3)
                 .offset(y: 1)
             
@@ -1111,19 +1226,19 @@ struct HomeView: View {
             }) {
                 Image(systemName: "square.and.pencil")
                     .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(.primaryColor)
+                    .foregroundColor(.white)
                     .frame(width: 32, height: 32)
-                    .background(Color.primaryColor.opacity(0.06))
+                    .background(Color(red: 130/255, green: 150/255, blue: 220/255))
                     .clipShape(Circle())
             }
-            .buttonStyle(ScaleButtonStyle())
+            .buttonStyle(HomeScaleButtonStyle(scaleAmount: 0.95))
             
             // 已移除搜索按钮，使界面更加简洁
         }
         .padding(.horizontal, 16)
         .padding(.top, 6)
         .padding(.bottom, 6)
-        .background(Color.white) // 纯白背景
+        // 直接暴露在渐变背景中
     }
     
     // MARK: - 标签区域
@@ -1138,11 +1253,11 @@ struct HomeView: View {
                     VStack(spacing: 2) {
                         Text(tab.rawValue)
                             .font(.system(size: 14, weight: selectedTab == tab ? .medium : .regular))
-                            .foregroundColor(selectedTab == tab ? Color.primary : Color.secondary.opacity(0.6))
+                            .foregroundColor(selectedTab == tab ? Color(red: 80/255, green: 110/255, blue: 200/255) : Color(red: 150/255, green: 160/255, blue: 190/255))
                         
                         // 选中指示器 - 更微妙的设计
                         Rectangle()
-                            .fill(selectedTab == tab ? Color.primaryColor : Color.clear)
+                            .fill(selectedTab == tab ? Color(red: 80/255, green: 110/255, blue: 200/255) : Color.clear)
                             .frame(width: 16, height: 1.5)
                             .opacity(selectedTab == tab ? 1 : 0)
                     }
@@ -1154,8 +1269,7 @@ struct HomeView: View {
         }
         .padding(.top, 0)
         .padding(.bottom, 0)
-        .background(Color.white)
-        // 移除分隔线，创造更一体化的感觉
+        // 直接暴露在渐变背景中
     }
     
     // MARK: - 内容区域
@@ -1163,8 +1277,26 @@ struct HomeView: View {
         ScrollView {
             // 使用LazyVStack提高性能
             LazyVStack(spacing: 0) {
-                // 提取帖子列表为独立的视图生成函数
-                postsListView
+                // 帖子列表
+                ForEach(Array(postViewModel.posts.enumerated()), id: \.element.id) { index, post in
+                    postCardView(for: post, at: index)
+                        .id("\(post.id)_\(forceRefreshID)") // 在强制刷新时更新视图ID
+                }
+                .id("\(postViewModel.posts.count)_\(forceRefreshID)") // 当帖子数量变化或forceRefreshID变化时，整个ForEach会重新创建
+                
+                // 如果列表为空，显示加载提示
+                if postViewModel.posts.isEmpty {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        
+                        Text("正在加载内容...")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                }
                 
                 // 底部安全区域填充 - 使用极小值，避免多余的空白
                 Color.clear
@@ -1173,7 +1305,6 @@ struct HomeView: View {
             }
             .padding(.vertical, 0) // 移除顶部内边距，与标签栏紧密连接
         }
-        .background(Color(red: 246/255, green: 248/255, blue: 252/255)) // 使用微妙的背景色而不是透明背景
         .refreshable {
             // 下拉刷新逻辑
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -1183,109 +1314,37 @@ struct HomeView: View {
             try? await Task.sleep(nanoseconds: 800_000_000)
             loadSampleData()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PostsUpdated"))) { _ in
+            // 强制刷新视图
+            self.forceRefreshID = UUID()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NewPostsGenerated"))) { _ in
+            // 强制刷新视图
+                self.forceRefreshID = UUID()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("HomeViewShouldRefresh"))) { _ in
+            // 如果帖子为空，则重新加载
+            if postViewModel.posts.isEmpty {
+                // 先尝试让 PostViewModel 恢复数据
+                postViewModel.ensureDataExists()
+                
+                // 强制刷新 UI
+                Task { @MainActor in
+                    // 如果依然为空，直接加载示例数据
+                    if postViewModel.posts.isEmpty {
+                        postViewModel.posts = ModelData.samplePosts
+                    }
+                    
+                    // 强制刷新UI
+                self.forceRefreshID = UUID()
+                }
+            } else {
+                // 仍然触发一次刷新，确保UI正确显示
+                self.forceRefreshID = UUID()
+            }
+        }
         .ignoresSafeArea(.all, edges: .bottom) // 确保内容可以延伸到底部安全区域
         .edgesIgnoringSafeArea(.bottom) // 进一步确保内容延伸到底部边缘
-    }
-    
-    // 提取帖子列表为独立的计算属性
-    private var postsListView: some View {
-        VStack {
-            // 显示帖子总数，便于调试
-            if !postViewModel.posts.isEmpty {
-                Text("当前帖子数量: \(postViewModel.posts.count)")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary.opacity(0.7))
-                    .padding(.top, 8)
-                    .padding(.bottom, 4)
-                    .id("postsCounter_\(forceRefreshID)")
-            }
-            
-            ForEach(Array(postViewModel.posts.enumerated()), id: \.element.id) { index, post in
-                postCardView(for: post, at: index)
-                    .id("\(post.id)_\(forceRefreshID)") // 在强制刷新时更新视图ID
-                    .onAppear {
-                        // 在视图出现时打印日志，帮助调试
-                        if index == 0 {
-                            print("🏠 首篇帖子已显示: \(post.id) - \(post.content.prefix(50))...")
-                        }
-                    }
-            }
-            .id("\(postViewModel.posts.count)_\(forceRefreshID)") // 当帖子数量变化或forceRefreshID变化时，整个ForEach会重新创建
-        }
-        .onReceive(postViewModel.objectWillChange) { _ in
-            // 接收到模型变更信号时添加额外日志
-            print("🏠 postsListView: 接收到postViewModel的objectWillChange信号")
-            print("🏠 postsListView: 当前帖子数量: \(postViewModel.posts.count)")
-            if !postViewModel.posts.isEmpty {
-                print("🏠 postsListView: 首篇帖子: \(postViewModel.posts[0].content.prefix(50))...")
-            }
-            
-            // 强制刷新 - 使用主线程异步调用来确保安全访问UI
-            DispatchQueue.main.async {
-                self.forceRefreshID = UUID()
-                print("🔄 postsListView: 已触发强制刷新，新ID: \(self.forceRefreshID)")
-                
-                // 延迟0.1秒后再次触发刷新，确保UI更新
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.forceRefreshID = UUID()
-                    print("🔄 postsListView: 延迟0.1秒后再次触发刷新，新ID: \(self.forceRefreshID)")
-                    
-                    // 如果仍然没有显示更新，尝试第三次刷新
-                    if !self.postViewModel.posts.isEmpty {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            self.forceRefreshID = UUID()
-                            print("🔄 postsListView: 延迟0.3秒后第三次触发刷新，新ID: \(self.forceRefreshID)")
-                        }
-                    }
-                }
-            }
-        }
-        // 添加接收通知中心的通知，确保响应通知
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PostsUpdated"))) { notification in
-            print("🏠 postsListView: 收到PostsUpdated通知")
-            
-            // 获取可能存在的计数信息
-            if let count = notification.userInfo?["newPostsCount"] as? Int {
-                print("🏠 postsListView: 通知包含数量信息，\(count)个新帖子")
-            } else {
-                print("🏠 postsListView: 通知不包含数量信息")
-            }
-            
-            // 不管通知中是否包含数量信息，都强制刷新视图
-            DispatchQueue.main.async {
-                self.forceRefreshID = UUID()
-                print("🔄 postsListView(PostsUpdated通知): 已触发强制刷新，新ID: \(self.forceRefreshID)")
-                
-                // 确保还有一次延迟刷新
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    self.forceRefreshID = UUID()
-                    print("🔄 postsListView(PostsUpdated通知): 延迟0.3秒后再次触发刷新，新ID: \(self.forceRefreshID)")
-                }
-            }
-        }
-        // 添加接收NewPostsGenerated通知
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NewPostsGenerated"))) { notification in
-            print("🏠 postsListView: 收到NewPostsGenerated通知")
-            
-            // 获取可能存在的计数信息
-            if let count = notification.userInfo?["count"] as? Int {
-                print("🏠 postsListView: 通知包含数量信息，\(count)个新帖子")
-            } else {
-                print("🏠 postsListView: 通知不包含数量信息")
-            }
-            
-            // 不管通知中是否包含数量信息，都强制刷新视图
-            DispatchQueue.main.async {
-                self.forceRefreshID = UUID()
-                print("🔄 postsListView(NewPostsGenerated通知): 已触发强制刷新，新ID: \(self.forceRefreshID)")
-                
-                // 确保还有一次延迟刷新
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    self.forceRefreshID = UUID()
-                    print("🔄 postsListView(NewPostsGenerated通知): 延迟0.3秒后再次触发刷新，新ID: \(self.forceRefreshID)")
-                }
-            }
-        }
     }
     
     // 提取单个帖子卡片为独立方法
@@ -1308,10 +1367,25 @@ struct HomeView: View {
             },
             onShare: {
                 // 分享逻辑
-                // 可以在此添加分享功能
+                let content = "\(post.username)的虫遇动态: \(post.content)"
+                shareContent(content)
+                HapticFeedbackManager.shared.selectionChanged()
             },
-            // 确保使用预览模式显示
-            displayMode: .preview
+            // 不指定maxPreviewLines和maxPreviewLength，使用PostCardView默认值
+            // 这样列表页面也会使用相同的智能显示逻辑
+            displayMode: .preview,
+            // 根据帖子来源设置正确的postSource
+            isOwnPost: post.source == "user",
+            onEdit: {
+                handleEditPost(post)
+            },
+            onDelete: {
+                handleDeletePost(post)
+            },
+            onPin: { isPinned in
+                handlePinPost(post, isPinned: isPinned)
+            },
+            postSource: post.source == "user" ? .userGenerated : .aiGenerated
         )
         .offset(y: contentAppeared ? 0 : 50)
         .opacity(contentAppeared ? 1 : 0)
@@ -1490,14 +1564,14 @@ struct HomeView: View {
         guard !commentText.isEmpty, let post = selectedPost else { return }
         
         // 创建新评论
-        let _ = UserCommentModel(
+        let _ = DetailedCommentModel(
             username: "我",
             userAvatar: "person.circle.fill",
             content: commentText,
             datePosted: Date(),
-            likes: 0,
             isVirtualCharacter: false,
-            characterID: nil
+            characterID: nil,
+            likes: 0
         )
         
         // 更新帖子评论
@@ -1556,14 +1630,14 @@ struct HomeView: View {
         guard !trimmedContent.isEmpty else { return }
         
         // 创建新评论
-        let _ = UserCommentModel(
+        let _ = DetailedCommentModel(
             username: "当前用户",  // 应该使用实际的当前用户名
             userAvatar: "person.circle.fill",  // 应该使用实际的当前用户头像
             content: trimmedContent,
             datePosted: Date(),
-            likes: 0,
             isVirtualCharacter: false,
-            characterID: nil
+            characterID: nil,
+            likes: 0
         )
         
         // 更新帖子的评论列表 - 使用帖子模型自带的 addComment 方法
@@ -1658,7 +1732,7 @@ struct HomeView: View {
     /**
      * 处理评论点赞
      */
-    private func handleLikeComment(post: UserPostModel, comment: UserCommentModel) {
+    private func handleLikeComment(post: UserPostModel, comment: DetailedCommentModel) {
         // 查找评论所属的帖子
         if let postIndex = postViewModel.posts.firstIndex(where: { $0.id == post.id }) {
             // 更新点赞状态
@@ -1673,6 +1747,8 @@ struct HomeView: View {
     
     // MARK: - 数据加载
     private func loadSampleData() {
+        print("📋 HomeView.loadSampleData: 开始加载示例数据")
+        
         // 加载历史人物
         characters = [
             // 爱因斯坦
@@ -1722,10 +1798,23 @@ struct HomeView: View {
             )
         ]
         
+        print("📋 HomeView.loadSampleData: 历史人物加载完成，总数: \(characters.count)")
+        
         // 加载用户帖子 - 使用共享的PostViewModel
         // 检查是否已有帖子，如果没有才加载示例帖子
+        print("📋 HomeView.loadSampleData: 当前帖子数量: \(postViewModel.posts.count)")
+        
         if postViewModel.posts.isEmpty {
+            print("📋 HomeView.loadSampleData: 帖子为空，加载示例帖子")
             postViewModel.posts = ModelData.samplePosts
+            print("📋 HomeView.loadSampleData: 示例帖子加载完成，数量: \(postViewModel.posts.count)")
+            
+            // 打印所有帖子的ID和内容前缀，方便调试
+            for (index, post) in postViewModel.posts.enumerated() {
+                print("📋 HomeView.loadSampleData: 帖子[\(index)] ID = \(post.id), 内容 = \(post.content.prefix(30))...")
+            }
+        } else {
+            print("📋 HomeView.loadSampleData: 已有帖子数据，跳过加载，当前数量: \(postViewModel.posts.count)")
         }
     }
     
@@ -1764,21 +1853,21 @@ struct HomeView: View {
             VStack(spacing: 4) {
                 // 头像部分 - 极简设计
                 ZStack {
-                    // 简单的圆形背景，无阴影
+                    // 圆形背景，轻微的蓝色调
                     Circle()
-                        .fill(Color.gray.opacity(0.04))
+                        .fill(Color(red: 220/255, green: 230/255, blue: 250/255))
                         .frame(width: 48, height: 48)
                     
                     // 图标
                     Image(systemName: character.category.icon)
                         .font(.system(size: 18))
-                        .foregroundColor(character.category.color)
+                        .foregroundColor(Color(red: 80/255, green: 120/255, blue: 210/255))
                 }
                 
-                // 只保留人物名称 - 更紧凑的设计
+                // 人物名称
                 Text(character.name)
                     .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(.primary)
+                    .foregroundColor(Color(red: 80/255, green: 100/255, blue: 180/255))
                     .frame(width: 48)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -1786,7 +1875,395 @@ struct HomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
-        .tint(.primary)
+        .tint(Color(red: 80/255, green: 100/255, blue: 180/255))
+    }
+
+    // 生成并添加帖子的方法
+    /**
+     * 生成并添加新帖子
+     * 该方法使用ContentGeneratorService生成虫洞内容并添加到帖子列表
+     */
+    private func generateAndAddPosts() async {
+        // 创建本地取消令牌集合，避免资源泄漏
+        var localCancellables = Set<AnyCancellable>()
+        
+        print("🔄 HomeView: 开始生成多种类型帖子...")
+        
+        // 设置内容生成状态为生成中，防止权重被重置
+        ContentTypeWeightManager.shared.setGeneratingContent(true)
+        
+        // 打印当前权重，确认是否正确
+        ContentTypeWeightManager.shared.printAllWeights()
+        
+        do {
+            // 使用ContentGeneratorService生成多种类型的内容
+            print("📊 开始根据权重分配内容类型...")
+            
+            // 设置内容类型和总数量
+            let contentTypes: [ContentGeneratorService.ContentType] = [
+                .mood,            // 日常心情
+                .ancient2modern,  // 古潮新语
+                .creativeIdea,    // 穿越吐槽
+                .timelineEvent    // 时空记事
+            ]
+            
+            // 设置总帖子数量
+            let totalPostCount = 12
+            
+            // 使用ContentTypeWeightManager根据权重分配每种类型的帖子数量
+            let typeDistribution = ContentTypeWeightManager.shared.calculateTypeDistribution(
+                totalCount: totalPostCount,
+                types: contentTypes
+            )
+            
+            // 打印分配情况和权重
+            print("📊 内容类型分配结果:")
+            for contentType in contentTypes {
+                let weight = ContentTypeWeightManager.shared.getWeight(for: contentType)
+                let count = typeDistribution[contentType] ?? 0
+                print("  - \(contentType.rawValue): 权重=\(weight), 分配数量=\(count)")
+            }
+            
+            // 使用生成服务一次性生成所有内容
+            var allPosts: [UserPostModel] = []
+            
+            // 为每种类型分别生成帖子和评论
+            for contentType in contentTypes {
+                // 获取当前类型分配的数量
+                guard let typeCount = typeDistribution[contentType], typeCount > 0 else {
+                    print("⏩ 跳过\(contentType.rawValue)类型，因为分配数量为0")
+                    continue // 如果分配数量为0，跳过此类型
+                }
+                
+                // 生成特定类型的帖子
+                print("🌟 正在生成\(contentType.rawValue)类型的\(typeCount)篇帖子...")
+                
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    // 使用批量生成方法一次性生成所有该类型的帖子
+                    ContentGeneratorService.shared.generateRandomContentBatchWithComments(
+                        contentType: contentType,
+                        count: typeCount
+                    )
+                    .sink(
+                        receiveCompletion: { completion in
+                            if case .failure(let error) = completion {
+                                print("❌ 生成\(contentType.rawValue)类型帖子失败: \(error.localizedDescription)")
+                                continuation.resume(throwing: error)
+                                localCancellables.removeAll()
+                            } else {
+                                print("✅ 完成\(contentType.rawValue)类型帖子的API请求")
+                                continuation.resume(returning: ())
+                            }
+                        },
+                        receiveValue: { results in
+                            print("✅ 成功生成\(results.count)篇\(contentType.rawValue)类型帖子")
+                            
+                            // 将生成的内容和评论转换为UserPostModel
+                            let posts = results.map { result -> UserPostModel in
+                                let post = self.postViewModel.convertContentItemToUserPost(result.contentItem)
+                                
+                                // 将CommentItem转换为DetailedCommentModel
+                                let comments = result.comments.map { commentItem -> DetailedCommentModel in
+                                    return DetailedCommentModel(
+                                        id: UUID(uuidString: commentItem.id) ?? UUID(),
+                                        username: commentItem.characterName,
+                                        userAvatar: commentItem.characterAvatar != nil ? commentItem.characterAvatar! : "person.circle.fill",
+                                        content: commentItem.content,
+                                        datePosted: commentItem.timestamp,
+                                        isVirtualCharacter: true,
+                                        characterID: commentItem.characterID,
+                                        likes: commentItem.likes,
+                                        isLikedByCurrentUser: false
+                                    )
+                                }
+                                
+                                post.comments = comments
+                                // 添加来源标记为"onekey"，确保一键生成的帖子能正确显示权重控制组件
+                                post.source = "onekey"
+                                return post
+                            }
+                            
+                            // 添加到总帖子列表
+                            allPosts.append(contentsOf: posts)
+                        }
+                    )
+                    .store(in: &localCancellables)
+                }
+            }
+            
+            // 按时间戳排序，确保最新内容在前
+            let sortedPosts = allPosts.sorted(by: { $0.datePosted > $1.datePosted })
+            
+            print("✅ 成功生成\(sortedPosts.count)个帖子")
+            for (index, post) in sortedPosts.enumerated() {
+                print("📝 帖子#\(index+1): 类型=\(post.contentType ?? "未知"), ID=\(post.id), 作者=\(post.username), 评论数=\(post.comments.count)")
+                for (cIndex, comment) in post.comments.enumerated() {
+                    print("👤 评论#\(cIndex+1): 来自=\(comment.username), 内容=\(comment.content.prefix(20))...")
+                }
+            }
+            
+            // 添加到ViewModel
+            await MainActor.run {
+                print("📊 将新帖子添加到视图模型")
+                postViewModel.posts.insert(contentsOf: sortedPosts, at: 0)
+                
+                // 通知系统显示新内容
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("NewPostsGenerated"),
+                    object: nil,
+                    userInfo: ["count": sortedPosts.count]
+                )
+                
+                // 强制刷新视图
+                forceRefreshID = UUID()
+                print("🎉 UI刷新完成，新帖子应该可见")
+                
+                // 内容生成完成，恢复权重管理器状态
+                ContentTypeWeightManager.shared.setGeneratingContent(false)
+                
+                // 再次打印权重，确认没有被重置
+                ContentTypeWeightManager.shared.printAllWeights()
+            }
+        } catch {
+            print("❌ 生成帖子失败: \(error.localizedDescription)")
+            
+            // 在主线程处理错误
+            await MainActor.run {
+                // 网络错误处理 - 设置更友好的错误信息
+                if let networkError = error as? URLError {
+                    switch networkError.code {
+                    case .notConnectedToInternet:
+                        generateError = "网络连接已断开，请检查网络设置"
+                    case .timedOut:
+                        generateError = "请求超时，请稍后再试"
+                    case .cannotConnectToHost:
+                        generateError = "无法连接到服务器，请稍后再试"
+                    default:
+                        generateError = "网络错误: \(networkError.localizedDescription)"
+                    }
+                } else if let aiError = error as? AINetworkError {
+                    // 自定义AI错误处理
+                    switch aiError {
+                    case .requestFailed:
+                        generateError = "AI服务请求失败"
+                    case .invalidResponse:
+                        generateError = "AI服务返回无效响应"
+                    default:
+                        generateError = "AI服务错误: \(aiError.localizedDescription)"
+                    }
+                } else {
+                    // 一般错误处理
+                    generateError = error.localizedDescription
+                }
+                
+                // 显示错误提示，但保持生成状态为true，以确保按钮保持显示
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showGenerateError = true
+                }
+                print("⚠️ 显示错误提示: \(generateError)")
+                
+                // 重要: 保持isGeneratingPosts为true，确保按钮在显示错误时不会缩回
+                
+                // 3秒后隐藏错误提示并重置生成状态
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    print("⏱️ 错误提示显示3秒后，开始隐藏错误并缩回按钮")
+                    
+                    // 先隐藏错误提示
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        showGenerateError = false
+                    }
+                    
+                    // 然后使用单独的动画设置isGeneratingPosts为false，使按钮缩回
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                            isGeneratingPosts = false
+                            print("🔄 生成状态设置为false，按钮应开始缩回")
+                        }
+                    }
+                }
+                
+                // 内容生成完成，恢复权重管理器状态
+                ContentTypeWeightManager.shared.setGeneratingContent(false)
+            }
+        }
+        
+        // 清理本地取消令牌
+        localCancellables.removeAll()
+    }
+    
+    // MARK: - 帖子操作方法
+    
+    // 处理编辑帖子
+    private func handleEditPost(_ post: UserPostModel) {
+        print("开始编辑帖子: \(post.id), 内容: \(post.content.prefix(20))...")
+        
+        // 直接设置要编辑的帖子，不再需要标志变量
+        editingPost = post
+        print("✅ 设置editingPost成功: \(post.id)")
+        
+        // 触发触觉反馈
+        HapticFeedbackManager.shared.selectionChanged()
+    }
+    
+    // 处理删除帖子
+    private func handleDeletePost(_ post: UserPostModel) {
+        postToDelete = post
+        showDeleteConfirmation = true
+        HapticFeedbackManager.shared.notifyWarning()
+    }
+    
+    // 处理置顶帖子
+    private func handlePinPost(_ post: UserPostModel, isPinned: Bool) {
+        var pinnedPosts = UserDefaults.standard.stringArray(forKey: "PinnedPosts") ?? []
+        
+        if isPinned {
+            // 确保不重复添加
+            if !pinnedPosts.contains(post.id.uuidString) {
+                pinnedPosts.append(post.id.uuidString)
+            }
+        } else {
+            // 移除置顶
+            pinnedPosts.removeAll { $0 == post.id.uuidString }
+        }
+        
+        // 保存更新后的置顶帖子列表
+        UserDefaults.standard.set(pinnedPosts, forKey: "PinnedPosts")
+        
+        // 为了在UI上立即反映变化，可以重新排序或强制刷新UI
+        reorderPostsBasedOnPin()
+        
+        // 震动反馈
+        HapticFeedbackManager.shared.notifySuccess()
+    }
+    
+    // 更新帖子内容
+    private func updatePost(_ post: UserPostModel, content: String, images: [UIImage]) {
+        guard let index = postViewModel.posts.firstIndex(where: { $0.id == post.id }) else {
+            return
+        }
+        
+        // 保存新图片并获取图片ID
+        var imageIdentifiers: [String] = []
+        for (i, image) in images.enumerated() {
+            // 生成唯一图片标识符
+            let imageId = "\(post.id)_updated_image_\(i)"
+            
+            // 保存图片到本地存储或云存储
+            if ImageManager.shared.saveImage(image, withId: imageId) {
+                imageIdentifiers.append(imageId)
+            }
+        }
+        
+        // 创建更新后的帖子对象
+        let updatedPost = UserPostModel(
+            id: post.id,
+            username: post.username,
+            userAvatar: post.userAvatar,
+            content: content,
+            images: imageIdentifiers,
+            datePosted: post.datePosted,
+            likes: post.likes,
+            comments: post.comments,
+            isLikedByCurrentUser: post.isLikedByCurrentUser,
+            isBookmarkedByCurrentUser: post.isBookmarkedByCurrentUser,
+            contentType: post.contentType,
+            characterID: post.characterID,
+            source: post.source
+        )
+        
+        // 更新模型
+        postViewModel.posts[index] = updatedPost
+        
+        // 如果正在查看的是同一帖子，也更新selectedPost
+        if selectedPost?.id == post.id {
+            selectedPost = updatedPost
+        }
+        
+        // 强制刷新UI
+        forceRefreshID = UUID()
+        
+        // 显示成功提示
+        ToastManager.shared.showToast(message: "帖子已更新")
+        
+        // 震动反馈
+        HapticFeedbackManager.shared.notifySuccess()
+    }
+    
+    // 删除帖子
+    private func deletePost(_ post: UserPostModel) {
+        // 从模型中删除帖子
+        postViewModel.posts.removeAll { $0.id == post.id }
+        
+        // 如果正在查看的是被删除的帖子，关闭详情视图
+        if selectedPost?.id == post.id {
+            selectedPost = nil
+        }
+        
+        // 强制刷新UI
+        forceRefreshID = UUID()
+        
+        // 显示成功提示
+        ToastManager.shared.showToast(message: "帖子已删除")
+        
+        // 震动反馈
+        HapticFeedbackManager.shared.notifySuccess()
+        
+        // 如果帖子是置顶的，也从置顶列表中移除
+        var pinnedPosts = UserDefaults.standard.stringArray(forKey: "PinnedPosts") ?? []
+        pinnedPosts.removeAll { $0 == post.id.uuidString }
+        UserDefaults.standard.set(pinnedPosts, forKey: "PinnedPosts")
+    }
+    
+    // 根据置顶状态重新排序帖子
+    private func reorderPostsBasedOnPin() {
+        let pinnedPosts = UserDefaults.standard.stringArray(forKey: "PinnedPosts") ?? []
+        
+        // 将帖子分为置顶和非置顶两组
+        var pinnedItems: [UserPostModel] = []
+        var unpinnedItems: [UserPostModel] = []
+        
+        for post in postViewModel.posts {
+            if pinnedPosts.contains(post.id.uuidString) {
+                pinnedItems.append(post)
+            } else {
+                unpinnedItems.append(post)
+            }
+        }
+        
+        // 将置顶帖子按时间排序
+        pinnedItems.sort { $0.datePosted > $1.datePosted }
+        
+        // 将非置顶帖子按时间排序
+        unpinnedItems.sort { $0.datePosted > $1.datePosted }
+        
+        // 合并两组帖子
+        postViewModel.posts = pinnedItems + unpinnedItems
+        
+        // 强制刷新UI
+        forceRefreshID = UUID()
+    }
+    
+    // 分享内容
+    private func shareContent(_ content: String) {
+        // 创建分享项
+        let items: [Any] = [content]
+        
+        // 创建活动视图控制器
+        let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        
+        // 获取当前窗口场景和根视图控制器
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+            // 在iPad上设置popover源视图
+            if let popoverController = activityVC.popoverPresentationController {
+                popoverController.sourceView = rootViewController.view
+                popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY, width: 0, height: 0)
+                popoverController.permittedArrowDirections = []
+            }
+            
+            // 显示分享菜单
+            rootViewController.present(activityVC, animated: true)
+        }
     }
 }
 

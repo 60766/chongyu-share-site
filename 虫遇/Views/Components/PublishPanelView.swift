@@ -497,7 +497,7 @@ struct PublishPanelView: View {
         normalizeCharacterProbabilities()
         
         // 创建要发布的内容数据
-        let _ = PostData(
+        let postData = PostData(
             content: contentText,
             images: selectedImages,
             era: selectedEra,
@@ -506,8 +506,18 @@ struct PublishPanelView: View {
             publishMode: publishMode
         )
         
-        // 这里可以添加保存数据的代码
-        // postManager.save(postData)
+        // 将PostData转换为UserPostModel并添加到PostViewModel
+        let userPost = createUserPostFromPostData(postData)
+        
+        // 添加到PostViewModel，使其显示在主页
+        PostViewModel.shared.addPosts([userPost])
+        
+        // 发送通知，告知HomeView有新帖子
+        NotificationCenter.default.post(
+            name: NSNotification.Name("NewPostsGenerated"),
+            object: nil,
+            userInfo: ["count": 1]
+        )
         
         // 生成可能回复的角色
         generatePotentialRespondingCharacters()
@@ -535,6 +545,91 @@ struct PublishPanelView: View {
                 }
             }
         }
+    }
+    
+    // 将PostData转换为UserPostModel
+    private func createUserPostFromPostData(_ postData: PostData) -> UserPostModel {
+        // 创建评论
+        var comments: [DetailedCommentModel] = []
+        
+        // 为选中的角色创建初始评论
+        for character in postData.characters {
+            // 获取角色回复概率
+            let probability = postData.characterProbabilities[character.id.uuidString] ?? 0
+            
+            // 如果概率大于0，添加评论
+            if probability > 0 {
+                let comment = DetailedCommentModel(
+                    id: UUID(),
+                    username: character.name,
+                    userAvatar: character.avatar,
+                    content: generateInitialComment(from: character, about: postData.content),
+                    datePosted: Date().addingTimeInterval(Double.random(in: 60...300)), // 1-5分钟后
+                    isVirtualCharacter: true,
+                    characterID: character.id.uuidString,
+                    likes: Int.random(in: 0...10),
+                    isLikedByCurrentUser: false
+                )
+                comments.append(comment)
+            }
+        }
+        
+        // 处理图片 - 将UIImage转换为图片URL或标识符
+        var imageIdentifiers: [String] = []
+        for (index, image) in postData.images.enumerated() {
+            // 生成唯一图片标识符
+            let imageId = "\(postData.id)_image_\(index)"
+            
+            // 保存图片到本地存储或云存储
+            if let savedImageId = saveImage(image, withId: imageId) {
+                imageIdentifiers.append(savedImageId)
+            }
+        }
+        
+        // 创建用户帖子
+        let userPost = UserPostModel(
+            id: UUID(uuidString: postData.id) ?? UUID(),
+            username: "当前用户", // 使用当前用户名
+            userAvatar: "person.circle.fill", // 使用当前用户头像
+            content: postData.content,
+            images: imageIdentifiers, // 添加图片标识符
+            datePosted: postData.timestamp,
+            likes: 0,
+            comments: comments,
+            isLikedByCurrentUser: false,
+            isBookmarkedByCurrentUser: false,
+            contentType: "user_post", // 用户发布的内容
+            source: "user" // 来源为用户
+        )
+        
+        return userPost
+    }
+    
+    // 保存图片并返回标识符
+    private func saveImage(_ image: UIImage, withId id: String) -> String? {
+        // 创建图片管理器实例
+        let imageManager = ImageManager.shared
+        
+        // 保存图片到临时存储
+        if imageManager.saveImage(image, withId: id) {
+            return id
+        }
+        
+        return nil
+    }
+    
+    // 为角色生成初始评论
+    private func generateInitialComment(from character: CharacterModel, about content: String) -> String {
+        // 根据不同角色类型生成不同风格的评论
+        let comments = [
+            "作为\(character.profession)，我认为这个观点很有意思。",
+            "从\(character.era)的角度来看，这确实值得思考。",
+            "这让我想起了我在\(character.era)时期的一些经历。",
+            "如果用\(character.profession)的视角分析，这个问题有更深层次的含义。",
+            "我很欣赏你的想法，这在\(character.era)时期是很前卫的。"
+        ]
+        
+        return comments.randomElement() ?? "这个观点很有趣，请继续分享。"
     }
     
     // 将概率转换为字典
@@ -2822,18 +2917,18 @@ struct NativeTextEditorView: View {
  * 全屏图片查看器
  * 支持图片缩放和左右滑动切换
  */
-struct ImageFullScreenViewer: View {
+public struct ImageFullScreenViewer: View {
     let images: [UIImage]
     @State private var currentIndex: Int
     @Binding var isPresented: Bool
     
-    init(images: [UIImage], initialIndex: Int, isPresented: Binding<Bool>) {
+    public init(images: [UIImage], initialIndex: Int, isPresented: Binding<Bool>) {
         self.images = images
         self._currentIndex = State(initialValue: initialIndex)
         self._isPresented = isPresented
     }
     
-    var body: some View {
+    public var body: some View {
         ZStack {
             // 背景
             Color.black.edgesIgnoringSafeArea(.all)
@@ -2888,13 +2983,17 @@ struct ImageFullScreenViewer: View {
  * 可缩放图片视图
  * 支持双指缩放和拖动
  */
-struct ZoomableImage: View {
+public struct ZoomableImage: View {
     let image: UIImage
     
     @State private var scale: CGFloat = 1.0
     @State private var lastScale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
+    
+    public init(image: UIImage) {
+        self.image = image
+    }
     
     var magnificationGesture: some Gesture {
         MagnificationGesture()
@@ -2952,7 +3051,7 @@ struct ZoomableImage: View {
             }
     }
     
-    var body: some View {
+    public var body: some View {
         Image(uiImage: image)
             .resizable()
             .scaledToFit()
@@ -2961,5 +3060,155 @@ struct ZoomableImage: View {
             .gesture(SimultaneousGesture(magnificationGesture, dragGesture))
             .gesture(doubleTapGesture)
             .edgesIgnoringSafeArea(.all)
+    }
+}
+
+/**
+ * 全屏图片查看器 - 支持图片ID
+ * 用于显示用户上传的图片
+ */
+struct PostImageFullScreenViewer: View {
+    let imageIds: [String]
+    @State private var currentIndex: Int
+    @Binding var isPresented: Bool
+    @State private var loadedImages: [Int: UIImage] = [:]
+    @State private var isLoading: [Int: Bool] = [:]
+    
+    init(imageIds: [String], initialIndex: Int, isPresented: Binding<Bool>) {
+        self.imageIds = imageIds
+        self._currentIndex = State(initialValue: initialIndex)
+        self._isPresented = isPresented
+    }
+    
+    var body: some View {
+        ZStack {
+            // 背景
+            Color.black.edgesIgnoringSafeArea(.all)
+            
+            // 内容
+            VStack(spacing: 0) {
+                // 顶部控制栏
+                HStack {
+                    // 关闭按钮
+                    Button(action: { isPresented = false }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(Color.black.opacity(0.4))
+                            .clipShape(Circle())
+                    }
+                    
+                    Spacer()
+                    
+                    // 页码指示器
+                    Text("\(currentIndex + 1) / \(imageIds.count)")
+                        .foregroundColor(.white)
+                        .font(.system(size: 15))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.black.opacity(0.4))
+                        .cornerRadius(15)
+                }
+                .padding()
+                
+                // 图片显示区域
+                TabView(selection: $currentIndex) {
+                    ForEach(0..<imageIds.count, id: \.self) { index in
+                        ZStack {
+                            if let image = loadedImages[index] {
+                                // 显示已加载的图片
+                                ZoomableImage(image: image)
+                                    .tag(index)
+                            } else if isLoading[index] == true {
+                                // 显示加载中状态
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(1.5)
+                            } else {
+                                // 显示加载失败状态
+                                VStack(spacing: 12) {
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.white.opacity(0.7))
+                                    
+                                    Text("无法加载图片")
+                                        .foregroundColor(.white.opacity(0.7))
+                                    
+                                    Button("重试") {
+                                        loadImage(at: index)
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 10)
+                                    .background(Color.white.opacity(0.2))
+                                    .cornerRadius(8)
+                                    .foregroundColor(.white)
+                                }
+                            }
+                        }
+                        .tag(index)
+                        .onAppear {
+                            loadImage(at: index)
+                            
+                            // 预加载下一张图片
+                            if index + 1 < imageIds.count {
+                                loadImage(at: index + 1)
+                            }
+                            
+                            // 预加载上一张图片
+                            if index - 1 >= 0 {
+                                loadImage(at: index - 1)
+                            }
+                        }
+                    }
+                }
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+            }
+        }
+        .statusBar(hidden: true)
+        .onAppear {
+            // 添加触感反馈
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
+            
+            // 加载当前图片
+            loadImage(at: currentIndex)
+        }
+    }
+    
+    // 加载图片
+    private func loadImage(at index: Int) {
+        // 检查图片是否已加载
+        if loadedImages[index] != nil || isLoading[index] == true {
+            return
+        }
+        
+        // 设置加载状态
+        isLoading[index] = true
+        
+        // 获取图片ID
+        let imageId = imageIds[index]
+        
+        // 在后台线程加载图片
+        DispatchQueue.global(qos: .userInitiated).async {
+            let image: UIImage?
+            
+            // 检查是否是用户上传的图片
+            if imageId.contains("_image_") {
+                // 从ImageManager获取图片
+                image = ImageManager.shared.getImage(withId: imageId)
+            } else {
+                // 从资源中获取图片
+                image = UIImage(named: imageId)
+            }
+            
+            // 在主线程更新UI
+            DispatchQueue.main.async {
+                if let loadedImage = image {
+                    loadedImages[index] = loadedImage
+                }
+                isLoading[index] = false
+            }
+        }
     }
 }

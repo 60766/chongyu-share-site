@@ -62,10 +62,10 @@ struct TimeSpaceEffectView: View {
                 return "虫洞随机跳跃"
             case 1: // 日常心情
                 return "感知情绪波动"
-            case 2: // 古今对望
+            case 2: // 古潮新语
                 return "连接古今桥梁"
-            case 3: // 奇思妙想
-                return "异想空间构建"
+            case 3: // 穿越吐槽
+                return "时空碰撞共鸣"
             case 4: // 时空记事
                 return "历史画面重构"
             default:

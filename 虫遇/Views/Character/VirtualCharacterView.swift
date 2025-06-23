@@ -334,7 +334,7 @@ struct CharacterGridView: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 16) {
             ForEach(Array(characters.enumerated()), id: \.element.id) { index, character in
-                NavigationLink(destination: CharacterDetailView(character: character)) {
+                NavigationLink(value: character) {
                     CharacterCardView(character: character)
                         .offset(y: animateContent ? 0 : 30)
                         .opacity(animateContent ? 1 : 0)
@@ -346,6 +346,9 @@ struct CharacterGridView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             }
+        }
+        .navigationDestination(for: Character.self) { character in
+            CharacterDetailView(character: character)
         }
         .padding(16)
     }

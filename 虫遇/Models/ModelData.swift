@@ -7,96 +7,92 @@ import SwiftUI
  */
 struct ModelData {
     // 示例评论数据
-    static let sampleComments: [UserCommentModel] = [
-        UserCommentModel(
+    static let sampleComments: [DetailedCommentModel] = [
+        DetailedCommentModel(
             username: "李白",
             userAvatar: "person.fill",
             content: "青山遮不住，毕竟东流去。江湖几度夕阳红。",
             datePosted: Date().addingTimeInterval(-3600 * 24 * 3),
-            likes: 42,
             isVirtualCharacter: true,
-            characterID: "libai"
+            characterID: "libai",
+            likes: 42
         ),
-        UserCommentModel(
+        DetailedCommentModel(
             username: "爱因斯坦",
             userAvatar: "atom",
             content: "想象力比知识更重要。知识是有限的，而想象力概括着世界上的一切。",
             datePosted: Date().addingTimeInterval(-3600 * 12),
-            likes: 38,
             isVirtualCharacter: true,
-            characterID: "einstein"
+            characterID: "einstein",
+            likes: 38
         ),
-        UserCommentModel(
+        DetailedCommentModel(
             username: "用户123",
             userAvatar: "person.circle",
             content: "这篇文章写得太好了，我获得了很多启发！",
             datePosted: Date().addingTimeInterval(-3600 * 5),
-            likes: 15,
             isVirtualCharacter: false,
-            characterID: nil
+            likes: 15
         ),
-        UserCommentModel(
+        DetailedCommentModel(
             username: "莎士比亚",
             userAvatar: "book.fill",
             content: "生活中最重要的事情是要有爱人的能力和被爱的能力。",
             datePosted: Date().addingTimeInterval(-3600 * 2),
-            likes: 27,
             isVirtualCharacter: true,
-            characterID: "shakespeare"
+            characterID: "shakespeare",
+            likes: 27
         ),
-        UserCommentModel(
+        DetailedCommentModel(
             username: "用户456",
             userAvatar: "person.2.circle",
             content: "感谢分享这么有价值的内容！",
             datePosted: Date().addingTimeInterval(-1800),
-            likes: 8,
             isVirtualCharacter: false,
-            characterID: nil
+            likes: 8
         ),
-        UserCommentModel(
+        DetailedCommentModel(
             username: "牛顿",
             userAvatar: "appletv.fill",
             content: "如果我比别人看得更远，那是因为我站在巨人的肩膀上。",
             datePosted: Date().addingTimeInterval(-3600 * 8),
-            likes: 31,
             isVirtualCharacter: true,
-            characterID: "newton"
+            characterID: "newton",
+            likes: 31
         ),
-        UserCommentModel(
+        DetailedCommentModel(
             username: "用户789",
             userAvatar: "person.3.fill",
             content: "这个观点非常有见地，让我思考了很多。",
             datePosted: Date().addingTimeInterval(-900),
-            likes: 5,
             isVirtualCharacter: false,
-            characterID: nil
+            likes: 5
         ),
-        UserCommentModel(
+        DetailedCommentModel(
             username: "孔子",
             userAvatar: "scroll.fill",
             content: "学而不思则罔，思而不学则殆。",
             datePosted: Date().addingTimeInterval(-3600 * 36),
-            likes: 48,
             isVirtualCharacter: true,
-            characterID: "confucius"
+            characterID: "confucius",
+            likes: 48
         ),
-        UserCommentModel(
+        DetailedCommentModel(
             username: "用户101112",
             userAvatar: "person.fill.questionmark",
             content: "我对这个话题很感兴趣，有没有更多资料推荐？",
             datePosted: Date().addingTimeInterval(-300),
-            likes: 2,
             isVirtualCharacter: false,
-            characterID: nil
+            likes: 2
         ),
-        UserCommentModel(
+        DetailedCommentModel(
             username: "达芬奇",
             userAvatar: "paintpalette.fill",
             content: "简单是终极的复杂。",
             datePosted: Date().addingTimeInterval(-3600 * 18),
-            likes: 36,
             isVirtualCharacter: true,
-            characterID: "davinci"
+            characterID: "davinci",
+            likes: 36
         )
     ]
 
@@ -127,29 +123,28 @@ struct ModelData {
         var shakespeareComment = sampleComments.first(where: { $0.characterID == "shakespeare" })!
         
         // 用户对爱因斯坦的回复
-        let replyToEinstein1 = UserCommentModel(
+        let replyToEinstein1 = DetailedCommentModel(
             username: "科学爱好者",
             userAvatar: "person.circle",
             content: "爱因斯坦先生，您能解释一下时间相对性的概念吗？",
             datePosted: Date().addingTimeInterval(-3600 * 10),
-            likes: 12,
             isVirtualCharacter: false,
-            characterID: nil,
             parentCommentId: einsteinComment.id,
-            replyToUsername: "爱因斯坦"
+            replyToUsername: "爱因斯坦",
+            likes: 12
         )
         
         // 爱因斯坦对用户的回复
-        let einsteinReply = UserCommentModel(
+        let einsteinReply = DetailedCommentModel(
             username: "爱因斯坦",
             userAvatar: "atom",
             content: "时间相对性可以这样理解：当你坐在美丽姑娘旁边时，两小时感觉只有一分钟；当你坐在热炉子上时，一分钟感觉有两小时那么长。这就是相对论。",
             datePosted: Date().addingTimeInterval(-3600 * 9),
-            likes: 28,
             isVirtualCharacter: true,
             characterID: "einstein",
             parentCommentId: replyToEinstein1.id,
-            replyToUsername: "科学爱好者"
+            replyToUsername: "科学爱好者",
+            likes: 28
         )
         
         // 添加回复到评论中
@@ -158,16 +153,15 @@ struct ModelData {
         einsteinComment.replies.append(modifiedReplyToEinstein1)
         
         // 用户对莎士比亚的回复
-        let replyToShakespeare = UserCommentModel(
+        let replyToShakespeare = DetailedCommentModel(
             username: "文学爱好者",
             userAvatar: "person.2.circle",
             content: "莎翁，您认为爱情和理智哪个更重要？",
             datePosted: Date().addingTimeInterval(-3600 * 1),
-            likes: 9,
             isVirtualCharacter: false,
-            characterID: nil,
             parentCommentId: shakespeareComment.id,
-            replyToUsername: "莎士比亚"
+            replyToUsername: "莎士比亚",
+            likes: 9
         )
         
         // 添加回复到莎士比亚评论中
@@ -178,29 +172,28 @@ struct ModelData {
         var newtonComment = sampleComments.first(where: { $0.characterID == "newton" })!
         
         // 用户对达芬奇的回复
-        let replyToDavinci = UserCommentModel(
+        let replyToDavinci = DetailedCommentModel(
             username: "艺术学生",
             userAvatar: "person.circle",
             content: "达芬奇大师，能分享一下您的创作灵感来源吗？",
             datePosted: Date().addingTimeInterval(-3600 * 16),
-            likes: 18,
             isVirtualCharacter: false,
-            characterID: nil,
             parentCommentId: davinciComment.id,
-            replyToUsername: "达芬奇"
+            replyToUsername: "达芬奇",
+            likes: 18
         )
         
         // 达芬奇的回复
-        let davinciReply = UserCommentModel(
+        let davinciReply = DetailedCommentModel(
             username: "达芬奇",
             userAvatar: "paintpalette.fill",
             content: "灵感来源于观察自然。大自然是最伟大的老师，它包含了一切完美的比例和规则。",
             datePosted: Date().addingTimeInterval(-3600 * 15),
-            likes: 25,
             isVirtualCharacter: true,
             characterID: "davinci",
             parentCommentId: replyToDavinci.id,
-            replyToUsername: "艺术学生"
+            replyToUsername: "艺术学生",
+            likes: 25
         )
         
         // 添加嵌套回复
@@ -213,29 +206,28 @@ struct ModelData {
         var confuciusComment = sampleComments.first(where: { $0.characterID == "confucius" })!
         
         // 用户对李白的回复
-        let replyToLibai = UserCommentModel(
+        let replyToLibai = DetailedCommentModel(
             username: "诗歌爱好者",
             userAvatar: "person.3.fill",
             content: "李白先生，您认为写诗最重要的是什么？",
             datePosted: Date().addingTimeInterval(-3600 * 24 * 2),
-            likes: 22,
             isVirtualCharacter: false,
-            characterID: nil,
             parentCommentId: libaiComment.id,
-            replyToUsername: "李白"
+            replyToUsername: "李白",
+            likes: 22
         )
         
         // 李白的回复
-        let libaiReply = UserCommentModel(
+        let libaiReply = DetailedCommentModel(
             username: "李白",
             userAvatar: "person.fill",
             content: "诗贵有灵气，要能表达内心真实的情感。'诗仙'之名我不敢当，唯有饮酒赋诗，逍遥人间。",
             datePosted: Date().addingTimeInterval(-3600 * 24 * 2 + 1800),
-            likes: 31,
             isVirtualCharacter: true,
             characterID: "libai",
             parentCommentId: replyToLibai.id,
-            replyToUsername: "诗歌爱好者"
+            replyToUsername: "诗歌爱好者",
+            likes: 31
         )
         
         // 添加嵌套回复
@@ -255,7 +247,8 @@ struct ModelData {
                 likes: 128,
                 comments: [einsteinComment, shakespeareComment],
                 isLikedByCurrentUser: false,
-                isBookmarkedByCurrentUser: false
+                isBookmarkedByCurrentUser: false,
+                source: "sample"
             ),
             UserPostModel(
                 id: UUID(uuidString: "22222222-2222-2222-2222-222222222222") ?? UUID(),
@@ -267,7 +260,8 @@ struct ModelData {
                 likes: 86,
                 comments: [davinciComment, newtonComment],
                 isLikedByCurrentUser: true,
-                isBookmarkedByCurrentUser: true
+                isBookmarkedByCurrentUser: true,
+                source: "sample"
             ),
             UserPostModel(
                 id: UUID(uuidString: "33333333-3333-3333-3333-333333333333") ?? UUID(),
@@ -279,7 +273,8 @@ struct ModelData {
                 likes: 114,
                 comments: [libaiComment, confuciusComment],
                 isLikedByCurrentUser: false,
-                isBookmarkedByCurrentUser: false
+                isBookmarkedByCurrentUser: false,
+                source: "sample"
             )
         ]
     }()

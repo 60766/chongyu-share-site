@@ -1,0 +1,27 @@
+extension View {
+    @ViewBuilder
+    func if16Available<Content: View>(_ transform: (Self) -> Content) -> some View {
+        if #available(iOS 16.0, *) {
+            transform(self)
+        } else {
+            self
+        }
+    }
+    
+    @ViewBuilder
+    func shadowVisibility(_ visibility: Visibility) -> some View {
+        if #available(iOS 16.0, *) {
+            self.shadow(color: .clear, radius: 0)
+        } else {
+            self
+        }
+    }
+}
+
+// 添加重置内容类型权重的方法到ContentTypeWeightManager类中
+extension ContentTypeWeightManager {
+    func resetContentType(_ type: ContentGeneratorService.ContentType) {
+        // 重置权重为1.0（100%）
+        setWeight(1.0, for: type)
+    }
+}

@@ -119,13 +119,17 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
     let images: [String]
     let datePosted: Date
     var likes: Int
-    @Published var comments: [UserCommentModel] = []
+    @Published var comments: [DetailedCommentModel] = []
     let isLikedByCurrentUser: Bool
     let isBookmarkedByCurrentUser: Bool
+    var contentType: String?
+    var characterID: String?
+    // 添加来源属性，用于区分不同来源的帖子（例如：onekey-一键生成，wormhole-虫洞探索）
+    var source: String?
     
     // 用于Codable的编码键
     enum CodingKeys: String, CodingKey {
-        case id, username, userAvatar, content, images, datePosted, likes, comments, isLikedByCurrentUser, isBookmarkedByCurrentUser
+        case id, username, userAvatar, content, images, datePosted, likes, comments, isLikedByCurrentUser, isBookmarkedByCurrentUser, contentType, characterID, source
     }
     
     // 初始化方法
@@ -137,9 +141,12 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         images: [String],
         datePosted: Date,
         likes: Int,
-        comments: [UserCommentModel],
+        comments: [DetailedCommentModel],
         isLikedByCurrentUser: Bool,
-        isBookmarkedByCurrentUser: Bool
+        isBookmarkedByCurrentUser: Bool,
+        contentType: String? = nil,
+        characterID: String? = nil,
+        source: String? = nil
     ) {
         self.id = id
         self.username = username
@@ -151,6 +158,9 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         self.comments = comments
         self.isLikedByCurrentUser = isLikedByCurrentUser
         self.isBookmarkedByCurrentUser = isBookmarkedByCurrentUser
+        self.contentType = contentType
+        self.characterID = characterID
+        self.source = source
     }
     
     // MARK: - Decodable 协议实现
@@ -166,11 +176,14 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         likes = try container.decode(Int.self, forKey: .likes)
         
         // 特别处理@Published属性
-        let commentsArray = try container.decode([UserCommentModel].self, forKey: .comments)
+        let commentsArray = try container.decode([DetailedCommentModel].self, forKey: .comments)
         _comments = Published(initialValue: commentsArray)
         
         isLikedByCurrentUser = try container.decode(Bool.self, forKey: .isLikedByCurrentUser)
         isBookmarkedByCurrentUser = try container.decode(Bool.self, forKey: .isBookmarkedByCurrentUser)
+        contentType = try container.decodeIfPresent(String.self, forKey: .contentType)
+        characterID = try container.decodeIfPresent(String.self, forKey: .characterID)
+        source = try container.decodeIfPresent(String.self, forKey: .source)
     }
     
     // MARK: - Encodable 协议实现
@@ -190,6 +203,9 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         
         try container.encode(isLikedByCurrentUser, forKey: .isLikedByCurrentUser)
         try container.encode(isBookmarkedByCurrentUser, forKey: .isBookmarkedByCurrentUser)
+        try container.encodeIfPresent(contentType, forKey: .contentType)
+        try container.encodeIfPresent(characterID, forKey: .characterID)
+        try container.encodeIfPresent(source, forKey: .source)
     }
     
     // MARK: - Hashable 协议实现
@@ -208,117 +224,129 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         lhs.likes == rhs.likes &&
         lhs.comments == rhs.comments &&
         lhs.isLikedByCurrentUser == rhs.isLikedByCurrentUser &&
-        lhs.isBookmarkedByCurrentUser == rhs.isBookmarkedByCurrentUser
+        lhs.isBookmarkedByCurrentUser == rhs.isBookmarkedByCurrentUser &&
+        lhs.contentType == rhs.contentType &&
+        lhs.characterID == rhs.characterID &&
+        lhs.source == rhs.source
     }
     
-    /// 对评论点赞
+    /// 点赞评论
     func likeComment(commentId: UUID) {
-        // 查找并更新顶级评论
+        // 优先在顶级评论中查找
         if let index = comments.firstIndex(where: { $0.id == commentId }) {
-            comments[index].likes += 1
+            comments[index].isLikedByCurrentUser.toggle()
+            if comments[index].isLikedByCurrentUser {
+                comments[index].likes += 1
+            } else {
+                comments[index].likes = max(0, comments[index].likes - 1)
+            }
             return
         }
         
-        // 如果不是顶级评论，则递归查找回复中的评论
-        for i in 0..<comments.count {
-            if findAndLikeReply(in: &comments[i].replies, commentId: commentId) {
-                return
-            }
+        // 递归查找回复
+        var updatedComments = comments
+        if findAndLikeReply(in: &updatedComments, commentId: commentId) {
+            comments = updatedComments
         }
     }
     
     /// 递归查找并点赞回复
-    private func findAndLikeReply(in replies: inout [UserCommentModel], commentId: UUID) -> Bool {
+    private func findAndLikeReply(in replies: inout [DetailedCommentModel], commentId: UUID) -> Bool {
         for i in 0..<replies.count {
             if replies[i].id == commentId {
-                replies[i].likes += 1
+                replies[i].isLikedByCurrentUser.toggle()
+                if replies[i].isLikedByCurrentUser {
+                    replies[i].likes += 1
+                } else {
+                    replies[i].likes = max(0, replies[i].likes - 1)
+                }
                 return true
             }
             
-            if findAndLikeReply(in: &replies[i].replies, commentId: commentId) {
-                return true
+            if !replies[i].replies.isEmpty {
+                var updatedReplies = replies[i].replies
+                if findAndLikeReply(in: &updatedReplies, commentId: commentId) {
+                    replies[i].replies = updatedReplies
+                    return true
+                }
             }
         }
+        
         return false
     }
     
     /// 添加评论或回复
     func addComment(username: String, userAvatar: String, content: String, parentCommentId: UUID? = nil, replyToUsername: String? = nil, isVirtualCharacter: Bool = false, characterID: String? = nil) {
-        let newComment = UserCommentModel(
+        let newComment = DetailedCommentModel(
             username: username,
             userAvatar: userAvatar,
             content: content,
-            datePosted: Date(),
             isVirtualCharacter: isVirtualCharacter,
             characterID: characterID,
             parentCommentId: parentCommentId,
             replyToUsername: replyToUsername
         )
         
-        // 如果是回复，则添加到对应的父评论中
         if let parentId = parentCommentId {
             addReplyToParent(parentId: parentId, reply: newComment)
         } else {
-            // 直接添加到顶级评论列表
-            comments.append(newComment)
-            // 保持顶级评论按时间倒序排序（最新的在前面）
-            comments.sort { $0.datePosted > $1.datePosted }
+            comments.insert(newComment, at: 0)
         }
-        
-        // 保存更新后的数据
-        saveData()
     }
     
     /// 添加回复到指定的父评论
-    private func addReplyToParent(parentId: UUID, reply: UserCommentModel) {
+    private func addReplyToParent(parentId: UUID, reply: DetailedCommentModel) {
         // 优先在顶级评论中查找父评论
         if let index = comments.firstIndex(where: { $0.id == parentId }) {
-            comments[index].addReply(reply)
+            comments[index].replies.insert(reply, at: 0)
             return
         }
         
-        // 如果顶级评论中没有找到，则在所有回复中递归查找
-        for i in 0..<comments.count {
-            if findAndAddReply(to: &comments[i].replies, parentId: parentId, reply: reply) {
-                return
-            }
+        // 递归查找父评论
+        var updatedComments = comments
+        if findAndAddReply(to: &updatedComments, parentId: parentId, reply: reply) {
+            comments = updatedComments
         }
     }
     
     /// 递归查找父评论并添加回复
-    private func findAndAddReply(to replies: inout [UserCommentModel], parentId: UUID, reply: UserCommentModel) -> Bool {
+    private func findAndAddReply(to replies: inout [DetailedCommentModel], parentId: UUID, reply: DetailedCommentModel) -> Bool {
         for i in 0..<replies.count {
             if replies[i].id == parentId {
-                replies[i].addReply(reply)
+                replies[i].replies.insert(reply, at: 0)
                 return true
             }
             
-            if findAndAddReply(to: &replies[i].replies, parentId: parentId, reply: reply) {
-                return true
+            if !replies[i].replies.isEmpty {
+                var updatedReplies = replies[i].replies
+                if findAndAddReply(to: &updatedReplies, parentId: parentId, reply: reply) {
+                    replies[i].replies = updatedReplies
+                    return true
+                }
             }
         }
+        
         return false
     }
     
     /// 获取顶级评论（不包含回复）
-    func getTopLevelComments() -> [UserCommentModel] {
+    func getTopLevelComments() -> [DetailedCommentModel] {
         return comments
     }
     
-    /// 获取评论总数（包括所有评论和回复）
+    /// 获取评论总数（包括回复）
     func getTotalCommentsCount() -> Int {
-        var total = comments.count
+        var count = comments.count
         
-        // 递归计算所有回复
         for comment in comments {
-            total += countReplies(in: comment.replies)
+            count += countReplies(in: comment.replies)
         }
         
-        return total
+        return count
     }
     
     /// 递归计算回复数量
-    private func countReplies(in replies: [UserCommentModel]) -> Int {
+    private func countReplies(in replies: [DetailedCommentModel]) -> Int {
         var count = replies.count
         
         for reply in replies {
@@ -345,7 +373,10 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             likes: updatedLikeCount,
             comments: comments,
             isLikedByCurrentUser: isLiked,
-            isBookmarkedByCurrentUser: isBookmarkedByCurrentUser
+            isBookmarkedByCurrentUser: isBookmarkedByCurrentUser,
+            contentType: contentType,
+            characterID: characterID,
+            source: source
         )
     }
     
@@ -364,7 +395,10 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             likes: likes,
             comments: comments,
             isLikedByCurrentUser: isLikedByCurrentUser,
-            isBookmarkedByCurrentUser: isBookmarked
+            isBookmarkedByCurrentUser: isBookmarked,
+            contentType: contentType,
+            characterID: characterID,
+            source: source
         )
     }
     
@@ -401,6 +435,24 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         
         // 打印日志
         print("数据已保存：\(self.id)")
+    }
+    
+    /**
+     * 添加回复到特定评论
+     * 这个方法是公开的，可以被外部调用
+     * @param parentId 父评论ID
+     * @param reply 回复评论模型
+     */
+    func addReplyToComment(parentId: UUID, reply: DetailedCommentModel) {
+        print("📝 添加回复到评论ID: \(parentId)")
+        
+        // 使用现有的私有方法实现
+        addReplyToParent(parentId: parentId, reply: reply)
+        
+        // 保存更新
+        saveData()
+        
+        print("✅ 回复已添加到评论")
     }
 }
 
@@ -503,6 +555,41 @@ extension UserPostModel {
         // 5. 确保最终内容格式一致 - 开头和结尾不应有多余空行
         formattedContent = formattedContent.trimmingCharacters(in: .whitespacesAndNewlines)
         
+        // 6. 移除内容末尾可能的字数统计信息，如"(132字，中等长度)"
+        formattedContent = formattedContent.replacingOccurrences(
+            of: "\\(\\d+字[，,]\\s*(短|中等|较长|长)长度\\)",
+            with: "",
+            options: .regularExpression
+        )
+        
+        // 7. 移除以"注："或"注:"开头的注释性说明段落
+        formattedContent = formattedContent.replacingOccurrences(
+            of: "\n\n注[：:][^\n]+(\n[^\n]+)*$",
+            with: "",
+            options: .regularExpression
+        )
+        
+        // 8. 移除开头可能的"注："或"注:"说明
+        formattedContent = formattedContent.replacingOccurrences(
+            of: "^注[：:][^\n]+(\n[^\n]+)*\n\n",
+            with: "",
+            options: .regularExpression
+        )
+        
+        // 9. 移除内容中的零散括号描述，如"(羽毛笔突然溅开个墨点)"、"(执壶空见了见)"等
+        formattedContent = formattedContent.replacingOccurrences(
+            of: "\\([^()]{3,30}\\)",
+            with: "",
+            options: .regularExpression
+        )
+        
+        // 10. 移除末尾可能存在的简短括号注释
+        formattedContent = formattedContent.replacingOccurrences(
+            of: "\\([^()]{3,50}\\)$",
+            with: "",
+            options: .regularExpression
+        )
+        
         // 返回格式化后的内容
         return formattedContent
     }
@@ -523,7 +610,59 @@ extension UserPostModel {
             likes: likes + delta,
             comments: comments,
             isLikedByCurrentUser: isLikedByCurrentUser,
-            isBookmarkedByCurrentUser: isBookmarkedByCurrentUser
+            isBookmarkedByCurrentUser: isBookmarkedByCurrentUser,
+            contentType: contentType,
+            characterID: characterID,
+            source: source
         )
     }
+}
+
+// MARK: - 静态样例数据
+extension UserPostModel {
+    /// 生成样例帖子数据
+    static let samplePosts: [UserPostModel] = [
+        UserPostModel(
+            username: "爱因斯坦",
+            userAvatar: "einstein",
+            content: "刚刚完成了一个关于相对论的新思考实验，感觉非常兴奋！思考时间和空间如何相互关联真是奇妙。",
+            images: ["science1"],
+            datePosted: Date().addingTimeInterval(-86400), // 1天前
+            likes: 42,
+            comments: [],
+            isLikedByCurrentUser: false,
+            isBookmarkedByCurrentUser: false,
+            contentType: nil,
+            characterID: nil,
+            source: nil
+        ),
+        UserPostModel(
+            username: "莎士比亚",
+            userAvatar: "shakespeare",
+            content: "今日灵感涌现，写下新剧本开篇。\"生存还是毁灭，这是个问题。\"总感觉这句台词会流传很久。",
+            images: ["writing1"],
+            datePosted: Date().addingTimeInterval(-172800), // 2天前
+            likes: 37,
+            comments: [],
+            isLikedByCurrentUser: true,
+            isBookmarkedByCurrentUser: true,
+            contentType: nil,
+            characterID: nil,
+            source: nil
+        ),
+        UserPostModel(
+            username: "达芬奇",
+            userAvatar: "davinci",
+            content: "今天在研究鸟类飞行时有了新发现。或许人类也能借助正确的工具飞上天空？正在设计一个飞行器草图。",
+            images: ["art1", "science2"],
+            datePosted: Date().addingTimeInterval(-259200), // 3天前
+            likes: 28,
+            comments: [],
+            isLikedByCurrentUser: false,
+            isBookmarkedByCurrentUser: false,
+            contentType: nil,
+            characterID: nil,
+            source: nil
+        )
+    ]
 } 

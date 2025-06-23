@@ -1,0 +1,1 @@
+import json; f = open("./虫遇/Resources/characters.json"); content = f.read(); f.close(); print("Trying to parse JSON..."); try: data = json.loads(content); print("JSON is valid!"); except json.JSONDecodeError as e: print(f"Error: {e}")

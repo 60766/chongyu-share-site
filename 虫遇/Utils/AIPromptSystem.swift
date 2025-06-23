@@ -178,6 +178,7 @@ class AIPromptSystem {
      * 获取角色特征
      */
     private func getCharacterTraits(_ name: String) -> AICharacterTraits {
+        // 首先检查预定义的角色
         switch name {
         case "李白":
             return AICharacterTraits(
@@ -222,13 +223,141 @@ class AIPromptSystem {
                 experiences: ["物理实验", "数学研究", "光学研究"]
             )
         default:
+            // 如果不是预定义角色，尝试从动态角色库获取或生成
+            if let dynamicCharacter = getDynamicCharacterTraits(name) {
+                return dynamicCharacter
+            }
+            
+            // 如果动态库中也没有，则生成一个基础角色特征
+            return generateBasicCharacterTraits(name)
+        }
+    }
+    
+    /**
+     * 从动态角色库获取角色特征
+     * 可以通过API、本地数据库或配置文件获取
+     */
+    private func getDynamicCharacterTraits(_ name: String) -> AICharacterTraits? {
+        // 这里是扩展的历史人物和虚构人物库
+        // 实际应用中，可以从JSON配置、数据库或远程API获取
+        let dynamicCharacters: [String: AICharacterTraits] = [
+            "杜甫": AICharacterTraits(
+                name: "杜甫",
+                description: "现实主义诗人，关注民生疾苦，诗风沉郁顿挫",
+                speechPatterns: ["忧国", "民生", "战乱", "家国", "岁月", "悲悯"],
+                experiences: ["漂泊生活", "战乱见闻", "忧国忧民", "饥寒交迫"]
+            ),
+            "苏轼": AICharacterTraits(
+                name: "苏轼",
+                description: "豪放派词人，才华横溢，性格豁达，热爱生活",
+                speechPatterns: ["豁达", "美食", "天地", "豪放", "词章", "笑谈"],
+                experiences: ["贬谪生活", "创作文学", "品酒赏月", "交友论道"]
+            ),
+            "伽利略": AICharacterTraits(
+                name: "伽利略",
+                description: "实证主义科学家，敢于挑战权威，注重观察和实验",
+                speechPatterns: ["观测", "实验", "证明", "望远镜", "行星", "运动"],
+                experiences: ["天文观测", "自由落体实验", "与教会冲突", "科学著述"]
+            ),
+            "居里夫人": AICharacterTraits(
+                name: "居里夫人",
+                description: "坚韧不拔的科学家，两获诺贝尔奖，专注且执着",
+                speechPatterns: ["研究", "放射性", "发现", "科学", "坚持", "元素"],
+                experiences: ["实验室工作", "发现新元素", "科学教育", "克服困难"]
+            ),
+            "达尔文": AICharacterTraits(
+                name: "达尔文",
+                description: "演化论创始人，观察细致，思考深入，理论严谨",
+                speechPatterns: ["进化", "物种", "适应", "自然选择", "变异", "观察"],
+                experiences: ["环球航行", "物种研究", "理论构建", "标本收集"]
+            ),
+            "尼采": AICharacterTraits(
+                name: "尼采",
+                description: "深刻的哲学家，批判传统道德，提倡超人哲学",
+                speechPatterns: ["超人", "权力意志", "价值", "道德", "深渊", "命运"],
+                experiences: ["哲学思考", "独居生活", "批判传统", "精神探索"]
+            ),
+            "梵高": AICharacterTraits(
+                name: "梵高",
+                description: "热情奔放的画家，色彩鲜明，内心敏感复杂",
+                speechPatterns: ["色彩", "星空", "向日葵", "光影", "情感", "痛苦"],
+                experiences: ["艺术创作", "精神挣扎", "乡村生活", "与高更交流"]
+            ),
+            "贝多芬": AICharacterTraits(
+                name: "贝多芬",
+                description: "伟大的音乐家，克服听力障碍，创作激情澎湃",
+                speechPatterns: ["音符", "命运", "交响", "激情", "战胜", "不屈"],
+                experiences: ["音乐创作", "与耳聋斗争", "孤独生活", "艺术探索"]
+            ),
+            "希拉里": AICharacterTraits(
+                name: "希拉里",
+                description: "第一位登顶珠穆朗玛峰的人，勇敢无畏，探险精神",
+                speechPatterns: ["挑战", "顶峰", "征服", "勇气", "冒险", "极限"],
+                experiences: ["登山探险", "极地考察", "身体极限挑战", "团队合作"]
+            )
+        ]
+        
+        return dynamicCharacters[name]
+    }
+    
+    /**
+     * 根据名字生成基础角色特征
+     * 适用于系统中没有预定义的新角色
+     */
+    private func generateBasicCharacterTraits(_ name: String) -> AICharacterTraits {
+        // 根据名字判断可能的角色类型和特点
+        // 这只是一个基础实现，实际应用可以调用更智能的API
+        
+        // 检测是否可能是中国历史人物
+        let chineseNames = ["王", "李", "张", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "朱", "胡", "林", "郭", "何", "高", "罗", "郑", "梁", "谢", "宋", "唐", "许", "韩", "冯", "邓", "曹", "彭", "曾", "蔡", "潘", "田", "董", "袁", "于", "余", "叶", "蒋", "杜", "苏", "魏", "程", "吕", "丁", "沈", "任", "姚", "卢", "傅", "钟", "姜", "崔", "谭", "廖", "范", "汪", "陆", "金", "石", "戴", "贾", "韦", "夏", "邱", "方", "侯", "邹", "熊", "孟", "秦", "白", "江", "闫", "薛", "尹", "付", "段"]
+        
+        let isChineseHistorical = chineseNames.contains { name.hasPrefix($0) }
+        
+        // 根据判断生成基本特征
+        if isChineseHistorical {
             return AICharacterTraits(
                 name: name,
-                description: "有趣的历史人物",
-                speechPatterns: [],
-                experiences: []
+                description: "中国历史人物，拥有丰富的文化底蕴和独特的思想观点",
+                speechPatterns: ["文化", "历史", "智慧", "传统", "变革"],
+                experiences: ["历史经历", "文化贡献", "社会影响"]
             )
         }
+        
+        // 检测是否可能是西方历史人物
+        let westernNamePrefixes = ["Al", "Jo", "Wi", "Ro", "Da", "Mi", "Ja", "St", "Th", "Pe", "Ma", "An", "El", "Ca", "Ch"]
+        
+        let isWesternHistorical = westernNamePrefixes.contains { name.hasPrefix($0) }
+        
+        if isWesternHistorical {
+            return AICharacterTraits(
+                name: name,
+                description: "西方历史人物，拥有独特的思想体系和丰富的人生经历",
+                speechPatterns: ["思想", "探索", "发现", "创新", "理性"],
+                experiences: ["专业领域研究", "社会贡献", "创新思想"]
+            )
+        }
+        
+        // 检测是否可能是虚构角色
+        let fictionalIndicators = ["龙", "仙", "神", "魔", "侠", "妖", "精灵", "巫师", "骑士", "公主", "王子", "战士"]
+        
+        let isFictional = fictionalIndicators.contains { name.contains($0) }
+        
+        if isFictional {
+            return AICharacterTraits(
+                name: name,
+                description: "虚构世界的角色，拥有独特的性格特点和奇幻色彩",
+                speechPatterns: ["冒险", "奇遇", "神秘", "力量", "使命"],
+                experiences: ["冒险经历", "世界探索", "使命完成", "能力成长"]
+            )
+        }
+        
+        // 默认返回一个通用角色特征
+        return AICharacterTraits(
+            name: name,
+            description: "有趣且富有智慧的角色，拥有独特观点和丰富经历",
+            speechPatterns: ["思考", "观察", "感受", "经验", "洞察"],
+            experiences: ["生活体验", "知识积累", "思想探索", "技能发展"]
+        )
     }
     
     /**

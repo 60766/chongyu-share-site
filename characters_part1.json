@@ -1,0 +1,300 @@
+{
+  "version": "1.0",
+  "characters": [
+    {
+      "id": "einstein",
+      "name": "爱因斯坦",
+      "type": "historical",
+      "subtype": "scientist",
+      "era": "近代",
+      "primaryField": "物理学家",
+      "briefDescription": "相对论创立者，20世纪最伟大的科学家之一",
+      "avatarName": "einstein",
+      "region": "德国/美国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.6, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "shakespeare",
+      "name": "莎士比亚",
+      "type": "historical",
+      "subtype": "writer",
+      "era": "文艺复兴",
+      "primaryField": "戏剧家、诗人",
+      "briefDescription": "英国最伟大的戏剧家，作品包括《罗密欧与朱丽叶》《哈姆雷特》等",
+      "avatarName": "shakespeare",
+      "region": "英国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.7, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "holmes",
+      "name": "夏洛克·福尔摩斯",
+      "type": "literary",
+      "subtype": "novel",
+      "era": "维多利亚时代",
+      "primaryField": "侦探",
+      "briefDescription": "世界上最著名的虚构侦探，以惊人的观察力和推理能力解决复杂案件",
+      "avatarName": "holmes",
+      "region": "英国伦敦",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.6, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "ironman",
+      "name": "托尼·史塔克",
+      "type": "movie",
+      "subtype": "superhero",
+      "era": "现代",
+      "primaryField": "发明家、超级英雄",
+      "briefDescription": "漫威电影宇宙中的钢铁侠，天才、亿万富翁、花花公子、慈善家",
+      "avatarName": "ironman",
+      "region": "美国",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.95, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "naruto",
+      "name": "漩涡鸣人",
+      "type": "anime",
+      "subtype": "shounen",
+      "era": "现代",
+      "primaryField": "忍者",
+      "briefDescription": "《火影忍者》主角，九尾人柱力，具有永不言弃的忍道精神",
+      "avatarName": "naruto",
+      "region": "火之国木叶村",
+      "contentAffinities": {
+        "古潮新语": 0.6, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.7, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "sunwukong",
+      "name": "孙悟空",
+      "type": "mythological",
+      "subtype": "chinese",
+      "era": "神话时代",
+      "primaryField": "齐天大圣",
+      "briefDescription": "中国古典名著《西游记》的主角，神通广大，性格桀骜不驯",
+      "avatarName": "sunwukong",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.95, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "kongzi",
+      "name": "孔子",
+      "type": "historical",
+      "subtype": "philosopher",
+      "era": "春秋时期",
+      "primaryField": "哲学家、教育家",
+      "briefDescription": "儒家学派创始人，中国古代思想家、政治家和教育家",
+      "avatarName": "kongzi",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.95, 
+        "穿越吐槽": 0.6, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "tesla",
+      "name": "尼古拉·特斯拉",
+      "type": "historical",
+      "subtype": "inventor",
+      "era": "近代",
+      "primaryField": "发明家、电气工程师",
+      "briefDescription": "电流之父，交流电系统发明者，20世纪最伟大的发明家之一",
+      "avatarName": "tesla",
+      "region": "塞尔维亚/美国",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.6, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "anubis",
+      "name": "阿努比斯",
+      "type": "mythological",
+      "subtype": "egyptian",
+      "era": "神话时代",
+      "primaryField": "死亡与木乃伊制作之神",
+      "briefDescription": "古埃及神话中的死亡之神，负责引导亡灵和保护坟墓",
+      "avatarName": "anubis",
+      "region": "埃及",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.7, 
+        "日常心情": 0.65, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "elsa",
+      "name": "艾莎女王",
+      "type": "movie",
+      "subtype": "animated",
+      "era": "奇幻世界",
+      "primaryField": "魔法女王",
+      "briefDescription": "迪士尼动画《冰雪奇缘》主角，拥有操控冰雪的魔法能力",
+      "avatarName": "elsa",
+      "region": "阿伦戴尔王国",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.95, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "daenerys",
+      "name": "丹妮莉丝·坦格利安",
+      "type": "tv",
+      "subtype": "fantasy",
+      "era": "中世纪奇幻",
+      "primaryField": "龙之母",
+      "briefDescription": "《权力的游戏》中的角色，争夺铁王座的关键人物，龙之母",
+      "avatarName": "daenerys",
+      "region": "维斯特洛大陆",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "geralt",
+      "name": "杰洛特",
+      "type": "game",
+      "subtype": "rpg",
+      "era": "中世纪奇幻",
+      "primaryField": "猎魔人",
+      "briefDescription": "《巫师》系列主角，游戏、小说和电视剧中的传奇猎魔人",
+      "avatarName": "geralt",
+      "region": "大陆世界",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "link",
+      "name": "林克",
+      "type": "game",
+      "subtype": "adventure",
+      "era": "海拉尔王国",
+      "primaryField": "勇者",
+      "briefDescription": "《塞尔达传说》系列主角，勇敢的英雄，拯救公主和王国",
+      "avatarName": "link",
+      "region": "海拉尔",
+      "contentAffinities": {
+        "古潮新语": 0.65, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "spiderman",
+      "name": "蜘蛛侠",
+      "type": "movie",
+      "subtype": "superhero",
+      "era": "现代",
+      "primaryField": "超级英雄",
+      "briefDescription": "漫威超级英雄，拥有蜘蛛般的能力，秉持\"能力越大，责任越大\"的信念",
+      "avatarName": "spiderman",
+      "region": "美国纽约",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.95, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "drhouse",
+      "name": "豪斯医生",
+      "type": "tv",
+      "subtype": "drama",
+      "era": "现代",
+      "primaryField": "诊断医学",
+      "briefDescription": "美剧《豪斯医生》主角，天才但古怪的医生，擅长解决疑难杂症",
+      "avatarName": "drhouse",
+      "region": "美国",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "hermione",
+      "name": "赫敏·格兰杰",
+      "type": "literary",
+      "subtype": "fantasy",
+      "era": "现代魔法世界",
+      "primaryField": "巫师",
+      "briefDescription": "《哈利·波特》系列中的角色，聪明博学的女巫，哈利的好友",
+      "avatarName": "hermione",
+      "region": "英国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "mulan",
+      "name": "花木兰",
+      "type": "historical",
+      "subtype": "legend",
+      "era": "北魏",
+      "primaryField": "女扮男装的女将军",
+      "briefDescription": "中国古代传奇人物，代父从军、英勇作战的巾帼英雄",
+      "avatarName": "mulan",

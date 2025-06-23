@@ -1,12 +1,24 @@
 import SwiftUI
 import CoreHaptics
 import UIKit
+// 导入AppLauncher
+import Foundation
 
 // 在主应用启动时设置自定义图标
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         // 设置自定义Tab图标
         UITabBar.appearance().tintColor = UIColor(red: 0.45, green: 0.45, blue: 0.95, alpha: 1.0)
+        
+        // 调用AppLauncher执行启动任务（添加延迟确保初始化完成）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if let appLauncherClass = NSClassFromString("AppLauncher") as? NSObject.Type {
+                _ = appLauncherClass.perform(NSSelectorFromString("onAppLaunch"))
+            } else {
+                print("⚠️ 无法找到AppLauncher类")
+            }
+        }
+        
         return true
     }
 }
@@ -387,8 +399,7 @@ struct CosmicTabView: View {
             .padding(.horizontal, 30)
             .padding(.vertical, 25)
             .background(
-                BlurView(style: .systemUltraThinMaterialDark)
-                    .cornerRadius(20)
+                CosmicBlurView(style: .systemUltraThinMaterialDark)
             )
             .padding(.bottom, 100)
         }
@@ -711,12 +722,23 @@ struct CosmicTabView: View {
     private func setupTabBarAppearance() {
         // 设置tabBar的外观
         let appearance = UITabBarAppearance()
+        
+        // 使用自定义背景配置，而不是默认背景
         appearance.configureWithTransparentBackground()
         
-        // 增强磨砂玻璃效果
-        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
-        // 添加轻微的背景色以增强磨砂质感
-        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.3)
+        // 添加自定义模糊效果
+        let blur = UIBlurEffect(style: .systemUltraThinMaterial)
+        appearance.backgroundEffect = blur
+        
+        // 设置背景色透明
+        appearance.backgroundColor = UIColor.clear
+        
+        // 设置全局不透明度，使整个Tab Bar更透明
+        if #available(iOS 15.0, *) {
+            // appearance.backgroundEffectOpacity = 0.25 // 降低模糊效果的不透明度
+            // 备注：iOS 17使用自定义视图实现更高透明度效果
+            UITabBar.appearance().alpha = 0.95 // 使用全局alpha实现类似效果
+        }
         
         // 设置颜色属性
         let normalAttributes = createTabBarAttributes(isSelected: false)
@@ -731,6 +753,10 @@ struct CosmicTabView: View {
         if #available(iOS 15.0, *) {
             UITabBar.appearance().scrollEdgeAppearance = appearance
         }
+        
+        // 确保移除底部边框
+        UITabBar.appearance().shadowImage = UIImage()
+        UITabBar.appearance().backgroundImage = UIImage()
     }
     
     // 创建标签栏文本属性
@@ -748,7 +774,7 @@ struct CosmicTabView: View {
 }
 
 // 半透明背景模糊视图
-struct BlurView: UIViewRepresentable {
+struct CosmicBlurView: UIViewRepresentable {
     var style: UIBlurEffect.Style
     
     func makeUIView(context: Context) -> UIVisualEffectView {

@@ -118,7 +118,8 @@ class ResonanceContentGenerator {
                 isUserPost: false
             )
             
-            posts.append(post)
+            // 将新帖子添加到数组开头，确保最新的帖子显示在最前面
+            posts.insert(post, at: 0)
         }
         
         // 通知内容生成完成
@@ -141,7 +142,7 @@ class ResonanceContentGenerator {
         }
         
         // 将历史人物认知模型的特征元组转换为ResonanceCharacterTraits
-        let traits = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
+        let _ = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
         
         // 分段处理内容
         var paragraphs = content.components(separatedBy: "\n\n")
@@ -155,8 +156,6 @@ class ResonanceContentGenerator {
         }
         
         // 获取人物的表达特征
-        let _ = cognitionModel.getFigureExpressionPatterns(for: figure) ?? []
-        let _ = cognitionModel.getFigureRhetoricalDevices(for: figure) ?? []
         let _ = figureTraits.cognitiveApproach // 直接使用避免未使用警告
         
         // 思维流动性模式元素 - 更自然的过渡句
@@ -392,7 +391,7 @@ class ResonanceContentGenerator {
         }
         
         // 将历史人物认知模型的特征元组转换为ResonanceCharacterTraits
-        let traits = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
+        let _ = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
         
         // 提取关键词
         let keywordToUse = keyword ?? extractKeywords(from: template).first ?? "这个问题"
@@ -1134,7 +1133,8 @@ class ResonanceContentGenerator {
         
         // 获取人物特征并转换为ResonanceCharacterTraits
         let figureTraits = cognitionModel.getFigureTraits(for: figure)!
-        let traits = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
+        // 将未使用的变量改为下划线，避免编译警告
+        let _ = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
         
         // 提取评论中的关键词
         let commentKeywords = extractKeywords(from: userComment.content)
@@ -1549,15 +1549,13 @@ class ResonanceContentGenerator {
         }
         
         // 将历史人物认知模型的特征元组转换为ResonanceCharacterTraits
-        let traits = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
+        let _ = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
         
-        // 获取人物的表达特征
-        let _ = cognitionModel.getFigureExpressionPatterns(for: figure) ?? []
         let _ = cognitionModel.getFigureRhetoricalDevices(for: figure) ?? []
         
         // 提取内容中的关键词和主题
         let contentKeywords = extractKeywords(from: content, count: 3)
-        let mainTheme = contentKeywords.first ?? figureTraits.field
+        let mainTheme = contentKeywords.first ?? figureTraits.expressionPatterns.first ?? figure
         
         // 基于人物特征和内容关键词的互动引导模板
         var promptTemplates: [String] = []
@@ -1690,7 +1688,7 @@ class ResonanceContentGenerator {
         }
         
         // 将历史人物认知模型的特征元组转换为ResonanceCharacterTraits
-        let traits = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
+        let _ = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
         
         var styledContent = content
         
@@ -1791,8 +1789,6 @@ class ResonanceContentGenerator {
             return "无法获取\(figure)的特征信息"
         }
         
-        // 获取人物表达模式
-        let _ = cognitionModel.getFigureExpressionPatterns(for: figure) ?? []
         
         // 随机选择一个情感弧线
         let emotionalArcs: [EmotionalArc] = [.revelation, .contrast, .deepening, .vulnerability, .challenge]
@@ -1846,7 +1842,7 @@ class ResonanceContentGenerator {
         }
         
         // 将历史人物认知模型的特征元组转换为ResonanceCharacterTraits
-        let traits = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
+        let _ = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
         
         // 分段处理内容
         var paragraphs = content.components(separatedBy: "\n\n")
@@ -1961,7 +1957,7 @@ class ResonanceContentGenerator {
         }
         
         // 将历史人物认知模型的特征元组转换为ResonanceCharacterTraits
-        let traits = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: characterName)
+        let characterTraits = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: characterName)
         
         // 根据评论长度选择不同的生成策略
         if userComment.count < 15 {
@@ -1995,14 +1991,14 @@ class ResonanceContentGenerator {
                 for: characterName,
                 topic: keyTopic,
                 userComment: userComment,
-                traits: traits
+                figureTraits: characterTraits
             )
         } else {
             replyContent += getBriefResponse(
                 for: characterName,
                 topic: keyTopic,
                 commentType: commentType,
-                traits: traits
+                figureTraits: characterTraits
             )
         }
         
@@ -2313,10 +2309,10 @@ class ResonanceContentGenerator {
         for character: String,
         topic: String,
         userComment: String,
-        traits: ResonanceCharacterTraits
+        figureTraits: ResonanceCharacterTraits
     ) -> String {
-        let field = traits.experiences.first ?? ""
-        let approach = traits.speechPatterns.joined(separator: "、")
+        let field = figureTraits.experiences.first ?? ""
+        let approach = figureTraits.speechPatterns.joined(separator: "、")
         
         // 根据角色特点生成内容
         switch character {
@@ -2344,9 +2340,9 @@ class ResonanceContentGenerator {
         for character: String,
         topic: String,
         commentType: String,
-        traits: ResonanceCharacterTraits
+        figureTraits: ResonanceCharacterTraits
     ) -> String {
-        let approach = traits.speechPatterns.joined(separator: "、")
+        let approach = figureTraits.speechPatterns.joined(separator: "、")
                 
         if commentType == "question" {
             switch character {

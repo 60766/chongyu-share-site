@@ -13,7 +13,7 @@ struct PostModel: Identifiable {
     let tags: [String]          // 标签
     let likeCount: Int          // 点赞数
     let commentCount: Int       // 评论数
-    let comments: [CommentModel]? // 评论列表
+    let comments: [SimpleCommentModel]? // 评论列表
     
     // 示例帖子数据
     static let samplePosts: [PostModel] = [
@@ -26,7 +26,7 @@ struct PostModel: Identifiable {
             likeCount: 2400,
             commentCount: 367,
             comments: [
-                CommentModel(
+                SimpleCommentModel(
                     author: CharacterModel.sampleCharacters[2],
                     content: "爱因斯坦先生，作为一个来自文艺复兴时期的人，你的相对论概念对我而言非常超前。不过我很好奇，这种相对性是否也能应用于艺术中的透视原理?",
                     timestamp: "1小时前"
@@ -47,9 +47,10 @@ struct PostModel: Identifiable {
 }
 
 /**
- * 评论数据模型
+ * 简单评论数据模型
+ * 用于旧版UI展示的简化评论模型
  */
-struct CommentModel: Identifiable {
+struct SimpleCommentModel: Identifiable {
     let id = UUID()
     let author: CharacterModel  // 评论者（历史人物）
     let content: String         // 评论内容

@@ -13,17 +13,20 @@ class CommentManager: ObservableObject {
     // 当前帖子
     @Published var currentPost: UserPostModel
     // 所有评论（包括回复）
-    @Published var allComments: [UserCommentModel] = []
+    @Published var allComments: [DetailedCommentModel] = []
     // 只包含顶级评论
-    @Published var topLevelComments: [UserCommentModel] = []
+    @Published var topLevelComments: [DetailedCommentModel] = []
     // 当前被回复的评论
-    @Published var replyingToComment: UserCommentModel? = nil
+    @Published var replyingToComment: DetailedCommentModel? = nil
     // 输入框内容
     @Published var commentText: String = ""
     
     // 用户信息
     private let currentUsername: String
     private let currentUserAvatar: String
+    
+    // 虚拟角色服务
+    private let virtualCharacterService = VirtualCharacterService.shared
     
     // 取消订阅标记
     private var cancellables = Set<AnyCancellable>()
@@ -40,7 +43,7 @@ class CommentManager: ObservableObject {
         self.currentUserAvatar = userAvatar
         
         // 初始化评论列表
-                updateCommentLists()
+        updateCommentLists()
     }
     
     /**
@@ -49,10 +52,10 @@ class CommentManager: ObservableObject {
      */
     func updateCommentLists() {
         // 获取所有顶级评论（不包含回复）
-        var topLevelResults: [UserCommentModel] = []
+        var topLevelResults: [DetailedCommentModel] = []
         
         // 创建一个字典，用于将回复分组到各自的主评论下
-        var commentMap: [UUID: UserCommentModel] = [:]
+        var commentMap: [UUID: DetailedCommentModel] = [:]
         
         // 先找出所有主评论
         for comment in currentPost.comments {
@@ -77,12 +80,12 @@ class CommentManager: ObservableObject {
             }
         }
         
-        // 排序回复（按时间先后）
+        // 排序回复（按时间倒序，最新的在前面）
         for i in 0..<topLevelResults.count {
-            topLevelResults[i].replies.sort { $0.datePosted < $1.datePosted }
+            topLevelResults[i].replies.sort { $0.datePosted > $1.datePosted }
         }
         
-        // 更新顶级评论列表（按时间倒序）
+        // 更新顶级评论列表（按时间倒序，最新的在前面）
         self.topLevelComments = topLevelResults.sorted { $0.datePosted > $1.datePosted }
         
         // 创建包含所有评论和回复的扁平列表
@@ -93,7 +96,7 @@ class CommentManager: ObservableObject {
      * 查找评论的根评论（顶级评论）
      * 用于将多层嵌套的回复组织到正确的顶级评论下
      */
-    private func findRootComment(for comment: UserCommentModel, in allComments: [UserCommentModel]) -> UserCommentModel? {
+    private func findRootComment(for comment: DetailedCommentModel, in allComments: [DetailedCommentModel]) -> DetailedCommentModel? {
         // 如果没有父评论ID，则自身就是根评论
         if comment.parentCommentId == nil {
             return comment
@@ -111,8 +114,8 @@ class CommentManager: ObservableObject {
     /**
      * 获取所有评论和回复的扁平列表
      */
-    private func getAllCommentsFlattened() -> [UserCommentModel] {
-        var result: [UserCommentModel] = []
+    private func getAllCommentsFlattened() -> [DetailedCommentModel] {
+        var result: [DetailedCommentModel] = []
         
         // 添加所有顶级评论
         for comment in topLevelComments {
@@ -127,8 +130,8 @@ class CommentManager: ObservableObject {
     /**
      * 递归扁平化回复列表
      */
-    private func flattenReplies(_ replies: [UserCommentModel]) -> [UserCommentModel] {
-        var result: [UserCommentModel] = []
+    private func flattenReplies(_ replies: [DetailedCommentModel]) -> [DetailedCommentModel] {
+        var result: [DetailedCommentModel] = []
         
         for reply in replies {
             result.append(reply)
@@ -140,7 +143,8 @@ class CommentManager: ObservableObject {
     
     /**
      * 提交评论
-     * 处理新评论或回复的添加
+     * 用户提交普通评论或回复评论
+     * 修改后每次提交都会触发虚拟角色回复
      */
     func submitComment() {
         guard !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -176,6 +180,7 @@ class CommentManager: ObservableObject {
         updateCommentLists()
         
         // 生成虚拟角色回复
+        // 对于每条用户评论，都进行回复生成
         Task {
             await generateVirtualReply()
         }
@@ -185,7 +190,7 @@ class CommentManager: ObservableObject {
      * 设置回复目标
      * @param comment 要回复的评论
      */
-    func replyTo(comment: UserCommentModel) {
+    func replyTo(comment: DetailedCommentModel) {
         self.replyingToComment = comment
         self.commentText = ""
     }
@@ -200,7 +205,10 @@ class CommentManager: ObservableObject {
     
     /**
      * 生成虚拟角色回复
-     * 随机选择一个虚拟角色对最新评论做出回复
+     * 优先选择帖子作者对最新评论做出回复，否则随机选择其他虚拟角色
+     * 修改为支持对每条评论都做出回复，并确保回复不会太相似
+     * 并且避免同一个角色对同一用户的不同评论进行重复回复
+     * 帖子作者只回复一次，给其他虚拟角色留出回复空间
      */
     @MainActor
     func generateVirtualReply() async {
@@ -209,31 +217,36 @@ class CommentManager: ObservableObject {
             return
         }
         
-        // 检查评论中是否包含@特定角色
-        let mentionedCharacter = checkForMentionedCharacter(in: latestComment.content)
-        
-        // 默认回复概率
-        var replyProbability: Double = 0.3
-        var selectedCharacter: String? = nil
-        
-        if let mentioned = mentionedCharacter {
-            // 如果@了特定角色，该角色100%会回复
-            replyProbability = 1.0
-            selectedCharacter = mentioned
-        } else {
-            // 如果没有@特定角色，增加回复概率至50%
-            replyProbability = 0.5
-            // 随机选择一个虚拟角色
-            let characters = ["einstein", "shakespeare", "davinci", "confucius", "curie", "libai"]
-            selectedCharacter = characters.randomElement()
-        }
-        
-        // 决定是否生成回复
-        guard Double.random(in: 0...1) < replyProbability, let character = selectedCharacter else {
+        // 如果最新评论来自虚拟角色，不进行回复
+        if latestComment.isVirtualCharacter {
+            print("🤖 最新评论来自虚拟角色，跳过回复")
             return
         }
         
-        // 角色名称映射
+        // 保存最新评论ID，确保回复到正确位置
+        let targetCommentID = latestComment.id
+        let targetUsername = latestComment.username
+        
+        print("⭐️ 生成回复目标 - 评论ID: \(targetCommentID), 用户: \(targetUsername), 内容: \"\(latestComment.content.prefix(20))...\"")
+        
+        // 检查评论中是否包含@特定角色
+        let mentionedCharacter = checkForMentionedCharacter(in: latestComment.content)
+        
+        // 获取帖子作者
+        let postAuthorName = currentPost.username
+        var authorCharacterId: String? = nil
+        
+        // 角色名称及其ID映射
+        let characterMapping: [String: String] = [
+            "爱因斯坦": "einstein",
+            "莎士比亚": "shakespeare",
+            "达芬奇": "davinci",
+            "孔子": "confucius",
+            "居里夫人": "curie",
+            "李白": "libai"
+        ]
+        
+        // 反向映射，通过ID获取名称
         let characterNames: [String: String] = [
             "einstein": "爱因斯坦",
             "shakespeare": "莎士比亚",
@@ -243,23 +256,224 @@ class CommentManager: ObservableObject {
             "libai": "李白"
         ]
         
-        // 为选定角色生成回复内容
-        let virtualReply = generateReplyForCharacter(character: character, replyTo: latestComment.content)
+        // 检查帖子作者是否为虚拟角色
+        var isAuthorVirtualCharacter = false
+        for (name, id) in characterMapping {
+            if name == postAuthorName {
+                isAuthorVirtualCharacter = true
+                authorCharacterId = id
+                break
+            }
+        }
         
-        // 延迟1-3秒，模拟打字时间
-        try? await Task.sleep(nanoseconds: UInt64(Double.random(in: 1...3) * 1_000_000_000))
+        print("👤 帖子作者: \(postAuthorName), 是否虚拟角色: \(isAuthorVirtualCharacter), 角色ID: \(authorCharacterId ?? "无")")
         
-        // 添加虚拟角色回复
-        currentPost.addComment(
-            username: characterNames[character] ?? character,
-            userAvatar: "avatar_\(character)",
-            content: virtualReply,
-            parentCommentId: latestComment.id,
-            replyToUsername: latestComment.username
-        )
+        // 用户ID - 使用用户名作为标识
+        let userId = latestComment.username
         
-        // 更新评论列表
-        updateCommentLists()
+        // 获取该用户已收到回复的角色列表
+        let userRepliedCharactersKey = "user_\(userId)_replied_characters"
+        var repliedCharacters = UserDefaults.standard.stringArray(forKey: userRepliedCharactersKey) ?? []
+        
+        // 决定哪个角色会回复
+        var selectedCharacter: String? = nil
+        
+        if let mentioned = mentionedCharacter {
+            // 如果@了特定角色，该角色100%会回复
+            selectedCharacter = mentioned
+            print("👥 检测到@提及角色: \(characterNames[mentioned] ?? mentioned)")
+        } else if isAuthorVirtualCharacter, let authorId = authorCharacterId {
+            // 检查帖子作者是否已经回复过这条评论
+            let commentAuthorReplyKey = "author_replied_\(latestComment.id.uuidString)"
+            let hasAuthorReplied = UserDefaults.standard.bool(forKey: commentAuthorReplyKey)
+            
+            if hasAuthorReplied {
+                // 如果帖子作者已回复过，随机选择其他角色
+                print("👑 帖子作者已经回复过此评论，让其他角色回复")
+                // 过滤掉作者角色
+                let otherCharacters = Array(characterMapping.values).filter { $0 != authorId }
+                // 过滤掉已经回复过的角色
+                var unusedCharacters = otherCharacters.filter { !repliedCharacters.contains($0) }
+                
+                if unusedCharacters.isEmpty {
+                    // 如果所有角色都已经回复过，则重置列表（但仍排除作者）
+                    unusedCharacters = otherCharacters
+                    // 仅保留作者在已回复列表中
+                    repliedCharacters = repliedCharacters.filter { $0 == authorId }
+                    print("🔄 所有非作者角色都已回复过，重置角色列表")
+                }
+                
+                selectedCharacter = unusedCharacters.randomElement()
+            } else {
+                // 帖子作者首次回复此评论
+                selectedCharacter = authorId
+                print("👑 帖子作者是虚拟角色，将由作者回复此评论")
+                // 标记作者已回复此评论
+                UserDefaults.standard.set(true, forKey: commentAuthorReplyKey)
+            }
+        } else {
+            // 获取所有可用角色
+            let availableCharacters = Array(characterMapping.values)
+            
+            // 过滤出未回复过该用户的角色
+            var unusedCharacters = availableCharacters.filter { !repliedCharacters.contains($0) }
+            
+            if unusedCharacters.isEmpty {
+                // 如果所有角色都已经回复过，则重置已回复列表
+                unusedCharacters = availableCharacters
+                repliedCharacters = []
+                print("🔄 所有角色都已回复过此用户，重置角色列表")
+            }
+            
+            // 从未使用过的角色中随机选择
+            selectedCharacter = unusedCharacters.randomElement()
+            print("🎲 选择新角色回复: \(characterNames[selectedCharacter ?? ""] ?? "未知角色")")
+        }
+        
+        // 确保有选定的角色
+        guard let character = selectedCharacter else {
+            print("❌ 没有可用的虚拟角色进行回复")
+            return
+        }
+        
+        // 记录该角色已经回复过此用户
+        if !repliedCharacters.contains(character) {
+            repliedCharacters.append(character)
+            UserDefaults.standard.set(repliedCharacters, forKey: userRepliedCharactersKey)
+        }
+        
+        // 记录用户评论，用于跟踪历史
+        let userCommentKey = "\(character)_latest_user_comment"
+        let previousUserComment = UserDefaults.standard.string(forKey: userCommentKey)
+        
+        // 记录角色回复，用于避免相似回复
+        let characterReplyKey = "\(character)_latest_replies"
+        var previousReplies = UserDefaults.standard.stringArray(forKey: characterReplyKey) ?? []
+        
+        print("🔍 检查是否需要回复 - 角色ID: \(character), 角色名: \(characterNames[character] ?? "未知")")
+        
+        // 生成虚拟角色回复
+        do {
+            // 判断是否需要添加额外上下文来避免相似回复
+            var additionalPromptContext = ""
+            
+            // 如果有之前的评论和回复记录，添加到提示词中
+            if let prevComment = previousUserComment, !previousReplies.isEmpty {
+                additionalPromptContext = "\n\n前一次评论: \"\(prevComment)\"\n"
+                additionalPromptContext += "你的回复: \"\(previousReplies.first ?? "")\"\n"
+                additionalPromptContext += "请确保这次的回复与之前不同，使用新的表达方式和角度。"
+            }
+            
+            // 添加模拟打字延迟
+            // 延迟0.5-2秒之间的随机时间，模拟思考和打字时间
+            try await Task.sleep(nanoseconds: UInt64(Double.random(in: 0.5...2.0) * 1_000_000_000))
+            
+            // 增强提示词，使回复更针对用户评论
+            let enhancedPrompt = """
+            \(latestComment.content)\(additionalPromptContext)
+
+            请注意：
+            1. 你必须直接回应用户评论的实际内容，不要泛泛而谈或自说自话
+            2. 绝对禁止使用括号描述动作或思考过程，如"(用笔轻敲)"、"(微笑着)"、"(思考中)"等
+            3. 每一句话都必须与用户评论直接相关，而不是展示你自己的角色特点
+            4. 不得使用任何与用户评论无关的比喻或概念，无论多么有特色
+            5. 如果用户评论是"哈哈"或其他简短感叹，直接用简单幽默的一句话响应
+            6. 避免所有专业术语、行业术语，使用日常对话语言
+            7. 假设自己是在社交媒体上回复普通朋友，而不是在展示你的独特身份
+            8. 严格禁止在回复中加入任何括号内的解释、分析或理论
+            9. 不要解释你的回复逻辑或创作过程
+            10. 不要在回复前后或中间添加任何形式的注释
+            """ + (latestComment.content.count <= 15 ? """
+            
+            特别重要警告：
+            用户评论非常简短，你必须简短直接地回应！
+            - 不要使用括号中的动作描述或思考过程，直接说话
+            - 禁止使用任何复杂比喻或术语
+            - 禁止自我介绍或强调身份
+            - 禁止提及与用户评论无关的概念
+            - 回复必须在20字以内
+            - 就像普通人回复"哈哈"或"说得好"一样自然
+            - 你可以表现出一点个性，但首要任务是自然、相关的回应
+            """ : "")
+            
+            // 使用API生成回复
+            var content = try await withCheckedThrowingContinuation { continuation in
+                virtualCharacterService.generateCharacterComment(
+                    characterID: character,
+                    userComment: enhancedPrompt,
+                    postContent: currentPost.content
+                ) { result in
+                    switch result {
+                    case .success(let content):
+                        continuation.resume(returning: content)
+                    case .failure(let error):
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+            
+            // 过滤掉可能出现的括号内容
+            content = cleanResponseContent(content)
+            
+            print("✅ API生成回复成功: \(content.prefix(50))...")
+            
+            // 记录本次用户评论和角色回复
+            UserDefaults.standard.set(latestComment.content, forKey: userCommentKey)
+            
+            // 最多保存最近3条回复历史
+            previousReplies.insert(content, at: 0)
+            if previousReplies.count > 3 {
+                previousReplies = Array(previousReplies.prefix(3))
+            }
+            UserDefaults.standard.set(previousReplies, forKey: characterReplyKey)
+            
+            await MainActor.run {
+                // 添加虚拟角色回复 - 确保使用保存的targetCommentID而不是再次引用latestComment
+                currentPost.addComment(
+                    username: characterNames[character] ?? character,
+                    userAvatar: getCharacterAvatar(for: character),
+                    content: content,
+                    parentCommentId: targetCommentID,  // 使用之前保存的ID，确保回复指向正确评论
+                    replyToUsername: targetUsername,   // 使用之前保存的用户名
+                    isVirtualCharacter: true,
+                    characterID: character
+                )
+                
+                // 更新评论列表
+                updateCommentLists()
+                
+                print("✅ 虚拟角色回复已添加 - 角色: \(characterNames[character] ?? character), 回复给: \(targetUsername), 评论ID: \(targetCommentID)")
+                
+                // 不再在帖子作者回复后额外生成其他角色评论
+                // 当帖子作者和选定角色相同时，其他角色回复由下次用户触发
+            }
+        } catch {
+            print("❌ API生成回复失败: \(error.localizedDescription)")
+        }
+    }
+    
+    /**
+     * 获取角色头像
+     * @param characterID 角色ID
+     * @return 角色头像系统图标名称
+     */
+    private func getCharacterAvatar(for characterID: String) -> String {
+        switch characterID.lowercased() {
+        case "einstein":
+            return "atom" // 原子图标适合爱因斯坦
+        case "shakespeare":
+            return "book.fill" // 书籍图标适合莎士比亚
+        case "davinci":
+            return "paintpalette.fill" // 绘画图标适合达芬奇
+        case "confucius":
+            return "scroll.fill" // 卷轴适合孔子
+        case "libai":
+            return "text.book.closed.fill" // 诗集适合李白
+        case "curie":
+            return "sparkles" // 闪光适合居里夫人
+        default:
+            return "person.circle.fill" // 通用人物图标
+        }
     }
     
     /**
@@ -288,47 +502,6 @@ class CommentManager: ObservableObject {
         return nil
     }
     
-    /**
-     * 根据角色生成回复内容
-     * @param character 虚拟角色ID
-     * @param replyTo 被回复的内容
-     * @return 生成的回复内容
-     */
-    private func generateReplyForCharacter(character: String, replyTo: String) -> String {
-        // 检查是否@了该角色，如果是，生成更个性化的回复
-        let isMentioned = replyTo.contains("@\(getCharacterName(for: character))")
-        
-        // 根据不同角色特点生成回复
-        switch character {
-        case "einstein":
-            return isMentioned ? 
-                getPersonalizedEinsteinReply(content: replyTo) :
-                getRandomEinsteinReply()
-        case "shakespeare":
-            return isMentioned ? 
-                getPersonalizedShakespeareReply(content: replyTo) :
-                getRandomShakespeareReply()
-        case "davinci":
-            return isMentioned ? 
-                getPersonalizedDaVinciReply(content: replyTo) :
-                getRandomDaVinciReply()
-        case "confucius":
-            return isMentioned ? 
-                getPersonalizedConfuciusReply(content: replyTo) :
-                getRandomConfuciusReply()
-        case "curie":
-            return isMentioned ? 
-                getPersonalizedCurieReply(content: replyTo) :
-                getRandomCurieReply()
-        case "libai":
-            return isMentioned ? 
-                getPersonalizedLibaiReply(content: replyTo) :
-                getRandomLibaiReply()
-        default:
-            return "很有趣的想法！"
-        }
-    }
-    
     // 获取角色名称
     private func getCharacterName(for characterId: String) -> String {
         let characterNames: [String: String] = [
@@ -343,143 +516,115 @@ class CommentManager: ObservableObject {
         return characterNames[characterId] ?? characterId
     }
     
-    // 针对被@的个性化回复 - 爱因斯坦
-    private func getPersonalizedEinsteinReply(content: String) -> String {
-        let replies = [
-            "感谢你提到我！作为科学家，我认为好奇心是人类最宝贵的品质。你的问题很有深度。",
-            "你的消息提醒了我，相对论告诉我们，时间是相对的，但与有思想的人交流的价值是绝对的。",
-            "听到你提到我很高兴！想象力比知识更重要，你的思考方式很有创造性。",
-            "哦！被你@提到了！科学探索需要勇气质疑权威，包括我的理论。你的观点很有启发性。",
-            "正如我常说，只有两件事是无限的：宇宙和人类的想象力。你的提问展示了后者的魅力。"
+    /**
+     * 清理回复内容，移除括号中的内容和其他不需要的元素
+     * @param content 原始回复内容
+     * @return 清理后的内容
+     */
+    private func cleanResponseContent(_ content: String) -> String {
+        var cleanedContent = content
+        
+        // 移除所有括号及其中的内容，支持中文和英文括号
+        let bracketPatterns = [
+            "\\([^\\)]*\\)",             // 英文小括号 (...)
+            "（[^）]*）",                 // 中文小括号 （...）
+            "\\[[^\\]]*\\]",             // 英文中括号 [...]
+            "【[^】]*】",                // 中文中括号 【...】
+            "\\{[^\\}]*\\}",             // 英文大括号 {...}
+            "｛[^｝]*｝"                  // 中文大括号 ｛...｝
         ]
-        return replies.randomElement() ?? replies[0]
+        
+        for pattern in bracketPatterns {
+            cleanedContent = cleanedContent.replacingOccurrences(
+                of: pattern,
+                with: "",
+                options: .regularExpression
+            )
+        }
+        
+        // 移除多余的空格和换行
+        cleanedContent = cleanedContent.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        cleanedContent = cleanedContent.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 如果清理后内容为空，返回一个默认回复
+        if cleanedContent.isEmpty {
+            cleanedContent = "我明白你的意思。"
+        }
+        
+        return cleanedContent
     }
     
-    // 针对被@的个性化回复 - 莎士比亚
-    private func getPersonalizedShakespeareReply(content: String) -> String {
-        let replies = [
-            "多谢垂询，亲爱的朋友！正如我在《哈姆雷特》中写道，'存在还是不存在，这是个问题'，而你的思考则是答案的开始。",
-            "啊！如沐春风般的@提及！文字乃心灵之窗，你的表达如舞台上最精彩的独白。",
-            "谢谢提到我！'我们凭借星光而非命运指引我们的未来'，你的思考正如明亮的北极星。",
-            "感谢你的呼唤！如《仲夏夜之梦》所言，'虽然她娇小，却fieree无比'，你的问题虽简短却蕴含深意。",
-            "多谢你的提问！生活舞台需要每个人的精彩演出，而你，正是当代的主角！"
-        ]
-        return replies.randomElement() ?? replies[0]
-    }
-    
-    // 针对被@的个性化回复 - 达芬奇
-    private func getPersonalizedDaVinciReply(content: String) -> String {
-        let replies = [
-            "感谢你的@提及！正如我常说，学习永无止境，你的问题激发了我新的思考。",
-            "多谢提到我！艺术与科学从不分离，就像你的思考融合了理性与创造力。",
-            "谢谢你提到我！细节决定成败，你的观察角度非常独特，让我想起了《蒙娜丽莎》创作时的灵感。",
-            "很高兴收到你的消息！好奇心是人类进步的根源，你的问题展示了这种可贵的品质。",
-            "感谢@我！简单中往往蕴含最深的智慧，你的表达方式让我想起了《最后的晚餐》中的构图原理。"
-        ]
-        return replies.randomElement() ?? replies[0]
-    }
-    
-    // 针对被@的个性化回复 - 孔子
-    private func getPersonalizedConfuciusReply(content: String) -> String {
-        let replies = [
-            "得闻君问，甚感欣慰。正所谓'学而不思则罔，思而不学则殆'，君之问题颇有思考之深度。",
-            "感谢提及老夫！'己所不欲，勿施于人'，你的问题体现了对他人的尊重与关怀。",
-            "多谢垂询！'三人行，必有我师焉'，从你的提问中，我也有所启发。",
-            "谢谢你的@提及！'工欲善其事，必先利其器'，你善于提问的能力将引领你获取更多智慧。",
-            "闻君之言，甚是欣慰。'君子和而不同'，你的独立思考正是修身齐家治国平天下之本。"
-        ]
-        return replies.randomElement() ?? replies[0]
-    }
-    
-    // 针对被@的个性化回复 - 居里夫人
-    private func getPersonalizedCurieReply(content: String) -> String {
-        let replies = [
-            "感谢你提到我！在科学道路上，我们不应害怕任何困难，你的问题展示了勇于探索的精神。",
-            "谢谢你的@提及！'我们必须坚信，自己有才能。在一生中必须挥洒自己的才华'，你的思考很有价值。",
-            "收到你的消息很高兴！正如我所信仰的，科学与生活中，好奇心都是不可或缺的，你的问题反映了这一点。",
-            "多谢提到我！科学研究需要坚持和毅力，就像你一直追求答案的决心一样值得敬佩。",
-            "感谢你的提问！'我们要不断地探索和不断地寻找'，你的问题正是科学精神的体现。"
-        ]
-        return replies.randomElement() ?? replies[0]
-    }
-    
-    // 针对被@的个性化回复 - 李白
-    private func getPersonalizedLibaiReply(content: String) -> String {
-        let replies = [
-            "谢过君提及！'人生得意须尽欢，莫使金樽空对月'，你的问题如明月般照亮了心境。",
-            "多谢垂询！'长风破浪会有时，直挂云帆济沧海'，你的思考展现了远大的志向。",
-            "感谢君之@！'抽刀断水水更流，举杯销愁愁更愁'，你的问题引发了我的诗兴。",
-            "闻君相召，甚是欢喜！'床前明月光，疑是地上霜'，你的表达如明月般清澈明亮。",
-            "谢谢你提到我！'千里江陵一日还，两岸猿声啼不住'，你的思考如奔流江水，生生不息。"
-        ]
-        return replies.randomElement() ?? replies[0]
-    }
-    
-    // 各角色随机回复内容生成函数
-    private func getRandomEinsteinReply() -> String {
-        let replies = [
-            "科学探索需要好奇心和想象力，你的思考很有启发性。",
-            "相对而言，这个观点很有意思，我想进一步探讨。",
-            "宇宙之谜永无止境，就像我们的思考一样无限延展。",
-            "简单是复杂的最高形式，你的见解很简洁明了。",
-            "想象力比知识更重要，你展现了很好的想象力。"
-        ]
-        return replies.randomElement() ?? replies[0]
-    }
-    
-    private func getRandomShakespeareReply() -> String {
-        let replies = [
-            "文字如戏剧般展开，你的表达很有魅力！",
-            "若要比喻，你的见解如盛夏夜晚的星光般闪耀。",
-            "真是妙语连珠，让我想起了我的某个剧本片段。",
-            "存在还是不存在，这是个问题。而你的回答很精彩。",
-            "言辞如诗，意境如画，甚是精妙。"
-        ]
-        return replies.randomElement() ?? replies[0]
-    }
-    
-    private func getRandomDaVinciReply() -> String {
-        let replies = [
-            "艺术与科学的交融，在你的观点中我看到了无限可能。",
-            "细节决定成败，你的见解很有深度。",
-            "学习永无止境，你的分享让我受益匪浅。",
-            "简单中蕴含着最深的智慧，你的表达很有力量。",
-            "自然是最伟大的导师，你的灵感来源很棒。"
-        ]
-        return replies.randomElement() ?? replies[0]
-    }
-    
-    private func getRandomConfuciusReply() -> String {
-        let replies = [
-            "君子和而不同，你的见解很有价值。",
-            "学而不思则罔，思而不学则殆。你的思考很深入。",
-            "三人行，必有我师焉。你的观点很值得学习。",
-            "知之为知之，不知为不知，是知也。你的坦诚很可贵。",
-            "温故而知新，可以为师矣。你的见解融会贯通。"
-        ]
-        return replies.randomElement() ?? replies[0]
-    }
-    
-    private func getRandomCurieReply() -> String {
-        let replies = [
-            "科学研究需要坚持不懈的精神，你的坚持很令人敬佩。",
-            "我们不应该害怕困难，你的勇气值得赞赏。",
-            "生活中没有可怕的东西，只有需要理解的事物。你的理解很深刻。",
-            "在科学和生活中，好奇心都是不可或缺的，你的好奇心很可贵。",
-            "成功的道路需要时间和耐心，你走在正确的方向上。"
-        ]
-        return replies.randomElement() ?? replies[0]
-    }
-    
-    private func getRandomLibaiReply() -> String {
-        let replies = [
-            "举杯邀明月，对影成三人。你的心境如明月般清澈。",
-            "人生如梦，一尊还酹江月。你的感悟很有深度。",
-            "长风破浪会有时，直挂云帆济沧海。你的志向令人钦佩。",
-            "飞流直下三千尺，疑是银河落九天。你的描述如诗如画。",
-            "相逢何必曾相识，一笑便是故人心。你的真诚让人感动。"
-        ]
-        return replies.randomElement() ?? replies[0]
+    /**
+     * 生成强化提示，以提升回复质量
+     * - Parameters:
+     *   - comment: 用户评论
+     *   - characterID: 角色ID
+     *   - traits: 角色特性
+     * - Returns: 强化后的提示
+     */
+    func enhancedPrompt(for comment: DetailedCommentModel, characterID: String, traits: AIPromptCharacterTraits) -> String {
+        let commentContent = comment.content
+        
+        // 检查评论长度，如果非常短，则使用简短回复策略
+        if commentContent.count <= 10 {
+            // 对于特别短的评论（如"哈哈哈"、"666"等），给出更直接的指导
+            let shortCommentPrompt = """
+            用户发送了一条简短评论: "\(commentContent)"
+            
+            作为回复指南：
+            1. 直接针对这条评论做出简短自然的回应，就像正常人一样
+            2. 禁止使用任何角色扮演式的描述，如"(微笑)"、"(思考中)"等
+            3. 不要过度表现你的历史人物身份，就像普通朋友间的对话
+            4. 回复必须与用户的评论直接相关，不要自说自话
+            5. 如果用户发送的是笑声或表情，请用同样轻松的语气回应
+            6. 完全禁止使用括号内的动作描述或思考过程说明
+            7. 回复控制在15字以内，越简短越好
+            8. 绝对不要使用括号解释你的回复理由
+            
+            示例：
+            用户: "哈哈哈哈"
+            不好的回复: "(用羽毛笔蘸墨) 笑声是最美的音符呢"
+            好的回复: "看到你开心，我也笑了"
+            
+            用户: "666"
+            不好的回复: "(调整望远镜) 数字背后藏着宇宙的奥秘"
+            好的回复: "谢谢夸奖，你真好"
+            
+            记住：回复必须自然、相关、简短，像普通人一样说话，不要故意表现得很特别。
+            绝对不要在任何地方使用括号来解释你的回复思路或理论。
+            """
+            return shortCommentPrompt
+        }
+        
+        let basePrompt = """
+        以下是用户对你的评论: "\(commentContent)"
+        
+        请以\(traits.description)的风格，作为\(traits.name)回复这条评论。
+        
+        回复要求:
+        1. 必须直接针对用户评论的具体内容作出回应，不要泛泛而谈
+        2. 严格禁止使用任何括号中的内容，如"(思考中)"、"(微笑)"、"(以XX理论分析)"等
+        3. 不要过度"扮演"你的角色，而是自然地表达观点
+        4. 回复应该与用户评论保持紧密的话题相关性
+        5. 使用现代通俗语言，避免晦涩难懂的专业术语
+        6. 回复长度应适中，通常不超过50字
+        7. 绝对不要解释你的回复思路或理论依据
+        8. 不要在回复中添加任何形式的注释
+        
+        记住：始终保持对用户评论内容的直接回应，不要自说自话或离题。
+        你的回复将直接发送给用户，不需要任何附加说明或解释，就像普通人在社交平台上的对话。
+        """
+        
+        // 如果评论来自当前用户，添加额外的提示以确保回复的相关性
+        if comment.username == currentUsername {
+            return basePrompt + """
+            
+            额外提醒：这条评论来自与你正在交流的用户，请确保你的回复与用户评论有明确的关联，不要漫无目的地展示你的角色特点。
+            绝对不要使用任何括号内的内容，如注释、解释或理论分析。
+            """
+        }
+        
+        return basePrompt
     }
 }
 

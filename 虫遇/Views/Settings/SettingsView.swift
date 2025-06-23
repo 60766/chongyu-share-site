@@ -5,16 +5,38 @@ import SwiftUI
  * 用于配置应用的各种设置选项
  */
 struct SettingsView: View {
+    /// 环境变量，用于关闭sheet
+    @Environment(\.dismiss) private var dismiss
+    
     /// 是否开启角色互动通知
     @State private var enableCharacterNotification = true
     /// 角色互动方式
     @State private var interactionMethod = "语音+文字"
     /// 暗黑模式选项
     @State private var darkModeOption = "跟随系统"
+    /// 角色分配模式
+    @State private var characterDistributionMode = "均衡分配"
     /// 清除缓存按钮状态
     @State private var isClearingCache = false
     /// 关于我们展示状态
     @State private var showingAbout = false
+    /// API设置展示状态
+    @State private var showingAPISettings = false
+    
+    // 在初始化时加载当前的角色分配模式
+    init() {
+        let mode = CharacterRotationSystem.shared.currentMode
+        let modeName: String
+        switch mode {
+        case .equal:
+            modeName = "均衡分配"
+        case .strictRotation:
+            modeName = "严格轮换"
+        case .preferenceBase:
+            modeName = "关注优先"
+        }
+        _characterDistributionMode = State(initialValue: modeName)
+    }
     
     var body: some View {
         NavigationView {
@@ -50,6 +72,43 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
+                    
+                    // 角色分配模式
+                    NavigationLink(destination: CharacterDistributionModeView(selectedMode: $characterDistributionMode)) {
+                        HStack {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .frame(width: 24)
+                                .foregroundColor(.primaryColor)
+                            
+                            Text("角色分配模式")
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            Text(characterDistributionMode)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    // 已屏蔽角色管理
+                    NavigationLink(destination: BlockedCharactersView()) {
+                        HStack {
+                            Image(systemName: "hand.thumbsdown")
+                                .frame(width: 24)
+                                .foregroundColor(.primaryColor)
+                            
+                            Text("已屏蔽角色")
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            // 显示已屏蔽角色数量
+                            if let blockedCount = getBlockedCharactersCount(), blockedCount > 0 {
+                                Text("\(blockedCount)个已屏蔽")
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                    }
                 }
                 
                 // 系统设置
@@ -68,6 +127,26 @@ struct SettingsView: View {
                             
                             Text(darkModeOption)
                                 .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    // 内容偏好设置
+                    NavigationLink(destination: ContentPreferencesView()) {
+                        HStack {
+                            Image(systemName: "slider.horizontal.3")
+                                .frame(width: 24)
+                                .foregroundColor(.primaryColor)
+                            
+                            Text("内容偏好")
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            // 显示已减少的内容类型数量
+                            if let reducedTypes = getReducedContentTypesCount(), reducedTypes > 0 {
+                                Text("\(reducedTypes)种已调整")
+                                    .foregroundColor(.orange)
+                            }
                         }
                     }
                     
@@ -106,6 +185,18 @@ struct SettingsView: View {
                                 .foregroundColor(.primaryColor)
                             
                             Text("账号与安全")
+                                .foregroundColor(.primary)
+                        }
+                    }
+                    
+                    // API设置
+                    NavigationLink(destination: APISettingsView()) {
+                        HStack {
+                            Image(systemName: "key.fill")
+                                .frame(width: 24)
+                                .foregroundColor(.primaryColor)
+                            
+                            Text("API密钥设置")
                                 .foregroundColor(.primary)
                         }
                     }
@@ -172,13 +263,25 @@ struct SettingsView: View {
                 }
             }
             .listStyle(InsetGroupedListStyle())
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("设置")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.primary)
+            .navigationBarTitle("设置", displayMode: .inline)
+            .navigationBarItems(
+                leading: Button(action: {
+                    // 触觉反馈
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.impactOccurred()
+                    
+                    dismiss()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text("返回")
+                    }
+                    .foregroundColor(.primaryColor)
                 }
+            )
+            .onAppear {
+                print("SettingsView已显示")
             }
             .alert(isPresented: $showingAbout) {
                 Alert(
@@ -202,6 +305,150 @@ struct SettingsView: View {
             
             // 显示清除成功提示
             // 在实际应用中，这里应该有真实的缓存清理逻辑
+        }
+    }
+    
+    /**
+     * 获取已减少权重的内容类型数量
+     * @return 已减少权重的内容类型数量，如果没有则返回nil
+     */
+    private func getReducedContentTypesCount() -> Int? {
+        let reducedTypes = ContentTypeWeightManager.shared.getAllReducedContentTypes()
+        if reducedTypes.isEmpty {
+            return nil
+        }
+        return reducedTypes.count
+    }
+    
+    /**
+     * 获取已屏蔽角色的数量
+     * @return 已屏蔽角色的数量，如果没有则返回nil
+     */
+    private func getBlockedCharactersCount() -> Int? {
+        let blockedCharacters = CharacterRotationSystem.shared.getAllDislikedCharacters()
+        if blockedCharacters.isEmpty {
+            return nil
+        }
+        return blockedCharacters.count
+    }
+}
+
+/**
+ * API密钥设置视图
+ */
+struct APISettingsView: View {
+    @State private var apiKey: String = APIConfigManager.shared.apiKey ?? ""
+    @State private var showSuccess = false
+    @State private var showError = false
+    @State private var selectedEndpoint = APIConfigManager.shared.currentEndpointIndex
+    
+    var body: some View {
+        Form {
+            Section(header: Text("API密钥配置"), footer: Text("请输入有效的API密钥，支持DeepSeek和ARK两种格式")) {
+                SecureField("API密钥", text: $apiKey)
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+                
+                Button(action: {
+                    if apiKey.isEmpty {
+                        showError = true
+                    } else {
+                        APIConfigManager.shared.setAPIKey(apiKey)
+                        showSuccess = true
+                    }
+                }) {
+                    Text("保存API密钥")
+                        .frame(maxWidth: .infinity)
+                        .foregroundColor(.white)
+                        .padding(.vertical, 10)
+                        .background(Color.primaryColor)
+                        .cornerRadius(8)
+                }
+            }
+            
+            Section(header: Text("API端点选择")) {
+                Picker("API端点", selection: $selectedEndpoint) {
+                    Text("DeepSeek").tag(0)
+                    Text("ARK").tag(1)
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .onChange(of: selectedEndpoint) { oldValue, newValue in
+                    if newValue != APIConfigManager.shared.currentEndpointIndex {
+                        APIConfigManager.shared.switchEndpoint()
+                    }
+                }
+                
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("当前API端点:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(APIConfigManager.shared.deepSeekEndpoint)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 5)
+                
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("当前模型:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(APIConfigManager.shared.modelName)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 5)
+            }
+            
+            Section(header: Text("API测试")) {
+                Button(action: {
+                    // 直接使用ARK API密钥并测试
+                    APIConfigManager.shared.setAPIKey("5ec25df2-f799-4fc0-8ee2-ac13d473131b")
+                    VirtualCharacterService.shared.testGenerateCharacterComment()
+                }) {
+                    Text("测试API连接")
+                        .frame(maxWidth: .infinity)
+                        .foregroundColor(.white)
+                        .padding(.vertical, 10)
+                        .background(Color.blue)
+                        .cornerRadius(8)
+                }
+                
+                Button(action: {
+                    // 使用ARK API密钥并测试添加虚拟评论
+                    APIConfigManager.shared.setAPIKey("5ec25df2-f799-4fc0-8ee2-ac13d473131b")
+                    
+                    // 强制使用ARK端点
+                    if APIConfigManager.shared.currentEndpointIndex != 1 {
+                        APIConfigManager.shared.switchEndpoint()
+                    }
+                    
+                    // 测试虚拟角色评论
+                    VirtualCharacterService.shared.testGenerateCharacterComment(characterID: "einstein")
+                }) {
+                    Text("测试虚拟角色评论")
+                        .frame(maxWidth: .infinity)
+                        .foregroundColor(.white)
+                        .padding(.vertical, 10)
+                        .background(Color.green)
+                        .cornerRadius(8)
+                }
+            }
+        }
+        .navigationTitle("API设置")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert(isPresented: $showSuccess) {
+            Alert(
+                title: Text("成功"),
+                message: Text("API密钥已成功保存"),
+                dismissButton: .default(Text("确定"))
+            )
+        }
+        .alert(isPresented: $showError) {
+            Alert(
+                title: Text("错误"),
+                message: Text("请输入有效的API密钥"),
+                dismissButton: .default(Text("确定"))
+            )
         }
     }
 }
@@ -266,6 +513,96 @@ struct DarkModeSettingView: View {
             }
         }
         .navigationTitle("暗黑模式")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/**
+ * 角色分配模式设置视图
+ */
+struct CharacterDistributionModeView: View {
+    @Binding var selectedMode: String
+    private let modes = ["均衡分配", "严格轮换", "关注优先"]
+    
+    var body: some View {
+        List {
+            // 模式说明
+            Section(header: Text("模式说明")) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("均衡分配")
+                        .font(.headline)
+                    Text("根据使用频率平衡分配角色，确保各角色出现机会均等，但可能会在短期内看到重复角色")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text("严格轮换")
+                        .font(.headline)
+                        .padding(.top, 5)
+                    Text("确保每个角色仅出现一次，直到所有角色都展示过后才重新开始循环，最大化角色多样性")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text("关注优先")
+                        .font(.headline)
+                        .padding(.top, 5)
+                    Text("优先展示您关注的角色，同时保持一定程度的多样性（尚未完全开放）")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 5)
+            }
+            
+            // 模式选择
+            Section(header: Text("选择模式")) {
+                ForEach(modes, id: \.self) { mode in
+                    Button(action: {
+                        selectedMode = mode
+                        
+                        // 切换角色分配模式
+                        switch mode {
+                        case "均衡分配":
+                            CharacterRotationSystem.shared.switchToMode(.equal)
+                        case "严格轮换":
+                            CharacterRotationSystem.shared.switchToMode(.strictRotation)
+                        case "关注优先":
+                            CharacterRotationSystem.shared.switchToMode(.preferenceBase)
+                        default:
+                            break
+                        }
+                    }) {
+                        HStack {
+                            Text(mode)
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            if selectedMode == mode {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.primaryColor)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 重置轮换状态
+            Section {
+                Button(action: {
+                    CharacterRotationSystem.shared.resetRotationState()
+                }) {
+                    HStack {
+                        Spacer()
+                        Text("重置轮换状态")
+                            .foregroundColor(.red)
+                        Spacer()
+                    }
+                }
+            } footer: {
+                Text("重置将清除所有角色使用记录，所有角色将重新开始轮换")
+                    .font(.caption)
+            }
+        }
+        .navigationTitle("角色分配模式")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

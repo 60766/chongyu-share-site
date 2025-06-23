@@ -142,8 +142,15 @@ struct CharacterDetailView: View {
     // 系统返回按钮窗口引用
     @State private var systemBackButtonWindow: UIWindow?
     
+    // 系统分享按钮窗口引用
+    @State private var systemShareButtonWindow: UIWindow?
+    
     // 添加环境变量用于自定义返回按钮
     @Environment(\.dismiss) private var dismiss
+    
+    // 在Character结构体的状态变量部分添加
+    // 个性化调整状态
+    @State private var showPersonalityAdjustment: Bool = false
     
     var body: some View {
         ZStack {
@@ -215,7 +222,9 @@ struct CharacterDetailView: View {
                         conversations: conversations,
                                     onConversationTap: { conversation in
                                         selectedConversationId = conversation.id
-                            navigateToChatView = true
+                                        // 立即隐藏系统按钮窗口
+                                        hideSystemButtons()
+                                        navigateToChatView = true
                         }
                     )
                                 .padding(.top, 20)  // 增加顶部间距
@@ -260,6 +269,15 @@ struct CharacterDetailView: View {
                 conversationId: selectedConversationId ?? UUID().uuidString
             )
         }
+        .onChange(of: navigateToChatView) { oldValue, newValue in
+            // 当从聊天页面返回时，重新显示系统按钮
+            if oldValue == true && newValue == false {
+                // 几乎立即显示按钮，仅保留极短延迟以确保转场开始
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    showSystemButtons()
+                }
+            }
+        }
         .onAppear {
             // 设置主题 - 立即执行而不用动画
             theme = CharacterTheme.forField(character.field)
@@ -279,8 +297,8 @@ struct CharacterDetailView: View {
             // 隐藏TabBar - 提供更沉浸式的体验
             tabBarManager.pushHideState()
             
-            // 添加系统级返回按钮
-            addSystemLevelBackButton()
+            // 添加系统级返回按钮和分享按钮
+            showSystemButtons()
             
             // 所有准备工作完成后，一次性执行所有动画，避免多次重绘
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: {
@@ -291,27 +309,66 @@ struct CharacterDetailView: View {
         }
         .onDisappear {
             // 检查是否需要恢复TabBar状态
-            if navigateToChatView {
-                // 如果正在导航到ChatView，不需要操作，保持TabBar隐藏
+            if navigateToChatView || showPersonalityAdjustment {
+                // 如果正在导航到ChatView或个性化调整页面，不需要清理资源，只隐藏按钮
+                hideSystemButtons()
             } else {
-                // 如果是返回上一级，恢复TabBar
-            tabBarManager.popHideState()
-            }
-            
-            // 清理返回按钮窗口
-            if let window = systemBackButtonWindow {
-                // 立即隐藏窗口
-                window.isHidden = true
-                window.rootViewController?.view.subviews.forEach { $0.removeFromSuperview() }
-                window.rootViewController = nil
+                // 如果是返回上一级，恢复TabBar并清理按钮资源
+                tabBarManager.popHideState()
                 
-                // 立即清除引用
-                systemBackButtonWindow = nil
+                // 清理返回按钮窗口
+                if let window = systemBackButtonWindow {
+                    // 立即隐藏窗口
+                    window.isHidden = true
+                    window.rootViewController?.view.subviews.forEach { $0.removeFromSuperview() }
+                    window.rootViewController = nil
+                    
+                    // 立即清除引用
+                    systemBackButtonWindow = nil
+                }
+                
+                // 清理分享按钮窗口
+                if let window = systemShareButtonWindow {
+                    // 立即隐藏窗口
+                    window.isHidden = true
+                    window.rootViewController?.view.subviews.forEach { $0.removeFromSuperview() }
+                    window.rootViewController = nil
+                    
+                    // 立即清除引用
+                    systemShareButtonWindow = nil
+                }
             }
         }
         .onChange(of: showingShareSheet) { oldValue, newValue in
+            // 控制返回按钮窗口的显示/隐藏
             if let window = systemBackButtonWindow {
                 window.isHidden = newValue
+            }
+            
+            // 控制分享按钮窗口的显示/隐藏
+            if let window = systemShareButtonWindow {
+                window.isHidden = newValue
+            }
+        }
+        
+        // 在body中的ZStack最下方添加
+        // 个性化调整全屏覆盖
+        .fullScreenCover(isPresented: $showPersonalityAdjustment) {
+            CharacterPersonalityView(
+                characterId: character.id.lowercased(),
+                character: character,
+                onClose: {
+                    showPersonalityAdjustment = false
+                }
+            )
+        }
+        .onChange(of: showPersonalityAdjustment) { oldValue, newValue in
+            // 当个性化调整页面关闭时，重新显示系统按钮
+            if oldValue == true && newValue == false {
+                // 几乎立即显示按钮，仅保留极短延迟以确保转场开始
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    showSystemButtons()
+                }
             }
         }
     }
@@ -340,7 +397,7 @@ struct CharacterDetailView: View {
             
             Spacer()
             
-            // 右侧空白占位，保持布局对称
+            // 右侧分享按钮占位 - 实际使用系统级按钮实现
             Color.clear
                 .frame(width: 44, height: 44)
         }
@@ -530,6 +587,8 @@ struct CharacterDetailView: View {
                 
                 // 模拟创建新对话
                     selectedConversationId = UUID().uuidString
+                    // 立即隐藏系统按钮窗口
+                    hideSystemButtons()
                     navigateToChatView = true
             } label: {
                 VStack(spacing: 8) { // 增加图标和文字间距从6到8
@@ -640,13 +699,17 @@ struct CharacterDetailView: View {
             }
             .buttonStyle(ScaleFeedbackButtonStyle(scaleAmount: 0.90)) // 对话按钮有更明显的缩放反馈
             
-            // 分享按钮 - 使用微妙的渐变效果
+            // 个性化调节按钮 - 替换原来的分享按钮
             Button {
-                // 分享操作
+                // 个性化调节操作
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred(intensity: 0.6)
                 
-                showingShareSheet = true
+                // 显示个性化调整页面前隐藏系统按钮
+                hideSystemButtons()
+                
+                // 显示个性化调整页面
+                showPersonalityAdjustment = true
             } label: {
                 VStack(spacing: 8) { // 增加图标和文字间距从6到8
                     ZStack {
@@ -662,17 +725,17 @@ struct CharacterDetailView: View {
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 42, height: 42) // 增大图标容器尺寸从36x36到42x42
+                            .frame(width: 42, height: 42)
                             .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
                         
-                        // 图标
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 18, weight: .medium)) // 增大图标尺寸从16到18
+                        // 个性化图标 - 使用齿轮图标
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 18, weight: .medium))
                             .foregroundColor(.gray.opacity(0.85))
                     }
                     
-                    Text("分享")
-                        .font(.system(size: 13, weight: .medium)) // 增大字体从12到13
+                    Text("个性化")
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.gray.opacity(0.85))
                 }
                 .frame(maxWidth: .infinity)
@@ -1052,15 +1115,15 @@ struct CharacterDetailView: View {
         
         // 添加按钮点击事件
         backButton.addAction(UIAction { _ in
-            // 立即隐藏按钮窗口
-            buttonWindow.isHidden = true
+            // 立即隐藏所有系统按钮窗口
+            self.hideSystemButtons()
             
             // 触发轻柔触觉反馈
             let generator = UIImpactFeedbackGenerator(style: .light)
             generator.impactOccurred()
             
             // 返回操作
-            dismiss()
+            self.dismiss()
         }, for: .touchUpInside)
         
         // 添加到视图控制器的视图
@@ -1099,6 +1162,99 @@ struct CharacterDetailView: View {
             }
         }
         .buttonStyle(ScaleFeedbackButtonStyle())
+    }
+    
+    // 添加系统级分享按钮，确保总是可点击
+    private func addSystemLevelShareButton() {
+        // 计算顶部安全区域高度，为分享按钮定位
+        let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+        let topPadding = windowScene?.windows.first?.safeAreaInsets.top ?? 44
+        let screenWidth = UIScreen.main.bounds.width
+        
+        // 创建新窗口 - 只覆盖右上角分享按钮区域
+        let buttonWindow = UIWindow(frame: CGRect(
+            x: screenWidth - 55,
+            y: 0,
+            width: 55,
+            height: topPadding + 44
+        ))
+        buttonWindow.tag = 9998 // 为后续标识设置tag
+        
+        // 设置窗口属性
+        buttonWindow.isUserInteractionEnabled = true
+        buttonWindow.windowLevel = .alert // 使用高层级确保可见
+        buttonWindow.backgroundColor = .clear
+        buttonWindow.accessibilityViewIsModal = false
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            buttonWindow.windowScene = windowScene
+        }
+        
+        // 设置根视图控制器
+        let viewController = UIViewController()
+        viewController.view.backgroundColor = .clear
+        buttonWindow.rootViewController = viewController
+        
+        // 配置分享按钮
+        let shareButton = UIButton(type: .system)
+        shareButton.frame = CGRect(x: 16, y: topPadding + 11, width: 26, height: 26)
+        
+        // 设置按钮图标
+        let imageConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        let image = UIImage(systemName: "square.and.arrow.up", withConfiguration: imageConfig)
+        shareButton.setImage(image, for: .normal)
+        
+        // 使用与返回按钮相同的颜色
+        shareButton.tintColor = UIColor(red: 149/255, green: 138/255, blue: 177/255, alpha: 1.0)
+        
+        // 添加按钮点击事件 - 使用闭包捕获self而不是weak self
+        shareButton.addAction(UIAction { _ in
+            // 触发轻柔触觉反馈
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            
+            // 显示分享表单
+            self.showingShareSheet = true
+        }, for: .touchUpInside)
+        
+        // 添加到视图控制器的视图
+        viewController.view.addSubview(shareButton)
+        
+        // 保存窗口引用并显示
+        systemShareButtonWindow = buttonWindow
+        buttonWindow.makeKeyAndVisible()
+    }
+    
+    // 立即隐藏系统按钮，用于页面切换时
+    private func hideSystemButtons() {
+        // 隐藏返回按钮
+        if let window = systemBackButtonWindow {
+            window.isHidden = true
+        }
+        
+        // 隐藏分享按钮
+        if let window = systemShareButtonWindow {
+            window.isHidden = true
+        }
+    }
+    
+    // 显示系统按钮，用于页面返回时
+    private func showSystemButtons() {
+        // 显示返回按钮
+        if let window = systemBackButtonWindow {
+            window.isHidden = false
+        } else {
+            // 如果按钮不存在，重新创建
+            addSystemLevelBackButton()
+        }
+        
+        // 显示分享按钮
+        if let window = systemShareButtonWindow {
+            window.isHidden = false
+        } else {
+            // 如果按钮不存在，重新创建
+            addSystemLevelShareButton()
+        }
     }
 }
 
@@ -1530,7 +1686,7 @@ fileprivate struct RelatedInfoContentView: View {
         VStack(alignment: .leading, spacing: 20) {
             // 主要成就 - 根据角色类型定制图标和风格
             VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(title: "主要成就", iconName: getIconName(for: "achievements", field: character.field), color: theme.primary)
+                DetailSectionHeader(title: "主要成就", iconName: getIconName(for: "achievements", field: character.field), color: theme.primary)
                 
                 if character.achievements.isEmpty {
                     NoContentView(text: "暂无记录的成就")
@@ -1550,7 +1706,7 @@ fileprivate struct RelatedInfoContentView: View {
             
             // 代表作品 - 根据角色类型自定义标题和图标
             VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(
+                DetailSectionHeader(
                     title: getCustomTitle(for: "works", field: character.field), 
                     iconName: getIconName(for: "works", field: character.field), 
                     color: theme.primary
@@ -1574,7 +1730,7 @@ fileprivate struct RelatedInfoContentView: View {
             
             // 相关人物 - 展示与该历史人物相关的其他人物
             VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(title: "相关人物", iconName: "person.2.fill", color: theme.primary)
+                DetailSectionHeader(title: "相关人物", iconName: "person.2.fill", color: theme.primary)
                 
                 RelatedPersonView(character: character, theme: theme)
             }
@@ -1588,7 +1744,7 @@ fileprivate struct RelatedInfoContentView: View {
             
             // 历史背景 - 根据时代和角色类型定制内容
             VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(title: "历史背景", iconName: "clock.fill", color: theme.primary)
+                DetailSectionHeader(title: "历史背景", iconName: "clock.fill", color: theme.primary)
                 
                 Text(getHistoricalBackground(character: character))
                     .font(.system(size: 15))
@@ -1813,7 +1969,7 @@ fileprivate struct WorkRow: View {
 }
 
 // 板块标题组件
-fileprivate struct SectionHeader: View {
+fileprivate struct DetailSectionHeader: View {
     let title: String
     let iconName: String
     let color: Color

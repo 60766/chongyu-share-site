@@ -40,11 +40,11 @@ func getCharacterCategory(for id: String) -> String {
  */
 struct CommentsListView: View {
     // 评论数据 - 只接收顶级评论
-    let comments: [UserCommentModel]
+    let comments: [DetailedCommentModel]
     
     // 回调函数
-    let onReply: ((UserCommentModel) -> Void)?
-    let onLike: ((UserCommentModel) -> Void)?
+    let onReply: ((DetailedCommentModel) -> Void)?
+    let onLike: ((DetailedCommentModel) -> Void)?
     
     // 状态变量
     @State private var likedComments = Set<UUID>()
@@ -152,9 +152,9 @@ struct CommentHeaderView: View {
  * 评论线程视图 - 处理单个评论及其所有回复
  */
 struct CommentThreadView: View {
-    let comment: UserCommentModel
-    let onReply: ((UserCommentModel) -> Void)?
-    let onLike: ((UserCommentModel) -> Void)?
+    let comment: DetailedCommentModel
+    let onReply: ((DetailedCommentModel) -> Void)?
+    let onLike: ((DetailedCommentModel) -> Void)?
     @Binding var likedComments: Set<UUID>
     let isExpanded: Bool
     let onToggleExpand: () -> Void
@@ -240,7 +240,7 @@ struct CommentThreadView: View {
     }
     
     // 获取所有嵌套回复(二级及以上)
-    private func getAllNestedReplies(for reply: UserCommentModel) -> [UserCommentModel] {
+    private func getAllNestedReplies(for reply: DetailedCommentModel) -> [DetailedCommentModel] {
         return reply.replies
     }
     
@@ -258,9 +258,9 @@ struct CommentThreadView: View {
  * 单个评论项视图
  */
 struct CommentItemView: View {
-    let comment: UserCommentModel
-    let onReply: ((UserCommentModel) -> Void)?
-    let onLike: ((UserCommentModel) -> Void)?
+    let comment: DetailedCommentModel
+    let onReply: ((DetailedCommentModel) -> Void)?
+    let onLike: ((DetailedCommentModel) -> Void)?
     let isLiked: Bool
     
     // 新增参数，用于展示展开/收起回复按钮
@@ -311,11 +311,10 @@ struct CommentItemView: View {
                         .padding(.top, 2)
                     }
                     
-                    // 评论内容
+                    // 评论内容 - 移除顶部空白
                     Text(comment.content)
                         .font(.system(size: 15))
                         .lineSpacing(4)
-                        .padding(.top, 6)
                         .fixedSize(horizontal: false, vertical: true)
                     
                     // 交互按钮
@@ -460,50 +459,50 @@ struct CategoryBadge: View {
 struct CommentsListView_Previews: PreviewProvider {
     static var previews: some View {
         // 创建一些示例评论和回复以测试显示效果
-        let mainComment = UserCommentModel(
+        let mainComment = DetailedCommentModel(
             username: "爱因斯坦",
             userAvatar: "einstein", 
             content: "想象力比知识更重要。知识是有限的，而想象力概括着世界上的一切。",
             datePosted: Date().addingTimeInterval(-7200),
-            likes: 42,
             isVirtualCharacter: true,
-            characterID: "einstein"
+            characterID: "einstein",
+            likes: 42
         )
         
-        let reply1 = UserCommentModel(
+        let reply1 = DetailedCommentModel(
             username: "牛顿",
             userAvatar: "newton",
             content: "我完全同意，爱因斯坦。正是想象力使科学不断向前发展。",
             datePosted: Date().addingTimeInterval(-3600),
-            likes: 28,
             isVirtualCharacter: true,
             characterID: "newton",
             parentCommentId: mainComment.id,
-            replyToUsername: "爱因斯坦"
+            replyToUsername: "爱因斯坦",
+            likes: 28
         )
         
-        let reply2 = UserCommentModel(
+        let reply2 = DetailedCommentModel(
             username: "用户123",
             userAvatar: "",
             content: "爱因斯坦先生，能否详细解释一下相对论的基本原理？",
             datePosted: Date().addingTimeInterval(-1800),
-            likes: 15,
             isVirtualCharacter: false,
             characterID: nil,
             parentCommentId: mainComment.id,
-            replyToUsername: "爱因斯坦"
+            replyToUsername: "爱因斯坦",
+            likes: 15
         )
         
-        let reply3 = UserCommentModel(
+        let reply3 = DetailedCommentModel(
             username: "爱因斯坦",
             userAvatar: "einstein",
             content: "相对论的核心是时空的相对性。你面前的时钟与以接近光速运动的时钟相比会走得更快，这种现象叫做'时间膨胀'。",
             datePosted: Date().addingTimeInterval(-1500),
-            likes: 35,
             isVirtualCharacter: true,
             characterID: "einstein",
             parentCommentId: reply2.id,
-            replyToUsername: "用户123"
+            replyToUsername: "用户123",
+            likes: 35
         )
         
         var commentWithReplies = mainComment

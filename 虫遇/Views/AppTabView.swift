@@ -24,14 +24,23 @@ struct AppTabView: View {
                 // 首页 - 虫遇主界面
                 HomeView()
                     .tag(0)
+                    .onAppear {
+                        // 当切换到首页时，确保数据存在
+                        if selectedTab == 0 {
+                            // 发送通知，告诉HomeView需要刷新
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("HomeViewShouldRefresh"),
+                                object: nil
+                            )
+                        }
+                    }
                 
                 // 探索页
                 ExploreView()
                     .tag(1)
                 
                 // 占位符视图 (不显示，仅为中间按钮预留空间)
-                Color.clear
-                    .tag(2)
+                // 移除这个标签页，避免点击中间区域导致显示空白页面
                 
                 // 通知页
                 NotificationView()
@@ -40,6 +49,22 @@ struct AppTabView: View {
                 // 用户空间页
                 ProfileView()
                     .tag(4)
+            }
+            .onChange(of: selectedTab) { oldValue, newValue in
+                // 特殊处理：当切换回首页时，确保数据恢复
+                if newValue == 0 {
+                    // 发送通知让首页刷新
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("HomeViewShouldRefresh"), 
+                        object: nil
+                    )
+                }
+                
+                // 特殊处理：如果尝试选择中间标签(2)，则不执行任何操作
+                if newValue == 2 {
+                    // 恢复到之前的标签
+                    selectedTab = oldValue
+                }
             }
             // 改用TabViewStyle禁用水平滑动翻页功能
             .tabViewStyle(.automatic)
@@ -55,16 +80,14 @@ struct AppTabView: View {
         // 将TabBar作为overlay添加
         .overlay(alignment: .bottom) {
             if !tabBarManager.isFullyHidden {
-                VStack(spacing: 0) {
-                    // 导航栏包装器 - 使用完全透明的背景
+                // 使用ZStack实现磨砂玻璃效果，确保内容能够透过显示
+                ZStack(alignment: .bottom) {
+                    // 导航栏包装器 - 使用真正的磨砂玻璃效果模糊下方内容
                     ZStack(alignment: .center) {
-                        // 底部导航栏 - 确保始终高透明
+                        // 底部导航栏 - 使用优化后的模糊效果
                         CustomTabBarView(selectedTab: $selectedTab)
                             .frame(height: tabBarManager.tabBarHeight) // 使用管理器中的高度
-                            .background(Color.clear) // 确保背景完全透明
                             .opacity(tabBarManager.isVisible ? 1 : 0)
-                            .compositingGroup() // 改善混合模式
-                            .blendMode(.normal) // 保证正常混合
                         
                         // 虫洞发布按钮 - 位置微调，更轻量化
                         CosmicPublishButton(isPressed: $isPublishButtonPressed) {
@@ -77,15 +100,11 @@ struct AppTabView: View {
                         .environment(\.colorScheme, .dark) // 确保在深色模式下发光效果更明显
                         .opacity(tabBarManager.isVisible && tabBarManager.showFloatingButtons ? 1 : 0) // 与导航栏和浮动按钮状态关联
                     }
-                    .background(Color.clear) // 确保背景完全透明
                 }
-                // 取消所有可能影响位置的内边距
-                .padding(.horizontal, 0)
-                .padding(.top, 0)
-                .padding(.bottom, 0)
-                // 保持位置设置不变
-                .ignoresSafeArea(.all, edges: .bottom)
-                .background(Color.clear) // 确保背景完全透明
+                // 确保延伸到底部边缘
+                .edgesIgnoringSafeArea(.bottom)
+                // 将导航栏层级提高，但保持下方内容可见
+                .zIndex(1)
             }
         }
         // 确保整个视图都忽略底部安全区域

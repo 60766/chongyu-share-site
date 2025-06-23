@@ -73,6 +73,9 @@ struct DesignSystem {
         
         // 输入框圆角
         static let input = m
+        
+        // 图片圆角
+        static let image = l // 12pt圆角，与卡片保持一致
     }
     
     // MARK: - 阴影系统

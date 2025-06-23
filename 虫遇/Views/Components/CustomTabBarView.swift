@@ -9,12 +9,11 @@ struct CustomTabBarView: View {
     @Binding var selectedTab: Int
     
     var body: some View {
-        // 完全透明的容器
         ZStack {
-            // 磨砂背景层 - 大幅增强透明效果
+            // 磨砂背景层
             TabBarBackground()
                 .zIndex(0)
-                .blendMode(.normal)
+                .allowsHitTesting(false) // 禁止背景接收点击事件
             
             // 内容层 - 按钮和文字
             HStack(spacing: 0) {
@@ -36,11 +35,13 @@ struct CustomTabBarView: View {
                 )
                 .frame(maxWidth: .infinity)
                 
-                // 中间空间（为中央发布按钮预留）
-                Spacer()
+                // 中间空间 - 使用透明按钮而非Spacer，确保点击不会触发任何操作
+                Color.clear
                     .frame(maxWidth: 80)
+                    .contentShape(Rectangle())
+                    .allowsHitTesting(false)
                 
-                // 动态
+                // 通知
                 CustomTabButton(
                     isSelected: selectedTab == 3,
                     title: "通知",
@@ -58,20 +59,16 @@ struct CustomTabBarView: View {
                 )
                 .frame(maxWidth: .infinity)
             }
-            .padding(.top, 5) // 减小顶部内边距
-            .padding(.bottom, 5) // 减小底部内边距
+            .padding(.vertical, 5)
             .zIndex(1)
         }
-        // 移除任何背景色
         .background(Color.clear)
-        // 确保按钮和文字清晰可见
-        .opacity(1)
     }
 }
 
 /**
  * 自定义底部导航栏背景
- * 极大增强半透明效果，提高内容融合度
+ * 实现轻微磨砂玻璃效果，更亮的底色与上方白色搭配
  */
 struct TabBarBackground: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -79,48 +76,44 @@ struct TabBarBackground: View {
     var body: some View {
         GeometryReader { geometry in
             if #available(iOS 15.0, *) {
-                // iOS 15 - 使用极度透明的模糊材质
+                // iOS 15 - 使用更轻的模糊效果和更亮的底色
                 ZStack {
-                    // 使用超薄的白色背景
+                    // 提亮背景色，使其更好地匹配上方白色
                     Rectangle()
-                        .fill(colorScheme == .dark ? Color.black.opacity(0.01) : Color.white.opacity(0.01))
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.3))
                         .frame(width: geometry.size.width, height: geometry.size.height)
                     
-                    // 使用超轻的模糊材质
+                    // 使用系统Material材质实现轻微的磨砂玻璃效果
                     Rectangle()
-                        .fill(Material.ultraThinMaterial)
-                        .opacity(0.4) // 进一步降低不透明度
+                        .fill(Material.ultraThinMaterial) // 保持最轻的材质确保下方内容清晰可见
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 }
-                .allowsHitTesting(false)
-                .compositingGroup()
-                .blendMode(.normal)
+                .blur(radius: 0.01) // 保持几乎不可见的模糊效果
+                .allowsHitTesting(false) // 允许点击穿透
             } else {
-                // iOS 14 - 使用同样非常轻的模糊效果
+                // iOS 14 - 使用更轻的模糊效果和更亮的底色
                 ZStack {
-                    // 使用超薄的白色背景
+                    // 提亮背景色，使其更好地匹配上方白色
                     Rectangle()
-                        .fill(colorScheme == .dark ? Color.black.opacity(0.01) : Color.white.opacity(0.01))
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.3))
                         .frame(width: geometry.size.width, height: geometry.size.height)
                     
-                    // 使用更轻的模糊效果
-                    VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-                        .opacity(0.4) // 进一步降低不透明度
+                    // 核心模糊效果 - 极轻微模糊
+                    VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial)) // 保持最轻的模糊效果
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 }
-                .allowsHitTesting(false)
-                .compositingGroup()
-                .blendMode(.normal)
+                .blur(radius: 0.01) // 保持几乎不可见的模糊效果
+                .allowsHitTesting(false) // 允许点击穿透
             }
         }
-        // 确保延伸到所有边缘，没有内边距
+        // 确保延伸到所有边缘
         .edgesIgnoringSafeArea(.all)
     }
 }
 
 /**
  * 优化的磨砂玻璃背景视图
- * 使用超轻度模糊效果以增强透明度
+ * 实现轻微的磨砂玻璃效果，更亮的效果与白色界面搭配
  */
 struct VisualEffectView: UIViewRepresentable {
     var effect: UIVisualEffect?
@@ -133,14 +126,13 @@ struct VisualEffectView: UIViewRepresentable {
     
     func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) {
         uiView.effect = effect
-        // 使用更低的不透明度，大幅增加透明感
-        uiView.alpha = 0.4
+        // 提高不透明度，让背景更亮
+        uiView.alpha = 0.85
     }
 }
 
 /**
  * 标签按钮组件
- * 提供带有图标和文本的交互按钮，优化清晰度和清新感
  */
 struct CustomTabButton<IconContent: View>: View {
     let isSelected: Bool
@@ -150,23 +142,21 @@ struct CustomTabButton<IconContent: View>: View {
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 3) { // 减小间距
-                // 图标 - 提高清晰度
+            VStack(spacing: 3) {
+                // 图标
                 icon()
-                    .frame(height: 22) // 减小高度
+                    .frame(height: 22)
                     .brightness(isSelected ? 0.1 : 0)
                 
-                // 文本 - 减轻字重，增加清新感
+                // 文本
                 Text(title)
-                    .font(.system(size: 9, weight: isSelected ? .semibold : .medium)) // 减小字体
-                    .foregroundColor(isSelected ? Color.primaryColor : Color.gray)
+                    .font(.system(size: 9, weight: isSelected ? .semibold : .medium))
+                    .foregroundColor(isSelected ? Color.primaryColor : Color.gray.opacity(0.8))
             }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-            .padding(.vertical, 4) // 减小垂直内边距
+            .contentShape(Rectangle()) // 确保整个区域可点击
+            .padding(.vertical, 4)
         }
         .buttonStyle(PlainButtonStyle())
-        .background(Color.clear)
     }
 }
 

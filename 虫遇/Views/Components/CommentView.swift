@@ -7,11 +7,11 @@ import SwiftUI
  */
 struct CommentView: View {
     // 评论数据
-    let comment: UserCommentModel
+    let comment: DetailedCommentModel
     
     // 回调函数
-    var onReply: (UserCommentModel) -> Void
-    var onLike: (UserCommentModel) -> Void
+    var onReply: (DetailedCommentModel) -> Void
+    var onLike: (DetailedCommentModel) -> Void
     
     // 本地状态
     @State private var isLiked: Bool
@@ -20,7 +20,7 @@ struct CommentView: View {
     @State private var isPressed: Bool = false
     
     // 初始化函数
-    init(comment: UserCommentModel, onReply: @escaping (UserCommentModel) -> Void = { _ in }, onLike: @escaping (UserCommentModel) -> Void = { _ in }) {
+    init(comment: DetailedCommentModel, onReply: @escaping (DetailedCommentModel) -> Void = { _ in }, onLike: @escaping (DetailedCommentModel) -> Void = { _ in }) {
         self.comment = comment
         self.onReply = onReply
         self.onLike = onLike
@@ -320,9 +320,9 @@ struct CommentView: View {
  * 评论列表视图
  */
 struct CommentListContainer: View {
-    let comments: [UserCommentModel]
-    let onReply: (UserCommentModel) -> Void
-    let onLike: (UserCommentModel) -> Void
+    let comments: [DetailedCommentModel]
+    let onReply: (DetailedCommentModel) -> Void
+    let onLike: (DetailedCommentModel) -> Void
     
     // 触觉反馈
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
@@ -441,14 +441,14 @@ struct CommentView_Previews: PreviewProvider {
         VStack(spacing: DesignSystem.Spacing.l) {
             // 普通用户评论
             CommentView(
-                comment: UserCommentModel(
+                comment: DetailedCommentModel(
                     username: "用户123",
                     userAvatar: "person.circle.fill",
                     content: "这是一条普通用户评论，评论内容可以很长很长很长很长很长很长很长很长很长很长很长很长很长很长。",
                     datePosted: Date().addingTimeInterval(-3600),
-                    likes: 5,
                     isVirtualCharacter: false,
-                    characterID: nil
+                    characterID: nil,
+                    likes: 5
                 ),
                 onReply: { _ in },
                 onLike: { _ in }
@@ -459,14 +459,14 @@ struct CommentView_Previews: PreviewProvider {
             
             // 历史人物评论
             CommentView(
-                comment: UserCommentModel(
+                comment: DetailedCommentModel(
                     username: "爱因斯坦",
                     userAvatar: "einstein",
                     content: "这是一条历史人物评论，带有特殊样式。相对论改变了我们对时间和空间的认识。",
                     datePosted: Date().addingTimeInterval(-7200),
-                    likes: 120,
                     isVirtualCharacter: true,
-                    characterID: "einstein"
+                    characterID: "einstein",
+                    likes: 120
                 ),
                 onReply: { _ in },
                 onLike: { _ in }

@@ -1,0 +1,1 @@
+import json; import sys; try: data = json.load(open("./虫遇/Resources/characters.json")); print("JSON格式正确"); except json.JSONDecodeError as e: print(f"错误位置: 行 {e.lineno}, 列 {e.colno}, 字符 {e.pos}"); print(f"错误信息: {e.msg}")

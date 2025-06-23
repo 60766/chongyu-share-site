@@ -128,7 +128,7 @@ struct FullscreenPostDetailView: View {
     
     // 回调函数
     var onDismiss: (() -> Void)?
-    var onLike: ((UserCommentModel) -> Void)?
+    var onLike: ((DetailedCommentModel) -> Void)?
     var onReport: (() -> Void)?
     var onShare: (() -> Void)?
     // 添加获取上一个和下一个帖子的回调
@@ -203,7 +203,7 @@ struct FullscreenPostDetailView: View {
     init(
         post: UserPostModel, 
         onDismiss: (() -> Void)? = nil, 
-        onLike: ((UserCommentModel) -> Void)? = nil,
+        onLike: ((DetailedCommentModel) -> Void)? = nil,
         onReport: (() -> Void)? = nil,
         onShare: (() -> Void)? = nil,
         onNextPost: ((UUID) -> UserPostModel?)? = nil,
@@ -575,8 +575,8 @@ struct FullscreenPostDetailView: View {
                 }
                     // 添加底部安全区域内边距，确保内容不被输入框遮挡
                     .safeAreaInset(edge: .bottom) {
-                        // 输入框占位区域，调整高度从40减少为40
-                        Color.clear.frame(height: 40)
+                        // 输入框占位区域，调整高度从40减少为35
+                        Color.clear.frame(height: 35)
                     }
                 }
                 .offset(x: dragOffset)
@@ -587,6 +587,17 @@ struct FullscreenPostDetailView: View {
                     : 1.0)
                 .zIndex(0) // 主内容始终在最上层
             }
+            .coordinateSpace(name: "scroll")
+            .onPreferenceChange(FullscreenScrollOffsetKey.self) { offset in
+                // ... existing code ...
+            }
+            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: dragOffset)
+            .wechatStyleImageViewer(
+                isPresented: $showingExpandedImage,
+                images: viewModel.post.images,
+                initialIndex: selectedImageIndex
+            )
+            
             // 添加水平滑动手势
             .simultaneousGesture(
                 // 增加最小滑动距离要求，避免微小移动触发手势
@@ -1083,7 +1094,7 @@ struct FullscreenPostDetailView: View {
                         .frame(width: UIScreen.main.bounds.width) // 确保整个容器宽度充满屏幕
                         
                         // 创作类型按钮 - 完全保持原有位置
-                        CreationTypeButtonsView()
+                        虫遇.CreationTypeButtonsView()
                             .environmentObject(CreationTypeManager.shared)
                             .frame(height: 70)
                             .padding(.bottom, 24)
@@ -1500,28 +1511,48 @@ struct FullscreenPostDetailView: View {
                         let typeIndex = CreationTypeManager.shared.selectedIndex
                         print("⭐️ 当前选中的创作类型索引: \(typeIndex)")
                         
-                        // 生成帖子并添加到数据模型中
-                        DispatchQueue.main.async {
+                        // 使用Task在异步上下文中生成帖子
+                        Task {
                             print("⭐️ 开始生成帖子...")
                             
-                            // 根据创作类型生成帖子
-                            var newPosts: [UserPostModel] = []
-                            
-                            // 如果是虫洞共鸣类型，使用新的生成方法
-                            if typeIndex == 0 {
-                                // 使用虫洞共鸣生成方法
-                                newPosts = postViewModel.generateResonancePosts(
-                                    situation: selectedSituation,
-                                    expectation: selectedExpectation,
-                                    keyword: explorationKeyword.isEmpty ? nil : explorationKeyword
-                                )
-                                print("⭐️ 使用虫洞共鸣生成方法，情境: \(selectedSituation), 期望: \(selectedExpectation)")
-                            } else {
-                                // 使用原有的生成方法
-                                newPosts = postViewModel.generatePostsByCreationType(typeIndex: typeIndex)
+                            // 添加加载状态
+                            await MainActor.run {
+                                // 在主线程显示加载指示器
+                                let feedback = UIImpactFeedbackGenerator(style: .medium)
+                                feedback.prepare()
+                                feedback.impactOccurred()
                             }
                             
-                            print("⭐️ 成功生成 \(newPosts.count) 篇新帖子")
+                            // 简化帖子生成逻辑，移除超时限制
+                            print("⭐️ 开始生成帖子，无超时限制...")
+                            var newPosts: [UserPostModel] = []
+                            
+                            do {
+                                // 创建内容生成任务，不再添加超时限制
+                                print("📱 开始生成内容，类型索引: \(typeIndex)")
+                                
+                                // 直接生成内容，等待直到完成
+                                if typeIndex == 0 {
+                                    print("📱 生成虫洞共鸣内容...")
+                                    // 虫洞共鸣类型
+                                    newPosts = try await postViewModel.generateResonancePosts(
+                                        situation: selectedSituation,
+                                        expectation: selectedExpectation,
+                                        keyword: explorationKeyword.isEmpty ? nil : explorationKeyword
+                                    )
+                                } else {
+                                    print("📱 生成\(typeIndex)类型内容...")
+                                    // 其他类型
+                                    newPosts = try await postViewModel.generatePostsByCreationType(typeIndex: typeIndex)
+                                }
+                                
+                                print("📱 内容生成完成，获得 \(newPosts.count) 篇帖子")
+                                
+                            } catch {
+                                print("⚠️ 生成帖子过程出错: \(error.localizedDescription)")
+                            }
+                            
+                            print("⭐️ 生成过程完成，获得 \(newPosts.count) 篇新帖子")
                             
                             // 添加到数据模型
                             if !newPosts.isEmpty {
@@ -1532,24 +1563,37 @@ struct FullscreenPostDetailView: View {
                                 print("⭐️ 发送通知刷新主页")
                                 NotificationCenter.default.post(name: NSNotification.Name("NewPostsGenerated"), object: nil)
                                 NotificationCenter.default.post(name: NSNotification.Name("PostsUpdated"), object: nil)
+                                
+                                // 添加触觉反馈，让用户知道生成成功
+                                await MainActor.run {
+                                    let successFeedback = UINotificationFeedbackGenerator()
+                                    successFeedback.notificationOccurred(.success)
+                                }
                             } else {
                                 print("⚠️ 生成的帖子数组为空")
+                                // 当生成内容失败时，显示反馈给用户
+                                await MainActor.run {
+                                    let errorFeedback = UINotificationFeedbackGenerator()
+                                    errorFeedback.notificationOccurred(.error)
+                                }
                             }
                             
                             // 确保0.5秒后关闭虫洞探索页面
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                // 关闭虫洞探索页面
-                                showAddContentView = false
-                                
-                                // 重置状态
-                                dragOffset = 0
-                                swipeDirection = .none
-                                isTransitioning = false
-                                
-                                // 延迟一点调用onDismiss
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    print("⭐️ 调用onDismiss回调")
-                                    onDismiss?()
+                            await MainActor.run {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    // 关闭虫洞探索页面
+                                    showAddContentView = false
+                                    
+                                    // 重置状态
+                                    dragOffset = 0
+                                    swipeDirection = .none
+                                    isTransitioning = false
+                                    
+                                    // 延迟一点调用onDismiss
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                        print("⭐️ 调用onDismiss回调")
+                                        onDismiss?()
+                                    }
                                 }
                             }
                         }
@@ -1902,9 +1946,7 @@ struct FullscreenPostDetailView: View {
                 Spacer()
                 
                 // 关注按钮
-                Button(action: {
-                    // 在这里可以添加关注用户的逻辑
-                }) {
+                Button(action: {}) {
                     Text("关注")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(FPDVDesignSystem.Colors.primary)
@@ -1912,121 +1954,266 @@ struct FullscreenPostDetailView: View {
                         .padding(.vertical, 5)
                         .background(
                             Capsule()
-                                .stroke(FPDVDesignSystem.Colors.primary.opacity(0.8), lineWidth: 1)
-                                .background(Capsule().fill(FPDVDesignSystem.Colors.primary.opacity(0.05)))
+                                .stroke(FPDVDesignSystem.Colors.primary, lineWidth: 1)
                         )
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 14)
+            .padding(.top, 10)
+            .padding(.bottom, 4) // 进一步减少用户信息区域底部内边距
             
-            // 正文内容
+            // 正文内容 - 确保只显示一次内容
             Text(viewModel.post.content)
                 .font(.system(size: 16))
                 .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(nil) // 确保可以显示多行
                 .padding(.horizontal, 16)
-                .padding(.bottom, 14)
+                .padding(.bottom, 4) // 进一步减少正文底部内边距
+                .id("post_content") // 添加ID以确保内容更新时视图刷新
             
-            // 图片内容 - 关键优化：使用 GeometryReader 提前确定布局尺寸
-            ZStack(alignment: .center) {
-                // 预先计算图片区域的大小
-                let imageHeight: CGFloat = !viewModel.post.images.isEmpty ? (viewModel.post.images.count == 1 ? 230 : 160) : 0
-                let hasImages = !viewModel.post.images.isEmpty
-                
-                // 占位区域 - 只有在有图片时才显示，防止内容跳动
-                if hasImages {
-                    // 创建占位区域，确保图片加载期间保持布局稳定
-                    Color.clear
-                        .frame(height: imageHeight + 10) // 加上底部padding，保持布局一致
-                        .onAppear {
-                            // 使用异步调用避免在视图更新过程中执行预加载操作
-                            DispatchQueue.main.async {
-                                // 在视图出现时立即预加载图片，防止延迟加载导致布局变化
-                                for imageName in viewModel.post.images {
-                                    _ = UIImage(named: imageName)
-                                }
-                            }
-                        }
-                }
-                
-                // 实际图片内容
+            // 图片内容 - 使用微信朋友圈风格布局
             if !viewModel.post.images.isEmpty {
-                    Group {
-                if viewModel.post.images.count == 1 {
-                            // 单图显示 - 设置固定高度，避免加载时的布局变化
-                    Image(viewModel.post.images[0])
-                        .resizable()
-                        .scaledToFill()
-                                .frame(maxHeight: 230)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                // 根据图片数量选择不同的布局
+                switch viewModel.post.images.count {
+                case 1:
+                    // 单图布局 - 微信朋友圈风格
+                    singleImageView(viewModel.post.images[0])
                         .padding(.horizontal, 16)
-                                .padding(.bottom, 10)
-                } else if viewModel.post.images.count == 2 {
-                            // 两张图片并排显示 - 设置固定高度
-                    HStack(spacing: 6) {
-                        ForEach(0..<2, id: \.self) { index in
-                            Image(viewModel.post.images[index])
-                                .resizable()
-                                .scaledToFill()
-                                .frame(height: 160)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                            .padding(.bottom, 10)
-                } else if viewModel.post.images.count == 3 {
-                    // 三张图片布局 - 左侧一张大图，右侧两张小图
-                    let totalWidth = UIScreen.main.bounds.width - 32 // 考虑边距
-                    let smallImageSize = (totalWidth * 0.33) - 2 // 右侧小图尺寸
-                    let largeImageSize = (totalWidth * 0.67) - 2 // 左侧大图尺寸
-                    
-                    HStack(spacing: 6) {
-                        // 左侧大图
-                        Image(viewModel.post.images[0])
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: largeImageSize, height: largeImageSize)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        
-                        // 右侧两张小图垂直排列
-                        VStack(spacing: 6) {
-                            Image(viewModel.post.images[1])
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: smallImageSize, height: smallImageSize)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                            
-                            Image(viewModel.post.images[2])
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: smallImageSize, height: smallImageSize)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                            .padding(.bottom, 10)
-                } else {
-                            // 多图网格 - 更紧凑的布局
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                        ForEach(viewModel.post.images, id: \.self) { image in
-                            Image(image)
-                                .resizable()
-                                .scaledToFill()
-                                        .frame(height: 150)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                            .padding(.bottom, 10)
-                        }
-                    }
-                    // 增加渐变显示效果，防止突然出现造成布局跳动
-                    .transition(.opacity.animation(.easeIn(duration: 0.1)))
+                        .padding(.bottom, 4)
+                case 2:
+                    // 两张图片布局 - 微信朋友圈风格
+                    wechatStyleGridLayout(images: viewModel.post.images, columns: 2)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 4)
+                case 3:
+                    // 三张图片布局 - 微信朋友圈风格
+                    wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 4)
+                case 4:
+                    // 四张图片布局 - 微信朋友圈2×2网格
+                    wechatStyleGridLayout(images: viewModel.post.images, columns: 2)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 4)
+                case 5, 6:
+                    // 5-6张图片布局 - 微信朋友圈3×2网格
+                    wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 4)
+                default:
+                    // 7-9张图片布局 - 微信朋友圈3×3网格
+                    wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 4)
                 }
             }
         }
+    }
+    
+    // 单图显示 - 微信朋友圈风格
+    private func singleImageView(_ imageName: String) -> some View {
+        GeometryReader { geometry in
+            // 修改为靠左对齐
+            HStack {
+                Button(action: {
+                    selectedImageIndex = 0
+                    showingExpandedImage = true
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred(intensity: 0.5)
+                }) {
+                    if imageName.contains("_image_") {
+                        // 用户上传的图片
+                        PostImageView(
+                            imageId: imageName,
+                            contentMode: .fit,
+                            height: calculateSingleImageHeight(for: imageName, width: geometry.size.width * 0.85), // 调整为85%宽度
+                            cornerRadius: 3 // 微信风格的小圆角
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                        .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 3)
+                                .stroke(Color(.systemGray5), lineWidth: 0.5)
+                        )
+                    } else if let uiImage = UIImage(named: imageName) {
+                        // 内置图片资源
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: geometry.size.width * 0.85) // 限制最大宽度为容器的85%
+                            .frame(maxHeight: calculateSingleImageHeight(for: imageName, width: geometry.size.width * 0.85))
+                            .cornerRadius(3)
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                            .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .stroke(Color(.systemGray5), lineWidth: 0.5)
+                            )
+                    } else {
+                        // 占位图 - 精简版实现
+                        ZStack {
+                            Rectangle()
+                                .fill(Color.secondary.opacity(0.1))
+                                .frame(maxWidth: geometry.size.width * 0.85) // 限制最大宽度
+                                .cornerRadius(3)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                                )
+                            
+                            VStack(spacing: 8) {
+                                Image(systemName: "photo")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.gray)
+                                
+                                Text("图片加载失败")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        .frame(height: 180) // 设置默认高度
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Spacer(minLength: 0)
+            }
+        }
+        .frame(height: calculateImageSectionHeight(for: [imageName]))
+    }
+    
+    // 微信朋友圈风格的网格布局
+    private func wechatStyleGridLayout(images: [String], columns: Int) -> some View {
+        GeometryReader { geometry in
+            let totalWidth = geometry.size.width
+            let spacing: CGFloat = 2 // 微信风格的小间距
+            
+            // 计算每个图片的尺寸
+            let itemWidth = (totalWidth - (spacing * CGFloat(columns - 1))) / CGFloat(columns)
+            
+            // 计算行数
+            let rows = Int(ceil(Double(images.count) / Double(columns)))
+            
+            VStack(spacing: spacing) {
+                ForEach(0..<rows, id: \.self) { row in
+                    HStack(spacing: spacing) {
+                        ForEach(0..<columns, id: \.self) { column in
+                            let index = row * columns + column
+                            if index < images.count {
+                                Button(action: {
+                                    selectedImageIndex = index
+                                    showingExpandedImage = true
+                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                    generator.impactOccurred(intensity: 0.5)
+                                }) {
+                                    wechatStyleImageItem(images[index], size: itemWidth)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            } else {
+                                // 占位，保持网格结构完整
+                                Color.clear
+                                    .frame(width: itemWidth, height: itemWidth)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .frame(height: calculateGridHeight(imagesCount: images.count, columns: columns))
+    }
+    
+    // 微信风格的单个图片项
+    private func wechatStyleImageItem(_ imageName: String, size: CGFloat) -> some View {
+        Group {
+            if imageName.contains("_image_") {
+                // 用户上传的图片
+                PostImageView(
+                    imageId: imageName,
+                    contentMode: .fill,
+                    cornerRadius: 3
+                )
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                )
+            } else if let uiImage = UIImage(named: imageName) {
+                // 内置图片
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .cornerRadius(3)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 3)
+                            .stroke(Color(.systemGray5), lineWidth: 0.5)
+                    )
+            } else {
+                // 占位图
+                ZStack {
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.1))
+                        .cornerRadius(3)
+                    
+                    ProgressView()
+                        .scaleEffect(1.0)
+                }
+                .frame(width: size, height: size)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                )
+            }
+        }
+    }
+    
+    // 计算单图高度
+    private func calculateSingleImageHeight(for imageName: String, width: CGFloat) -> CGFloat {
+        // 用户上传的图片用固定高度
+        if imageName.contains("_image_") {
+            return 200.0 // 微信朋友圈单图高度
+        }
+        
+        // 获取图片
+        guard let uiImage = UIImage(named: imageName) else { 
+            return 200.0 // 默认高度
+        }
+        
+        // 计算图片宽高比
+        let aspectRatio = uiImage.size.width / uiImage.size.height
+        
+        // 基于宽度和比例计算高度，保持原始比例
+        var calculatedHeight = width / aspectRatio
+        
+        // 微信朋友圈风格：限制最小和最大高度
+        calculatedHeight = min(max(calculatedHeight, 120.0), 220.0)
+        
+        // 根据内容类型调整高度
+        if aspectRatio > 2.0 {
+            // 超宽图片限制高度
+            calculatedHeight = min(calculatedHeight, 150.0)
+        } else if aspectRatio < 0.5 {
+            // 超窄图片提高高度
+            calculatedHeight = min(calculatedHeight, 220.0)
+        }
+        
+        return calculatedHeight
+    }
+    
+    // 计算网格布局的高度
+    private func calculateGridHeight(imagesCount: Int, columns: Int) -> CGFloat {
+        let screenWidth = UIScreen.main.bounds.width - 32 // 考虑边距
+        let spacing: CGFloat = 2 // 微信风格的小间距
+        let itemWidth = (screenWidth - (spacing * CGFloat(columns - 1))) / CGFloat(columns)
+        
+        // 计算行数
+        let rows = Int(ceil(Double(imagesCount) / Double(columns)))
+        
+        // 计算总高度 = 行数 * 单元格高度 + (行数-1) * 间距
+        return (CGFloat(rows) * itemWidth) + (CGFloat(rows - 1) * spacing)
     }
     
     // 帖子互动栏
@@ -2086,13 +2273,15 @@ struct FullscreenPostDetailView: View {
             Spacer()
         }
         .padding(.horizontal, 16)
-        .padding(.bottom, 12)
+        .padding(.top, 4)  // 减少顶部内边距，让互动栏更接近图片
+        .padding(.bottom, 8)
     }
     
     // 分隔线
     private func makeContentDivider() -> some View {
         Divider()
             .padding(.horizontal, 16)
+            .padding(.top, 0) // 减少顶部内边距
             .opacity(0.6)
     }
     
@@ -2129,7 +2318,7 @@ struct FullscreenPostDetailView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.vertical, 10) // 减少垂直内边距
             
             // 分隔线
             Rectangle()
@@ -2147,19 +2336,19 @@ struct FullscreenPostDetailView: View {
                     viewModel.post.likeComment(commentId: comment.id)
                 }
             )
-            .padding(.top, 6)
+            .padding(.top, 4) // 减少顶部内边距
             
             // 底部提示文字
             if !viewModel.post.getTopLevelComments().isEmpty {
                 Text("虫洞已开启 · 等你一起相遇～")
                     .font(.system(size: 12))  // 稍微减小字体大小
                     .foregroundColor(.secondary.opacity(0.5))  // 降低一点透明度，使文字更轻柔
-                    .padding(.top, 12)  
-                    .padding(.bottom, 5)  // 减少底部padding
+                    .padding(.top, 10)  
+                    .padding(.bottom, 4)  // 减少底部padding
             }
         }
         .background(Color(.systemBackground))
-        .padding(.bottom, 55)  // 减少评论区整体底部内边距
+        .padding(.bottom, 45)  // 减少评论区整体底部内边距
     }
     
     // 在文件适当位置添加辅助函数，使页面过渡更流畅
@@ -2745,6 +2934,59 @@ struct FullscreenPostDetailView: View {
         
         print("⭐️ 经过多次尝试，无法确定是否为最后一篇帖子，默认非最后一篇")
         return false
+    }
+    
+    // 计算图片区域高度
+    private func calculateImageSectionHeight(for images: [String]) -> CGFloat {
+        // 根据图片数量选择不同的计算方法
+        switch images.count {
+        case 0:
+            return 0 // 无图片时高度为0
+        case 1:
+            // 单图高度 - 使用UIImage计算实际高度
+            if images[0].contains("_image_") {
+                return 200.0 // 用户上传图片使用固定高度
+            } else if let uiImage = UIImage(named: images[0]) {
+                // 计算图片宽高比
+                let aspectRatio = uiImage.size.width / uiImage.size.height
+                let screenWidth = UIScreen.main.bounds.width - 32 // 考虑边距
+                let adjustedWidth = screenWidth * 0.85 // 按85%宽度显示
+                
+                // 基于宽度和比例计算高度，保持原始比例
+                var calculatedHeight = adjustedWidth / aspectRatio
+                
+                // 限制最小和最大高度
+                calculatedHeight = min(max(calculatedHeight, 120.0), 220.0)
+                
+                // 根据内容类型调整高度
+                if aspectRatio > 2.0 {
+                    // 超宽图片限制高度
+                    calculatedHeight = min(calculatedHeight, 150.0)
+                } else if aspectRatio < 0.5 {
+                    // 超窄图片提高高度
+                    calculatedHeight = min(calculatedHeight, 220.0)
+                }
+                
+                return calculatedHeight
+            } else {
+                return 180.0 // 默认图片高度
+            }
+        case 2:
+            // 两图布局 - 按照微信风格计算
+            return calculateGridHeight(imagesCount: 2, columns: 2)
+        case 3:
+            // 三图布局 - 微信风格，一行三张
+            return calculateGridHeight(imagesCount: 3, columns: 3)
+        case 4:
+            // 四图布局 - 微信风格，2x2网格
+            return calculateGridHeight(imagesCount: 4, columns: 2)
+        case 5, 6:
+            // 5-6张图片 - 微信风格，两行三列网格
+            return calculateGridHeight(imagesCount: images.count, columns: 3)
+        default:
+            // 7-9张图片 - 微信风格，最多三行三列
+            return calculateGridHeight(imagesCount: min(images.count, 9), columns: 3)
+        }
     }
 }
 

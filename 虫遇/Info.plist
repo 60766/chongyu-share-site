@@ -27,5 +27,9 @@
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>DEEPSEEK_API_KEY</key>
+	<string>5ec25df2-f799-4fc0-8ee2-ac13d473131b</string>
 </dict>
 </plist>

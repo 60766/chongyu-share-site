@@ -540,6 +540,13 @@ class CommentLoader: ObservableObject {
     }
 }
 
+// 定义帖子显示模式枚举
+enum DisplayMode {
+    case preview     // 预览模式（默认），显示有限内容
+    case detail      // 详情模式，显示全部内容
+    case compact     // 紧凑模式，用于列表或网格视图
+}
+
 /**
  * 统一帖子卡片视图
  * 用于在应用中所有位置显示帖子内容，确保格式一致性
@@ -550,6 +557,15 @@ struct PostCardView: View {
     
     // 环境对象
     @EnvironmentObject var viewModel: PostViewModel
+    
+    // 添加帖子来源枚举类型
+    enum PostSource {
+        case userGenerated   // 用户自己生成
+        case aiGenerated     // AI生成
+    }
+    
+    // 帖子来源
+    var postSource: PostSource = .aiGenerated
     
     // 状态属性
     @State private var isExpanded: Bool = false
@@ -563,6 +579,33 @@ struct PostCardView: View {
     @State private var isSharePresented: Bool = false // 新增：分享菜单展示状态
     @State private var showPostOptions: Bool = false // 新增：帖子选项展示状态
     
+    // 新增：编辑帖子状态
+    @State private var showEditPost: Bool = false
+    
+    // 点击回调
+    var onPostTap: () -> Void = {}
+    var onLikeToggle: ((Bool) -> Void)?
+    var onCommentToggle: (() -> Void)?
+    var onBookmarkToggle: ((Bool) -> Void)?
+    var onShare: (() -> Void)?
+    var onAddComment: ((UserPostModel, String, String?) -> Void)?
+    
+    // 用户自己帖子的操作回调
+    var onEdit: (() -> Void)?
+    var onDelete: (() -> Void)?
+    var onPin: ((Bool) -> Void)?
+    
+    // 显示选项
+    var showUserInfo: Bool = true
+    var maxPreviewLines: Int = 5
+    var maxPreviewLength: Int = 250
+    var showActions: Bool = true
+    var showCommentSection: Bool = true
+    var fullWidthImages: Bool = false
+    var isDetailView: Bool = false
+    var displayMode: DisplayMode = .preview
+    var isOwnPost: Bool = false
+    
     // 评论加载器
     @StateObject private var commentLoader = CommentLoader()
     
@@ -571,33 +614,6 @@ struct PostCardView: View {
     
     // 交互状态
     @State private var isTapped: Bool = false
-    
-    // 回调函数
-    var onPostTap: () -> Void = {}
-    var onLikeToggle: ((Bool) -> Void)? = nil
-    var onCommentToggle: (() -> Void)? = nil
-    var onBookmarkToggle: ((Bool) -> Void)? = nil
-    var onShare: (() -> Void)? = nil
-    var onAddComment: ((UserPostModel, String, String?) -> Void)? = nil  // 修改：UUID改为String类型
-    
-    // 配置参数
-    var showUserInfo: Bool = true
-    var maxPreviewLines: Int = 5  // 默认显示5行，适合中等长度内容
-    var maxPreviewLength: Int = 250  // 增加默认阈值从100到250字符，让中等长度内容也完整显示
-    var showActions: Bool = true
-    var showCommentSection: Bool = true
-    var fullWidthImages: Bool = false
-    var isDetailView: Bool = false
-    
-    // 新增：显示模式枚举
-    enum DisplayMode {
-        case preview   // 简化版，用于首页列表
-        case detail    // 完整版，用于详情页
-        case compact   // 紧凑版，用于主页列表
-    }
-    
-    // 显示模式，默认为预览模式
-    var displayMode: DisplayMode = .preview
     
     // 新增：智能内容显示计算属性
     private var shouldShowExpandButton: Bool {
@@ -687,13 +703,18 @@ struct PostCardView: View {
         onShare: (() -> Void)? = nil,
         onAddComment: ((UserPostModel, String, String?) -> Void)? = nil,
         showUserInfo: Bool = true,
-        maxPreviewLines: Int = 5,  // 默认显示5行，适合中等长度内容
-        maxPreviewLength: Int = 250,  // 增加默认阈值从100到250字符，让中等长度内容也完整显示
+        maxPreviewLines: Int = 5,
+        maxPreviewLength: Int = 250,
         showActions: Bool = true,
         showCommentSection: Bool = true,
         fullWidthImages: Bool = false,
         isDetailView: Bool = false,
-        displayMode: DisplayMode = .preview
+        displayMode: DisplayMode = .preview,
+        isOwnPost: Bool = false,
+        onEdit: (() -> Void)? = nil,
+        onDelete: (() -> Void)? = nil,
+        onPin: ((Bool) -> Void)? = nil,
+        postSource: PostSource = .aiGenerated
     ) {
         self.post = post
         self.onPostTap = onPostTap
@@ -710,6 +731,11 @@ struct PostCardView: View {
         self.fullWidthImages = fullWidthImages
         self.isDetailView = isDetailView
         self.displayMode = displayMode
+        self.isOwnPost = isOwnPost
+        self.onEdit = onEdit
+        self.onDelete = onDelete
+        self.onPin = onPin
+        self.postSource = postSource
         
         // 初始化状态
         _isLiked = State(initialValue: post.isLikedByCurrentUser)
@@ -734,7 +760,7 @@ struct PostCardView: View {
             // 评论预览部分 - 调整上方间距，减少空白
             if !post.comments.isEmpty && (displayMode == .preview || displayMode == .compact) && !isDetailView {
                 virtualCommentPreviewSection
-                    .padding(.top, -4) // 负值内边距，减少与图片区域之间的间距
+                    .padding(.top, -6) // 进一步减少与图片区域之间的间距 (原为-4)
             }
             
             // 添加简单分割线
@@ -750,7 +776,8 @@ struct PostCardView: View {
                 populatedCommentSection
             }
         }
-        .padding(DesignSystem.Spacing.m)
+        .padding(.top, 12) // 减少顶部内边距,原来是默认值DesignSystem.Spacing.m(16)
+        .padding([.bottom, .horizontal], DesignSystem.Spacing.m)
         .background(DesignSystem.Colors.cardBackground)
         .cornerRadius(DesignSystem.Radius.card)
         .overlay(
@@ -764,7 +791,7 @@ struct PostCardView: View {
             y: DesignSystem.Shadows.cardShadow.y
         )
         .padding(.horizontal, DesignSystem.Spacing.s)
-        .padding(.vertical, 10.0)
+        .padding(.vertical, 8) // 减少外部垂直间距,原为10
         .contentShape(Rectangle()) // 确保整个区域可点击
         .onTapGesture {
             // 仅在预览模式下启用整卡点击，避免在详情模式下重复打开详情页
@@ -786,9 +813,11 @@ struct PostCardView: View {
             // 准备触觉反馈
             feedbackGenerator.prepare()
         }
-        .sheet(isPresented: $showImageViewer) {
-            imageViewerSheet
-        }
+        .wechatStyleImageViewer(
+            isPresented: $showImageViewer,
+            images: post.images,
+            initialIndex: selectedImageIndex
+        )
     }
     
     // MARK: - 子视图组件
@@ -818,19 +847,38 @@ struct PostCardView: View {
                     
                     Spacer()
                 
-                    // 使用独立组件处理选项按钮
-                    PostOptionsButton(
+                    // 根据帖子来源和是否为用户自己的帖子选择不同的选项按钮
+                    if postSource == .userGenerated && isOwnPost {
+                        // 用户自己的帖子显示编辑、删除、置顶选项
+                        UserPostOptionsButton(
                         post: post,
-                        onDislikeCharacter: dislikeCharacter,
-                        onReport: {
-                            // 举报内容的逻辑
-                            feedbackGenerator.impactOccurred(intensity: 0.4)
-                        },
+                            onEdit: {
+                                if let onEdit = onEdit {
+                                    onEdit()
+                                }
+                            },
+                            onDelete: {
+                                if let onDelete = onDelete {
+                                    onDelete()
+                                }
+                            },
+                            onPin: { isPinned in
+                                if let onPin = onPin {
+                                    onPin(isPinned)
+                                }
+                            }
+                        )
+                    } else {
+                        // AI生成的帖子显示关注、屏蔽选项
+                        CustomPostOptionsButton(
+                            post: post,
+                            onDislikeCharacter: dislikeCharacter,
                         onFollowCharacter: { isFollowed in
                             // 关注角色的逻辑
                             feedbackGenerator.impactOccurred(intensity: 0.4)
                         }
                     )
+                    }
                 }
                 
                 // 发布时间与内容类型简化为一行，字体更小但确保可读性
@@ -845,6 +893,15 @@ struct PostCardView: View {
                             .font(.system(size: 13.0))
                             .foregroundColor(DesignSystem.Colors.tertiaryText)
                         
+                        // 显示帖子来源信息
+                        Text(postSource == .userGenerated ? "自己发布" : "AI生成")
+                            .font(.system(size: 13.0, weight: .regular))
+                            .foregroundColor(DesignSystem.Colors.tertiaryText)
+                        
+                        Text("•")
+                            .font(.system(size: 13.0))
+                            .foregroundColor(DesignSystem.Colors.tertiaryText)
+                        
                         Text(post.images.isEmpty ? "文字" : "图文")
                             .font(.system(size: 13.0, weight: .regular))
                             .foregroundColor(DesignSystem.Colors.tertiaryText)
@@ -852,52 +909,44 @@ struct PostCardView: View {
                 }
             }
         }
-        .padding(.bottom, 10.0)
+        .padding(.bottom, 6.0) // 减少底部间距,原来是10.0
     }
     
     // 内容区域
     private var contentSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-            // 帖子内容 - 调整字体大小和行高
+        VStack(alignment: .leading, spacing: 4) { // 减少内容的垂直间距 (原为8)
+            // 帖子文本内容
             if !post.content.isEmpty {
-                Text(post.content)
-                    .font(.system(size: 16.0, weight: .regular))
-                    .foregroundColor(DesignSystem.Colors.primaryText)
-                    // 修复lineLimit条件，确保短内容显示完整
-                    .lineLimit(isExpanded || isDetailView || !shouldShowExpandButton ? nil : maxPreviewLines)
-                    .lineSpacing(6.0) // 增加行间距提高可读性
-                    .fixedSize(horizontal: false, vertical: true) // 确保文本正确换行
-                    .padding(.bottom, 2.0) // 为文本添加底部间距
-                
-                // 仅在需要展开按钮时显示
-                if shouldShowExpandButton && !isDetailView {
+                contentTextSection
+            }
+            
+            // 如果是预览模式且内容被截断，显示"全文"按钮
+            if shouldShowExpandButton && !isExpanded && displayMode == .preview {
                     Button(action: {
-                        // 立即提供触觉反馈
-                        feedbackGenerator.impactOccurred(intensity: 0.3)
-                        
-                        // 延迟状态更新，给UI线程留出响应时间
-                        DispatchQueue.main.async {
-                            // 直接切换状态，避免复杂的动画计算
-                            isExpanded.toggle()
-                        }
-                    }) {
-                        HStack(spacing: 4) {
-                            Text(isExpanded ? "收起" : "显示更多")
-                                .font(.system(size: 15.0, weight: .medium))
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isExpanded = true
+                    }
+                }) {
+                    Text("全文")
+                        .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(DesignSystem.Colors.primary)
-                            
-                            // 添加方向指示图标
-                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 12.0, weight: .medium))
-                                .foregroundColor(DesignSystem.Colors.primary)
-                        }
+                        .padding(.top, 2) // 减少"全文"按钮的上方间距 (原为4)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .padding(.top, 4.0)
-                }
             }
         }
-        .padding(.vertical, 6.0) // 添加垂直间距，增强视觉舒适度
+        .padding(.bottom, 2) // 减少内容区域的底部间距 (原为8)
+    }
+    
+    // 帖子文本内容视图
+    private var contentTextSection: some View {
+        Text(post.content)
+            .font(.system(size: 16.0, weight: .regular))
+            .foregroundColor(DesignSystem.Colors.primaryText)
+            // 修复lineLimit条件，确保短内容显示完整
+            .lineLimit(isExpanded || isDetailView || !shouldShowExpandButton ? nil : maxPreviewLines)
+            .lineSpacing(5.0) // 减少行间距提高紧凑度（原为6.0）
+            .fixedSize(horizontal: false, vertical: true) // 确保文本正确换行
     }
     
     // 图片画廊区域
@@ -906,123 +955,230 @@ struct PostCardView: View {
             // 根据图片数量选择不同的布局
             switch post.images.count {
             case 1:
-                // 单张图片布局
+                // 单张图片布局 - 保持原比例但有最大尺寸限制
                 singleImageScrollView(post.images[0])
-                    .padding(.top, 8.0)
-                    .padding(.bottom, 8.0) // 调整底部间距
+                    .padding(.top, 2) // 减少图片区域的顶部内边距 (原为4或0)
+                    .padding(.bottom, 2) // 减少图片区域的底部内边距 (原为4或0)
             case 2:
-                // 两张图片布局
-                twoImagesLayout
-                    .padding(.top, 8.0)
-                    .padding(.bottom, 8.0) // 调整底部间距
+                // 两张图片布局 - 微信风格的方形网格
+                wechatStyleGridLayout(columns: 2)
+                    .padding(.top, 2) // 减少图片区域的顶部内边距 (原为4或0)
+                    .padding(.bottom, 2) // 减少图片区域的底部内边距 (原为4或0)
             case 3:
-                // 三张图片布局
-                threeImagesLayout
-                    .padding(.top, 8.0)
-                    .padding(.bottom, 4.0)
-            case 4...:
-                // 四张或更多图片布局
-                fourOrMoreImagesLayout
-                    .padding(.top, 8.0)
-                    .padding(.bottom, 4.0)
+                // 三张图片布局 - 微信风格的方形网格
+                wechatStyleGridLayout(columns: 3)
+                    .padding(.top, 2) // 减少图片区域的顶部内边距 (原为4或0)
+                    .padding(.bottom, 2) // 减少图片区域的底部内边距 (原为4或0)
+            case 4:
+                // 四张图片布局 - 微信风格的2x2网格
+                wechatStyleGridLayout(columns: 2)
+                    .padding(.top, 2) // 减少图片区域的顶部内边距 (原为4或0)
+                    .padding(.bottom, 2) // 减少图片区域的底部内边距 (原为4或0)
+            case 5, 6:
+                // 5-6张图片布局 - 微信风格的2行网格
+                wechatStyleGridLayout(columns: 3)
+                    .padding(.top, 2) // 减少图片区域的顶部内边距 (原为4或0)
+                    .padding(.bottom, 2) // 减少图片区域的底部内边距 (原为4或0)
+            case 7, 8, 9:
+                // 7-9张图片布局 - 微信风格的3x3网格
+                wechatStyleGridLayout(columns: 3)
+                    .padding(.top, 2) // 减少图片区域的顶部内边距 (原为4或0)
+                    .padding(.bottom, 2) // 减少图片区域的底部内边距 (原为4或0)
             default:
                 Color.clear
             }
         }
     }
     
-    // 单张图片视图 - 全宽单图布局
+    // 单张图片视图 - 微信朋友圈风格，靠左对齐
     private func singleImageScrollView(_ imageName: String) -> some View {
         GeometryReader { geometry in
+            HStack(alignment: .top, spacing: 0) {
                     Button(action: {
             selectedImageIndex = 0
             showImageViewer = true
             feedbackGenerator.impactOccurred(intensity: 0.5)
         }) {
-                if let uiImage = UIImage(named: imageName) {
-                    // 如果图片存在，显示实际图片
-                    Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                        .frame(height: calculateImageHeight(for: imageName, width: geometry.size.width))
-                    .frame(maxWidth: .infinity)
-                        .cornerRadius(12)
-                    .clipped()
-                    .overlay(
-                            RoundedRectangle(cornerRadius: 12)
+                    if imageName.contains("_image_") {
+                        // 用户上传的图片
+                        PostImageView(
+                            imageId: imageName,
+                            contentMode: .fit,
+                            height: calculateSingleImageHeight(for: imageName, width: geometry.size.width * 0.85),
+                            cornerRadius: 3
+                        )
+                        .id("thumbnail_\(imageName)")
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                        .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 3)
                                 .stroke(Color(.systemGray5), lineWidth: 0.5)
                         )
-                        .overlay(
-                            // 仅在有描述时显示描述层
-                            Group {
-                                if let description = getImageDescription(for: imageName) {
-                                    VStack {
-                                        Spacer()
-                                        HStack {
-                                            Text(description)
-                                                .font(.caption)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 6)
-                        .foregroundColor(.white)
-                                                .background(Color.black.opacity(0.6))
-                                                .cornerRadius(8)
-                        .padding(12)
-                                            
-                                            Spacer()
-                                        }
-                                    }
-                                }
-                            }
+                    } else if let uiImage = UIImage(named: imageName) {
+                        // 内置图片资源
+                    Image(uiImage: uiImage)
+                    .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: geometry.size.width * 0.85)
+                            .frame(maxHeight: calculateSingleImageHeight(for: imageName, width: geometry.size.width * 0.85))
+                            .id("thumbnail_\(imageName)")
+                            .cornerRadius(3)
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                            .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
+                    .overlay(
+                                RoundedRectangle(cornerRadius: 3)
+                                .stroke(Color(.systemGray5), lineWidth: 0.5)
                         )
                 } else {
-                    // 如果图片不存在，显示优化的占位符
+                        // 占位图
                     generateMockImage(for: imageName)
-                        .frame(height: calculateImageHeight(for: imageName, width: geometry.size.width))
-                        .frame(maxWidth: .infinity)
-                        .cornerRadius(12)
+                            .frame(maxWidth: geometry.size.width * 0.85)
+                            .frame(height: 200)
+                            .id("thumbnail_\(imageName)")
+                            .cornerRadius(3)
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                            .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
+                                RoundedRectangle(cornerRadius: 3)
                                 .stroke(Color(.systemGray5), lineWidth: 0.5)
                         )
             }
         }
         .buttonStyle(PlainButtonStyle())
+                
+                Spacer()
+            }
         }
-        .frame(height: estimatedImageHeight(for: imageName))
+        .frame(height: calculateSingleImageHeight(for: imageName, width: (UIScreen.main.bounds.width - 40) * 0.85))
     }
     
-    // 优化的图片网格项
-    private func imageGridItem(_ imageName: String, index: Int, count: Int = 0) -> some View {
+    // 为单图计算适合的高度，保持图片原始比例但限制最大高度
+    private func calculateSingleImageHeight(for imageName: String, width: CGFloat) -> CGFloat {
+        // 用户上传的图片用固定高度
+        if imageName.contains("_image_") {
+            return 200.0 // 微信朋友圈单图高度约为200-220
+        }
+        
+        // 获取图片
+        guard let uiImage = UIImage(named: imageName) else { 
+            return 200.0 // 默认高度
+        }
+        
+        // 计算图片宽高比
+        let aspectRatio = uiImage.size.width / uiImage.size.height
+        
+        // 基于宽度和比例计算高度，保持原始比例
+        var calculatedHeight = width / aspectRatio
+        
+        // 微信朋友圈风格：限制最小和最大高度
+        calculatedHeight = min(max(calculatedHeight, 120.0), 220.0) // 微信朋友圈的高度限制
+        
+        // 根据内容类型调整高度
+        if aspectRatio > 2.0 {
+            // 超宽图片限制高度
+            calculatedHeight = min(calculatedHeight, 150.0)
+        } else if aspectRatio < 0.5 {
+            // 超窄图片提高高度
+            calculatedHeight = min(calculatedHeight, 220.0)
+        }
+        
+        return calculatedHeight
+    }
+    
+    // 微信风格的网格布局 - 适用于2-9张图片
+    private func wechatStyleGridLayout(columns: Int) -> some View {
+        GeometryReader { geometry in
+            let totalWidth = geometry.size.width
+            let spacing: CGFloat = 2 // 微信风格的小间距
+            
+            // 计算每个图片的尺寸
+            let itemWidth = (totalWidth - (spacing * CGFloat(columns - 1))) / CGFloat(columns)
+            
+            // 计算行数
+            let rows = Int(ceil(Double(post.images.count) / Double(columns)))
+            
+            VStack(spacing: spacing) {
+                ForEach(0..<rows, id: \.self) { row in
+                    HStack(spacing: spacing) {
+                        ForEach(0..<columns, id: \.self) { column in
+                            let index = row * columns + column
+                            if index < post.images.count {
                 Button(action: {
             selectedImageIndex = index
                     showImageViewer = true
             feedbackGenerator.impactOccurred(intensity: 0.5)
                 }) {
-            if let uiImage = UIImage(named: imageName) {
-                // 如果图片资源存在，则显示图片
-                Image(uiImage: uiImage)
-                        .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .cornerRadius(12)
-                    .clipped()
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color(.systemGray5), lineWidth: 0.5)
-                    )
-                    .transition(.opacity.combined(with: .scale))
-            } else {
-                // 如果图片资源不存在，则显示优化的占位图
-                generateMockImage(for: imageName)
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color(.systemGray5), lineWidth: 0.5)
-                    )
-                    .transition(.opacity)
+                                    wechatStyleImageItem(post.images[index], size: itemWidth)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            } else {
+                                // 占位，保持网格结构完整
+                                Color.clear
+                                    .frame(width: itemWidth, height: itemWidth)
+                            }
+                        }
+                    }
+                }
             }
         }
-        .buttonStyle(PlainButtonStyle())
-        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .frame(height: calculateWechatGridHeight(columns: columns))
+    }
+    
+    // 微信风格的单个图片项 - 正方形裁剪
+    private func wechatStyleImageItem(_ imageName: String, size: CGFloat) -> some View {
+        Group {
+            if imageName.contains("_image_") {
+                // 用户上传的图片
+                PostImageView(
+                    imageId: imageName,
+                    contentMode: .fill, // 使用fill以裁剪为正方形
+                    cornerRadius: 3 // 微信风格的小圆角
+                )
+                .id("thumbnail_\(imageName)")
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: 3)) // 确保内容被剪裁为圆角
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                )
+            } else if let uiImage = UIImage(named: imageName) {
+                // 内置图片
+                Image(uiImage: uiImage)
+                        .resizable()
+                    .aspectRatio(contentMode: .fill) // 使用fill以裁剪为正方形
+                    .frame(width: size, height: size)
+                    .id("thumbnail_\(imageName)")
+                    .cornerRadius(3) // 微信风格的小圆角
+                    .clipShape(RoundedRectangle(cornerRadius: 3)) // 确保内容被剪裁为圆角
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 3)
+                            .stroke(Color(.systemGray5), lineWidth: 0.5)
+                    )
+            } else {
+                // 占位图
+                generateMockImage(for: imageName)
+                    .frame(width: size, height: size)
+                    .cornerRadius(3) // 微信风格的小圆角
+                    .clipShape(RoundedRectangle(cornerRadius: 3)) // 确保内容被剪裁为圆角
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 3)
+                            .stroke(Color(.systemGray5), lineWidth: 0.5)
+                    )
+            }
+        }
+    }
+    
+    // 计算微信风格网格布局的高度
+    private func calculateWechatGridHeight(columns: Int) -> CGFloat {
+        let screenWidth = UIScreen.main.bounds.width - 40 // 考虑边距
+        let spacing: CGFloat = 2 // 微信风格的小间距
+        let itemWidth = (screenWidth - (spacing * CGFloat(columns - 1))) / CGFloat(columns)
+        
+        // 计算行数
+        let rows = Int(ceil(Double(post.images.count) / Double(columns)))
+        
+        // 计算总高度 = 行数 * 单元格高度 + (行数-1) * 间距
+        return (CGFloat(rows) * itemWidth) + (CGFloat(rows - 1) * spacing)
     }
     
     // 添加新方法：生成模拟图片
@@ -1166,115 +1322,300 @@ struct PostCardView: View {
         return min(max(estimatedHeight, 180.0), 300.0)
     }
     
-    // 两张图片布局
+    // 两张图片布局（小红书风格）
     private var twoImagesLayout: some View {
         GeometryReader { geometry in
-                HStack(spacing: 4) {
-                ForEach(0..<2, id: \.self) { index in
-                    imageGridItem(post.images[index], index: index, count: 2)
+            let totalWidth = geometry.size.width
+            let imageWidth = (totalWidth - 6) / 2 // 减去间距后平分宽度
+            
+            HStack(spacing: 6) {
+                // 左侧图片
+                Button(action: {
+                    selectedImageIndex = 0
+                    showImageViewer = true
+                    let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+                    feedbackGenerator.impactOccurred(intensity: 0.5)
+                }) {
+                    twoImageItem(post.images[0], width: imageWidth)
                 }
+                .buttonStyle(PlainButtonStyle())
+                
+                // 右侧图片
+                Button(action: {
+                    selectedImageIndex = 1
+                    showImageViewer = true
+                    let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+                    feedbackGenerator.impactOccurred(intensity: 0.5)
+                }) {
+                    twoImageItem(post.images[1], width: imageWidth)
+                }
+                .buttonStyle(PlainButtonStyle())
             }
-            .frame(height: 160) // 固定高度
         }
-        .frame(height: 160) // 确保GeometryReader不会扩展
+        .frame(height: 200) // 固定高度更美观
     }
     
-    // 三张图片布局
+    // 两图布局的单个图片项
+    private func twoImageItem(_ imageName: String, width: CGFloat) -> some View {
+        Group {
+            if imageName.contains("_image_") {
+                // 用户上传的图片
+                PostImageView(
+                    imageId: imageName,
+                    contentMode: .fill,
+                    cornerRadius: 12 // 减小圆角
+                )
+                .frame(width: width, height: 150) // 从200减小到150
+                .clipShape(RoundedRectangle(cornerRadius: 12)) // 确保内容被剪裁为圆角
+                .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3) // 增强阴影效果
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12) // 减小圆角
+                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                )
+            } else if let uiImage = UIImage(named: imageName) {
+                // 内置图片
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: width, height: 150) // 从200减小到150
+                    .cornerRadius(12) // 减小圆角
+                    .clipShape(RoundedRectangle(cornerRadius: 12)) // 确保内容被剪裁为圆角
+                    .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3) // 增强阴影效果
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12) // 减小圆角
+                            .stroke(Color(.systemGray5), lineWidth: 0.5)
+                    )
+                    .overlay(
+                        // 仅在有描述时显示描述层
+                        Group {
+                            if let description = getImageDescription(for: imageName) {
+                                VStack {
+                                    Spacer()
+                                    HStack {
+                                        Text(description)
+                                            .font(.caption)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .foregroundColor(.white)
+                                            .background(Color.black.opacity(0.6))
+                                            .cornerRadius(6)
+                                            .padding(8)
+                                        
+                                        Spacer()
+                                    }
+                                }
+                            }
+                        }
+                    )
+            } else {
+                // 占位图
+                generateMockImage(for: imageName)
+                    .frame(width: width, height: 150) // 从200减小到150
+                    .cornerRadius(12) // 减小圆角
+                    .clipShape(RoundedRectangle(cornerRadius: 12)) // 确保内容被剪裁为圆角
+                    .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3) // 增强阴影效果
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12) // 减小圆角
+                            .stroke(Color(.systemGray5), lineWidth: 0.5)
+                    )
+            }
+        }
+    }
+    
+    // 三张图片布局（小红书风格）
     private var threeImagesLayout: some View {
         GeometryReader { geometry in
             let totalWidth = geometry.size.width
-            let smallImageSize = (totalWidth * 0.33) - 2 // 右侧小图尺寸
-            let largeImageSize = (totalWidth * 0.67) - 2 // 左侧大图尺寸
+            let smallImageWidth = (totalWidth * 0.33) - 3  // 右侧小图宽度
+            let largeImageWidth = (totalWidth * 0.67) - 3  // 左侧大图宽度
+            let smallImageHeight = (largeImageWidth / 2) - 3  // 右侧小图高度
+            let largeImageHeight = largeImageWidth * 0.85  // 左侧大图高度（减小到原来的85%）
             
-            HStack(spacing: 4) {
-                // 左侧大图 - 占据左侧约2/3空间
-                imageGridItem(post.images[0], index: 0, count: 3)
-                    .frame(width: largeImageSize, height: largeImageSize)
+            HStack(spacing: 6) {
+                // 左侧大图 - 保持比例并剪裁
+                Button(action: {
+                    selectedImageIndex = 0
+                    showImageViewer = true
+                    feedbackGenerator.impactOccurred(intensity: 0.5)
+                }) {
+                    wechatStyleImageItem(post.images[0], size: largeImageWidth)
+                        .frame(width: largeImageWidth, height: largeImageHeight)
+                }
+                .buttonStyle(PlainButtonStyle())
                     .clipped()
+                .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
                 
-                // 右侧两张小图垂直排列 - 占据右侧约1/3空间
-                VStack(spacing: 4) {
-                    imageGridItem(post.images[1], index: 1, count: 3)
-                        .frame(width: smallImageSize, height: smallImageSize)
+                // 右侧两张小图垂直排列
+                VStack(spacing: 6) {
+                    Button(action: {
+                        selectedImageIndex = 1
+                        showImageViewer = true
+                        feedbackGenerator.impactOccurred(intensity: 0.5)
+                    }) {
+                        wechatStyleImageItem(post.images[1], size: smallImageWidth)
+                            .frame(width: smallImageWidth, height: smallImageHeight)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                         .clipped()
+                    .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
                     
-                    imageGridItem(post.images[2], index: 2, count: 3)
-                        .frame(width: smallImageSize, height: smallImageSize)
+                    Button(action: {
+                        selectedImageIndex = 2
+                        showImageViewer = true
+                        feedbackGenerator.impactOccurred(intensity: 0.5)
+                    }) {
+                        wechatStyleImageItem(post.images[2], size: smallImageWidth)
+                            .frame(width: smallImageWidth, height: smallImageHeight)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                         .clipped()
+                    .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
                 }
             }
-            .frame(height: largeImageSize) // 固定整体高度为大图高度
+            .frame(height: largeImageHeight)
         }
-        .frame(height: getThreeImageLayoutHeight()) // 使用固定高度代替aspectRatio
+        .frame(height: getThreeImageLayoutHeight())
     }
     
-    // 计算三张图片布局的高度
+    // 计算三张图片布局的高度 - 更精确计算
     private func getThreeImageLayoutHeight() -> CGFloat {
-        let screenWidth = UIScreen.main.bounds.width - 40 // 考虑边距
-        let largeImageSize = (screenWidth * 0.67) - 2 // 左侧大图尺寸
-        return largeImageSize // 返回大图尺寸作为整体高度
+        let screenWidth = UIScreen.main.bounds.width - 40  // 考虑边距
+        let largeImageWidth = (screenWidth * 0.67) - 3  // 左侧大图宽度
+        return largeImageWidth * 0.85  // 减小到原来的85%
     }
     
-    // 四张或更多图片布局
+    // 四张或更多图片布局（小红书风格）
     private var fourOrMoreImagesLayout: some View {
         GeometryReader { geometry in
-            VStack(spacing: 4) {
-                HStack(spacing: 4) {
-                    imageGridItem(post.images[0], index: 0, count: 4)
-                    imageGridItem(post.images[1], index: 1, count: 4)
+            let totalWidth = geometry.size.width
+            let imageSize = (totalWidth - 6) / 2 // 两列布局，计算单个图片尺寸
+            let imageHeight = imageSize * 0.85 // 减小高度至原来的85%，使图片更紧凑
+            
+            VStack(spacing: 6) {
+                // 第一行
+                HStack(spacing: 6) {
+                    // 左上角图片
+                    Button(action: {
+                        selectedImageIndex = 0
+                        showImageViewer = true
+                        let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+                        feedbackGenerator.impactOccurred(intensity: 0.5)
+                    }) {
+                        gridImageItem(post.images[0], width: imageSize, height: imageHeight)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    // 右上角图片
+                    Button(action: {
+                        selectedImageIndex = 1
+                        showImageViewer = true
+                        let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+                        feedbackGenerator.impactOccurred(intensity: 0.5)
+                    }) {
+                        gridImageItem(post.images[1], width: imageSize, height: imageHeight)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
                 
-                HStack(spacing: 4) {
-                    imageGridItem(post.images[2], index: 2, count: 4)
+                // 第二行
+                HStack(spacing: 6) {
+                    // 左下角图片
+                    Button(action: {
+                        selectedImageIndex = 2
+                        showImageViewer = true
+                        let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+                        feedbackGenerator.impactOccurred(intensity: 0.5)
+                    }) {
+                        gridImageItem(post.images[2], width: imageSize, height: imageHeight)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                     
-                    // 第四张图片（如果有更多，显示+N）
+                    // 右下角图片（如果有更多，显示+N）
+                    Button(action: {
+                        selectedImageIndex = 3
+                        showImageViewer = true
+                        let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+                        feedbackGenerator.impactOccurred(intensity: 0.5)
+                    }) {
                     ZStack {
-                        imageGridItem(post.images[3], index: 3, count: 4)
+                            gridImageItem(post.images[3], width: imageSize, height: imageHeight)
                         
                         if post.images.count > 4 {
                             // 半透明蒙版
-                            Rectangle()
-                                .fill(Color.black.opacity(0.4))
-                                .cornerRadius(10.0)
+                                RoundedRectangle(cornerRadius: 12) // 减小圆角
+                                    .fill(Color.black.opacity(0.5))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12)) // 确保蒙版也被剪裁为圆角
                             
                             // +N标识
                             VStack(spacing: 4) {
-                                Image(systemName: "photo.stack")
-                                    .font(.system(size: 22, weight: .medium))
+                                    Image(systemName: "photo.stack.fill")
+                                        .font(.system(size: 24, weight: .medium))
                                     .foregroundColor(.white)
                                 
                                 Text("+\(post.images.count - 4)")
-                                    .font(.system(size: 18, weight: .semibold))
+                                        .font(.system(size: 22, weight: .semibold))
                                     .foregroundColor(.white)
                             }
                         }
                     }
                 }
+                    .buttonStyle(PlainButtonStyle())
+                }
             }
-            .frame(height: geometry.size.width) // 保持整体为方形
         }
-        .aspectRatio(1.0, contentMode: .fit) // 确保宽高比为1:1
+        .frame(height: getGridLayoutHeight())
     }
     
-    // 根据图片数量和位置计算高度 - 用于多图布局
-    private func getImageHeight(for count: Int, index: Int) -> CGFloat {
-        switch count {
-        case 2:
-            return 160 // 两张图片等高
-        case 3:
-            if index == 0 {
-                // 大图高度，为左侧大正方形
+    // 计算网格布局的高度
+    private func getGridLayoutHeight() -> CGFloat {
                 let screenWidth = UIScreen.main.bounds.width - 40 // 考虑边距
-                return (screenWidth * 0.67) - 2
+        let imageSize = (screenWidth - 6) / 2 // 两列布局
+        let imageHeight = imageSize * 0.85 // 减小高度至原来的85%
+        return (imageHeight * 2) + 6 // 两行图片加上中间间距
+    }
+    
+    // 网格布局的单个图片项
+    private func gridImageItem(_ imageName: String, width: CGFloat, height: CGFloat) -> some View {
+        Group {
+            if imageName.contains("_image_") {
+                // 用户上传的图片
+                PostImageView(
+                    imageId: imageName,
+                    contentMode: .fill,
+                    cornerRadius: 12 // 减小圆角
+                )
+                .frame(width: width, height: height)
+                .clipShape(RoundedRectangle(cornerRadius: 12)) // 确保内容被剪裁为圆角
+                .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3) // 增强阴影效果
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12) // 减小圆角
+                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                )
+            } else if let uiImage = UIImage(named: imageName) {
+                // 内置图片
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: width, height: height)
+                    .cornerRadius(12) // 减小圆角
+                    .clipShape(RoundedRectangle(cornerRadius: 12)) // 确保内容被剪裁为圆角
+                    .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3) // 增强阴影效果
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12) // 减小圆角
+                            .stroke(Color(.systemGray5), lineWidth: 0.5)
+                    )
             } else {
-                // 右侧小图高度，为小正方形
-                let screenWidth = UIScreen.main.bounds.width - 40 // 考虑边距
-                return (screenWidth * 0.33) - 2
+                // 占位图
+                generateMockImage(for: imageName)
+                    .frame(width: width, height: height)
+                    .cornerRadius(12) // 减小圆角
+                    .clipShape(RoundedRectangle(cornerRadius: 12)) // 确保内容被剪裁为圆角
+                    .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3) // 增强阴影效果
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12) // 减小圆角
+                            .stroke(Color(.systemGray5), lineWidth: 0.5)
+                    )
             }
-        case 4:
-            return 120 // 四张图片网格布局
-        default:
-            return index < 2 ? 120 : 90 // 默认：前两张较高，后两张较矮
         }
     }
     
@@ -1286,14 +1627,7 @@ struct PostCardView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     // 评论统计信息
                     HStack {
-                        Text("评论")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(DesignSystem.Colors.secondaryText)
-                
-                        Text("(\(post.comments.count))")
-                            .font(.system(size: 13))
-                            .foregroundColor(DesignSystem.Colors.tertiaryText)
-            
+                        // 移除评论数量显示，因为底部按钮区域已有显示
                         Spacer()
                 
                         // 虚拟角色参与统计
@@ -1316,7 +1650,8 @@ struct PostCardView: View {
                             )
                         }
                     }
-                    .padding(.bottom, 6)
+                    .padding(.top, 4) // 添加顶部内边距使其更居中
+                    .padding(.bottom, 0) // 将底部内边距从8减小到0
                     
                     // 获取一条精选评论
                     if let featuredComment = getFeaturedComment() {
@@ -1741,95 +2076,12 @@ struct PostCardView: View {
     
     // 图片查看器
     private var imageViewerSheet: some View {
-        ZStack {
-            // 黑色背景
-            Color.black.ignoresSafeArea()
-            
-            // 轻微缩放效果改进图片显示
-            GeometryReader { proxy in
-                TabView(selection: $selectedImageIndex) {
-                    ForEach(0..<post.images.count, id: \.self) { index in
-                        ZoomableImageView(
-                            image: post.images[index],
-                            description: getImageDescription(for: post.images[index])
-                        )
-                        .tag(index)
-                    }
-                }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never)) // 隐藏默认分页指示器，使用自定义指示器
-                .background(Color.black)
-            }
-    
-            // 控制界面
-        VStack {
-                // 顶部控制栏
-            HStack {
-                    // 关闭按钮
-                Button(action: {
-                    showImageViewer = false
-                        feedbackGenerator.impactOccurred(intensity: 0.5)
-                }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 16.0, weight: .semibold))
-                        .foregroundColor(.white)
-                            .padding(12.0)
-                            .background(Circle().fill(Color.black.opacity(0.5)))
-                    }
-                    .padding(.leading, 16.0)
-                    
-                    Spacer()
-                    
-                    // 分享按钮
-                    Button(action: {
-                        feedbackGenerator.impactOccurred(intensity: 0.5)
-                        // 这里可以添加分享图片的功能
-                    }) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 16.0, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(12.0)
-                            .background(Circle().fill(Color.black.opacity(0.5)))
-                    }
-                    .padding(.trailing, 16.0)
-                }
-                .padding(.top, 16.0)
-                
-            Spacer()
-                
-                // 底部控制栏
-                VStack(spacing: 8) {
-                    // 自定义分页指示器
-                    if post.images.count > 1 {
-                        HStack(spacing: 6) {
-                            ForEach(0..<post.images.count, id: \.self) { index in
-                                Circle()
-                                    .fill(index == selectedImageIndex ? Color.white : Color.white.opacity(0.4))
-                                    .frame(width: 6, height: 6)
-                                    .scaleEffect(index == selectedImageIndex ? 1.3 : 1.0)
-                                    .animation(.spring(response: 0.3), value: selectedImageIndex)
-                            }
-                        }
-                        .padding(.horizontal, 12.0)
-                        .padding(.vertical, 8.0)
-                    }
-                    
-                    // 图片计数指示器
-                    if post.images.count > 1 {
-                        Text("\(selectedImageIndex + 1) / \(post.images.count)")
-                            .font(.system(size: 12.0, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12.0)
-                            .padding(.vertical, 6.0)
-                            .background(Capsule().fill(Color.black.opacity(0.5)))
-                            .padding(.bottom, 16.0)
-                    }
-                }
-                .padding(.bottom, 16.0)
-            }
-        }
-        .statusBar(hidden: true)
-        .edgesIgnoringSafeArea(.all)
-        .transition(.opacity)
+        // 使用新的微信风格图片查看器
+        WeChatStyleImageViewer(
+            images: post.images,
+            initialIndex: selectedImageIndex,
+            isPresented: $showImageViewer
+        )
     }
     
     // MARK: - 辅助函数
@@ -2076,11 +2328,11 @@ struct PostCardView: View {
             Button(action: toggleLike) {
                 HStack(spacing: 6) {
                     Image(systemName: isLiked ? "heart.fill" : "heart")
-                        .font(.system(size: 18.0))
+                        .font(.system(size: 16.0))  // 从18.0减小到16.0
                         .foregroundColor(isLiked ? DesignSystem.Colors.like : .gray)
                     
                     Text("\(post.likes)")
-                        .font(.system(size: 14.0))
+                        .font(.system(size: 13.0))  // 从14.0减小到13.0
                         .foregroundColor(isLiked ? DesignSystem.Colors.like : .gray)
                 }
                 .scaleEffect(isTapped ? 0.9 : 1.0)
@@ -2103,15 +2355,15 @@ struct PostCardView: View {
             }) {
                 HStack(spacing: 6) {
                     Image(systemName: "bubble.left")
-                        .font(.system(size: 18.0))
+                        .font(.system(size: 16.0))  // 从18.0减小到16.0
                         .foregroundColor(.gray)
                     
                     Text("\(post.comments.count)")
-                        .font(.system(size: 14.0))
+                        .font(.system(size: 13.0))  // 从14.0减小到13.0
                         .foregroundColor(.gray)
                 }
                 .padding(.horizontal, 6)
-                .padding(.vertical, 3)
+                .padding(.vertical, 2)  // 从3减小到2，使整体更紧凑
                 .background(showComments ? DesignSystem.Colors.comment.opacity(0.1) : Color.clear)
                 .cornerRadius(8)
             }
@@ -2120,7 +2372,7 @@ struct PostCardView: View {
             // 收藏按钮
             Button(action: toggleBookmark) {
                 Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
-                    .font(.system(size: 18.0))
+                    .font(.system(size: 16.0))  // 从18.0减小到16.0
                     .foregroundColor(isBookmarked ? DesignSystem.Colors.bookmark : .gray)
             }
             .buttonStyle(PlainButtonStyle())
@@ -2137,13 +2389,13 @@ struct PostCardView: View {
                 }
             }) {
                 Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 18.0))
+                    .font(.system(size: 16.0))  // 从18.0减小到16.0
                     .foregroundColor(.gray)
             }
             .buttonStyle(PlainButtonStyle())
         }
         .padding(.horizontal, 4.0)
-        .padding(.vertical, 6.0)
+        .padding(.vertical, 5.0)  // 从6.0减小到5.0，减少垂直间距
     }
     
     // 完整评论区域
@@ -2432,6 +2684,12 @@ struct PostCardView: View {
     
     // 处理不喜欢角色的逻辑
     private func dislikeCharacter() {
+        // 确保只能对AI生成的帖子执行此操作
+        guard postSource == .aiGenerated else {
+            ToastManager.shared.showToast(message: "此功能仅适用于AI生成的内容")
+            return
+        }
+        
         // 给予触感反馈
         feedbackGenerator.impactOccurred(intensity: 0.6)
         
@@ -2462,7 +2720,15 @@ struct PostCardView: View {
 // MARK: - 预览
 struct PostCardView_Previews: PreviewProvider {
     static var previews: some View {
-        PostCardView(post: ModelData.samplePosts[0])
+        Group {
+            // AI生成的帖子预览
+            PostCardView(post: ModelData.samplePosts[0], postSource: .aiGenerated)
+                .previewDisplayName("AI生成帖子")
+            
+            // 用户自己生成的帖子预览
+            PostCardView(post: ModelData.samplePosts[1], isOwnPost: true, postSource: .userGenerated)
+                .previewDisplayName("用户生成帖子")
+        }
     }
 }
 
@@ -2471,793 +2737,139 @@ struct ZoomableImageView: View {
     let image: String
     let description: String?
     
+    @State private var scale: CGFloat = 1.0
+    @State private var lastScale: CGFloat = 1.0
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
+    @State private var isDescriptionVisible: Bool = true
+    
+    var magnificationGesture: some Gesture {
+        MagnificationGesture()
+            .onChanged { value in
+                let delta = value / lastScale
+                lastScale = value
+                scale = min(max(scale * delta, 1), 4)
+                
+                // 缩放时隐藏描述
+                if scale > 1.1 {
+                    withAnimation {
+                        isDescriptionVisible = false
+                    }
+                }
+            }
+            .onEnded { _ in
+                lastScale = 1.0
+                if scale < 1.1 {
+                    withAnimation {
+                        scale = 1.0
+                        offset = .zero
+                        isDescriptionVisible = true
+                    }
+                }
+            }
+    }
+    
+    var dragGesture: some Gesture {
+        DragGesture()
+            .onChanged { value in
+                let newOffset = CGSize(
+                    width: lastOffset.width + value.translation.width,
+                    height: lastOffset.height + value.translation.height
+                )
+                offset = newOffset
+            }
+            .onEnded { _ in
+                lastOffset = offset
+                if scale < 1.1 {
+                    withAnimation {
+                        offset = .zero
+                    }
+                }
+            }
+    }
+    
+    var doubleTapGesture: some Gesture {
+        TapGesture(count: 2)
+            .onEnded {
+                withAnimation {
+                    if scale > 1.0 {
+                        scale = 1.0
+                        offset = .zero
+                        lastOffset = .zero
+                        isDescriptionVisible = true
+                            } else {
+                        scale = 2.0
+                        isDescriptionVisible = false
+                    }
+                }
+                
+                // 添加触感反馈
+                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                impactFeedback.impactOccurred()
+            }
+    }
+    
     var body: some View {
-        Text("图片查看器")
+        GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
+                // 图片展示
+                if let uiImage = UIImage(named: image) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .scaleEffect(scale)
+                        .offset(offset)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                                } else {
+                    // 如果图片不存在，显示优化的占位符
+                                ZStack {
+                        Color.gray.opacity(0.1)
+                        
+                        VStack(spacing: 12) {
+                            Image(systemName: "photo.fill")
+                                .font(.system(size: 30))
+                                .foregroundColor(.gray)
+                            
+                            Text("图片加载失败")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+                
+                // 图片描述 - 仅在有描述且描述可见时显示
+                if let description = description, !description.isEmpty, isDescriptionVisible, scale <= 1.1 {
+                    Text(description)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+            .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.black.opacity(0.6))
+                        )
+                        .padding(.bottom, 20)
+                        .transition(.opacity)
+                }
+            }
+        }
+        .gesture(SimultaneousGesture(magnificationGesture, dragGesture))
+        .gesture(doubleTapGesture)
+        .edgesIgnoringSafeArea(.all)
     }
 }
 
 // MARK: - 帖子选项按钮 (使用原生Popover)
-struct PostOptionsButton: View {
-    var post: UserPostModel? // 添加post参数
-    var onDislikeCharacter: () -> Void
-    var onReport: () -> Void
-    var onFollowCharacter: ((Bool) -> Void)? = nil // 添加关注回调
-    var isOneKeyGeneration: Bool = false // 添加是否为一键生成模式的标志
-    
-    @State private var isPressed: Bool = false
-    @State private var showMenu: Bool = false
-    @State private var isFollowed: Bool = false // 添加关注状态
-    @State private var isBlocked: Bool = false // 添加屏蔽状态
-    @State private var contentTypePercentage: Double = 0 // 内容类型占比
-    @State private var contentTypeCount: Int = 0 // 内容类型数量
-    @State private var totalContentCount: Int = 0 // 总内容数量
-    @State private var estimatedAfterCount: Int = 0 // 减少后预计数量
-    @State private var currentCount: Int = 6 // 添加当前数量变量
-    
-    // 修复isOneKeyGeneration判断逻辑
-    // 添加一个计算属性来判断是否为虫洞探索（单独生成）模式
-    private var isWormholeExploration: Bool {
-        // 简化逻辑，移除调试日志
-        return post?.username == "虫洞探索" || post?.characterID == "虫洞探索" || post?.characterID == "wormhole"
-    }
-    
-    // 添加计算属性，确保虫洞探索模式总是显示数量控制
-    private var shouldShowCountControl: Bool {
-        // 简化逻辑，虫洞共鸣帖子直接显示数值组件
-        return true
-        
-        // 以下是旧代码，已移除
-        // 详细调试日志
-        // print("🔍 shouldShowCountControl开始计算")
-        // print("🔍 - post为nil? \(post == nil ? "是" : "否")")
-        
-        // guard let post = post else {
-        //     print("🔍 - post为nil，返回false")
-        //     return false
-        // }
-        
-        // print("🔍 - post.source = \(post.source ?? "nil")")
-        // print("🔍 - post.contentType = \(post.contentType ?? "nil")")
-        // print("🔍 - post.username = \(post.username)")
-        // print("🔍 - post.characterID = \(post.characterID ?? "nil")")
-        
-        // // 判断逻辑：来源是wormhole的帖子（虫洞探索生成的）或sample的帖子（预设示例帖子）
-        // let result = post.source == "wormhole" || post.source == "sample"
-        // print("🔍 shouldShowCountControl最终结果: \(result)")
-        // return result
-    }
-    
-    // 添加计算属性，确保一键生成模式总是显示权重控制
-    private var shouldShowWeightControl: Bool {
-        // 简化逻辑，只有一键生成的帖子才显示权重控制
-        guard let post = post else {
-            return false
-        }
-        
-        // 判断逻辑：只有来源是onekey的帖子（一键生成的）才显示权重控制
-        return post.source == "onekey"
-        
-        // 以下是旧代码，已移除
-        // 详细调试日志
-        // print("🔍 shouldShowWeightControl开始计算")
-        // print("🔍 - post为nil? \(post == nil ? "是" : "否")")
-        
-        // guard let post = post else {
-        //     print("🔍 - post为nil，返回false")
-        //     return false
-        // }
-        
-        // print("🔍 - post.source = \(post.source ?? "nil")")
-        // print("🔍 - post.contentType = \(post.contentType ?? "nil")")
-        // print("🔍 - post.username = \(post.username)")
-        // print("🔍 - post.characterID = \(post.characterID ?? "nil")")
-        
-        // // 判断逻辑：只有来源是onekey的帖子（一键生成的）才显示权重控制
-        // let result = post.source == "onekey"
-        // print("🔍 shouldShowWeightControl最终结果: \(result)")
-        // return result
-    }
-    
-    private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
-    
-    var body: some View {
-        Button(action: {
-            withAnimation(.spring(response: 0.2)) {
-                isPressed = true
-                feedbackGenerator.impactOccurred(intensity: 0.2)
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                withAnimation(.spring(response: 0.15)) {
-                    isPressed = false
-                }
-                showMenu = true
-            }
-        }) {
-            ZStack {
-                if isPressed {
-                    Circle()
-                        .fill(Color(.systemGray5).opacity(0.5))
-                        .frame(width: 28, height: 28)
-                }
-                
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 15.0, weight: .medium))
-                    .foregroundColor(DesignSystem.Colors.secondaryText)
-            }
-            .frame(width: 28, height: 28)
-            .contentShape(Circle())
-        }
-        .buttonStyle(PlainButtonStyle())
-        .popover(isPresented: $showMenu, arrowEdge: .top) {
-            VStack(spacing: 0) {
-                // 关注角色按钮 - 根据关注状态显示不同UI
-                Button(action: {
-                    showMenu = false
-                    
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        // 切换关注状态
-                        isFollowed.toggle()
-                        HapticFeedbackManager.shared.menuSelection()
-                        
-                        // 使用回调通知外部状态变化
-                        onFollowCharacter?(isFollowed)
-                        
-                        // 显示操作反馈
-                        ToastManager.shared.showToast(
-                            message: isFollowed ? "已关注「\(post?.username ?? "该角色")」" : "已取消关注"
-                        )
-                    }
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: isFollowed ? "person.badge.minus" : "person.badge.plus")
-                            .font(.system(size: 12))
-                            .foregroundColor(isFollowed ? Color.red.opacity(0.7) : Color.primaryColor)
-                            .frame(width: 16, alignment: .center)
-                        
-                        Spacer()
-                        
-                        Text(isFollowed ? "取消关注" : "关注角色")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(DesignSystem.Colors.secondaryText)
-                            .padding(.trailing, 4)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 12)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PlainButtonStyle())
-                
-                Divider()
-                    .frame(width: 110)
-                
-                // 屏蔽此角色按钮
-                Button(action: {
-                    showMenu = false
-                    
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        // 切换屏蔽状态
-                        isBlocked.toggle()
-                        HapticFeedbackManager.shared.menuSelection()
-                        
-                        // 调用屏蔽回调
-                        onDislikeCharacter()
-                        
-                        // 显示操作反馈
-                        ToastManager.shared.showToast(
-                            message: isBlocked ? "已屏蔽「\(post?.username ?? "该角色")」" : "已取消屏蔽"
-                        )
-                        
-                        // 更新本地存储
-                        updateBlockedCharacters(post?.characterID ?? post?.username ?? "", isBlocked: isBlocked)
-                    }
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: isBlocked ? "eye.slash.fill" : "eye.slash")
-                            .font(.system(size: 12))
-                            .foregroundColor(isBlocked ? Color.red.opacity(0.7) : Color.orange.opacity(0.8))
-                            .frame(width: 16, alignment: .center)
-                        
-                        Spacer()
-                        
-                        Text(isBlocked ? "已屏蔽角色" : "屏蔽此角色")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(DesignSystem.Colors.secondaryText)
-                            .padding(.trailing, 4)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 12)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PlainButtonStyle())
-                
-                Divider()
-                    .frame(width: 110)
-                
-                // 根据模式显示不同的功能
-                if shouldShowWeightControl {
-                    // 一键生成模式：显示减少此类内容功能
-                    Button(action: {
-                        // 不再关闭菜单
-                        // showMenu = false
-                        
-                        // 直接执行减少/恢复操作
-                        if let contentTypeString = post?.contentType,
-                           let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) {
-                            // 检查当前权重，如果为0则恢复为100%
-                            let currentWeight = ContentTypeWeightManager.shared.getWeight(for: contentType)
-                            
-                            if currentWeight <= 0.01 {
-                                // 权重接近0时，恢复为100%
-                                ContentTypeWeightManager.shared.resetContentType(contentType)
-                                
-                                // 显示操作反馈
-                                ToastManager.shared.showToast(
-                                    message: "已恢复「\(contentTypeString)」类型内容权重"
-                                )
-                            } else {
-                                // 正常减少权重
-                                ContentTypeWeightManager.shared.reduceContentType(contentType)
-                                
-                                // 显示操作反馈
-                                ToastManager.shared.showToast(
-                                    message: "已减少「\(contentTypeString)」类型内容"
-                                )
-                            }
-                            
-                            // 更新UI数据
-                            updateContentTypePercentage()
-                            updateContentStats()
-                            
-                            // 触觉反馈
-                            HapticFeedbackManager.shared.notifySuccess()
-                        }
-                    }) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            // 第一行：图标 + 文字 - 与上面的选项保持一致
-                            HStack(spacing: 4) {
-                                Image(systemName: contentTypePercentage <= 1 ? "arrow.clockwise" : "circle.slash")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(contentTypePercentage <= 1 ? Color.blue.opacity(0.7) : Color.green.opacity(0.7))
-                                    .frame(width: 16, alignment: .center)
-                                
-                                Spacer()
-                                
-                                Text(contentTypePercentage <= 1 ? "恢复此类内容" : "减少此类内容")
-                                    .font(.system(size: 14, weight: .regular))
-                                    .foregroundColor(DesignSystem.Colors.secondaryText)
-                                    .padding(.trailing, 4)
-                            }
-                            
-                            // 第二行：进度条 - 居中显示
-                            HStack(alignment: .center, spacing: 4) {
-                                Spacer()
-                                
-                                // 进度条
-                                ZStack(alignment: .leading) {
-                                    // 背景条
-                                    Capsule()
-                                        .fill(Color.gray.opacity(0.2))
-                                        .frame(height: 4)
-                                    
-                                    // 前景条 - 最终正确版本
-                                    Capsule()
-                                        .fill(contentTypePercentage <= 1 ? Color.blue : Color.green)
-                                        .frame(width: min(97, max(0, contentTypePercentage)) * 0.01 * 97, height: 4)
-                                }
-                                .frame(width: 97)
-                                
-                                // 百分比文本
-                                Text("\(Int(contentTypePercentage))%")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(DesignSystem.Colors.secondaryText)
-                                    .frame(width: 30, alignment: .trailing)
-                            }
-                            
-                            // 第三行：当前占比和减少后预计 - 靠右对齐，缩小间距
-                            HStack(spacing: 1) {
-                                Spacer()
-                                
-                                Text("当前占比：")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(DesignSystem.Colors.tertiaryText)
-                                
-                                Text("\(contentTypeCount)/\(totalContentCount)篇")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(Color.black.opacity(0.8))
-                                
-                                Text("减少后")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(DesignSystem.Colors.tertiaryText)
-                                    .padding(.leading, 2)
-                                
-                                Text("\(estimatedAfterCount)篇")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(Color.red.opacity(0.9))
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 12)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .onAppear {
-                        // 更新内容类型百分比和统计数据
-                        updateContentTypePercentage()
-                        updateContentStats()
-                    }
-                } else if shouldShowCountControl {
-                    // 单独生成模式：显示调整生成数量功能
-                    VStack(alignment: .trailing, spacing: 8) {
-                        // 第一行：图标 + 文字
-                        HStack(spacing: 4) {
-                            Image(systemName: "text.badge.plus")
-                                .font(.system(size: 12))
-                                .foregroundColor(Color(red: 90/255, green: 140/255, blue: 230/255).opacity(0.75))
-                                .frame(width: 16, alignment: .center)
-                            
-                            Spacer()
-                            
-                            Text("调整生成数量")
-                                .font(.system(size: 14, weight: .regular))
-                                .foregroundColor(DesignSystem.Colors.secondaryText)
-                                .padding(.trailing, 4)
-                        }
-                        
-                        // 第二行：加减按钮和数量显示
-                        HStack(alignment: .center, spacing: 8) {
-                            Spacer()
-                                .frame(width: 22)
-                            
-                            // 减号按钮 - 使用Button组件替代点击手势
-                            Button(action: {
-                                print("🔴🔴🔴 减号按钮被点击 - Button action触发")
-                                if currentCount > 1 {
-                                    print("🔴 减号按钮被点击 - 条件通过")
-                                    decreaseCount()
-                                } else {
-                                    print("⚠️ 减号按钮被点击 - 但当前数量已是最小值: \(currentCount)")
-                                }
-                            }) {
-                                ZStack {
-                                    Circle()
-                                        .fill(currentCount > 1 ? 
-                                              Color(red: 90/255, green: 140/255, blue: 230/255).opacity(0.12) : 
-                                              Color.gray.opacity(0.08))
-                                        .frame(width: 26, height: 26)
-                                    
-                                    Image(systemName: "minus")
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(currentCount > 1 ? 
-                                                        Color(red: 90/255, green: 140/255, blue: 230/255).opacity(0.9) : 
-                                                        Color.gray.opacity(0.4))
-                                }
-                            }
-                            .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
-                            
-                            // 数量显示
-                            Text("\(currentCount)")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(DesignSystem.Colors.primaryText)
-                                .frame(width: 30, alignment: .center)
-                            
-                            // 加号按钮 - 使用Button组件替代点击手势
-                            Button(action: {
-                                print("🔵🔵🔵 加号按钮被点击 - Button action触发")
-                                if currentCount < 12 {
-                                    print("🔵 加号按钮被点击 - 条件通过")
-                                    increaseCount()
-                                } else {
-                                    print("⚠️ 加号按钮被点击 - 但当前数量已是最大值: \(currentCount)")
-                                }
-                            }) {
-                                ZStack {
-                                    Circle()
-                                        .fill(currentCount < 12 ? 
-                                              Color(red: 90/255, green: 140/255, blue: 230/255).opacity(0.12) : 
-                                              Color.gray.opacity(0.08))
-                                        .frame(width: 26, height: 26)
-                                    
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(currentCount < 12 ? 
-                                                        Color(red: 90/255, green: 140/255, blue: 230/255).opacity(0.9) : 
-                                                        Color.gray.opacity(0.4))
-                                }
-                            }
-                            .buttonStyle(ScaleButtonStyle(scaleAmount: 0.92))
-                            
-                            Text("篇")
-                                .font(.system(size: 14))
-                                .foregroundColor(DesignSystem.Colors.secondaryText)
-                        }
-                        
-                        // 第三行：提示文本
-                        HStack {
-                            Spacer()
-                                .frame(width: 22)
-                            
-                            Text("范围：1-12篇")
-                                .font(.system(size: 10))
-                                .foregroundColor(DesignSystem.Colors.tertiaryText)
-                                .padding(.trailing, 4)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 12)
-                    .contentShape(Rectangle())
-                    .onAppear {
-                        // 确保显示菜单时加载当前数量设置
-                        loadCurrentCount()
-                        print("📊 调整生成数量菜单显示，当前数量: \(currentCount)")
-                    }
-                }
-            }
-            .frame(width: 170)
-            .background(
-                ZStack {
-                    // 磨砂玻璃背景
-                    if #available(iOS 15.0, *) {
-                        UltraVisualEffectView(blurStyle: .systemMaterial)
-                    } else {
-                        Color(.systemBackground)
-                    }
-                }
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .presentationCompactAdaptation(.none)
-        }
-        // 适配iOS 16及以上版本
-        .if16Available {
-            $0.presentationCompactAdaptation(.none)
-               .presentationBackgroundInteraction(.enabled)
-               .presentationCornerRadius(8)
-               .shadowVisibility(.hidden)
-        }
-        .onAppear {
-            // 检查是否已关注该角色
-            checkIfFollowed()
-            // 检查是否已屏蔽该角色
-            checkIfBlocked()
-            // 加载当前生成数量设置
-            loadCurrentCount()
-        }
-    }
-    
-    // 检查是否已关注该角色
-    private func checkIfFollowed() {
-        guard let post = post else { return }
-        
-        // 获取当前用户关注的角色列表
-        let characterID = post.characterID ?? post.username
-        let followedCharacters = UserDefaults.standard.stringArray(forKey: "FollowedCharacters") ?? []
-        
-        // 更新关注状态
-        isFollowed = followedCharacters.contains(characterID)
-    }
-    
-    // 检查是否已屏蔽该角色
-    private func checkIfBlocked() {
-        guard let post = post else { return }
-        
-        // 获取当前用户屏蔽的角色列表
-        let characterID = post.characterID ?? post.username
-        let blockedCharacters = UserDefaults.standard.stringArray(forKey: "BlockedCharacters") ?? []
-        
-        // 更新屏蔽状态
-        isBlocked = blockedCharacters.contains(characterID)
-    }
-    
-    // 加载当前生成数量设置
-    private func loadCurrentCount() {
-        guard let post = post,
-              let contentTypeString = post.contentType,
-              let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) else {
-            currentCount = 6
-            return
-        }
-        currentCount = ExplorationCountManager.shared.getCount(for: contentType)
-    }
-    
-    // 增加生成数量
-    private func increaseCount() {
-        print("🔼🔼🔼 尝试增加生成数量，当前值: \(currentCount)")
-        
-        // 调试：检查post是否为nil
-        if post == nil {
-            print("⚠️⚠️⚠️ 严重错误: post为nil")
-            return
-        }
-        
-        // 调试：检查contentType
-        if let contentTypeString = post?.contentType {
-            print("📌📌📌 内容类型字符串: \(contentTypeString)")
-            
-            if let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) {
-                print("✅✅✅ 成功获取ContentType: \(contentType)")
-                
-                // 调用管理器增加数量
-                let newCount = ExplorationCountManager.shared.increaseCount(for: contentType)
-                print("📈📈📈 增加后的新数量: \(newCount)")
-                
-                // 更新UI显示的数值
-                withAnimation(.spring(response: 0.3)) {
-                    currentCount = newCount
-                }
-                
-                // 提供触觉反馈
-                print("👆👆👆 触发触觉反馈")
-                HapticFeedbackManager.shared.lightImpact()
-                
-                // 显示提示
-                print("🗣️🗣️🗣️ 显示Toast提示")
-                ToastManager.shared.showToast(message: "已设置为生成\(currentCount)条内容")
-                
-                print("✅✅✅ 增加成功：\(contentTypeString) 类型现在生成 \(currentCount) 条内容")
-            } else {
-                print("⚠️⚠️⚠️ 错误: 无法从字符串创建ContentType: \(contentTypeString)")
-                // 尝试直接使用字符串作为ContentType
-                handleContentTypeDirectly(contentTypeString, isIncrease: true)
-            }
-        } else {
-            print("⚠️⚠️⚠️ 错误: post.contentType为nil")
-            // 当contentType为nil时，尝试从其他属性推断内容类型
-            inferContentTypeAndIncrease()
-        }
-    }
-    
-    // 减少生成数量
-    private func decreaseCount() {
-        print("🔽🔽🔽 尝试减少生成数量，当前值: \(currentCount)")
-        
-        // 调试：检查post是否为nil
-        if post == nil {
-            print("⚠️⚠️⚠️ 严重错误: post为nil")
-            return
-        }
-        
-        // 调试：检查contentType
-        if let contentTypeString = post?.contentType {
-            print("📌📌📌 内容类型字符串: \(contentTypeString)")
-            
-            if let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) {
-                print("✅✅✅ 成功获取ContentType: \(contentType)")
-                
-                // 调用管理器减少数量
-                let newCount = ExplorationCountManager.shared.decreaseCount(for: contentType)
-                print("📉📉📉 减少后的新数量: \(newCount)")
-                
-                // 更新UI显示的数值
-                withAnimation(.spring(response: 0.3)) {
-                    currentCount = newCount
-                }
-                
-                // 提供触觉反馈
-                print("👆👆👆 触发触觉反馈")
-                HapticFeedbackManager.shared.lightImpact()
-                
-                // 显示提示
-                print("🗣️🗣️🗣️ 显示Toast提示")
-                ToastManager.shared.showToast(message: "已设置为生成\(currentCount)条内容")
-                
-                print("✅✅✅ 减少成功：\(contentTypeString) 类型现在生成 \(currentCount) 条内容")
-            } else {
-                print("⚠️⚠️⚠️ 错误: 无法从字符串创建ContentType: \(contentTypeString)")
-                // 尝试直接使用字符串作为ContentType
-                handleContentTypeDirectly(contentTypeString, isIncrease: false)
-            }
-        } else {
-            print("⚠️⚠️⚠️ 错误: post.contentType为nil")
-            // 当contentType为nil时，尝试从其他属性推断内容类型
-            inferContentTypeAndDecrease()
-        }
-    }
-    
-    // 新增：当contentType为nil时，尝试从其他属性推断内容类型并增加数量
-    private func inferContentTypeAndIncrease() {
-        print("🔍 尝试推断内容类型并增加数量")
-        
-        // 默认使用"resonance"作为内容类型
-        let defaultContentType = ContentGeneratorService.ContentType.resonance
-        
-        // 调用管理器增加数量
-        let newCount = ExplorationCountManager.shared.increaseCount(for: defaultContentType)
-        
-        // 更新UI显示的数值
-        withAnimation(.spring(response: 0.3)) {
-            currentCount = newCount
-        }
-        
-        // 提供触觉反馈
-        HapticFeedbackManager.shared.lightImpact()
-        
-        // 显示提示
-        ToastManager.shared.showToast(message: "已设置为生成\(currentCount)条内容")
-        
-        print("✅ 使用默认类型增加成功：当前生成 \(currentCount) 条内容")
-    }
-    
-    // 新增：当contentType为nil时，尝试从其他属性推断内容类型并减少数量
-    private func inferContentTypeAndDecrease() {
-        print("🔍 尝试推断内容类型并减少数量")
-        
-        // 默认使用"resonance"作为内容类型
-        let defaultContentType = ContentGeneratorService.ContentType.resonance
-        
-        // 调用管理器减少数量
-        let newCount = ExplorationCountManager.shared.decreaseCount(for: defaultContentType)
-        
-        // 更新UI显示的数值
-        withAnimation(.spring(response: 0.3)) {
-            currentCount = newCount
-        }
-        
-        // 提供触觉反馈
-        HapticFeedbackManager.shared.lightImpact()
-        
-        // 显示提示
-        ToastManager.shared.showToast(message: "已设置为生成\(currentCount)条内容")
-        
-        print("✅ 使用默认类型减少成功：当前生成 \(currentCount) 条内容")
-    }
-    
-    // 新增：直接处理contentType字符串
-    private func handleContentTypeDirectly(_ contentTypeString: String, isIncrease: Bool) {
-        print("🔧 尝试直接处理内容类型字符串: \(contentTypeString)")
-        
-        // 创建一个临时的ContentType枚举实例
-        let tempContentType = ContentGeneratorService.ContentType.resonance
-        
-        // 根据操作类型调用相应方法
-        let newCount: Int
-        if isIncrease {
-            newCount = ExplorationCountManager.shared.increaseCount(for: tempContentType)
-            print("📈 增加后的新数量: \(newCount)")
-        } else {
-            newCount = ExplorationCountManager.shared.decreaseCount(for: tempContentType)
-            print("📉 减少后的新数量: \(newCount)")
-        }
-        
-        // 更新UI显示的数值
-        withAnimation(.spring(response: 0.3)) {
-            currentCount = newCount
-        }
-        
-        // 提供触觉反馈
-        HapticFeedbackManager.shared.lightImpact()
-        
-        // 显示提示
-        ToastManager.shared.showToast(message: "已设置为生成\(currentCount)条内容")
-        
-        print("✅ 直接处理成功：\(contentTypeString) 类型现在生成 \(currentCount) 条内容")
-    }
-    
-    // 更新内容类型占比
-    private func updateContentTypePercentage() {
-        guard let post = post,
-              let contentTypeString = post.contentType,
-              let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) else {
-            contentTypePercentage = 100 // 默认显示100%
-            return
-        }
-        
-        // 使用ContentTypeWeightManager获取权重并转换为百分比
-        let weight = ContentTypeWeightManager.shared.getWeight(for: contentType)
-        contentTypePercentage = weight * 100
-        
-        print("📊 [PostOptionsButton] 内容类型[\(contentTypeString)]权重: \(weight), 显示百分比: \(contentTypePercentage)%")
-    }
-    
-    // 更新内容统计数据
-    private func updateContentStats() {
-        guard let post = post,
-              let contentTypeString = post.contentType,
-              let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) else {
-            contentTypeCount = 0
-            totalContentCount = 12 // 总内容数固定为12篇
-            estimatedAfterCount = 0
-            return
-        }
-        
-        // 从ContentTypeWeightManager获取实际权重
-        let weight = ContentTypeWeightManager.shared.getWeight(for: contentType)
-        
-        // 添加调试输出
-        print("📊 [OptionsMenuView] 内容类型[\(contentTypeString)]当前权重: \(weight), 百分比: \(weight * 100)%")
-        
-        // 总内容数固定为12篇（一轮推荐的总数）
-        totalContentCount = 12
-        
-        // 计算当前类型的内容数量
-        // 使用基于权重的分级计算方法
-        if weight >= 1.0 {
-            // 默认权重（未减少过）
-            contentTypeCount = 3 // 基础数量
-        } else if weight >= 0.5 {
-            // 减少一次后的权重 (降低50%)
-            contentTypeCount = 2
-        } else if weight >= 0.25 {
-            // 减少两次后的权重 (降低75%)
-            contentTypeCount = 1
-        } else if weight > 0 {
-            // 极低权重但不为0
-            contentTypeCount = 1 // 最低保留1篇
-        } else {
-            // 权重为0，不显示任何内容
-            contentTypeCount = 0 // 完全不显示
-        }
-        
-        // 计算减少后预计数量（基于当前权重再次减少）
-        // 当前权重乘以0.5就是下一次减少后的权重
-        let nextWeight = max(0.0, weight * 0.5) // 最低可以为0
-        
-        // 添加调试输出
-        print("📉 [OptionsMenuView] 内容类型[\(contentTypeString)]下次权重: \(nextWeight), 百分比: \(nextWeight * 100)%")
-        
-        if nextWeight >= 0.5 {
-            estimatedAfterCount = 2
-        } else if nextWeight >= 0.25 {
-            estimatedAfterCount = 1
-        } else if nextWeight > 0 {
-            estimatedAfterCount = 1 // 最低保留1篇
-        } else {
-            estimatedAfterCount = 0 // 完全不显示
-        }
-        
-        // 添加调试输出
-        print("📈 [OptionsMenuView] 内容类型[\(contentTypeString)]当前数量: \(contentTypeCount), 减少后预计: \(estimatedAfterCount)")
-    }
-    
-    // 更新关注的角色列表
-    private func updateFollowedCharacters(_ characterID: String, isFollowed: Bool) {
-        // 获取当前关注列表
-        var followedCharacters = UserDefaults.standard.stringArray(forKey: "FollowedCharacters") ?? []
-        
-        if isFollowed {
-            // 添加到关注列表（避免重复）
-            if !followedCharacters.contains(characterID) {
-                followedCharacters.append(characterID)
-            }
-        } else {
-            // 从关注列表中移除
-            followedCharacters.removeAll { $0 == characterID }
-        }
-        
-        // 保存更新后的列表
-        UserDefaults.standard.set(followedCharacters, forKey: "FollowedCharacters")
-    }
-    
-    // 更新屏蔽的角色列表
-    private func updateBlockedCharacters(_ characterID: String, isBlocked: Bool) {
-        // 获取当前屏蔽列表
-        var blockedCharacters = UserDefaults.standard.stringArray(forKey: "BlockedCharacters") ?? []
-        
-        if isBlocked {
-            // 添加到屏蔽列表（避免重复）
-            if !blockedCharacters.contains(characterID) {
-                blockedCharacters.append(characterID)
-            }
-        } else {
-            // 从屏蔽列表中移除
-            blockedCharacters.removeAll { $0 == characterID }
-        }
-        
-        // 保存更新后的列表
-        UserDefaults.standard.set(blockedCharacters, forKey: "BlockedCharacters")
-    }
-    
-    // 获取内容类型百分比的方法
-    private func getContentTypePercentage(for type: ContentGeneratorService.ContentType) -> Double {
-        // 使用新添加的getWeightPercentage方法
-        return ContentTypeWeightManager.shared.getWeightPercentage(for: type)
+
+// 添加重置内容类型权重的方法到ContentTypeWeightManager类中
+extension ContentTypeWeightManager {
+    func resetContentType(_ type: ContentGeneratorService.ContentType) {
+        // 重置权重为1.0（100%）
+        setWeight(1.0, for: type)
     }
 }
 
-// 适配iOS 16+的阴影修饰符扩展
+// 添加View扩展，实现if16Available方法
 extension View {
     @ViewBuilder
     func if16Available<Content: View>(_ transform: (Self) -> Content) -> some View {
@@ -3278,10 +2890,11 @@ extension View {
     }
 }
 
-// 添加重置内容类型权重的方法到ContentTypeWeightManager类中
-extension ContentTypeWeightManager {
-    func resetContentType(_ type: ContentGeneratorService.ContentType) {
-        // 重置权重为1.0（100%）
-        setWeight(1.0, for: type)
+// 添加HapticFeedbackManager扩展，实现lightTap方法
+extension HapticFeedbackManager {
+    func lightTap() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred(intensity: 0.3)
     }
 }
+
