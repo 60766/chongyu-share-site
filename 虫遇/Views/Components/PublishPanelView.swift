@@ -694,13 +694,13 @@ struct PublishPanelView: View {
         }
         
         // 延迟一段时间后显示发布成功提示
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { // 从0.5秒缩短为0.2秒
             withAnimation {
                 isShowingSuccessToast = true
             }
             
-            // 3秒后关闭提示
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            // 1秒后关闭提示（从3秒缩短为1秒）
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 withAnimation {
                     isShowingSuccessToast = false
                 }
@@ -1183,7 +1183,7 @@ struct PublishPanelView: View {
         let potentialRespondingCharacters: [CharacterModel]
         
         var body: some View {
-            VStack(spacing: 15) {
+            VStack(spacing: 10) { // 减少整体间距，从12减到10
                 // 成功标志与标题
                 SuccessHeaderView()
                 
@@ -1192,13 +1192,14 @@ struct PublishPanelView: View {
                 
                 // 分隔线
                 DividerView()
+                    .padding(.vertical, 1) // 进一步减少分隔线上下的间距，从2减到1
                 
                 // 潜在回复角色
                 CharacterResponseView(characters: potentialRespondingCharacters)
             }
-            .padding(.vertical, 20)
+            .padding(.vertical, 30) // 进一步增加卡片上下的内边距，从25增加到30
             .padding(.horizontal, 20)
-            .frame(width: 220, height: 220) // 使用固定的正方形尺寸
+            .frame(width: 220, height: 220) // 保持固定的正方形尺寸
             .background(GlassCardBackground())
             .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 4)
         }
@@ -1207,7 +1208,7 @@ struct PublishPanelView: View {
     // 成功标题组件
     private struct SuccessHeaderView: View {
         var body: some View {
-            VStack(spacing: 6) { // 减少间距，从10降到6
+            VStack(spacing: 5) { // 进一步减少间距，从6减到5
                 ZStack {
                     // 背景圆形
                     Circle()
@@ -1224,27 +1225,68 @@ struct PublishPanelView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(Color.green.opacity(0.9))
                 }
-                .padding(.bottom, 2) // 微调图标与文字的间距
+                .padding(.bottom, 1) // 微调图标与文字的间距，从2减到1
                 
                 Text("发布成功！")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.primary.opacity(0.9))
-                    .padding(.top, 2) // 微调文字位置
+                    .padding(.top, 1) // 微调文字位置，从2减到1
             }
-            .padding(.top, 6) // 整体下移一点
+            .padding(.top, 8) // 整体下移一点，从6增加到8
+        }
+    }
+    
+    // 角色回复组件
+    private struct CharacterResponseView: View {
+        let characters: [CharacterModel]
+        
+        var body: some View {
+            VStack(spacing: 6) { // 减少间距，从8减到6
+                Text("这些角色可能会回复：")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary.opacity(0.7)) // 降低不透明度，使颜色更浅
+                    .padding(.top, -3) // 向上移动更多，从-2改为-3
+                
+                HStack(spacing: 14) {
+                    ForEach(characters.prefix(3)) { character in
+                        CharacterBubbleView(character: character)
+                    }
+                }
+            }
         }
     }
     
     // 内容预览组件
     private struct ContentPreviewView: View {
         let text: String
+        @State private var randomPoetryText: String = ""
+        
+        // 诗意文本集合
+        private let poetryTexts = [
+            "这一刻，已穿越时空",
+            "期待心灵的对话即将开始...",
+            "已将这份心情投入时间长河",
+            "思绪如光，穿越时空的边界",
+            "心声已启程",
+            "一个瞬间，连接过去与未来",
+            "此刻的感悟，将与星辰共存",
+            "心声已远航",
+            "思绪如风，穿梭于古今之间",
+            "虫洞相遇",
+            "思绪如帆，扬起时空的航程",
+            "心念微动，时空已为之共振"
+        ]
         
         var body: some View {
-            Text(text.isEmpty ? "这一刻，已穿越时空" : text)
+            Text(randomPoetryText)
                 .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+                .foregroundColor(.secondary)
                 .lineLimit(1)
                 .frame(maxWidth: 160)
+                .onAppear {
+                    // 在视图出现时随机选择一句诗意文本
+                    randomPoetryText = poetryTexts.randomElement() ?? "这一刻，已穿越时空"
+                }
         }
     }
     
@@ -1258,32 +1300,12 @@ struct PublishPanelView: View {
         }
     }
     
-    // 角色回复组件
-    private struct CharacterResponseView: View {
-        let characters: [CharacterModel]
-        
-        var body: some View {
-                VStack(spacing: 8) {
-                    Text("这些角色可能会回复：")
-                    .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
-                    .padding(.top, -2) // 向上移动一点
-                
-                HStack(spacing: 14) {
-                    ForEach(characters.prefix(3)) { character in
-                        CharacterBubbleView(character: character)
-                    }
-                }
-            }
-        }
-    }
-    
     // 角色气泡组件
     private struct CharacterBubbleView: View {
         let character: CharacterModel
         
         var body: some View {
-                                VStack(spacing: 4) {
+            VStack(spacing: 4) {
                 Circle()
                     .fill(character.category.color.opacity(0.2))
                     .frame(width: 34, height: 34)
@@ -1292,14 +1314,14 @@ struct PublishPanelView: View {
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(character.category.color)
                     )
-                                    
-                                    Text(character.name)
+                
+                Text(character.name)
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                                        .lineLimit(1)
-                                }
-                            }
-                        }
+                    .foregroundColor(.secondary.opacity(0.65)) // 降低不透明度，使颜色更浅
+                    .lineLimit(1)
+            }
+        }
+    }
     
     // 玻璃卡片背景
     private struct GlassCardBackground: View {
