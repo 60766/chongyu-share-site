@@ -2,6 +2,20 @@ import SwiftUI
 import Combine
 import UIKit
 
+// 添加位置偏好键
+struct PublishImagePosition: Equatable {
+    let id: Int
+    let frame: CGRect
+}
+
+struct PublishImagePositionPreferenceKey: PreferenceKey {
+    static var defaultValue: [PublishImagePosition] = []
+    
+    static func reduce(value: inout [PublishImagePosition], nextValue: () -> [PublishImagePosition]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
 /**
  * 内容发布面板视图
  * 用于发布内容、选择互动角色
@@ -43,6 +57,14 @@ struct PublishPanelView: View {
     @State private var potentialRespondingCharacters: [CharacterModel] = []
     /// 文本编辑器焦点状态
     @FocusState private var isTextEditorFocused: Bool
+    
+    // 拖拽相关状态
+    @State private var isDragging: Bool = false
+    @State private var draggedIndex: Int? = nil
+    @State private var currentDropIndex: Int? = nil
+    @State private var dragOffset: CGSize = .zero
+    @State private var imagePositions: [Int: CGRect] = [:] // 存储每个图片的实际位置
+    @State private var needsPositionRefresh: Bool = false // 标记是否需要刷新位置
     
     // 时代选项
     private let eras = ["现代", "古代", "中世纪", "文艺复兴", "启蒙运动", "未来"]
@@ -277,10 +299,81 @@ struct PublishPanelView: View {
                                         .scaledToFill()
                                         .frame(width: 55, height: 55)
                                         .clipShape(RoundedRectangle(cornerRadius: 6))
+                                        .overlay(
+                                            // 拖拽激活时显示的高亮效果
+                                            ZStack {
+                                                if isDragging && currentDropIndex == index && draggedIndex != index {
+                                                    RoundedRectangle(cornerRadius: 6)
+                                                        .stroke(Color.primaryColor, lineWidth: 2)
+                                                        .background(
+                                                            RoundedRectangle(cornerRadius: 6)
+                                                                .fill(Color.primaryColor.opacity(0.15))
+                                                        )
+                                                }
+                                            }
+                                            .animation(.easeInOut(duration: 0.2), value: currentDropIndex)
+                                        )
+                                        .background(
+                                            GeometryReader { geometry in
+                                                Color.clear
+                                                    .preference(key: PublishImagePositionPreferenceKey.self, value: [PublishImagePosition(id: index, frame: geometry.frame(in: .named("dragContainer")))])
+                                            }
+                                        )
+                                        .contentShape(Rectangle())
+                                        .opacity(isDragging && index == draggedIndex ? 0.0 : 1.0) // 拖动时原图透明
                                         .onTapGesture {
                                             previewingImageIndex = index
                                             showingFullScreenImage = true
                                         }
+                                        // 使用长按手势
+                                        .onLongPressGesture(minimumDuration: 0.2, maximumDistance: 50) {
+                                            // 长按结束后的动作（空实现，因为我们在onPressingChanged中处理）
+                                        } onPressingChanged: { isPressing in
+                                            if isPressing {
+                                                // 长按开始 - 使用Task避免在视图更新期间修改状态
+                                                Task { @MainActor in
+                                                    self.isDragging = true
+                                                    self.draggedIndex = index
+                                                    
+                                                    // 触觉反馈
+                                                    let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                                    impactFeedback.impactOccurred()
+                                                }
+                                            }
+                                        }
+                                        // 添加拖拽手势
+                                        .highPriorityGesture(
+                                            DragGesture(minimumDistance: 0, coordinateSpace: .named("dragContainer"))
+                                                .onChanged { value in
+                                                    // 只有在拖拽模式下才处理拖拽
+                                                    if isDragging && draggedIndex == index {
+                                                        // 更新拖拽偏移 - 使用Task避免在视图更新期间修改状态
+                                                        Task { @MainActor in
+                                                            self.dragOffset = value.translation
+                                                            
+                                                            // 使用拖拽位置检测目标
+                                                            findDropTarget(dragPosition: value.location)
+                                                        }
+                                                    }
+                                                }
+                                                .onEnded { value in
+                                                    // 只有在拖拽模式下才处理拖拽结束
+                                                    if isDragging && draggedIndex == index {
+                                                        // 执行交换
+                                                        performSwap()
+                                                        
+                                                        // 重置拖拽状态 - 使用Task避免在视图更新期间修改状态
+                                                        Task { @MainActor in
+                                                            withAnimation(.spring()) {
+                                                                self.dragOffset = .zero
+                                                                isDragging = false
+                                                                draggedIndex = nil
+                                                                currentDropIndex = nil
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                        )
                                     
                                     // 极简删除按钮
                                     Button(action: {
@@ -301,10 +394,32 @@ struct PublishPanelView: View {
                                             )
                                     }
                                     .padding(2)
+                                    .opacity(isDragging && index == draggedIndex ? 0.0 : 1.0) // 拖动时隐藏删除按钮
                                 }
+                                .id("image-\(index)-\(selectedImages.count)") // 确保在图片数量变化时重新创建视图
                             }
                         }
                         .padding(.vertical, 1)
+                    }
+                    .coordinateSpace(name: "dragContainer")
+                    
+                    // 拖拽中的图片 - 放在ZStack最上层
+                    if isDragging, let draggedIndex = draggedIndex, draggedIndex < selectedImages.count {
+                        Image(uiImage: selectedImages[draggedIndex])
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 55, height: 55)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .shadow(color: Color.black.opacity(0.3), radius: 6, x: 0, y: 3)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.primaryColor, lineWidth: 2)
+                            )
+                            .position(
+                                x: (imagePositions[draggedIndex]?.midX ?? 0) + dragOffset.width,
+                                y: (imagePositions[draggedIndex]?.midY ?? 0) + dragOffset.height
+                            )
+                            .zIndex(100) // 确保在最上层
                     }
                 }
                 .padding(.vertical, 6)
@@ -317,6 +432,39 @@ struct PublishPanelView: View {
                             .combined(with: AnyTransition.opacity)
                     )
                 )
+                .onPreferenceChange(PublishImagePositionPreferenceKey.self) { positions in
+                    // 使用Task避免在视图更新期间修改状态
+                    Task { @MainActor in
+                        // 更新所有图片位置
+                        for position in positions {
+                            imagePositions[position.id] = position.frame
+                        }
+                        
+                        // 检查是否所有图片都有位置信息
+                        var allPositionsCollected = true
+                        for index in 0..<selectedImages.count {
+                            if imagePositions[index] == nil {
+                                allPositionsCollected = false
+                                break
+                            }
+                        }
+                        
+                        if !allPositionsCollected && !needsPositionRefresh {
+                            // 如果有缺失的位置，标记需要刷新
+                            needsPositionRefresh = true
+                        }
+                    }
+                }
+                .onChange(of: needsPositionRefresh) { _, newValue in
+                    if newValue {
+                        // 当标记为需要刷新位置时，使用Task执行刷新
+                        Task { @MainActor in
+                            // 延迟一点时间确保UI已更新
+                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
+                            refreshImagePositions()
+                        }
+                    }
+                }
             }
             
             energyIndicatorView
@@ -340,11 +488,6 @@ struct PublishPanelView: View {
         
         // 尝试使用系统级方法激活第一响应者
         UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
-        
-        // 延迟再次尝试激活焦点
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            self.isTextEditorFocused = true
-        }
     }
     
     // 底部工具栏 - 优化设计
@@ -751,36 +894,120 @@ struct PublishPanelView: View {
     
     // 隐藏键盘
     private func hideKeyboard() {
-        isTextEditorFocused = false  // 使用FocusState取消焦点
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
     
     // 多次尝试激活文本输入焦点
     private func activateTextInputWithMultipleAttempts() {
-        // 标记TextDisplayView中使用的UIKitTextView组件应该被激活
-        UIKitTextView.globalShouldActivate = true
+        // 尝试多次激活，提高成功率
+        forceActivateTextInput()
         
-        // 第一次尝试立即激活
-        print("第一次尝试激活输入框")
-        isTextEditorFocused = true
-        
-        // 延迟激活，确保文本视图已被正确渲染
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            print("第二次尝试激活输入框")
-            self.isTextEditorFocused = true
+        // 延迟再次尝试
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.forceActivateTextInput()
+        }
+    }
+    
+    // 查找拖拽目标 - 简化逻辑，使用最接近的图片作为目标
+    private func findDropTarget(dragPosition: CGPoint) {
+        // 使用Task避免在视图更新期间修改状态
+        Task { @MainActor in
+            // 使用存储的实际图片位置进行碰撞检测
+            guard let draggedIndex = self.draggedIndex else { return }
             
-            // 告诉系统当前第一响应者应该变为文本输入视图
-            UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
+            // 如果没有收集到任何图片位置，不进行检测
+            if imagePositions.isEmpty {
+                return
+            }
             
-            // 触感反馈，增强用户体验
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+            // 找出最近的图片
+            var closestIndex: Int? = nil
+            var closestDistance: CGFloat = .infinity
             
-            // 第三次尝试，延迟500ms
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                print("第三次尝试激活输入框")
-                self.isTextEditorFocused = true
-                UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
+            for (index, frame) in imagePositions {
+                // 跳过被拖拽的图片
+                if index == draggedIndex {
+                    continue
+                }
+                
+                // 计算到图片中心的距离
+                let centerX = frame.midX
+                let centerY = frame.midY
+                let distance = sqrt(pow(centerX - dragPosition.x, 2) + pow(centerY - dragPosition.y, 2))
+                
+                // 更新最近的图片
+                if distance < closestDistance {
+                    closestDistance = distance
+                    closestIndex = index
+                }
+            }
+            
+            // 设置距离阈值（图片宽度的1倍）
+            let distanceThreshold: CGFloat = 55
+            
+            // 如果有足够近的图片，更新当前目标
+            if let targetIndex = closestIndex, closestDistance < distanceThreshold {
+                if currentDropIndex != targetIndex {
+                    // 触觉反馈
+                    let feedback = UIImpactFeedbackGenerator(style: .light)
+                    feedback.impactOccurred()
+                    
+                    // 更新目标
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        self.currentDropIndex = targetIndex
+                    }
+                }
+            } else {
+                // 如果没有足够近的图片，清除当前目标
+                if currentDropIndex != nil {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        self.currentDropIndex = nil
+                    }
+                }
+            }
+        }
+    }
+    
+    // 执行图片交换
+    private func performSwap() {
+        Task { @MainActor in
+            guard let draggedIndex = self.draggedIndex,
+                  let dropIndex = self.currentDropIndex,
+                  draggedIndex != dropIndex else { 
+                return 
+            }
+            
+            // 执行交换 - 只交换两张图片的位置
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                // 交换图片
+                selectedImages.swapAt(draggedIndex, dropIndex)
+            }
+            
+            // 交换成功触觉反馈
+            let feedback = UIImpactFeedbackGenerator(style: .heavy)
+            feedback.impactOccurred()
+            
+            // 延迟刷新位置信息，确保UI已更新
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3秒
+            self.needsPositionRefresh = true
+        }
+    }
+    
+    // 刷新所有图片位置
+    private func refreshImagePositions() {
+        // 使用Task避免在视图更新期间修改状态
+        Task { @MainActor in
+            // 强制触发布局更新
+            self.needsPositionRefresh = false
+            
+            // 重新收集所有图片位置
+            for index in 0..<self.selectedImages.count {
+                if self.imagePositions[index] == nil {
+                    // 如果有缺失的位置，稍后再次尝试刷新
+                    try? await Task.sleep(nanoseconds: 200_000_000) // 0.2秒
+                    self.needsPositionRefresh = true
+                    break
+                }
             }
         }
     }
