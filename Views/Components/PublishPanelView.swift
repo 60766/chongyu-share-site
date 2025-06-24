@@ -340,4 +340,152 @@ struct PublishPanelView: View {
             characters: selectedCharacters
         )
     }
+    
+    // 成功提示视图
+    private var successToastView: some View {
+        SuccessToastCard(
+            contentText: contentText,
+            potentialRespondingCharacters: potentialRespondingCharacters
+        )
+    }
+    
+    // 将复杂视图拆分为更小的组件
+    private struct SuccessToastCard: View {
+        let contentText: String
+        let potentialRespondingCharacters: [CharacterModel]
+        
+        var body: some View {
+            VStack(spacing: 18) {
+                // 成功标志与标题
+                SuccessHeaderView()
+                
+                // 内容预览
+                ContentPreviewView(text: contentText)
+                
+                // 分隔线
+                DividerView()
+                
+                // 潜在回复角色
+                CharacterResponseView(characters: potentialRespondingCharacters)
+            }
+            .padding(.vertical, 22)
+            .padding(.horizontal, 20)
+            .frame(width: 240)
+            .background(GlassCardBackground())
+            .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 4)
+        }
+    }
+    
+    // 成功标题组件
+    private struct SuccessHeaderView: View {
+        var body: some View {
+            VStack(spacing: 12) {
+                Circle()
+                    .fill(Color.green.opacity(0.9))
+                    .frame(width: 42, height: 42)
+                    .overlay(
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.white)
+                    )
+                
+                Text("发布成功！")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary.opacity(0.9))
+            }
+        }
+    }
+    
+    // 内容预览组件
+    private struct ContentPreviewView: View {
+        let text: String
+        
+        var body: some View {
+            Text(text.isEmpty ? "aas" : text)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .frame(maxWidth: 180)
+        }
+    }
+    
+    // 分隔线组件
+    private struct DividerView: View {
+        var body: some View {
+            Rectangle()
+                .fill(Color.gray.opacity(0.15))
+                .frame(height: 1)
+                .padding(.horizontal, 16)
+        }
+    }
+    
+    // 角色回复组件
+    private struct CharacterResponseView: View {
+        let characters: [CharacterModel]
+        
+        var body: some View {
+            VStack(spacing: 10) {
+                Text("这些角色可能会回复：")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 16) {
+                    ForEach(characters.prefix(3)) { character in
+                        CharacterBubbleView(character: character)
+                    }
+                }
+            }
+        }
+    }
+    
+    // 角色气泡组件
+    private struct CharacterBubbleView: View {
+        let character: CharacterModel
+        
+        var body: some View {
+            VStack(spacing: 5) {
+                Circle()
+                    .fill(character.category.color.opacity(0.2))
+                    .frame(width: 38, height: 38)
+                    .overlay(
+                        Text(String(character.name.prefix(1)))
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(character.category.color)
+                    )
+                
+                Text(character.name)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+        }
+    }
+    
+    // 玻璃卡片背景
+    private struct GlassCardBackground: View {
+        var body: some View {
+            ZStack {
+                // 磨砂玻璃效果
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(.ultraThinMaterial)
+                
+                // 微妙边框
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
+                    
+                // 顶部微妙高光
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [Color.white.opacity(0.3), Color.white.opacity(0)]),
+                            startPoint: .top,
+                            endPoint: .center
+                        )
+                    )
+                    .mask(
+                        RoundedRectangle(cornerRadius: 18)
+                    )
+            }
+        }
+    }
 } 

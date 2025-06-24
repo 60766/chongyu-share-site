@@ -335,12 +335,12 @@ struct CommentInputView: View {
         HStack(alignment: .center, spacing: 12) {
             // 头像
             Circle()
-                .fill(character.color.opacity(0.2))
+                .fill(character.category.color.opacity(0.2))
                 .frame(width: 32, height: 32)
                 .overlay(
                     Text(String(character.name.prefix(1)))
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(character.color)
+                        .foregroundColor(character.category.color)
                 )
             
             // 名称和类别
@@ -348,7 +348,7 @@ struct CommentInputView: View {
                 Text(character.name)
                     .font(.system(size: 14, weight: .medium))
                 
-                Text(character.category)
+                Text(character.category.displayName)
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }
@@ -369,7 +369,7 @@ struct CommentInputView: View {
         } else {
             return characters.filter {
                 $0.name.lowercased().contains(mentionSearchText.lowercased()) ||
-                $0.category.lowercased().contains(mentionSearchText.lowercased())
+                $0.category.displayName.lowercased().contains(mentionSearchText.lowercased())
             }
         }
     }
@@ -404,26 +404,31 @@ struct CommentInputView: View {
         generator.impactOccurred()
     }
     
-    // 虚拟人物数据
-    private let characters = [
-        CommentCharacter(id: "einstein", name: "爱因斯坦", category: "科学家", color: .blue),
-        CommentCharacter(id: "shakespeare", name: "莎士比亚", category: "文学家", color: .purple),
-        CommentCharacter(id: "davinci", name: "达芬奇", category: "艺术家", color: .green),
-        CommentCharacter(id: "confucius", name: "孔子", category: "哲学家", color: .orange),
-        CommentCharacter(id: "curie", name: "居里夫人", category: "科学家", color: .indigo),
-        CommentCharacter(id: "newton", name: "牛顿", category: "科学家", color: .blue),
-        CommentCharacter(id: "socrates", name: "苏格拉底", category: "哲学家", color: .teal),
-        CommentCharacter(id: "mozart", name: "莫扎特", category: "音乐家", color: .pink),
-        CommentCharacter(id: "libai", name: "李白", category: "诗人", color: .orange)
-    ]
-    
     // 评论角色结构体 - 改名避免与CharacterModel冲突
     struct CommentCharacter: Identifiable {
         let id: String
         let name: String
-        let category: String
-        let color: Color
+        let category: CharacterCategory
+        
+        init(id: String, name: String, category: CharacterCategory) {
+            self.id = id
+            self.name = name
+            self.category = category
+        }
     }
+    
+    // 虚拟人物数据
+    private let characters = [
+        CommentCharacter(id: "einstein", name: "爱因斯坦", category: .scientist),
+        CommentCharacter(id: "shakespeare", name: "莎士比亚", category: .writer),
+        CommentCharacter(id: "davinci", name: "达芬奇", category: .artist),
+        CommentCharacter(id: "confucius", name: "孔子", category: .philosopher),
+        CommentCharacter(id: "curie", name: "居里夫人", category: .scientist),
+        CommentCharacter(id: "newton", name: "牛顿", category: .scientist),
+        CommentCharacter(id: "socrates", name: "苏格拉底", category: .philosopher),
+        CommentCharacter(id: "mozart", name: "莫扎特", category: .writer),
+        CommentCharacter(id: "libai", name: "李白", category: .writer)
+    ]
 }
 
 // 预览

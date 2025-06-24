@@ -65,6 +65,8 @@ struct PublishPanelView: View {
     @State private var dragOffset: CGSize = .zero
     @State private var imagePositions: [Int: CGRect] = [:] // 存储每个图片的实际位置
     @State private var needsPositionRefresh: Bool = false // 标记是否需要刷新位置
+    @State private var showDragHint: Bool = false // 显示拖拽提示
+    @State private var dragHintOpacity: Double = 0 // 拖拽提示透明度
     
     // 时代选项
     private let eras = ["现代", "古代", "中世纪", "文艺复兴", "启蒙运动", "未来"]
@@ -197,17 +199,21 @@ struct PublishPanelView: View {
         .overlay(
             ZStack {
                 if isShowingSuccessToast {
-                    // 半透明背景蒙版
-                    Color.black.opacity(0.2)
-                        .edgesIgnoringSafeArea(.all)
-                        .transition(.opacity)
-                    
-                    VStack {
-                        Spacer()
+                    // 移除半透明背景蒙版，只保留卡片
                         successToastView
-                        Spacer().frame(height: 80)
-                    }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .transition(
+                            .asymmetric(
+                                insertion: .scale(scale: 0.9, anchor: .center)
+                                    .combined(with: .opacity),
+                                removal: .scale(scale: 0.95)
+                                    .combined(with: .opacity)
+                            )
+                        )
+                        .onTapGesture {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                isShowingSuccessToast = false
+                            }
+                        }
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isShowingSuccessToast)
@@ -219,16 +225,7 @@ struct PublishPanelView: View {
         VStack(spacing: 12) {
             // 输入区域
             VStack {
-                EnhancedTextDisplayView(
-                    text: $contentText,
-                    placeholder: "写下你想和历史人物交流的内容...",
-                    minHeight: UIScreen.main.bounds.height * 0.15,
-                    maxHeight: UIScreen.main.bounds.height * 0.25,
-                    cornerRadius: 16,
-                    borderColor: Color.primaryColor,
-                    backgroundColor: .white,
-                    showDebugInfo: false
-                )
+                contentEditorView
                 .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
             }
             .frame(height: UIScreen.main.bounds.height * 0.2)
@@ -288,92 +285,152 @@ struct PublishPanelView: View {
             
             // 图片预览区域
             if !selectedImages.isEmpty {
+                imagePreviewArea
+            }
+            
+            energyIndicatorView
+                .padding(.top, 2)
+            
+            characterRecommendationView
+                .padding(.top, 2)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedImages.count)
+    }
+    
+    // 内容编辑器视图
+    private var contentEditorView: some View {
+        EnhancedTextDisplayView(
+            text: $contentText,
+            placeholder: "写下你想和历史人物交流的内容...",
+            minHeight: UIScreen.main.bounds.height * 0.15,
+            maxHeight: UIScreen.main.bounds.height * 0.25,
+            cornerRadius: 16,
+            borderColor: Color.primaryColor,
+            backgroundColor: .white,
+            showDebugInfo: false
+        )
+    }
+    
+    // 图片预览区域
+    private var imagePreviewArea: some View {
                 VStack(alignment: .leading, spacing: 4) {
                     // 图片预览滚动区 - 极简设计
+            ZStack {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             ForEach(0..<selectedImages.count, id: \.self) { index in
+                            imagePreviewItem(index: index)
+                        }
+                    }
+                    .padding(.vertical, 1)
+                }
+                .coordinateSpace(name: "dragContainer")
+                
+                // 拖拽中的图片 - 使用ZStack覆盖
+                if isDragging, let draggedIndex = draggedIndex, draggedIndex < selectedImages.count {
+                    draggedImageView(index: draggedIndex)
+                }
+            }
+            .frame(height: 65) // 固定高度，防止拖拽时布局变化
+            
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
+        .transition(
+            AnyTransition.asymmetric(
+                insertion: AnyTransition.scale(scale: 0.95, anchor: .center)
+                    .combined(with: AnyTransition.opacity),
+                removal: AnyTransition.scale(scale: 0.95, anchor: .center)
+                    .combined(with: AnyTransition.opacity)
+            )
+        )
+        .onPreferenceChange(PublishImagePositionPreferenceKey.self) { positions in
+            // 使用Task避免在视图更新期间修改状态
+            Task { @MainActor in
+                // 更新所有图片位置
+                for position in positions {
+                    imagePositions[position.id] = position.frame
+                }
+                
+                // 检查是否所有图片都有位置信息
+                var allPositionsCollected = true
+                for index in 0..<selectedImages.count {
+                    if imagePositions[index] == nil {
+                        allPositionsCollected = false
+                        break
+                    }
+                }
+                
+                if !allPositionsCollected && !needsPositionRefresh {
+                    // 如果有缺失的位置，标记需要刷新
+                    needsPositionRefresh = true
+                }
+            }
+        }
+        .onChange(of: needsPositionRefresh) { _, newValue in
+            if newValue {
+                // 当标记为需要刷新位置时，使用Task执行刷新
+                Task { @MainActor in
+                    // 延迟一点时间确保UI已更新
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
+                    refreshImagePositions()
+                }
+            }
+        }
+    }
+    
+    // 单个图片预览项
+    private func imagePreviewItem(index: Int) -> some View {
                                 ZStack(alignment: .topTrailing) {
                                     Image(uiImage: selectedImages[index])
                                         .resizable()
                                         .scaledToFill()
                                         .frame(width: 55, height: 55)
                                         .clipShape(RoundedRectangle(cornerRadius: 6))
-                                        .overlay(
-                                            // 拖拽激活时显示的高亮效果
-                                            ZStack {
-                                                if isDragging && currentDropIndex == index && draggedIndex != index {
-                                                    RoundedRectangle(cornerRadius: 6)
-                                                        .stroke(Color.primaryColor, lineWidth: 2)
-                                                        .background(
-                                                            RoundedRectangle(cornerRadius: 6)
-                                                                .fill(Color.primaryColor.opacity(0.15))
-                                                        )
-                                                }
-                                            }
-                                            .animation(.easeInOut(duration: 0.2), value: currentDropIndex)
-                                        )
-                                        .background(
-                                            GeometryReader { geometry in
-                                                Color.clear
-                                                    .preference(key: PublishImagePositionPreferenceKey.self, value: [PublishImagePosition(id: index, frame: geometry.frame(in: .named("dragContainer")))])
-                                            }
-                                        )
-                                        .contentShape(Rectangle())
-                                        .opacity(isDragging && index == draggedIndex ? 0.0 : 1.0) // 拖动时原图透明
+                .overlay(
+                    // 拖拽激活时显示的高亮效果
+                    ZStack {
+                        if isDragging && currentDropIndex == index && draggedIndex != index {
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.primaryColor, lineWidth: 2)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.primaryColor.opacity(0.15))
+                                )
+                        }
+                    }
+                    .animation(.easeInOut(duration: 0.2), value: currentDropIndex)
+                )
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(key: PublishImagePositionPreferenceKey.self, value: [PublishImagePosition(id: index, frame: geometry.frame(in: .named("dragContainer")))])
+                    }
+                )
+                .contentShape(Rectangle())
+                .opacity(isDragging && index == draggedIndex ? 0.0 : 1.0) // 拖动时原图透明
                                         .onTapGesture {
                                             previewingImageIndex = index
                                             showingFullScreenImage = true
                                         }
-                                        // 使用长按手势
-                                        .onLongPressGesture(minimumDuration: 0.2, maximumDistance: 50) {
-                                            // 长按结束后的动作（空实现，因为我们在onPressingChanged中处理）
-                                        } onPressingChanged: { isPressing in
-                                            if isPressing {
-                                                // 长按开始 - 使用Task避免在视图更新期间修改状态
-                                                Task { @MainActor in
-                                                    self.isDragging = true
-                                                    self.draggedIndex = index
-                                                    
-                                                    // 触觉反馈
-                                                    let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                                                    impactFeedback.impactOccurred()
-                                                }
-                                            }
-                                        }
-                                        // 添加拖拽手势
-                                        .highPriorityGesture(
-                                            DragGesture(minimumDistance: 0, coordinateSpace: .named("dragContainer"))
-                                                .onChanged { value in
-                                                    // 只有在拖拽模式下才处理拖拽
-                                                    if isDragging && draggedIndex == index {
-                                                        // 更新拖拽偏移 - 使用Task避免在视图更新期间修改状态
-                                                        Task { @MainActor in
-                                                            self.dragOffset = value.translation
-                                                            
-                                                            // 使用拖拽位置检测目标
-                                                            findDropTarget(dragPosition: value.location)
-                                                        }
-                                                    }
-                                                }
-                                                .onEnded { value in
-                                                    // 只有在拖拽模式下才处理拖拽结束
-                                                    if isDragging && draggedIndex == index {
-                                                        // 执行交换
-                                                        performSwap()
-                                                        
-                                                        // 重置拖拽状态 - 使用Task避免在视图更新期间修改状态
-                                                        Task { @MainActor in
-                                                            withAnimation(.spring()) {
-                                                                self.dragOffset = .zero
-                                                                isDragging = false
-                                                                draggedIndex = nil
-                                                                currentDropIndex = nil
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                        )
+                .onLongPressGesture(minimumDuration: 1.0) {
+                    // 长按手势结束时的动作
+                    // 为空，因为我们使用onChanged来处理状态变化
+                } onPressingChanged: { isPressing in
+                    if isPressing {
+                        // 长按开始 - 使用Task避免在视图更新期间修改状态
+                        Task { @MainActor in
+                            self.isDragging = true
+                            self.draggedIndex = index
+                            
+                            // 触觉反馈
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                            impactFeedback.impactOccurred()
+                        }
+                    }
+                }
                                     
                                     // 极简删除按钮
                                     Button(action: {
@@ -394,88 +451,54 @@ struct PublishPanelView: View {
                                             )
                                     }
                                     .padding(2)
-                                    .opacity(isDragging && index == draggedIndex ? 0.0 : 1.0) // 拖动时隐藏删除按钮
-                                }
-                                .id("image-\(index)-\(selectedImages.count)") // 确保在图片数量变化时重新创建视图
-                            }
-                        }
-                        .padding(.vertical, 1)
-                    }
-                    .coordinateSpace(name: "dragContainer")
-                    
-                    // 拖拽中的图片 - 放在ZStack最上层
-                    if isDragging, let draggedIndex = draggedIndex, draggedIndex < selectedImages.count {
-                        Image(uiImage: selectedImages[draggedIndex])
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 55, height: 55)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .shadow(color: Color.black.opacity(0.3), radius: 6, x: 0, y: 3)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.primaryColor, lineWidth: 2)
-                            )
-                            .position(
-                                x: (imagePositions[draggedIndex]?.midX ?? 0) + dragOffset.width,
-                                y: (imagePositions[draggedIndex]?.midY ?? 0) + dragOffset.height
-                            )
-                            .zIndex(100) // 确保在最上层
-                    }
-                }
-                .padding(.vertical, 6)
-                .padding(.horizontal, 4)
-                .transition(
-                    AnyTransition.asymmetric(
-                        insertion: AnyTransition.scale(scale: 0.95, anchor: .center)
-                            .combined(with: AnyTransition.opacity),
-                        removal: AnyTransition.scale(scale: 0.95, anchor: .center)
-                            .combined(with: AnyTransition.opacity)
-                    )
-                )
-                .onPreferenceChange(PublishImagePositionPreferenceKey.self) { positions in
-                    // 使用Task避免在视图更新期间修改状态
-                    Task { @MainActor in
-                        // 更新所有图片位置
-                        for position in positions {
-                            imagePositions[position.id] = position.frame
-                        }
-                        
-                        // 检查是否所有图片都有位置信息
-                        var allPositionsCollected = true
-                        for index in 0..<selectedImages.count {
-                            if imagePositions[index] == nil {
-                                allPositionsCollected = false
-                                break
-                            }
-                        }
-                        
-                        if !allPositionsCollected && !needsPositionRefresh {
-                            // 如果有缺失的位置，标记需要刷新
-                            needsPositionRefresh = true
-                        }
-                    }
-                }
-                .onChange(of: needsPositionRefresh) { _, newValue in
-                    if newValue {
-                        // 当标记为需要刷新位置时，使用Task执行刷新
-                        Task { @MainActor in
-                            // 延迟一点时间确保UI已更新
-                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
-                            refreshImagePositions()
-                        }
-                    }
-                }
-            }
-            
-            energyIndicatorView
-                .padding(.top, 2)
-            
-            characterRecommendationView
-                .padding(.top, 2)
+            .opacity(isDragging && index == draggedIndex ? 0.0 : 1.0) // 拖动时隐藏删除按钮
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedImages.count)
+        .id("image-\(index)-\(selectedImages.count)") // 确保在图片数量变化时重新创建视图
+    }
+    
+    // 拖拽中的图片视图
+    private func draggedImageView(index: Int) -> some View {
+        Image(uiImage: selectedImages[index])
+            .resizable()
+            .scaledToFill()
+            .frame(width: 55, height: 55)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .shadow(color: Color.black.opacity(0.3), radius: 6, x: 0, y: 3)
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.primaryColor, lineWidth: 2)
+            )
+            .position(
+                x: (imagePositions[index]?.midX ?? 0) + dragOffset.width,
+                y: (imagePositions[index]?.midY ?? 0) + dragOffset.height
+            )
+            .gesture(
+                DragGesture(minimumDistance: 5, coordinateSpace: .named("dragContainer"))
+                    .onChanged { value in
+                        // 更新拖拽偏移 - 使用Task避免在视图更新期间修改状态
+                        Task { @MainActor in
+                            self.dragOffset = value.translation
+                            
+                            // 使用拖拽位置检测目标
+                            findDropTarget(dragPosition: value.location)
+                        }
+                    }
+                    .onEnded { value in
+                        // 执行交换
+                        performSwap()
+                        
+                        // 重置拖拽状态 - 使用Task避免在视图更新期间修改状态
+                        Task { @MainActor in
+                            withAnimation(.spring()) {
+                                self.dragOffset = .zero
+                                isDragging = false
+                                draggedIndex = nil
+                                currentDropIndex = nil
+                            }
+                        }
+                    }
+            )
+            .zIndex(100) // 确保在最上层
     }
     
     // 强制激活文本输入框
@@ -1148,63 +1171,250 @@ struct PublishPanelView: View {
     
     // 成功提示视图
     private var successToastView: some View {
-        VStack(spacing: 16) {
-            // 成功标题
-            HStack {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                    .font(.system(size: 20))
+        SuccessToastCard(
+            contentText: contentText,
+            potentialRespondingCharacters: potentialRespondingCharacters
+        )
+    }
+    
+    // 将复杂视图拆分为更小的组件
+    private struct SuccessToastCard: View {
+        let contentText: String
+        let potentialRespondingCharacters: [CharacterModel]
+        
+        var body: some View {
+            VStack(spacing: 15) {
+                // 成功标志与标题
+                SuccessHeaderView()
+                
+                // 内容预览
+                ContentPreviewView(text: contentText)
+                
+                // 分隔线
+                DividerView()
+                
+                // 潜在回复角色
+                CharacterResponseView(characters: potentialRespondingCharacters)
+            }
+            .padding(.vertical, 20)
+            .padding(.horizontal, 20)
+            .frame(width: 220, height: 220) // 使用固定的正方形尺寸
+            .background(GlassCardBackground())
+            .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 4)
+        }
+    }
+    
+    // 成功标题组件
+    private struct SuccessHeaderView: View {
+        var body: some View {
+            VStack(spacing: 6) { // 减少间距，从10降到6
+                ZStack {
+                    // 背景圆形
+                    Circle()
+                        .fill(Color.green.opacity(0.15))
+                        .frame(width: 40, height: 40)
+                    
+                    // 圆环设计
+                    Circle()
+                        .stroke(Color.green.opacity(0.9), lineWidth: 2.5)
+                        .frame(width: 40, height: 40)
+                    
+                    // 对号图标 - 稍微调小一点
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color.green.opacity(0.9))
+                }
+                .padding(.bottom, 2) // 微调图标与文字的间距
                 
                 Text("发布成功！")
-                    .font(.headline)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary.opacity(0.9))
+                    .padding(.top, 2) // 微调文字位置
             }
-            
-            // 内容预览 - 如果有文本则显示文本，如果只有图片则显示图片数量
-            if !contentText.isEmpty {
-                Text(contentText)
-                    .font(.system(size: 14))
+            .padding(.top, 6) // 整体下移一点
+        }
+    }
+    
+    // 内容预览组件
+    private struct ContentPreviewView: View {
+        let text: String
+        
+        var body: some View {
+            Text(text.isEmpty ? "这一刻，已穿越时空" : text)
+                .font(.system(size: 13))
                     .foregroundColor(.secondary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-            } else if !selectedImages.isEmpty {
-                Text("已发布 \(selectedImages.count) 张图片")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            
-            // 潜在回复角色
-            if !potentialRespondingCharacters.isEmpty {
+                .lineLimit(1)
+                .frame(maxWidth: 160)
+        }
+    }
+    
+    // 分隔线组件
+    private struct DividerView: View {
+        var body: some View {
+            Rectangle()
+                .fill(Color.gray.opacity(0.15))
+                .frame(height: 1)
+                .padding(.horizontal, 12)
+        }
+    }
+    
+    // 角色回复组件
+    private struct CharacterResponseView: View {
+        let characters: [CharacterModel]
+        
+        var body: some View {
                 VStack(spacing: 8) {
                     Text("这些角色可能会回复：")
-                        .font(.system(size: 14))
+                    .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 16) {
-                            ForEach(potentialRespondingCharacters.prefix(5)) { character in
-                                VStack(spacing: 4) {
-                                    characterAvatar(for: character)
-                                        .frame(width: 40, height: 40)
-                                    
-                                    Text(character.name)
-                                        .font(.system(size: 12))
-                                        .lineLimit(1)
-                                }
-                            }
-                        }
+                    .padding(.top, -2) // 向上移动一点
+                
+                HStack(spacing: 14) {
+                    ForEach(characters.prefix(3)) { character in
+                        CharacterBubbleView(character: character)
                     }
                 }
             }
         }
-        .padding(20)
-        .background(
+    }
+    
+    // 角色气泡组件
+    private struct CharacterBubbleView: View {
+        let character: CharacterModel
+        
+        var body: some View {
+                                VStack(spacing: 4) {
+                Circle()
+                    .fill(character.category.color.opacity(0.2))
+                    .frame(width: 34, height: 34)
+                    .overlay(
+                        Text(String(character.name.prefix(1)))
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(character.category.color)
+                    )
+                                    
+                                    Text(character.name)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+    
+    // 玻璃卡片背景
+    private struct GlassCardBackground: View {
+        var body: some View {
+            ZStack {
+                // 基础背景 - 磨砂玻璃效果
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemGray6).opacity(0.85))
+                
+                // 主光谱渐变层 - 精确复刻图二光谱效果
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: Color.white.opacity(0.85), location: 0.0),
+                                .init(color: Color.white.opacity(0.75), location: 0.4),
+                                .init(color: Color.white.opacity(0.7), location: 0.6),
+                                .init(color: Color.white.opacity(0.65), location: 1.0)
+                            ]),
+                            startPoint: .bottomLeading,
+                            endPoint: .topTrailing
+                        )
+                    )
+                
+                // 彩虹光谱效果 - 右上方
+                GeometryReader { geometry in
+                    let width = geometry.size.width
+                    let height = geometry.size.height
+                    
+                    // 右上角彩虹光谱区域 (从右上角向内辐射)
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color(red: 0.76, green: 0.12, blue: 0.96), // 紫色
+                                    Color(red: 0.49, green: 0.33, blue: 0.94), // 蓝紫色
+                                    Color(red: 0.17, green: 0.52, blue: 0.96), // 蓝色
+                                    Color(red: 0.18, green: 0.69, blue: 0.85), // 青色
+                                    Color(red: 0.31, green: 0.78, blue: 0.47), // 绿色
+                                    Color(red: 0.82, green: 0.72, blue: 0.33), // 黄色
+                                    Color(red: 0.96, green: 0.45, blue: 0.33), // 橙色
+                                    Color(red: 0.92, green: 0.26, blue: 0.21)  // 红色
+                                ]),
+                                startPoint: .topTrailing,
+                                endPoint: .bottomLeading
+                            )
+                        )
+                        .mask(
+                            RadialGradient(
+                                gradient: Gradient(colors: [
+                                    Color.black.opacity(0.6),
+                                    Color.black.opacity(0.0)
+                                ]),
+                                center: .topTrailing,
+                                startRadius: 0,
+                                endRadius: width * 0.8
+                            )
+                        )
+                        .blendMode(.overlay)
+                        .opacity(0.85)
+                
+                    // 左下角白光光束 (精确复制图二的白色光线)
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: height))
+                        path.addLine(to: CGPoint(x: width * 0.4, y: height * 0.6))
+                        path.addLine(to: CGPoint(x: width * 0.4 + 1, y: height * 0.6 + 1))
+                        path.addLine(to: CGPoint(x: 0, y: height + 1))
+                    }
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.white.opacity(0.95),
+                                Color.white.opacity(0.6),
+                                Color.white.opacity(0.2)
+                            ]),
+                            startPoint: .bottomLeading,
+                            endPoint: .topTrailing
+                        )
+                    )
+                    .blur(radius: 2)
+                    .blendMode(.overlay)
+                }
+                
+                // 边框效果 - 精致的高光边缘
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-        )
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.15), radius: 12, y: 6)
-        .padding(.horizontal, 40)
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.white.opacity(0.9),
+                                Color.white.opacity(0.5),
+                                Color.white.opacity(0.2)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.5
+                    )
+                
+                // 顶部微妙高光 - 模拟真实玻璃反光
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.white.opacity(0.4),
+                                Color.white.opacity(0.0)
+                            ]),
+                            startPoint: .top,
+                            endPoint: .center
+                        )
+                    )
+                    .mask(
+                        RoundedRectangle(cornerRadius: 16)
+                    )
+            }
+        }
     }
     
     /**
