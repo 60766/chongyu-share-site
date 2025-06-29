@@ -220,11 +220,15 @@ class PostViewModel: ObservableObject {
         if let index = posts.firstIndex(where: { $0.id == post.id }) {
             // 如果有父评论ID（回复），使用带parentCommentId参数的方法
             if let parentId = replyToCommentID {
+                // 获取被回复的评论，以获取用户名
+                let replyToName = getCommentById(commentId: parentId, in: posts[index].comments)?.username
+                
                 posts[index].addComment(
                     username: "当前用户",
                     userAvatar: "current_user_avatar",
                     content: formattedContent,
-                    parentCommentId: parentId
+                    parentCommentId: parentId,
+                    replyToName: replyToName
                 )
                 
                 // 如果是回复某个评论，查找该评论是否来自虚拟角色，并让该角色回复
@@ -253,7 +257,8 @@ class PostViewModel: ObservableObject {
                                                 isVirtualCharacter: true,
                                                 characterID: characterID,
                                                 parentCommentId: userCommentId,
-                                                replyToUsername: "当前用户"
+                                                replyToUsername: "当前用户",
+                                                replyToName: "当前用户"
                                             )
                                             
                                             // 添加到帖子
@@ -313,7 +318,8 @@ class PostViewModel: ObservableObject {
                                                 isVirtualCharacter: true,
                                                 characterID: authorCharacterId,
                                                 parentCommentId: userCommentId,
-                                                replyToUsername: "当前用户"
+                                                replyToUsername: "当前用户",
+                                                replyToName: "当前用户"
                                             )
                                             
                                             // 添加作者回复
@@ -375,6 +381,9 @@ class PostViewModel: ObservableObject {
                     // 获取原始评论内容，用于生成回复
                     let commentContent = self.getCommentContent(commentId: originalCommentId, in: post)
                     
+                    // 获取被回复的用户名，用于显示
+                    let replyToName = self.getCommentById(commentId: originalCommentId, in: self.posts[postIndex].comments)?.username ?? "当前用户"
+                    
                     self.generateVirtualCharacterReply(
                         characterID: characterID,
                         toComment: commentContent,
@@ -391,7 +400,8 @@ class PostViewModel: ObservableObject {
                                     isVirtualCharacter: true,
                                     characterID: characterID,
                                     parentCommentId: originalCommentId,
-                                    replyToUsername: "当前用户"
+                                    replyToUsername: "当前用户",
+                                    replyToName: replyToName
                                 )
                                 
                                 // 添加到帖子
@@ -403,9 +413,6 @@ class PostViewModel: ObservableObject {
                                     object: nil,
                                     userInfo: ["postID": post.id.uuidString]
                                 )
-                                
-                                // 添加震动反馈
-                                self.hapticFeedback()
                             }
                         }
                     )

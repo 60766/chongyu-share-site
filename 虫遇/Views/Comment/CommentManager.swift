@@ -435,6 +435,7 @@ class CommentManager: ObservableObject {
                     content: content,
                     parentCommentId: targetCommentID,  // 使用之前保存的ID，确保回复指向正确评论
                     replyToUsername: targetUsername,   // 使用之前保存的用户名
+                    replyToName: targetUsername,      // 添加replyToName字段
                     isVirtualCharacter: true,
                     characterID: character
                 )

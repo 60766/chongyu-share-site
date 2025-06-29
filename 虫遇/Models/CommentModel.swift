@@ -21,6 +21,7 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
     // 评论回复相关
     var parentCommentId: UUID? = nil
     var replyToUsername: String? = nil
+    var replyToName: String? = nil // 被回复者的名称，用于显示
     var replies: [DetailedCommentModel] = []
     
     // 交互状态
@@ -39,6 +40,7 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
         characterID: String? = nil,
         parentCommentId: UUID? = nil,
         replyToUsername: String? = nil,
+        replyToName: String? = nil,
         replies: [DetailedCommentModel] = [],
         likes: Int = 0,
         isLikedByCurrentUser: Bool = false
@@ -52,6 +54,7 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
         self.characterID = characterID
         self.parentCommentId = parentCommentId
         self.replyToUsername = replyToUsername
+        self.replyToName = replyToName
         self.replies = replies
         self.likes = likes
         self.isLikedByCurrentUser = isLikedByCurrentUser
