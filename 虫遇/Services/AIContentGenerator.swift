@@ -207,6 +207,11 @@ class AIContentGenerator {
                                 )
                             }
                             
+                            // 处理回复评论（如果有）
+                            if !result.replyComments.isEmpty {
+                                print("ℹ️ 处理\(result.replyComments.count)条回复评论")
+                            }
+                            
                             // 创建帖子
                             let post = ResonancePost(
                                 id: UUID().uuidString,
@@ -1648,7 +1653,7 @@ class AIContentGenerator {
         character: CharacterSystem.CharacterIdentity,
         commentersCount: Int,
         topic: String?
-    ) -> Future<(content: String, comments: [(character: String, comment: String)]), Error> {
+    ) -> Future<(content: String, comments: [(character: String, comment: String)], replyComments: [(replier: String, replyTo: String, content: String)]), Error> {
         return Future { promise in
             print("🔄 开始生成带评论的\(contentType)内容: 角色=\(character.name), 评论数=\(commentersCount)")
             
@@ -2004,6 +2009,20 @@ class AIContentGenerator {
         • 绝对不要在评论末尾添加类似"(不同角度解读)"、"(补充历史背景)"、"(专业延伸)"、"(情感共鸣)"等任何形式的解释性括号标注
         \(commentFormatting.isEmpty ? "" : "\n\(commentFormatting)")
         
+        【追加评论生成要求】
+        • 在生成基础评论后，额外生成2-3条追加评论，这些评论是对基础评论的回复
+        • 追加评论必须使用格式："回复评论：[历史人物名]回复@[被回复者姓名]：[回复内容]"
+        • 回复内容要与被回复评论有直接关联，可以是赞同并补充、质疑反驳、或提出新视角
+        • 回复应该更加口语化，像真实社交媒体互动
+        • 回复者应该是与原评论者不同的历史人物，展现不同时代、不同领域的思想碰撞
+        • 每条回复评论控制在20-50字
+        • 回复评论的语气和风格应与内容类型相匹配：
+          - 虫洞共鸣：深度思考的延伸，相互启发式的哲学对话
+          - 古潮新语：古代视角与现代观点的辩论，互相质疑和补充
+          - 穿越吐槽：幽默加码，一个角色的吐槽被另一个角色用更幽默的方式继续
+          - 日常心情：情感共鸣和安慰，对原评论表达理解或提供不同角度的情感支持
+          - 时空记事：历史细节的补充或纠正，"我当时也在场"的视角
+        
         【输出格式】
         ---内容开始---
         [帖子正文内容]
@@ -2011,6 +2030,11 @@ class AIContentGenerator {
         ---评论开始---
         \(commenters.map { $0.name }.joined(separator: "/"))：[评论内容]
         ---评论结束---
+        ---追加评论开始---
+        回复评论：[历史人物名]回复@[被回复者姓名]：[回复内容]
+        回复评论：[历史人物名]回复@[被回复者姓名]：[回复内容]
+        回复评论：[历史人物名]回复@[被回复者姓名]：[回复内容]
+        ---追加评论结束---
         
         【重要】
         • 确保严格按照上述模板输出内容
@@ -2019,13 +2043,14 @@ class AIContentGenerator {
         • 每条评论必须有人物名和内容，中间使用中文冒号"："分隔
         • 必须严格使用我提供的评论者名称，顺序可以灵活
         • 严禁在评论结尾添加任何形式的解释性括号，如"(不同角度解读)"、"(补充历史背景)"等
+        • 追加评论必须明确指出是对哪位评论者的回复
         """
     }
     
     /**
      * 解析生成的内容和评论
      */
-    private func parseContentAndComments(from response: String) -> (content: String, comments: [(character: String, comment: String)]) {
+    private func parseContentAndComments(from response: String) -> (content: String, comments: [(character: String, comment: String)], replyComments: [(replier: String, replyTo: String, content: String)]) {
         print("🔍 解析AI返回的内容和评论...")
         
         // 匹配内容部分
@@ -2040,158 +2065,106 @@ class AIContentGenerator {
         print("📄 解析得到的原始内容: \(content.prefix(100))..." + (content.count > 100 ? "..." : ""))
         
         // 检查内容是否包含特定格式特征
-        let containsModernInterpretation = content.contains("（现代解读：") && content.contains("）")
+        let _ = content.contains("（现代解读：") && content.contains("）")
         let timelineHeaderPattern = "【[0-9]+年.*?】"
-        let containsTimelineHeader = content.range(of: timelineHeaderPattern, options: .regularExpression) != nil
-        let containsResonancePattern = content.count >= 80 && content.count <= 120 && 
+        let _ = content.range(of: timelineHeaderPattern, options: .regularExpression) != nil
+        let _ = content.count >= 80 && content.count <= 120 && 
                                       (content.contains("困惑") || content.contains("感悟") || 
                                        content.contains("洞见") || content.contains("智慧") || 
                                        content.contains("经验") || content.contains("挑战"))
-        
-        if containsModernInterpretation {
-            print("🔎 检测到「古潮新语」格式 - 包含现代解读部分")
-        }
-        
-        if containsTimelineHeader {
-            print("🔎 检测到「时空记事」格式 - 包含时间地点标注")
-        }
-        
-        if containsResonancePattern {
-            print("🔎 检测到「虫洞共鸣」格式 - 包含人生洞见特征")
-        }
-        
-        print("📊 内容统计: 总长度=\(content.count)字符, 行数=\(content.components(separatedBy: "\n").count)")
         
         // 匹配评论部分
         let commentsRegexPattern = "---评论开始---(.*?)---评论结束---"
         let commentsRegex = try! NSRegularExpression(pattern: commentsRegexPattern, options: [.dotMatchesLineSeparators])
         let commentsMatch = commentsRegex.firstMatch(in: response, options: [], range: responseRange)
-        let commentsText = commentsMatch != nil ? 
-            (response as NSString).substring(with: commentsMatch!.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines) : 
-            ""
         
-        // 解析每条评论
         var comments: [(character: String, comment: String)] = []
-        let commentLines = commentsText.components(separatedBy: .newlines).filter { !$0.isEmpty }
         
-        print("📝 评论行数: \(commentLines.count)")
-        
-        // 主要解析方法：查找"："分隔符
-        for (index, line) in commentLines.enumerated() {
-            if let range = line.range(of: "：") {
-                let character = String(line[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                let comment = String(line[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        if let match = commentsMatch {
+            let commentsText = (response as NSString).substring(with: match.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines)
+            print("💬 解析得到的评论文本: \(commentsText)")
+            
+            // 分割每条评论
+            let commentLines = commentsText.components(separatedBy: .newlines)
+            for line in commentLines {
+                let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmedLine.isEmpty else { continue }
                 
-                // 只有当角色名和评论内容都不为空时才添加
-                if !character.isEmpty && !comment.isEmpty {
-                    comments.append((character, comment))
-                    print("✅ 成功解析评论#\(index+1): \(character) - \(comment.prefix(20))...")
-                } else if !character.isEmpty && comment.isEmpty {
-                    print("⚠️ 评论内容为空: \(character)")
-                } else {
-                    print("⚠️ 角色名为空")
+                // 查找第一个中文冒号，分割角色名和评论内容
+                if let colonRange = trimmedLine.range(of: "：") {
+                    let character = String(trimmedLine[..<colonRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    let comment = String(trimmedLine[colonRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    
+                    if !character.isEmpty && !comment.isEmpty {
+                        comments.append((character: character, comment: comment))
+                        print("✅ 解析评论: \(character) - \(comment.prefix(30))...")
+                    }
                 }
-            } else if let range = line.range(of: ":") {
-                // 尝试英文冒号分隔符
-                let character = String(line[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                let comment = String(line[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
-                
-                if !character.isEmpty && !comment.isEmpty {
-                    comments.append((character, comment))
-                    print("✅ 使用英文冒号解析评论#\(index+1): \(character) - \(comment.prefix(20))...")
-                }
-            } else if line.contains("-") {
-                // 尝试破折号分隔符
-                let parts = line.components(separatedBy: "-").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                if parts.count >= 2 && !parts[0].isEmpty && !parts[1].isEmpty {
-                    comments.append((parts[0], parts[1]))
-                    print("✅ 使用破折号解析评论#\(index+1): \(parts[0]) - \(parts[1].prefix(20))...")
-                }
-            } else {
-                print("⚠️ 无法解析评论行: \(line)")
             }
         }
         
-        // 如果基本解析失败，尝试回退方案
-        if comments.isEmpty && !commentsText.isEmpty {
-            print("⚠️ 标准评论解析失败，尝试备用解析方法...")
+        // 匹配追加评论部分
+        let replyCommentsRegexPattern = "---追加评论开始---(.*?)---追加评论结束---"
+        let replyCommentsRegex = try! NSRegularExpression(pattern: replyCommentsRegexPattern, options: [.dotMatchesLineSeparators])
+        let replyCommentsMatch = replyCommentsRegex.firstMatch(in: response, options: [], range: responseRange)
+        
+        var replyComments: [(replier: String, replyTo: String, content: String)] = []
+        
+        if let match = replyCommentsMatch {
+            let replyCommentsText = (response as NSString).substring(with: match.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines)
+            print("💬 解析得到的追加评论文本: \(replyCommentsText)")
             
-            // 尝试识别可能的评论块
-            if commentLines.count >= 2 {
-                // 可能是历史人物名称单独一行的情况
-                var i = 0
-                while i < (commentLines.count-1) {
-                    let possibleCharacter = commentLines[i].trimmingCharacters(in: .whitespacesAndNewlines)
-                    let possibleComment = commentLines[i+1].trimmingCharacters(in: .whitespacesAndNewlines)
-                    
-                    // 检查第一行是否可能是人名（较短，无标点）
-                    if possibleCharacter.count < 20 && !possibleCharacter.contains("：") && !possibleCharacter.contains(":") {
-                        // 检查第二行是否像评论内容（较长）
-                        if possibleComment.count > 10 {
-                            comments.append((possibleCharacter, possibleComment))
-                            print("✅ 备用方法(相邻行)解析成功: \(possibleCharacter) - \(possibleComment.prefix(20))...")
-                            i += 1 // 跳过下一行
-                        }
-                    }
-                    i += 1 // 移动到下一行
-                }
-            }
-            
-            // 尝试使用\n\n分割评论块
-            if comments.isEmpty {
-                let possibleComments = commentsText.components(separatedBy: "\n\n")
-                print("🔄 备用解析 - 检测到\(possibleComments.count)个可能的评论块")
+            // 分割每条追加评论
+            let replyLines = replyCommentsText.components(separatedBy: .newlines)
+            for line in replyLines {
+                let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmedLine.isEmpty else { continue }
                 
-                for (index, possibleComment) in possibleComments.enumerated() {
-                    print("🔍 分析评论块#\(index+1): \(possibleComment.prefix(30))...")
-                    
-                    // 尝试使用冒号分割
-                    if let range = possibleComment.range(of: "：") ?? possibleComment.range(of: ":") {
-                        let character = String(possibleComment[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                        let comment = String(possibleComment[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                // 解析"回复评论：[历史人物名]回复@[被回复者姓名]：[回复内容]"格式
+                if trimmedLine.contains("回复@") && trimmedLine.contains("回复评论：") {
+                    // 提取回复者姓名
+                    if let replierStartRange = trimmedLine.range(of: "回复评论："),
+                       let replyToStartRange = trimmedLine.range(of: "回复@", options: [], range: replierStartRange.upperBound..<trimmedLine.endIndex),
+                       let contentStartRange = trimmedLine.range(of: "：", options: [], range: replyToStartRange.upperBound..<trimmedLine.endIndex) {
                         
-                        if !character.isEmpty && !comment.isEmpty {
-                            comments.append((character, comment))
-                            print("✅ 备用方法解析成功: \(character) - \(comment.prefix(20))...")
+                        let replierEndRange = replyToStartRange.lowerBound
+                        let replier = String(trimmedLine[replierStartRange.upperBound..<replierEndRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        let replyToEndRange = contentStartRange.lowerBound
+                        let replyTo = String(trimmedLine[replyToStartRange.upperBound..<replyToEndRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        let content = String(trimmedLine[contentStartRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        if !replier.isEmpty && !replyTo.isEmpty && !content.isEmpty {
+                            replyComments.append((replier: replier, replyTo: replyTo, content: content))
+                            print("✅ 解析追加评论: \(replier) 回复 \(replyTo) - \(content.prefix(30))...")
                         }
-                    } else {
-                        // 尝试使用换行分割
-                        let lines = possibleComment.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-                        if lines.count >= 2 {
-                            let character = lines[0]
-                            let comment = lines[1]
-                            
-                            if character.count < 20 && comment.count > 10 {
-                                comments.append((character, comment))
-                                print("✅ 备用方法(多行)解析成功: \(character) - \(comment.prefix(20))...")
-                            }
+                    }
+                }
+                // 尝试解析简化格式"[历史人物名]回复@[被回复者姓名]：[回复内容]"
+                else if trimmedLine.contains("回复@") {
+                    if let replierEndRange = trimmedLine.range(of: "回复@"),
+                       let contentStartRange = trimmedLine.range(of: "：", options: [], range: replierEndRange.upperBound..<trimmedLine.endIndex) {
+                        
+                        let replier = String(trimmedLine[..<replierEndRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        let replyToEndRange = contentStartRange.lowerBound
+                        let replyTo = String(trimmedLine[replierEndRange.upperBound..<replyToEndRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        let content = String(trimmedLine[contentStartRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        if !replier.isEmpty && !replyTo.isEmpty && !content.isEmpty {
+                            replyComments.append((replier: replier, replyTo: replyTo, content: content))
+                            print("✅ 解析追加评论(简化格式): \(replier) 回复 \(replyTo) - \(content.prefix(30))...")
                         }
                     }
                 }
             }
         }
         
-        // 最后筛选，确保没有重复或无效评论
-        var filteredComments: [(character: String, comment: String)] = []
-        var seenCharacters = Set<String>()
+        print("📊 解析结果: 内容长度=\(content.count)字, 评论数=\(comments.count), 追加评论数=\(replyComments.count)")
         
-        for (character, comment) in comments {
-            // 跳过空评论
-            if comment.isEmpty {
-                continue
-            }
-            
-            // 处理重复评论者
-            if seenCharacters.contains(character) {
-                continue
-            }
-            
-            seenCharacters.insert(character)
-            filteredComments.append((character, comment))
-        }
-        
-        print("📊 最终解析结果: \(filteredComments.count)条有效评论")
-        return (content, filteredComments)
+        return (content, comments, replyComments)
     }
     
     /**
@@ -2208,7 +2181,7 @@ class AIContentGenerator {
         expectation: String,
         keyword: String? = nil,
         commentersCount: Int = 3
-    ) -> Future<(content: String, comments: [(character: String, comment: String)]), Error> {
+    ) -> Future<(content: String, comments: [(character: String, comment: String)], replyComments: [(replier: String, replyTo: String, content: String)]), Error> {
         return Future { promise in
             print("🔄 开始生成带评论的虫洞共鸣内容: 角色=\(figure), 情境=\(situation)")
             
