@@ -11,7 +11,25 @@ import Foundation
  */
 class CommentManager: ObservableObject {
     // 当前帖子
-    @Published var currentPost: UserPostModel
+    @Published var currentPost: UserPostModel {
+        didSet {
+            // 当帖子变更时，更新评论列表
+            if oldValue.id != currentPost.id {
+                updateCommentLists()
+                
+                // 保存当前帖子的草稿到字典
+                if !commentText.isEmpty {
+                    draftDictionary[oldValue.id] = commentText
+                }
+                
+                // 清除回复状态，确保切换帖子后不会保留上一个帖子的回复状态
+                replyingToComment = nil
+                
+                // 加载新帖子的草稿
+                loadDraftForCurrentPost()
+            }
+        }
+    }
     // 所有评论（包括回复）
     @Published var allComments: [DetailedCommentModel] = []
     // 只包含顶级评论
@@ -19,7 +37,20 @@ class CommentManager: ObservableObject {
     // 当前被回复的评论
     @Published var replyingToComment: DetailedCommentModel? = nil
     // 输入框内容
-    @Published var commentText: String = ""
+    @Published var commentText: String = "" {
+        didSet {
+            // 当文本变化时，自动处理草稿
+            if oldValue != commentText && !isRestoringDraft {
+                if commentText.isEmpty {
+                    // 如果文本为空，直接清除草稿
+                    clearDraft()
+                } else {
+                    // 否则保存草稿
+                    debouncedSaveDraft()
+                }
+            }
+        }
+    }
     
     // 用户信息
     private let currentUsername: String
@@ -30,6 +61,18 @@ class CommentManager: ObservableObject {
     
     // 取消订阅标记
     private var cancellables = Set<AnyCancellable>()
+    
+    // 草稿保存防抖计时器
+    private var draftSaveTimer: Timer?
+    
+    // 标记是否正在恢复草稿，避免触发不必要的状态变化
+    private var isRestoringDraft: Bool = false
+    
+    // 草稿字典 - 将帖子ID映射到对应草稿
+    private var draftDictionary: [UUID: String] = [:]
+    
+    // 用户清除标记字典 - 记录哪些帖子的草稿被用户明确清除
+    private var userClearedDictionary: [UUID: Bool] = [:]
     
     /**
      * 初始化评论管理器
@@ -44,6 +87,223 @@ class CommentManager: ObservableObject {
         
         // 初始化评论列表
         updateCommentLists()
+        
+        // 加载所有已保存的草稿到内存
+        loadAllDraftsFromUserDefaults()
+        
+        // 恢复当前帖子的草稿内容
+        loadDraftForCurrentPost()
+        
+        // 添加对清除草稿通知的监听
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleClearDraftNotification),
+            name: NSNotification.Name("ClearCommentDraft"),
+            object: nil
+        )
+        
+        // 添加对批量生成评论通知的监听
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCommentsGeneratedNotification),
+            name: NSNotification.Name("CommentsGenerated"),
+            object: nil
+        )
+    }
+    
+    /**
+     * 从 UserDefaults 加载所有已保存的草稿到内存字典
+     */
+    private func loadAllDraftsFromUserDefaults() {
+        draftDictionary.removeAll()
+        userClearedDictionary.removeAll()
+        
+        // 获取所有 UserDefaults 键
+        let allKeys = UserDefaults.standard.dictionaryRepresentation().keys
+        
+        // 查找所有草稿键
+        for key in allKeys {
+            if key.hasPrefix("comment_draft_") {
+                // 提取帖子ID
+                let idString = key.replacingOccurrences(of: "comment_draft_", with: "")
+                if let uuid = UUID(uuidString: idString),
+                   let draftText = UserDefaults.standard.string(forKey: key),
+                   !draftText.isEmpty {
+                    draftDictionary[uuid] = draftText
+                }
+            } else if key.hasPrefix("user_cleared_draft_") {
+                // 提取帖子ID
+                let idString = key.replacingOccurrences(of: "user_cleared_draft_", with: "")
+                if let uuid = UUID(uuidString: idString) {
+                    userClearedDictionary[uuid] = UserDefaults.standard.bool(forKey: key)
+                }
+            }
+        }
+        
+        print("📝 已从 UserDefaults 加载 \(draftDictionary.count) 个草稿和 \(userClearedDictionary.count) 个清除标记")
+    }
+    
+    /**
+     * 加载当前帖子的草稿
+     */
+    private func loadDraftForCurrentPost() {
+        isRestoringDraft = true
+        
+        // 检查用户是否已明确清除了当前帖子的草稿
+        if userClearedDictionary[currentPost.id] == true {
+            print("⚠️ 用户已明确清除该帖子的草稿，不恢复草稿")
+            commentText = ""
+            isRestoringDraft = false
+            return
+        }
+        
+        // 从内存字典中获取草稿
+        if let draft = draftDictionary[currentPost.id] {
+            commentText = draft
+            print("📝 已加载帖子 \(currentPost.id.uuidString) 的草稿: \(draft.prefix(20))...")
+        } else {
+            commentText = ""
+            print("📝 帖子 \(currentPost.id.uuidString) 没有草稿")
+        }
+        
+        isRestoringDraft = false
+    }
+    
+    // 处理清除草稿通知
+    @objc private func handleClearDraftNotification() {
+        DispatchQueue.main.async {
+            self.clearDraftPublic()
+        }
+    }
+    
+    // 处理批量生成评论通知
+    @objc private func handleCommentsGeneratedNotification(_ notification: Notification) {
+        DispatchQueue.main.async {
+            guard let userInfo = notification.userInfo,
+                  let postID = userInfo["postID"] as? String,
+                  self.currentPost.id.uuidString == postID,
+                  let commentsMap = userInfo["commentsMap"] as? [String: String] else {
+                print("⚠️ 无法处理批量生成评论通知：缺少必要信息或当前帖子不匹配")
+                return
+            }
+            
+            // 获取批次ID，用于防止重复处理
+            let batchId = userInfo["batchId"] as? String ?? UUID().uuidString
+            
+            // 检查是否已经处理过这个批次
+            let processedBatchKey = "processed_batch_\(batchId)"
+            if UserDefaults.standard.bool(forKey: processedBatchKey) {
+                print("⚠️ 批次ID \(batchId) 已被处理过，跳过重复处理")
+                return
+            }
+            
+            print("📥 接收到批量生成评论通知，共\(commentsMap.count)条评论，批次ID: \(batchId)")
+            
+            // 检查是否为邀请的角色评论
+            let isInvited = userInfo["isInvited"] as? Bool ?? false
+            
+            if isInvited {
+                // 邀请的角色评论应作为顶级评论添加
+                for (characterID, content) in commentsMap {
+                    // 创建虚拟角色评论
+                    let virtualComment = DetailedCommentModel(
+                        username: self.getCharacterName(for: characterID),
+                        userAvatar: self.getCharacterAvatar(for: characterID),
+                        content: content,
+                        datePosted: Date().addingTimeInterval(Double.random(in: 15...60)),
+                        isVirtualCharacter: true,
+                        characterID: characterID
+                    )
+                    
+                    // 添加到帖子作为顶级评论
+                    self.currentPost.addComment(virtualComment)
+                    
+                    print("✅ 邀请的虚拟角色评论已添加为顶级评论 - 角色: \(characterID)")
+                }
+                
+                // 更新评论列表
+                self.updateCommentLists()
+            } else {
+                // 这是对用户评论的回复，已经在generateVirtualReply方法中处理
+                print("ℹ️ 这是对用户评论的回复，将在generateVirtualReply方法中处理")
+            }
+            
+            // 标记此批次已处理
+            UserDefaults.standard.set(true, forKey: processedBatchKey)
+        }
+    }
+    
+    /**
+     * 防抖保存草稿，避免频繁写入
+     */
+    private func debouncedSaveDraft() {
+        // 取消之前的计时器
+        draftSaveTimer?.invalidate()
+        
+        // 创建新的计时器，延迟0.5秒执行保存
+        draftSaveTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            self.saveDraft(self.commentText)
+        }
+    }
+    
+    /**
+     * 保存评论草稿
+     * @param text 要保存的草稿内容
+     */
+    private func saveDraft(_ text: String) {
+        // 使用帖子ID作为唯一标识符
+        let draftKey = "comment_draft_\(currentPost.id.uuidString)"
+        let userClearedKey = "user_cleared_draft_\(currentPost.id.uuidString)"
+        
+        // 如果文本为空，则删除草稿
+        if text.isEmpty {
+            UserDefaults.standard.removeObject(forKey: draftKey)
+            draftDictionary.removeValue(forKey: currentPost.id)
+        } else {
+            // 否则保存草稿到 UserDefaults 和内存字典
+            UserDefaults.standard.set(text, forKey: draftKey)
+            draftDictionary[currentPost.id] = text
+            
+            // 如果用户开始输入新内容，清除"用户已明确清除草稿"的标记
+            UserDefaults.standard.removeObject(forKey: userClearedKey)
+            userClearedDictionary[currentPost.id] = false
+            
+            // 立即同步UserDefaults，确保数据被保存
+            UserDefaults.standard.synchronize()
+        }
+    }
+    
+    /**
+     * 清除草稿
+     */
+    private func clearDraft() {
+        // 使用帖子ID作为唯一标识符
+        let draftKey = "comment_draft_\(currentPost.id.uuidString)"
+        UserDefaults.standard.removeObject(forKey: draftKey)
+        draftDictionary.removeValue(forKey: currentPost.id)
+        
+        // 设置用户已明确清除草稿的标记
+        let userClearedKey = "user_cleared_draft_\(currentPost.id.uuidString)"
+        UserDefaults.standard.set(true, forKey: userClearedKey)
+        userClearedDictionary[currentPost.id] = true
+        
+        // 立即同步UserDefaults，确保数据被删除
+        UserDefaults.standard.synchronize()
+    }
+    
+    /**
+     * 公开的清除草稿方法，允许外部组件调用
+     */
+    func clearDraftPublic() {
+        clearDraft()
+        
+        // 同时清空输入框文本
+        isRestoringDraft = true
+        commentText = ""
+        isRestoringDraft = false
+        
+        print("🗑️ 帖子 \(currentPost.id.uuidString) 的草稿已被外部组件清除")
     }
     
     /**
@@ -148,14 +408,26 @@ class CommentManager: ObservableObject {
      */
     func submitComment() {
         guard !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            print("⚠️ 评论内容为空，取消提交")
             return
         }
         
         // 处理评论内容
         let processedContent = commentText
         
+        // 记录评论ID以便后续跟踪
+        var newCommentId: UUID = UUID()
+        
+        // 生成一个唯一的批次ID，用于跟踪通知
+        let batchId = UUID().uuidString
+        
+        print("🔄 开始提交评论 - 内容: \"\(processedContent.prefix(30))...\"")
+        print("🔄 是否为回复: \(replyingToComment != nil)")
+        print("🔄 批次ID: \(batchId)")
+        
         if let replyTo = replyingToComment {
             // 添加回复 - 如果有回复对象，直接使用replyToUsername参数，不需要在内容中添加@
+            newCommentId = UUID()
             currentPost.addComment(
                 username: currentUsername,
                 userAvatar: currentUserAvatar,
@@ -163,25 +435,94 @@ class CommentManager: ObservableObject {
                 parentCommentId: replyTo.id,
                 replyToUsername: replyTo.username // 使用回复对象的用户名
             )
+            
+            print("✅ 已添加回复评论 - ID: \(newCommentId), 回复给: \(replyTo.username), 内容: \"\(processedContent.prefix(30))...\"")
+            print("✅ 父评论ID: \(replyTo.id)")
         } else {
             // 添加顶级评论 - 无需特殊处理
+            newCommentId = UUID()
             currentPost.addComment(
                 username: currentUsername,
                 userAvatar: currentUserAvatar,
                 content: processedContent
             )
+            
+            print("✅ 已添加顶级评论 - ID: \(newCommentId), 内容: \"\(processedContent.prefix(30))...\"")
         }
         
         // 重置状态
+        isRestoringDraft = true // 标记为恢复草稿状态，避免触发保存
         commentText = ""
+        isRestoringDraft = false // 重置标记
         replyingToComment = nil
+        
+        // 清除草稿
+        clearDraft()
         
         // 更新评论列表
         updateCommentLists()
         
+        // 打印当前评论数量
+        print("📊 提交后顶级评论数量: \(topLevelComments.count)")
+        print("📊 提交后总评论数量: \(allComments.count)")
+        
+        // 强制发送通知刷新UI - 确保使用主线程
+        DispatchQueue.main.async {
+            // 发送多种通知以确保UI更新
+            print("📣 发送PostCommentsUpdated通知 - postID: \(self.currentPost.id.uuidString), batchId: \(batchId)")
+            NotificationCenter.default.post(
+                name: NSNotification.Name("PostCommentsUpdated"),
+                object: nil,
+                userInfo: [
+                    "postID": self.currentPost.id.uuidString, 
+                    "commentID": newCommentId.uuidString,
+                    "batchId": batchId
+                ]
+            )
+            
+            print("📣 发送RefreshPostComments通知 - batchId: \(batchId)")
+            NotificationCenter.default.post(
+                name: NSNotification.Name("RefreshPostComments"),
+                object: nil,
+                userInfo: [
+                    "commentID": newCommentId.uuidString,
+                    "batchId": batchId
+                ]
+            )
+            
+            // 添加额外的通知
+            print("📣 发送CommentAdded通知 - commentID: \(newCommentId.uuidString), batchId: \(batchId)")
+            NotificationCenter.default.post(
+                name: NSNotification.Name("CommentAdded"),
+                object: nil,
+                userInfo: [
+                    "commentID": newCommentId.uuidString,
+                    "batchId": batchId
+                ]
+            )
+            
+            // 强制发送对象变更通知
+            self.objectWillChange.send()
+            print("📣 已发送objectWillChange通知")
+            
+            // 延迟再次发送通知，确保UI已经更新
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                print("📣 延迟0.5秒后再次发送刷新通知 - batchId: \(batchId)")
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshPostComments"),
+                    object: nil,
+                    userInfo: [
+                        "batchId": batchId
+                    ]
+                )
+                self.objectWillChange.send()
+            }
+        }
+        
         // 生成虚拟角色回复
         // 对于每条用户评论，都进行回复生成
         Task {
+            print("🤖 开始生成虚拟角色回复")
             await generateVirtualReply()
         }
     }
@@ -223,9 +564,17 @@ class CommentManager: ObservableObject {
             return
         }
         
+        // 检查是否已经对此评论生成过回复
+        let commentRepliedKey = "replied_to_comment_\(latestComment.id.uuidString)"
+        if UserDefaults.standard.bool(forKey: commentRepliedKey) {
+            print("🤖 已经对评论ID: \(latestComment.id.uuidString) 生成过回复，跳过")
+            return
+        }
+        
         // 保存最新评论ID，确保回复到正确位置
         let targetCommentID = latestComment.id
         let targetUsername = latestComment.username
+        let userCommentContent = latestComment.content  // 获取用户评论内容
         
         print("⭐️ 生成回复目标 - 评论ID: \(targetCommentID), 用户: \(targetUsername), 内容: \"\(latestComment.content.prefix(20))...\"")
         
@@ -236,220 +585,224 @@ class CommentManager: ObservableObject {
         let postAuthorName = currentPost.username
         var authorCharacterId: String? = nil
         
-        // 角色名称及其ID映射
-        let characterMapping: [String: String] = [
-            "爱因斯坦": "einstein",
-            "莎士比亚": "shakespeare",
-            "达芬奇": "davinci",
-            "孔子": "confucius",
-            "居里夫人": "curie",
-            "李白": "libai"
-        ]
-        
-        // 反向映射，通过ID获取名称
-        let characterNames: [String: String] = [
-            "einstein": "爱因斯坦",
-            "shakespeare": "莎士比亚",
-            "davinci": "达芬奇",
-            "confucius": "孔子",
-            "curie": "居里夫人",
-            "libai": "李白"
-        ]
-        
-        // 检查帖子作者是否为虚拟角色
-        var isAuthorVirtualCharacter = false
-        for (name, id) in characterMapping {
-            if name == postAuthorName {
-                isAuthorVirtualCharacter = true
+        // 首先尝试从帖子的characterID属性获取
+        if let postCharacterId = currentPost.characterID, !postCharacterId.isEmpty {
+            authorCharacterId = postCharacterId
+            print("👑 从帖子属性获取到作者角色ID: \(postCharacterId)")
+        } else {
+            // 使用CharacterDataManager获取所有角色信息
+            let characterInfoList = CharacterDataManager.shared.getAllCharactersInfo()
+            
+            // 创建角色名称到ID的映射
+            var characterMapping: [String: String] = [:]
+            for info in characterInfoList {
+                characterMapping[info.name] = info.id
+            }
+            
+            // 然后尝试通过名称匹配
+            if let id = characterMapping[postAuthorName] {
                 authorCharacterId = id
-                break
+                print("👑 通过名称匹配识别帖子作者是虚拟角色: \(postAuthorName) (ID: \(id))")
             }
         }
         
-        print("👤 帖子作者: \(postAuthorName), 是否虚拟角色: \(isAuthorVirtualCharacter), 角色ID: \(authorCharacterId ?? "无")")
-        
-        // 用户ID - 使用用户名作为标识
-        let userId = latestComment.username
-        
-        // 获取该用户已收到回复的角色列表
-        let userRepliedCharactersKey = "user_\(userId)_replied_characters"
+        // 记录已回复过此用户的角色，避免重复
+        let userRepliedCharactersKey = "replied_characters_to_\(targetUsername)"
         var repliedCharacters = UserDefaults.standard.stringArray(forKey: userRepliedCharactersKey) ?? []
         
-        // 决定哪个角色会回复
-        var selectedCharacter: String? = nil
+        // 分开处理帖子作者和其他角色
+        var authorCharacter: String? = nil
+        var otherSelectedCharacters: [String] = []
         
-        if let mentioned = mentionedCharacter {
-            // 如果@了特定角色，该角色100%会回复
-            selectedCharacter = mentioned
-            print("👥 检测到@提及角色: \(characterNames[mentioned] ?? mentioned)")
-        } else if isAuthorVirtualCharacter, let authorId = authorCharacterId {
-            // 检查帖子作者是否已经回复过这条评论
-            let commentAuthorReplyKey = "author_replied_\(latestComment.id.uuidString)"
-            let hasAuthorReplied = UserDefaults.standard.bool(forKey: commentAuthorReplyKey)
-            
-            if hasAuthorReplied {
-                // 如果帖子作者已回复过，随机选择其他角色
-                print("👑 帖子作者已经回复过此评论，让其他角色回复")
-                // 过滤掉作者角色
-                let otherCharacters = Array(characterMapping.values).filter { $0 != authorId }
-                // 过滤掉已经回复过的角色
-                var unusedCharacters = otherCharacters.filter { !repliedCharacters.contains($0) }
+        // 1. 如果帖子作者是虚拟角色，将其加入到回复列表
+        if let authorId = authorCharacterId {
+            authorCharacter = authorId
+            print("👑 帖子作者将参与回复")
+        }
+        
+        // 2. 处理@提及的角色
+        if let mentionedCharacter = mentionedCharacter, mentionedCharacter != authorCharacter {
+            otherSelectedCharacters.append(mentionedCharacter)
+            print("👥 @提及的角色将参与回复: \(CharacterDataManager.shared.getName(for: mentionedCharacter) ?? mentionedCharacter)")
+        }
+        
+        // 3. 从其他角色中随机选择，补足到总共4-5个角色（包括作者和@提及的）
+        // 使用CharacterDataManager获取所有可用角色ID
+        let allCharacterIds = CharacterDataManager.shared.getAllCharacterIds()
+        let availableCharacters = allCharacterIds.filter { 
+            $0 != authorCharacter && 
+            !otherSelectedCharacters.contains($0) 
+        }
+        
+        // 确定需要额外选择的角色数量
+        let totalCharactersNeeded = 4 // 总共需要4个角色（包括作者）
+        let additionalNeeded = max(0, totalCharactersNeeded - otherSelectedCharacters.count - (authorCharacter != nil ? 1 : 0))
+        
+        if additionalNeeded > 0 && !availableCharacters.isEmpty {
+            // 随机选择额外角色
+            let additionalCharacters = Array(availableCharacters.shuffled().prefix(additionalNeeded))
+            otherSelectedCharacters.append(contentsOf: additionalCharacters)
+            print("🎲 随机选择了\(additionalCharacters.count)个额外角色参与回复")
+        }
+        
+        // 合并所有选定的角色，确保作者在列表中
+        var allSelectedCharacters: [String] = []
+        if let authorChar = authorCharacter {
+            allSelectedCharacters.append(authorChar)
+            print("👑 已将作者角色添加到回复列表")
+        }
+
+        // 添加其他角色，确保不重复添加作者
+        for char in otherSelectedCharacters {
+            if char != authorCharacter {
+                allSelectedCharacters.append(char)
+            }
+        }
+        
+        // 确保总数不超过4个角色（包括作者）
+        if allSelectedCharacters.count > 4 {
+            // 如果有作者，保留作者和前3个其他角色
+            if authorCharacter != nil {
+                // 确保作者在列表的第一位
+                var finalList: [String] = []
+                finalList.append(authorCharacter!)
                 
-                if unusedCharacters.isEmpty {
-                    // 如果所有角色都已经回复过，则重置列表（但仍排除作者）
-                    unusedCharacters = otherCharacters
-                    // 仅保留作者在已回复列表中
-                    repliedCharacters = repliedCharacters.filter { $0 == authorId }
-                    print("🔄 所有非作者角色都已回复过，重置角色列表")
-                }
+                // 添加其他角色，最多3个
+                let remainingSlots = 3
+                let otherChars = allSelectedCharacters.filter { $0 != authorCharacter }
+                finalList.append(contentsOf: otherChars.prefix(remainingSlots))
                 
-                selectedCharacter = unusedCharacters.randomElement()
+                allSelectedCharacters = finalList
             } else {
-                // 帖子作者首次回复此评论
-                selectedCharacter = authorId
-                print("👑 帖子作者是虚拟角色，将由作者回复此评论")
-                // 标记作者已回复此评论
-                UserDefaults.standard.set(true, forKey: commentAuthorReplyKey)
+                // 如果没有作者，直接取前4个
+                allSelectedCharacters = Array(allSelectedCharacters.prefix(4))
             }
-        } else {
-            // 获取所有可用角色
-            let availableCharacters = Array(characterMapping.values)
-            
-            // 过滤出未回复过该用户的角色
-            var unusedCharacters = availableCharacters.filter { !repliedCharacters.contains($0) }
-            
-            if unusedCharacters.isEmpty {
-                // 如果所有角色都已经回复过，则重置已回复列表
-                unusedCharacters = availableCharacters
-                repliedCharacters = []
-                print("🔄 所有角色都已回复过此用户，重置角色列表")
-            }
-            
-            // 从未使用过的角色中随机选择
-            selectedCharacter = unusedCharacters.randomElement()
-            print("🎲 选择新角色回复: \(characterNames[selectedCharacter ?? ""] ?? "未知角色")")
         }
         
-        // 确保有选定的角色
-        guard let character = selectedCharacter else {
-            print("❌ 没有可用的虚拟角色进行回复")
-            return
+        // 确保列表不为空
+        if allSelectedCharacters.isEmpty && !availableCharacters.isEmpty {
+            // 如果列表为空，随机选择4个角色
+            allSelectedCharacters = Array(availableCharacters.shuffled().prefix(4))
+            print("⚠️ 角色列表为空，随机选择了\(allSelectedCharacters.count)个角色")
         }
         
-        // 记录该角色已经回复过此用户
-        if !repliedCharacters.contains(character) {
-            repliedCharacters.append(character)
-            UserDefaults.standard.set(repliedCharacters, forKey: userRepliedCharactersKey)
-        }
+        print("👥 最终选择的回复角色: \(allSelectedCharacters.joined(separator: ", "))")
+        print("🔍 是否包含帖子作者: \(authorCharacter != nil ? "是 - \(authorCharacter!)" : "否")")
+        print("🔢 总共选择了\(allSelectedCharacters.count)个角色回复")
         
         // 记录用户评论，用于跟踪历史
-        let userCommentKey = "\(character)_latest_user_comment"
-        let previousUserComment = UserDefaults.standard.string(forKey: userCommentKey)
-        
-        // 记录角色回复，用于避免相似回复
-        let characterReplyKey = "\(character)_latest_replies"
-        var previousReplies = UserDefaults.standard.stringArray(forKey: characterReplyKey) ?? []
-        
-        print("🔍 检查是否需要回复 - 角色ID: \(character), 角色名: \(characterNames[character] ?? "未知")")
-        
-        // 生成虚拟角色回复
-        do {
-            // 判断是否需要添加额外上下文来避免相似回复
-            var additionalPromptContext = ""
-            
-            // 如果有之前的评论和回复记录，添加到提示词中
-            if let prevComment = previousUserComment, !previousReplies.isEmpty {
-                additionalPromptContext = "\n\n前一次评论: \"\(prevComment)\"\n"
-                additionalPromptContext += "你的回复: \"\(previousReplies.first ?? "")\"\n"
-                additionalPromptContext += "请确保这次的回复与之前不同，使用新的表达方式和角度。"
-            }
-            
-            // 添加模拟打字延迟
-            // 延迟0.5-2秒之间的随机时间，模拟思考和打字时间
-            try await Task.sleep(nanoseconds: UInt64(Double.random(in: 0.5...2.0) * 1_000_000_000))
-            
-            // 增强提示词，使回复更针对用户评论
-            let enhancedPrompt = """
-            \(latestComment.content)\(additionalPromptContext)
-
-            请注意：
-            1. 你必须直接回应用户评论的实际内容，不要泛泛而谈或自说自话
-            2. 绝对禁止使用括号描述动作或思考过程，如"(用笔轻敲)"、"(微笑着)"、"(思考中)"等
-            3. 每一句话都必须与用户评论直接相关，而不是展示你自己的角色特点
-            4. 不得使用任何与用户评论无关的比喻或概念，无论多么有特色
-            5. 如果用户评论是"哈哈"或其他简短感叹，直接用简单幽默的一句话响应
-            6. 避免所有专业术语、行业术语，使用日常对话语言
-            7. 假设自己是在社交媒体上回复普通朋友，而不是在展示你的独特身份
-            8. 严格禁止在回复中加入任何括号内的解释、分析或理论
-            9. 不要解释你的回复逻辑或创作过程
-            10. 不要在回复前后或中间添加任何形式的注释
-            """ + (latestComment.content.count <= 15 ? """
-            
-            特别重要警告：
-            用户评论非常简短，你必须简短直接地回应！
-            - 不要使用括号中的动作描述或思考过程，直接说话
-            - 禁止使用任何复杂比喻或术语
-            - 禁止自我介绍或强调身份
-            - 禁止提及与用户评论无关的概念
-            - 回复必须在20字以内
-            - 就像普通人回复"哈哈"或"说得好"一样自然
-            - 你可以表现出一点个性，但首要任务是自然、相关的回应
-            """ : "")
-            
-            // 使用API生成回复
-            var content = try await withCheckedThrowingContinuation { continuation in
-                virtualCharacterService.generateCharacterComment(
-                    characterID: character,
-                    userComment: enhancedPrompt,
-                    postContent: currentPost.content
-                ) { result in
-                    switch result {
-                    case .success(let content):
-                        continuation.resume(returning: content)
-                    case .failure(let error):
-                        continuation.resume(throwing: error)
-                    }
-                }
-            }
-            
-            // 过滤掉可能出现的括号内容
-            content = cleanResponseContent(content)
-            
-            print("✅ API生成回复成功: \(content.prefix(50))...")
-            
-            // 记录本次用户评论和角色回复
+        for character in allSelectedCharacters {
+            let userCommentKey = "\(character)_latest_user_comment"
             UserDefaults.standard.set(latestComment.content, forKey: userCommentKey)
-            
-            // 最多保存最近3条回复历史
-            previousReplies.insert(content, at: 0)
-            if previousReplies.count > 3 {
-                previousReplies = Array(previousReplies.prefix(3))
-            }
-            UserDefaults.standard.set(previousReplies, forKey: characterReplyKey)
-            
-            await MainActor.run {
-                // 添加虚拟角色回复 - 确保使用保存的targetCommentID而不是再次引用latestComment
-                currentPost.addComment(
-                    username: characterNames[character] ?? character,
-                    userAvatar: getCharacterAvatar(for: character),
-                    content: content,
-                    parentCommentId: targetCommentID,  // 使用之前保存的ID，确保回复指向正确评论
-                    replyToUsername: targetUsername,   // 使用之前保存的用户名
-                    replyToName: targetUsername,      // 添加replyToName字段
-                    isVirtualCharacter: true,
-                    characterID: character
+        }
+        
+        // 添加模拟打字延迟
+        // 延迟0.5-2秒之间的随机时间，模拟思考和打字时间
+        do {
+            try await Task.sleep(nanoseconds: UInt64(Double.random(in: 0.5...2.0) * 1_000_000_000))
+        } catch {
+            print("⚠️ 延迟模拟被中断")
+        }
+        
+        // 使用批量API生成回复
+        print("🚀 开始批量生成\(allSelectedCharacters.count)个角色的回复")
+        
+        // 生成一个唯一的请求ID，用于跟踪这次请求
+        let requestId = UUID().uuidString
+        print("📝 生成请求ID: \(requestId)")
+        
+        // 使用MultiCharacterCommentService一次性生成多个角色的回复
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                MultiCharacterCommentService.shared.generateMultiCharacterComments(
+                    characterIDs: allSelectedCharacters,
+                    postId: currentPost.id.uuidString,
+                    postContent: currentPost.content,
+                    postAuthor: currentPost.username,
+                    userComment: userCommentContent,  // 添加用户评论内容参数
+                    targetUsername: targetUsername,   // 添加目标用户名参数
+                    authorCharacterId: authorCharacter, // 添加作者角色ID参数
+                    completion: { [weak self] result in
+                        guard let self = self else {
+                            continuation.resume(throwing: NSError(domain: "CommentManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Self reference lost"]))
+                            return
+                        }
+                        
+                        switch result {
+                        case .success(let commentsMap):
+                            print("✅ 成功批量生成\(commentsMap.count)个角色的回复")
+                            
+                            // 标记此评论已被回复
+                            UserDefaults.standard.set(true, forKey: commentRepliedKey)
+                            
+                            // 为每个角色添加回复，添加一定的延迟使回复看起来更自然
+                            for (index, (characterID, content)) in commentsMap.enumerated() {
+                                // 作者优先回复，其他角色依次回复
+                                let delay: Double
+                                if characterID == authorCharacter {
+                                    // 作者最先回复
+                                    delay = Double.random(in: 1.0...2.0)
+                                } else {
+                                    // 其他角色依次回复，延迟递增
+                                    delay = Double.random(in: 2.5...4.0) + Double(index) * 1.5
+                                }
+                                
+                                // 记录角色回复，用于避免相似回复
+                                let characterReplyKey = "\(characterID)_latest_replies"
+                                var previousReplies = UserDefaults.standard.stringArray(forKey: characterReplyKey) ?? []
+                                
+                                // 最多保存最近3条回复历史
+                                previousReplies.insert(content, at: 0)
+                                if previousReplies.count > 3 {
+                                    previousReplies = Array(previousReplies.prefix(3))
+                                }
+                                UserDefaults.standard.set(previousReplies, forKey: characterReplyKey)
+                                
+                                // 在主线程上添加延迟执行
+                                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                                    // 添加虚拟角色回复
+                                    let characterAvatar = self.getCharacterAvatar(for: characterID)
+                                    let characterDisplayName = CharacterDataManager.shared.getName(for: characterID) ?? characterID // 使用中文名称，如果找不到则使用ID
+                                    
+                                    // 创建虚拟角色评论
+                                    let virtualReply = DetailedCommentModel(
+                                        username: characterDisplayName, // 使用中文名称
+                                        userAvatar: characterAvatar,
+                                        content: content,
+                                        datePosted: Date().addingTimeInterval(Double.random(in: 15...60)),
+                                        isVirtualCharacter: true,
+                                        characterID: characterID,
+                                        parentCommentId: targetCommentID,
+                                        replyToUsername: targetUsername // 添加回复给谁的信息
+                                    )
+                                    
+                                    // 添加到帖子
+                                    self.currentPost.addComment(virtualReply)
+                                    
+                                    // 更新评论列表
+                                    self.updateCommentLists()
+                                    
+                                    // 如果是作者回复，标记作者已回复此评论
+                                    if characterID == authorCharacter {
+                                        let commentAuthorReplyKey = "author_replied_\(targetCommentID.uuidString)"
+                                        UserDefaults.standard.set(true, forKey: commentAuthorReplyKey)
+                                        print("✅ 帖子作者已回复此评论")
+                                    }
+                                    
+                                    print("✅ 虚拟角色回复已添加 - 角色: \(CharacterDataManager.shared.getName(for: characterID) ?? characterID), 回复给: \(targetUsername), 评论ID: \(targetCommentID)")
+                                }
+                            }
+                            
+                            continuation.resume()
+                        case .failure(let error):
+                            print("❌ 批量生成角色回复失败: \(error.localizedDescription)")
+                            continuation.resume(throwing: error)
+                        }
+                    }
                 )
-                
-                // 更新评论列表
-                updateCommentLists()
-                
-                print("✅ 虚拟角色回复已添加 - 角色: \(characterNames[character] ?? character), 回复给: \(targetUsername), 评论ID: \(targetCommentID)")
-                
-                // 不再在帖子作者回复后额外生成其他角色评论
-                // 当帖子作者和选定角色相同时，其他角色回复由下次用户触发
             }
         } catch {
-            print("❌ API生成回复失败: \(error.localizedDescription)")
+            print("❌ 批量API生成回复失败: \(error.localizedDescription)")
         }
     }
     
@@ -459,22 +812,15 @@ class CommentManager: ObservableObject {
      * @return 角色头像系统图标名称
      */
     private func getCharacterAvatar(for characterID: String) -> String {
-        switch characterID.lowercased() {
-        case "einstein":
-            return "atom" // 原子图标适合爱因斯坦
-        case "shakespeare":
-            return "book.fill" // 书籍图标适合莎士比亚
-        case "davinci":
-            return "paintpalette.fill" // 绘画图标适合达芬奇
-        case "confucius":
-            return "scroll.fill" // 卷轴适合孔子
-        case "libai":
-            return "text.book.closed.fill" // 诗集适合李白
-        case "curie":
-            return "sparkles" // 闪光适合居里夫人
-        default:
-            return "person.circle.fill" // 通用人物图标
+        // 使用CharacterDataManager获取角色头像
+        if let avatar = CharacterDataManager.shared.getAvatarName(for: characterID) {
+            print("✅ 从CharacterDataManager获取头像: \(characterID) -> \(avatar)")
+            return avatar
         }
+        
+        // 如果找不到，返回角色ID作为头像名称
+        print("⚠️ 无法从CharacterDataManager获取头像，使用ID作为头像: \(characterID)")
+        return characterID
     }
     
     /**
@@ -483,15 +829,14 @@ class CommentManager: ObservableObject {
      * @return 被@的角色ID，如果没有则返回nil
      */
     private func checkForMentionedCharacter(in content: String) -> String? {
-        // 角色名称及其ID映射
-        let characterMapping: [String: String] = [
-            "爱因斯坦": "einstein",
-            "莎士比亚": "shakespeare",
-            "达芬奇": "davinci",
-            "孔子": "confucius",
-            "居里夫人": "curie",
-            "李白": "libai"
-        ]
+        // 使用CharacterDataManager获取所有角色信息
+        let characterInfoList = CharacterDataManager.shared.getAllCharactersInfo()
+        
+        // 创建角色名称到ID的映射
+        var characterMapping: [String: String] = [:]
+        for info in characterInfoList {
+            characterMapping[info.name] = info.id
+        }
         
         // 检查评论中是否包含@角色名
         for (characterName, characterId) in characterMapping {
@@ -505,16 +850,84 @@ class CommentManager: ObservableObject {
     
     // 获取角色名称
     private func getCharacterName(for characterId: String) -> String {
+        // 使用CharacterDataManager获取角色名称
+        if let name = CharacterDataManager.shared.getName(for: characterId) {
+            return name
+        }
+        
+        // 如果CharacterDataManager找不到，使用备用映射
         let characterNames: [String: String] = [
             "einstein": "爱因斯坦",
             "shakespeare": "莎士比亚",
             "davinci": "达芬奇",
             "confucius": "孔子",
             "curie": "居里夫人",
-            "libai": "李白"
+            "libai": "李白",
+            "newton": "牛顿",
+            "socrates": "苏格拉底",
+            "holmes": "福尔摩斯",
+            "nietzsche": "尼采",
+            "sunwukong": "孙悟空",
+            "darwin": "达尔文",
+            "luxun": "鲁迅",
+            "plato": "柏拉图",
+            "dufu": "杜甫",
+            "aristotle": "亚里士多德",
+            "napoleon": "拿破仑",
+            "picasso": "毕加索",
+            "vangogh": "梵高",
+            "quyuan": "屈原",
+            "laozi": "老子",
+            "mozart": "莫扎特",
+            "beethoven": "贝多芬",
+            "heraclitus": "赫拉克利特",
+            "zhuangzi": "庄子",
+            "marquez": "马尔克斯",
+            "hawking": "霍金",
+            "edison": "爱迪生",
+            "tesla": "特斯拉",
+            "kant": "康德",
+            "hegel": "黑格尔",
+            "baudelaire": "波德莱尔",
+            "kafka": "卡夫卡",
+            "smith": "亚当·斯密",
+            "marx": "马克思",
+            "camus": "加缪",
+            "freud": "弗洛伊德",
+            "jung": "荣格",
+            "heidegger": "海德格尔",
+            "xuzhimo": "徐志摩",
+            "hemingway": "海明威",
+            "bach": "巴赫",
+            "turing": "图灵",
+            "feynman": "费曼",
+            "popper": "波普尔",
+            "tagore": "泰戈尔",
+            "schopenhauer": "叔本华",
+            "dostoevsky": "陀思妥耶夫斯基",
+            "lincoln": "林肯",
+            "gandhi": "甘地",
+            "beauvoir": "波伏娃",
+            "yangming": "王阳明",
+            "xiaobo": "王小波",
+            "pascal": "帕斯卡",
+            "russell": "罗素",
+            "wittgenstein": "维特根斯坦",
+            "sartre": "萨特",
+            "wordsworth": "华兹华斯",
+            "qingzhao": "李清照",
+            "snake": "固蛇"
         ]
         
-        return characterNames[characterId] ?? characterId
+        // 如果在备用映射中找到，返回对应名称
+        if let name = characterNames[characterId] {
+            print("⚠️ 从备用映射获取角色名称: \(characterId) -> \(name)")
+            return name
+        }
+        
+        // 如果都找不到，返回角色ID
+        print("⚠️ 无法获取角色名称，使用ID作为名称: \(characterId)")
+        return characterId
     }
     
     /**
@@ -536,6 +949,138 @@ class CommentManager: ObservableObject {
         ]
         
         for pattern in bracketPatterns {
+            cleanedContent = cleanedContent.replacingOccurrences(
+                of: pattern,
+                with: "",
+                options: .regularExpression
+            )
+        }
+        
+        // 移除"注："及其后面的解释内容，包括多行内容
+        let notePatterns = [
+            "注：[^\\n]*",               // "注："后面的内容
+            "注:[^\\n]*",                // "注:"后面的内容
+            "注意：[^\\n]*",             // "注意："后面的内容
+            "注意:[^\\n]*",              // "注意:"后面的内容
+            "PS：[^\\n]*",               // "PS："后面的内容
+            "PS:[^\\n]*",                // "PS:"后面的内容
+            "P\\.S\\.：[^\\n]*",         // "P.S.："后面的内容
+            "P\\.S\\.:[^\\n]*",          // "P.S.:"后面的内容
+            "补充：[^\\n]*",             // "补充："后面的内容
+            "补充:[^\\n]*",              // "补充:"后面的内容
+            "说明：[^\\n]*",             // "说明："后面的内容
+            "说明:[^\\n]*",              // "说明:"后面的内容
+            "解释：[^\\n]*",             // "解释："后面的内容
+            "解释:[^\\n]*",              // "解释:"后面的内容
+            "备注：[^\\n]*",             // "备注："后面的内容
+            "备注:[^\\n]*",              // "备注:"后面的内容
+            "附：[^\\n]*",               // "附："后面的内容
+            "附:[^\\n]*"                 // "附:"后面的内容
+        ]
+        
+        for pattern in notePatterns {
+            cleanedContent = cleanedContent.replacingOccurrences(
+                of: pattern,
+                with: "",
+                options: .regularExpression
+            )
+        }
+        
+        // 移除多行注释，如果注释占单独一行或多行
+        let multilineNotePatterns = [
+            "\\n注：[\\s\\S]*",          // 换行后的"注："及其后面所有内容
+            "\\n注:[\\s\\S]*",           // 换行后的"注:"及其后面所有内容
+            "\\n补充：[\\s\\S]*",        // 换行后的"补充："及其后面所有内容
+            "\\n补充:[\\s\\S]*",         // 换行后的"补充:"及其后面所有内容
+            "\\n说明：[\\s\\S]*",        // 换行后的"说明："及其后面所有内容
+            "\\n说明:[\\s\\S]*",         // 换行后的"说明:"及其后面所有内容
+            "\\n解释：[\\s\\S]*",        // 换行后的"解释："及其后面所有内容
+            "\\n解释:[\\s\\S]*",         // 换行后的"解释:"及其后面所有内容
+            "\\n备注：[\\s\\S]*",        // 换行后的"备注："及其后面所有内容
+            "\\n备注:[\\s\\S]*",         // 换行后的"备注:"及其后面所有内容
+            "\\nPS：[\\s\\S]*",          // 换行后的"PS："及其后面所有内容
+            "\\nPS:[\\s\\S]*",           // 换行后的"PS:"及其后面所有内容
+            "\\nP\\.S\\.：[\\s\\S]*",    // 换行后的"P.S.："及其后面所有内容
+            "\\nP\\.S\\.:[\\s\\S]*",     // 换行后的"P.S.:"及其后面所有内容
+            "\\(注：[\\s\\S]*?\\)",      // (注：...)格式的内容
+            "\\(注:[\\s\\S]*?\\)",       // (注:...)格式的内容
+            "（注：[\\s\\S]*?）",        // （注：...）格式的内容
+            "（注:[\\s\\S]*?）",         // （注:...）格式的内容
+            "\\(补充：[\\s\\S]*?\\)",    // (补充：...)格式的内容
+            "\\(补充:[\\s\\S]*?\\)",     // (补充:...)格式的内容
+            "（补充：[\\s\\S]*?）",      // （补充：...）格式的内容
+            "（补充:[\\s\\S]*?）",       // （补充:...）格式的内容
+            "\\(解释：[\\s\\S]*?\\)",    // (解释：...)格式的内容
+            "\\(解释:[\\s\\S]*?\\)",     // (解释:...)格式的内容
+            "（解释：[\\s\\S]*?）",      // （解释：...）格式的内容
+            "（解释:[\\s\\S]*?）"        // （解释:...）格式的内容
+        ]
+        
+        for pattern in multilineNotePatterns {
+            cleanedContent = cleanedContent.replacingOccurrences(
+                of: pattern,
+                with: "",
+                options: .regularExpression
+            )
+        }
+        
+        // 特别处理图片中显示的那种格式：(注：将相对论的时间弹性...)
+        let specialNotePatterns = [
+            "\\([^\\)]*?注：[^\\)]*\\)",
+            "\\([^\\)]*?注:[^\\)]*\\)",
+            "\\([^\\)]*?补充：[^\\)]*\\)",
+            "\\([^\\)]*?补充:[^\\)]*\\)",
+            "\\([^\\)]*?解释：[^\\)]*\\)",
+            "\\([^\\)]*?解释:[^\\)]*\\)",
+            "\\([^\\)]*?说明：[^\\)]*\\)",
+            "\\([^\\)]*?说明:[^\\)]*\\)",
+            "\\([^\\)]*?PS：[^\\)]*\\)",
+            "\\([^\\)]*?PS:[^\\)]*\\)"
+        ]
+        
+        for pattern in specialNotePatterns {
+            cleanedContent = cleanedContent.replacingOccurrences(
+                of: pattern,
+                with: "",
+                options: .regularExpression
+            )
+        }
+        
+        // 处理中文括号内的注释
+        let chineseSpecialNotePatterns = [
+            "（[^）]*?注：[^）]*）",
+            "（[^）]*?注:[^）]*）",
+            "（[^）]*?补充：[^）]*）",
+            "（[^）]*?补充:[^）]*）",
+            "（[^）]*?解释：[^）]*）",
+            "（[^）]*?解释:[^）]*）",
+            "（[^）]*?说明：[^）]*）",
+            "（[^）]*?说明:[^）]*）",
+            "（[^）]*?PS：[^）]*）",
+            "（[^）]*?PS:[^）]*）"
+        ]
+        
+        for pattern in chineseSpecialNotePatterns {
+            cleanedContent = cleanedContent.replacingOccurrences(
+                of: pattern,
+                with: "",
+                options: .regularExpression
+            )
+        }
+        
+        // 移除引用和参考内容
+        let referencePatterns = [
+            "参考：[^\\n]*",
+            "参考:[^\\n]*",
+            "引用：[^\\n]*",
+            "引用:[^\\n]*",
+            "出处：[^\\n]*",
+            "出处:[^\\n]*",
+            "——[^\\n]*",
+            "--[^\\n]*"
+        ]
+        
+        for pattern in referencePatterns {
             cleanedContent = cleanedContent.replacingOccurrences(
                 of: pattern,
                 with: "",
@@ -570,62 +1115,128 @@ class CommentManager: ObservableObject {
         if commentContent.count <= 10 {
             // 对于特别短的评论（如"哈哈哈"、"666"等），给出更直接的指导
             let shortCommentPrompt = """
-            用户发送了一条简短评论: "\(commentContent)"
+            用户发表了一条简短评论: "\(commentContent)"
             
-            作为回复指南：
-            1. 直接针对这条评论做出简短自然的回应，就像正常人一样
-            2. 禁止使用任何角色扮演式的描述，如"(微笑)"、"(思考中)"等
-            3. 不要过度表现你的历史人物身份，就像普通朋友间的对话
-            4. 回复必须与用户的评论直接相关，不要自说自话
-            5. 如果用户发送的是笑声或表情，请用同样轻松的语气回应
-            6. 完全禁止使用括号内的动作描述或思考过程说明
-            7. 回复控制在15字以内，越简短越好
-            8. 绝对不要使用括号解释你的回复理由
+            作为\(traits.name)，请直接针对这条评论回复：
+            1. 必须直接回应用户的这条具体评论，不要谈论帖子内容
+            2. 表现出真实对话的感觉，就像在日常交流一样
+            3. 保持你的个性特点，但首要任务是回应用户的评论内容
+            4. 禁止使用任何角色扮演式的描述，如"(微笑)"、"(思考中)"等
+            5. 回复必须与用户的评论直接相关，不要自说自话或谈论无关话题
+            6. 回复控制在15字以内，越简短越好
+            7. 使用格式：\(traits.name)：[回复内容]，使用中文冒号
+            8. 称呼用户时，避免直接使用"当前用户"这样的网名，而应使用更自然的方式：
+               - 可以使用"朋友"、"你"等自然的称呼
+               - 如果是回复问题，可以直接回答而不称呼
+               - 如果是对话，可以用"您"表示尊重
             
-            示例：
-            用户: "哈哈哈哈"
-            不好的回复: "(用羽毛笔蘸墨) 笑声是最美的音符呢"
-            好的回复: "看到你开心，我也笑了"
-            
-            用户: "666"
-            不好的回复: "(调整望远镜) 数字背后藏着宇宙的奥秘"
-            好的回复: "谢谢夸奖，你真好"
-            
-            记住：回复必须自然、相关、简短，像普通人一样说话，不要故意表现得很特别。
-            绝对不要在任何地方使用括号来解释你的回复思路或理论。
+            记住：你必须直接回应用户的评论内容，而不是谈论帖子或其他无关话题。
             """
             return shortCommentPrompt
         }
         
         let basePrompt = """
-        以下是用户对你的评论: "\(commentContent)"
+        用户发表了以下评论: "\(commentContent)"
         
         请以\(traits.description)的风格，作为\(traits.name)回复这条评论。
         
         回复要求:
-        1. 必须直接针对用户评论的具体内容作出回应，不要泛泛而谈
-        2. 严格禁止使用任何括号中的内容，如"(思考中)"、"(微笑)"、"(以XX理论分析)"等
-        3. 不要过度"扮演"你的角色，而是自然地表达观点
-        4. 回复应该与用户评论保持紧密的话题相关性
-        5. 使用现代通俗语言，避免晦涩难懂的专业术语
-        6. 回复长度应适中，通常不超过50字
-        7. 绝对不要解释你的回复思路或理论依据
-        8. 不要在回复中添加任何形式的注释
+        1. 必须直接回应用户的这条具体评论内容，而非帖子本身
+        2. 把用户评论视为对话的开始，你需要接这个话茬，形成自然对话
+        3. 理解用户评论的真实意图，给出有针对性的回应
+        4. 体现你独特的思想和个性，但首要任务是回应用户评论
+        5. 回复控制在20-40字之间，简短有力
+        6. 使用通俗易懂的语言，将专业术语用生动比喻解释
+        7. 严格禁止使用任何括号中的内容，如"(思考中)"、"(微笑)"等
+        8. 评论格式必须为：\(traits.name)：[评论内容]，使用中文冒号
+        9. 与其他角色回复形成思想碰撞，增加互动感和趣味性
+        10. 称呼用户时，避免直接使用"当前用户"这样的网名，而应使用更自然的方式：
+            - 可以使用"朋友"、"你"等自然的称呼
+            - 如果是回复问题，可以直接回答而不称呼
+            - 如果是对话，可以用"您"表示尊重
+        11. 根据用户评论的类型调整风格：
+            - 提问：给予有见地的回答，但不要长篇大论
+            - 观点：可以赞同、质疑或补充，展现你的思维方式
+            - 情感表达：回应情感，展现共鸣或独特视角
+            - 闲聊：保持轻松友好，但仍有你的特色
         
-        记住：始终保持对用户评论内容的直接回应，不要自说自话或离题。
-        你的回复将直接发送给用户，不需要任何附加说明或解释，就像普通人在社交平台上的对话。
+        记住：你是在与用户直接对话，要让用户感受到真实的互动。
+        不要自顾自地发表与用户评论无关的言论，这会让对话显得不自然。
+        绝对不要在评论结尾添加任何解释性括号标注。
         """
         
         // 如果评论来自当前用户，添加额外的提示以确保回复的相关性
         if comment.username == currentUsername {
             return basePrompt + """
             
-            额外提醒：这条评论来自与你正在交流的用户，请确保你的回复与用户评论有明确的关联，不要漫无目的地展示你的角色特点。
+            额外提醒：这条评论来自与你正在交流的用户，必须确保你的回复与用户评论有明确的关联。
+            你的回复应该像真实对话一样自然，而不是对帖子内容的评论。
             绝对不要使用任何括号内的内容，如注释、解释或理论分析。
+            严格禁止直接称呼用户为"当前用户"。
             """
         }
         
         return basePrompt
+    }
+    
+    /**
+     * 聚焦到评论输入框
+     * 发送通知让评论输入框获取焦点
+     */
+    func focusCommentInput() {
+        // 发送通知让评论输入框获取焦点
+        DispatchQueue.main.async {
+            print("📣 发送FocusCommentInput通知")
+            NotificationCenter.default.post(
+                name: NSNotification.Name("FocusCommentInput"),
+                object: nil
+            )
+            
+            // 同时滚动到评论区域
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ScrollToComments"),
+                object: nil
+            )
+        }
+    }
+    
+    /**
+     * 对象销毁时确保草稿被正确处理
+     */
+    deinit {
+        // 取消计时器
+        draftSaveTimer?.invalidate()
+        
+        // 只有当评论文本不为空时才保存草稿
+        if !commentText.isEmpty {
+            saveDraft(commentText)
+        }
+        
+        // 移除对清除草稿通知的监听
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSNotification.Name("ClearCommentDraft"),
+            object: nil
+        )
+    }
+    
+    /**
+     * 更新草稿内容
+     * 公开方法，让外部可以直接更新草稿
+     * @param text 新的草稿内容
+     */
+    func updateDraft(_ text: String) {
+        // 标记为恢复草稿状态，避免触发额外的保存操作
+        isRestoringDraft = true
+        
+        // 更新输入框内容
+        self.commentText = text
+        
+        // 重置标记
+        isRestoringDraft = false
+        
+        // 立即保存草稿，不使用防抖
+        saveDraft(text)
     }
 }
 
