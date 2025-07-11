@@ -225,13 +225,10 @@ class CharacterSystem {
     /**
      * 根据名称查找角色
      */
-    func findCharacterByName(_ name: String) -> Future<CharacterIdentity?, Error> {
-        return Future { promise in
-            let character = (self.characterDatabase + self.userDefinedCharacters).first(where: { 
-                $0.name.lowercased().contains(name.lowercased())
-            })
-            promise(.success(character))
-        }
+    func findCharacterByName(_ name: String) -> CharacterIdentity? {
+        return (self.characterDatabase + self.userDefinedCharacters).first(where: { 
+            $0.name.lowercased().contains(name.lowercased())
+        })
     }
     
     /**
@@ -341,6 +338,29 @@ class CharacterSystem {
         
         // 随机打乱并获取指定数量
         return Array(availableCharacters.shuffled().prefix(count))
+    }
+    
+    /**
+     * 随机获取一个角色，可以指定内容类型偏好
+     */
+    func getRandomCharacter(preferredContentType: String? = nil) -> CharacterIdentity {
+        var availableCharacters = getAllCharacters()
+        
+        // 如果指定了内容类型，根据角色对该内容类型的亲和度排序
+        if let contentType = preferredContentType {
+            availableCharacters.sort { char1, char2 in
+                let affinity1 = char1.contentAffinities[contentType] ?? 0.5
+                let affinity2 = char2.contentAffinities[contentType] ?? 0.5
+                return affinity1 > affinity2
+            }
+            
+            // 从前50%的角色中随机选择，增加相关性但保持随机性
+            let preferredCount = max(1, availableCharacters.count / 2)
+            return availableCharacters[Int.random(in: 0..<preferredCount)]
+        }
+        
+        // 如果没有指定内容类型，完全随机选择
+        return availableCharacters.randomElement() ?? availableCharacters[0]
     }
     
     /**

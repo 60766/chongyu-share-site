@@ -32,7 +32,11 @@ struct ActivityView: UIViewControllerRepresentable {
         if let popoverController = controller.popoverPresentationController {
             // 获取当前活动窗口（iOS 15+）
             if #available(iOS 15, *) {
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                let windowScenes = UIApplication.shared.connectedScenes
+                    .filter { $0.activationState == .foregroundActive }
+                    .compactMap { $0 as? UIWindowScene }
+                
+                if let windowScene = windowScenes.first,
                    let window = windowScene.windows.first {
                     popoverController.sourceView = window
                     popoverController.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)

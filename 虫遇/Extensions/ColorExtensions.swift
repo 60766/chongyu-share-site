@@ -170,6 +170,61 @@ extension Color {
     
     /// 温暖的边框色 - 用于分割线和边框
     static let warmBorder = Color(hex: "DDDDDD").opacity(0.6)
+
+    func getCharacterColor(for characterID: String?) -> Color {
+        guard let characterID = characterID?.lowercased() else {
+            return .gray
+        }
+        
+        switch characterID {
+        case "einstein": return .blue
+        case "newton": return .purple
+        case "feynman": return .red
+        case "curie": return .pink
+        case "tesla": return .indigo
+        case "davinci": return .green
+        case "shakespeare": return .purple
+        case "confucius": return .brown
+        case "plato": return .blue
+        case "socrates": return .cyan
+        case "aristotle": return .indigo
+        case "goku", "sunwukong": return .orange
+        case "naruto": return .orange
+        case "sherlock", "holmes": return .blue
+        case "watson": return .green
+        default: return .gray
+        }
+    }
+    
+    // 获取角色辅助颜色
+    func getCharacterSecondaryColor(for characterID: String?) -> Color {
+        guard let characterID = characterID?.lowercased() else {
+            return .gray.opacity(0.3)
+        }
+        
+        switch characterID {
+        case "einstein": return .blue.opacity(0.3)
+        case "newton": return .purple.opacity(0.3)
+        case "feynman": return .red.opacity(0.3)
+        case "curie": return .pink.opacity(0.3)
+        case "tesla": return .indigo.opacity(0.3)
+        case "davinci": return .green.opacity(0.3)
+        case "shakespeare": return .purple.opacity(0.3)
+        case "confucius": return .brown.opacity(0.3)
+        case "plato": return .blue.opacity(0.3)
+        case "socrates": return .cyan.opacity(0.3)
+        case "aristotle": return .indigo.opacity(0.3)
+        case "goku", "sunwukong":
+            return .orange.opacity(0.3)
+        case "naruto":
+            return .orange.opacity(0.3)
+        case "sherlock", "holmes":
+            return .blue.opacity(0.3)
+        case "watson":
+            return .green.opacity(0.3)
+        default: return .gray.opacity(0.3)
+        }
+    }
 }
 
 /**

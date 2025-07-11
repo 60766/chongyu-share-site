@@ -34,15 +34,15 @@ struct UserPostOptionsButton: View {
             ZStack {
                 if isPressed {
                     Circle()
-                        .fill(Color(.systemGray5).opacity(0.5))
-                        .frame(width: 28, height: 28)
+                        .fill(Color(.systemGray5).opacity(0.6))
+                        .frame(width: 36, height: 36)
                 }
                 
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 15.0, weight: .medium))
+                    .font(.system(size: 16.0, weight: .medium))
                     .foregroundColor(DesignSystem.Colors.secondaryText)
             }
-            .frame(width: 28, height: 28)
+            .frame(width: 36, height: 36)
             .contentShape(Circle())
         }
         .buttonStyle(PlainButtonStyle())
@@ -58,28 +58,27 @@ struct UserPostOptionsButton: View {
                         HapticFeedbackManager.shared.menuSelection()
                     }
                 }) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 8) {
                         Image(systemName: "pencil")
-                            .font(.system(size: 12))
+                            .font(.system(size: 14))
                             .foregroundColor(Color.primaryColor)
-                            .frame(width: 16, alignment: .center)
-                        
-                        Spacer()
+                            .frame(width: 20, alignment: .center)
                         
                         Text("编辑")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(DesignSystem.Colors.secondaryText)
-                            .padding(.trailing, 4)
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundColor(DesignSystem.Colors.primaryText)
+                        
+                        Spacer()
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 12)
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 16)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
                 
                 Divider()
-                    .frame(width: 110)
+                    .padding(.horizontal, 8)
                 
                 // 置顶/取消置顶按钮
                 Button(action: {
@@ -99,28 +98,27 @@ struct UserPostOptionsButton: View {
                         )
                     }
                 }) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 8) {
                         Image(systemName: isPinned ? "pin.slash" : "pin")
-                            .font(.system(size: 12))
+                            .font(.system(size: 14))
                             .foregroundColor(isPinned ? Color.orange.opacity(0.8) : Color.primaryColor)
-                            .frame(width: 16, alignment: .center)
-                        
-                        Spacer()
+                            .frame(width: 20, alignment: .center)
                         
                         Text(isPinned ? "取消置顶" : "置顶")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(DesignSystem.Colors.secondaryText)
-                            .padding(.trailing, 4)
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundColor(DesignSystem.Colors.primaryText)
+                        
+                        Spacer()
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 12)
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 16)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
                 
                 Divider()
-                    .frame(width: 110)
+                    .padding(.horizontal, 8)
                 
                 // 删除按钮
                 Button(action: {
@@ -132,27 +130,26 @@ struct UserPostOptionsButton: View {
                         HapticFeedbackManager.shared.menuSelection()
                     }
                 }) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 8) {
                         Image(systemName: "trash")
-                            .font(.system(size: 12))
-                            .foregroundColor(Color.red.opacity(0.7))
-                            .frame(width: 16, alignment: .center)
-                        
-                        Spacer()
+                            .font(.system(size: 14))
+                            .foregroundColor(Color.red.opacity(0.8))
+                            .frame(width: 20, alignment: .center)
                         
                         Text("删除")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(Color.red.opacity(0.7))
-                            .padding(.trailing, 4)
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundColor(Color.red.opacity(0.8))
+                        
+                        Spacer()
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 12)
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 16)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
             }
-            .frame(width: 170)
+            .frame(width: 180)
             .background(
                 ZStack {
                     // 磨砂玻璃背景
@@ -163,11 +160,16 @@ struct UserPostOptionsButton: View {
                     }
                 }
             )
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.gray.opacity(0.1), lineWidth: 0.5)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
             .if16Available {
                 $0.presentationCompactAdaptation(.none)
                    .presentationBackgroundInteraction(.enabled)
-                   .presentationCornerRadius(8)
+                   .presentationCornerRadius(12)
                    .shadowVisibility(.hidden)
             }
             .onAppear {

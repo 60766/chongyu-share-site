@@ -415,8 +415,7 @@ class TabBarManager: ObservableObject {
                     .filter { $0.activationState == .foregroundActive }
                     .compactMap { $0 as? UIWindowScene }
                 
-                let scene = windowScenes.first
-                window = scene?.windows.first(where: { $0.isKeyWindow })
+                window = windowScenes.first?.windows.first(where: { $0.isKeyWindow })
             } else {
                 // iOS 15以下使用UIApplication.windows
                 window = UIApplication.shared.windows.first(where: { $0.isKeyWindow })

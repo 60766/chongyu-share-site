@@ -214,163 +214,278 @@ class PostViewModel: ObservableObject {
     func addUserComment(to post: UserPostModel, content: String, replyToCommentID: UUID? = nil) {
         guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         
+        // 创建后台任务，确保即使用户退出页面也能完成API调用
+        let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            print("⚠️ addUserComment: 后台任务超时")
+        }
+        
         // 格式化评论内容，确保文本格式正确
         let formattedContent = UserPostModel.formatContent(content)
         
         if let index = posts.firstIndex(where: { $0.id == post.id }) {
             // 如果有父评论ID（回复），使用带parentCommentId参数的方法
             if let parentId = replyToCommentID {
-                // 获取被回复的评论，以获取用户名
-                let replyToName = getCommentById(commentId: parentId, in: posts[index].comments)?.username
+                // 查找要回复的评论，获取其用户名
+                let replyToUsername: String
+                if let comment = getCommentById(commentId: parentId, in: posts[index].comments) {
+                    replyToUsername = comment.username
+                } else {
+                    replyToUsername = "未知用户"
+                }
                 
-                posts[index].addComment(
+                // 创建用户回复评论
+                let userReply = DetailedCommentModel(
                     username: "当前用户",
                     userAvatar: "current_user_avatar",
                     content: formattedContent,
+                    datePosted: Date(),
+                    isVirtualCharacter: false,
+                    characterID: nil,
                     parentCommentId: parentId,
-                    replyToName: replyToName
+                    replyToUsername: replyToUsername
                 )
+                
+                // 保存用户回复的ID，用于后续添加虚拟角色回复
+                let userReplyId = userReply.id
+                print("📝 创建用户回复，ID: \(userReplyId)")
+                
+                // 创建帖子的可变副本
+                let updatedPost = post
+                
+                // 添加用户回复到父评论
+                updatedPost.addReplyToParent(parentId: parentId, reply: userReply)
+                
+                // 更新帖子
+                posts[index] = updatedPost
+                
+                print("✅ 已添加用户回复到评论，回复ID: \(userReplyId)")
+                
+                // 准备要生成回复的角色列表
+                var charactersToRespond: [String] = []
                 
                 // 如果是回复某个评论，查找该评论是否来自虚拟角色，并让该角色回复
                 if let comment = getCommentById(commentId: parentId, in: posts[index].comments),
                    comment.isVirtualCharacter,
                    let characterID = comment.characterID {
-                    // 让被回复的虚拟角色回复用户
-                    self.generateVirtualCharacterReply(
-                        characterID: characterID,
-                        toComment: formattedContent,
-                        inPost: post.content,
-                        completion: { result in
-                            if case .success(let content) = result {
-                                print("✅ 虚拟角色回复已生成: \(content.prefix(30))...")
-                                
-                                // 添加一些延迟，使回复看起来更自然
-                                DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1.5...3.0)) {
-                                    if let postIndex = self.posts.firstIndex(where: { $0.id == post.id }) {
-                                        // 查找用户最新的评论ID
-                                        if let userCommentId = self.findLastCommentFromCurrentUser(inPost: post.id) {
-                                            // 创建虚拟角色回复
-                                            let virtualReply = DetailedCommentModel(
-                                                username: self.getCharacterName(for: characterID),
-                                                userAvatar: self.getCharacterAvatar(for: characterID),
-                                                content: content,
-                                                isVirtualCharacter: true,
-                                                characterID: characterID,
-                                                parentCommentId: userCommentId,
-                                                replyToUsername: "当前用户",
-                                                replyToName: "当前用户"
-                                            )
-                                            
-                                            // 添加到帖子
-                                            self.posts[postIndex].addReplyToComment(parentId: userCommentId, reply: virtualReply)
-                                            
-                                            // 发送通知刷新UI
-                                            NotificationCenter.default.post(
-                                                name: NSNotification.Name("PostCommentsUpdated"),
-                                                object: nil,
-                                                userInfo: ["postID": post.id.uuidString]
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    // 添加被回复的角色
+                    print("🤖 被回复的虚拟角色将回应用户")
+                    charactersToRespond.append(characterID)
+                    
+                    // 一次性生成回复
+                    generateBatchReplies(
+                        characterIDs: charactersToRespond, 
+                        to: formattedContent, 
+                        in: post,
+                        replyToId: userReplyId,
+                        backgroundTaskID: backgroundTaskID
                     )
                 }
             } else {
-                // 直接添加评论到主帖子
-                posts[index].addComment(
+                // 创建顶级评论
+                let newComment = DetailedCommentModel(
                     username: "当前用户",
                     userAvatar: "current_user_avatar",
-                    content: formattedContent
+                    content: formattedContent,
+                    datePosted: Date(),
+                    isVirtualCharacter: false,
+                    characterID: nil
                 )
                 
-                // 找到用户评论的ID，用于后续回复
-                if let userCommentId = findLastCommentFromCurrentUser(inPost: post.id) {
-                    
-                    // 1. 首先，让帖子作者回复用户评论
-                    let postAuthor = posts[index].username
-                    let authorCharacterId = getCharacterIdByName(postAuthor)
-                    
-                    // 如果帖子作者是虚拟角色，获取其characterID
-                    if let authorCharacterId = authorCharacterId {
-                        print("🤖 帖子作者将回复用户评论，作者：\(postAuthor), ID：\(authorCharacterId)")
+                // 保存顶级评论的ID，用于后续回复
+                let userCommentId = newComment.id
+                
+                // 添加评论到帖子
+                posts[index].comments.insert(newComment, at: 0)
+                
+                print("✅ 已添加用户评论，评论ID: \(userCommentId)")
+                
+                // 准备要生成回复的角色列表
+                var charactersToRespond: [String] = []
+                
+                // 1. 首先，添加帖子作者到回复列表（如果是虚拟角色）
+                let postAuthor = posts[index].username
+                let authorCharacterId = getCharacterIdByName(postAuthor)
+                
+                if let authorCharacterId = authorCharacterId {
+                    print("🤖 帖子作者将回复用户评论，作者：\(postAuthor), ID：\(authorCharacterId)")
+                    charactersToRespond.append(authorCharacterId)
+                }
+                
+                // 2. 添加1-2个随机角色
+                var availableCharacters = ["einstein", "shakespeare", "davinci", "confucius", "newton", "libai"]
+                
+                // 排除作者（如果有）
+                if let authorId = authorCharacterId {
+                    availableCharacters.removeAll { $0 == authorId.lowercased() }
+                }
+                
+                // 随机选择1-2个角色
+                let replyCount = Int.random(in: 1...2)
+                let selectedCharacters = Array(availableCharacters.shuffled().prefix(replyCount))
+                charactersToRespond.append(contentsOf: selectedCharacters)
+                
+                // 一次性生成所有角色的回复
+                generateBatchReplies(
+                    characterIDs: charactersToRespond, 
+                    to: formattedContent, 
+                    in: post,
+                    replyToId: userCommentId,
+                    backgroundTaskID: backgroundTaskID
+                )
+            }
+        } else {
+            // 帖子不存在，结束后台任务
+            if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            }
+        }
+    }
+    
+    /**
+     * 为多个角色批量生成回复
+     * @param characterIDs 角色ID列表
+     * @param to 回复的内容
+     * @param in 帖子对象
+     * @param replyToId 回复到的评论ID
+     * @param backgroundTaskID 后台任务ID
+     */
+    private func generateBatchReplies(characterIDs: [String], to content: String, in post: UserPostModel, replyToId: UUID, backgroundTaskID: UIBackgroundTaskIdentifier) {
+        // 如果没有角色需要回应，直接结束
+        if characterIDs.isEmpty {
+            if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            }
+            return
+        }
+        
+        print("🔄 准备批量生成\(characterIDs.count)个角色的回复")
+        
+        // 使用MultiCharacterCommentService一次性生成多个角色的回复
+        MultiCharacterCommentService.shared.generateMultiCharacterComments(
+            characterIDs: characterIDs,
+            postId: post.id.uuidString,
+            postContent: post.content,
+            postAuthor: post.username
+        ) { [weak self] result in
+            guard let self = self else { return }
+            
+            switch result {
+            case .success(let commentsMap):
+                print("✅ 成功批量生成\(commentsMap.count)个角色的回复")
+                
+                // 获取帖子索引
+                guard let postIndex = self.posts.firstIndex(where: { $0.id == post.id }) else {
+                    print("❌ 无法找到帖子，无法添加批量生成的回复")
+                    if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    }
+                    return
+                }
+                
+                // 为了模拟自然对话，确定响应时间和顺序
+                // 第一个角色（通常是被回复角色或帖子作者）响应较快
+                let firstCharacterId = characterIDs.first!
+                let otherCharacterIds = Array(characterIDs.dropFirst())
+                
+                // 第一个角色回复
+                if let content = commentsMap[firstCharacterId] {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1.0...2.0)) {
+                        // 创建虚拟角色回复
+                        let virtualReply = DetailedCommentModel(
+                            username: self.getCharacterName(for: firstCharacterId),
+                            userAvatar: self.getCharacterAvatar(for: firstCharacterId),
+                            content: content,
+                            datePosted: Date().addingTimeInterval(Double.random(in: 30...60)),
+                            isVirtualCharacter: true,
+                            characterID: firstCharacterId,
+                            parentCommentId: replyToId,
+                            replyToUsername: "当前用户"
+                        )
                         
-                        // 帖子作者回复用户评论
-                        self.generateVirtualCharacterReply(
-                            characterID: authorCharacterId,
-                            toComment: formattedContent,
-                            inPost: post.content,
-                            completion: { [weak self] result in
-                                guard let self = self else { return }
-                                
-                                if case .success(let content) = result {
-                                    print("✅ 帖子作者回复已生成: \(content.prefix(30))...")
-                                    
-                                    // 添加一些延迟，使回复看起来更自然
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1.0...2.0)) {
-                                        if let postIndex = self.posts.firstIndex(where: { $0.id == post.id }) {
-                                            // 创建作者的回复
-                                            let authorReply = DetailedCommentModel(
-                                                username: postAuthor,
-                                                userAvatar: self.getCharacterAvatar(for: authorCharacterId),
-                                                content: content,
-                                                isVirtualCharacter: true,
-                                                characterID: authorCharacterId,
-                                                parentCommentId: userCommentId,
-                                                replyToUsername: "当前用户",
-                                                replyToName: "当前用户"
-                                            )
-                                            
-                                            // 添加作者回复
-                                            self.posts[postIndex].addReplyToComment(parentId: userCommentId, reply: authorReply)
-                                            
-                                            // 发送通知刷新UI
-                                            NotificationCenter.default.post(
-                                                name: NSNotification.Name("PostCommentsUpdated"),
-                                                object: nil,
-                                                userInfo: ["postID": post.id.uuidString]
-                                            )
-                                            
-                                            // 2. 之后，随机选择1-2个其他虚拟角色参与评论
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 3.0...5.0)) {
-                                                self.addRandomCharacterReplies(to: post, originalCommentId: userCommentId, authorId: authorCharacterId)
-                                            }
-                                        }
-                                    }
+                        // 添加到帖子
+                        print("📝 添加\(firstCharacterId)的回复到评论ID: \(replyToId)")
+                        self.posts[postIndex].addReplyToParent(parentId: replyToId, reply: virtualReply)
+                        
+                        // 发送通知刷新UI
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("PostCommentsUpdated"),
+                            object: nil,
+                            userInfo: ["postID": post.id.uuidString]
+                        )
+                        
+                        // 添加震动反馈
+                        self.hapticFeedback()
+                    }
+                }
+                
+                // 其他角色回复（延迟更长）
+                for (index, characterID) in otherCharacterIds.enumerated() {
+                    if let content = commentsMap[characterID] {
+                        // 添加累加的延迟，让回复看起来更自然
+                        let delay = Double.random(in: 3.0...5.0) + Double(index) * 1.5
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                            // 创建虚拟角色回复
+                            let virtualReply = DetailedCommentModel(
+                                username: self.getCharacterName(for: characterID),
+                                userAvatar: self.getCharacterAvatar(for: characterID),
+                                content: content,
+                                datePosted: Date().addingTimeInterval(Double.random(in: 60...180)),
+                                isVirtualCharacter: true,
+                                characterID: characterID,
+                                parentCommentId: replyToId,
+                                replyToUsername: "当前用户"
+                            )
+                            
+                            // 添加到帖子
+                            print("📝 添加\(characterID)的回复到评论ID: \(replyToId)")
+                            self.posts[postIndex].addReplyToParent(parentId: replyToId, reply: virtualReply)
+                            
+                            // 发送通知刷新UI
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("PostCommentsUpdated"),
+                                object: nil,
+                                userInfo: ["postID": post.id.uuidString]
+                            )
+                            
+                            // 添加震动反馈
+                            self.hapticFeedback()
+                            
+                            // 如果是最后一个角色的回复，结束后台任务
+                            if index == otherCharacterIds.count - 1 {
+                                if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                                    print("🏁 所有虚拟角色回复任务已完成")
                                 }
                             }
-                        )
-                    } else {
-                        // 如果帖子作者不是虚拟角色，随机选择虚拟角色评论
-                        print("📝 帖子作者不是虚拟角色，随机选择角色评论")
-                        addRandomCharacterReplies(to: post, originalCommentId: userCommentId, authorId: nil)
+                        }
                     }
+                }
+                
+                // 如果没有其他角色，在第一个角色回复后结束任务
+                if otherCharacterIds.isEmpty {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                            print("🏁 虚拟角色回复任务已完成")
+                        }
+                    }
+                }
+                
+            case .failure(let error):
+                print("❌ 批量生成角色回复失败: \(error.localizedDescription)")
+                if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
                 }
             }
         }
     }
     
     /**
-     * 添加随机虚拟角色回复
-     * @param post 帖子对象
-     * @param originalCommentId 原始评论ID
-     * @param authorId 帖子作者ID（用于排除）
+     * 逐个生成角色回复（作为批量生成失败时的备用方案）
      */
-    private func addRandomCharacterReplies(to post: UserPostModel, originalCommentId: UUID, authorId: String?) {
-        // 所有可用的虚拟角色
-        var availableCharacters = ["einstein", "shakespeare", "davinci", "confucius", "newton", "libai"]
-        
-        // 如果有作者ID，排除作者
-        if let authorId = authorId {
-            availableCharacters.removeAll { $0 == authorId.lowercased() }
-        }
-        
-        // 随机选择1-2个角色回复
-        let replyCount = Int.random(in: 1...2)
-        let selectedCharacters = Array(availableCharacters.shuffled().prefix(replyCount))
-        
-        for (index, characterID) in selectedCharacters.enumerated() {
+    private func generateRepliesOneByOne(characters: [String], post: UserPostModel, originalCommentId: UUID) {
+        for (index, characterID) in characters.enumerated() {
             // 添加延迟，让回复看起来更自然
             let delay = Double.random(in: 2.0...4.0) + Double(index) * 2.0
             
@@ -381,31 +496,29 @@ class PostViewModel: ObservableObject {
                     // 获取原始评论内容，用于生成回复
                     let commentContent = self.getCommentContent(commentId: originalCommentId, in: post)
                     
-                    // 获取被回复的用户名，用于显示
-                    let replyToName = self.getCommentById(commentId: originalCommentId, in: self.posts[postIndex].comments)?.username ?? "当前用户"
-                    
                     self.generateVirtualCharacterReply(
                         characterID: characterID,
                         toComment: commentContent,
                         inPost: post.content,
                         completion: { result in
                             if case .success(let content) = result {
-                                print("✅ 额外角色回复已生成 - \(self.getCharacterName(for: characterID)): \(content.prefix(30))...")
+                                print("✅ 单独生成角色回复 - \(self.getCharacterName(for: characterID)): \(content.prefix(30))...")
                                 
                                 // 创建虚拟角色回复
                                 let virtualReply = DetailedCommentModel(
                                     username: self.getCharacterName(for: characterID),
                                     userAvatar: self.getCharacterAvatar(for: characterID),
                                     content: content,
+                                    datePosted: Date().addingTimeInterval(Double.random(in: 60...180)),
                                     isVirtualCharacter: true,
                                     characterID: characterID,
                                     parentCommentId: originalCommentId,
-                                    replyToUsername: "当前用户",
-                                    replyToName: replyToName
+                                    replyToUsername: "当前用户"
                                 )
                                 
                                 // 添加到帖子
-                                self.posts[postIndex].addReplyToComment(parentId: originalCommentId, reply: virtualReply)
+                                print("📝 添加虚拟角色回复到用户评论ID: \(originalCommentId)")
+                                self.posts[postIndex].addReplyToParent(parentId: originalCommentId, reply: virtualReply)
                                 
                                 // 发送通知刷新UI
                                 NotificationCenter.default.post(
@@ -413,6 +526,9 @@ class PostViewModel: ObservableObject {
                                     object: nil,
                                     userInfo: ["postID": post.id.uuidString]
                                 )
+                                
+                                // 添加震动反馈
+                                self.hapticFeedback()
                             }
                         }
                     )
@@ -496,8 +612,8 @@ class PostViewModel: ObservableObject {
     /**
      * 生成虚拟角色回复
      * @param characterID 角色ID
-     * @param toComment 被回复的评论内容
-     * @param inPost 帖子内容
+     * @param comment 用户评论
+     * @param postContent 帖子内容
      * @param completion 完成回调
      */
     func generateVirtualCharacterReply(
@@ -508,31 +624,69 @@ class PostViewModel: ObservableObject {
     ) {
         print("🤖 开始生成虚拟角色回复: 角色=\(characterID)")
         
-        // 从VirtualCharacterService生成回复
-        VirtualCharacterService.shared.generateCharacterComment(
-            characterID: characterID,
-            userComment: comment,
-            postContent: postContent
-        ) { result in
-            switch result {
-            case .success(let content):
-                print("✅ VirtualCharacterService生成回复成功")
-                completion(.success(content))
-            case .failure(let error):
-                print("❌ VirtualCharacterService生成回复失败: \(error.localizedDescription)")
-                completion(.failure(error))
+        // 创建一个临时的UUID作为帖子ID，用于inviteCharactersToComment方法
+        let tempPostId = UUID().uuidString
+        
+        // 创建一个通知观察者变量
+        let notificationName = NSNotification.Name("CharacterReplyGenerated")
+        
+        // 使用类型注解来声明观察者变量
+        var observer: NSObjectProtocol?
+        
+        // 创建闭包
+        let observerBlock: (Notification) -> Void = { [weak self] notification in
+            // 检查通知是否包含我们需要的信息
+            guard let _ = self,
+                  let userInfo = notification.userInfo,
+                  let notificationCharacterID = userInfo["characterID"] as? String,
+                  let reply = userInfo["reply"] as? String,
+                  notificationCharacterID == characterID else {
+                return
             }
+            
+            // 收到匹配的角色回复，移除观察者并调用完成回调
+            if let observer = observer {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            completion(.success(reply))
         }
+        
+        // 设置观察者
+        observer = NotificationCenter.default.addObserver(
+            forName: notificationName,
+            object: nil,
+            queue: .main,
+            using: observerBlock
+        )
+        
+        // 设置一个超时计时器，确保不会无限等待
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15.0) {
+            if let observer = observer {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            completion(.failure(NSError(domain: "PostViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "生成回复超时"])))
+        }
+        
+        // 使用统一的inviteCharactersToComment方法
+        VirtualCharacterService.shared.inviteCharactersToComment(
+            characterIDs: [characterID],
+            postId: tempPostId,
+            postAuthor: nil
+        )
     }
     
     /**
      * 获取帖子的相关评论作为上下文
      */
-    private func getRelevantComments(for postIndex: Int, limit: Int) -> [String] {
-        guard postIndex < posts.count else { return [] }
+    private func getRelevantComments(for postId: UUID, limit: Int) -> [String] {
+        // 使用布尔测试直接检查是否存在匹配的帖子
+        guard posts.contains(where: { $0.id == postId }) else { return [] }
+        
+        // 获取匹配的帖子
+        let post = posts.first { $0.id == postId }!
         
         // 获取最近的评论
-        let comments = posts[postIndex].comments
+        let comments = post.comments
         let recentComments = Array(comments.prefix(limit))
         
         // 转换为字符串数组
@@ -548,8 +702,8 @@ class PostViewModel: ObservableObject {
         // 使用角色名作为ID
         let characterID = character.name.lowercased()
         
-        // 获取帖子索引
-        guard let postIndex = posts.firstIndex(where: { $0.id == post.id }) else { return }
+        // 使用布尔测试直接检查帖子是否存在
+        guard posts.contains(where: { $0.id == post.id }) else { return }
         
         print("🚀 开始生成虚拟角色评论 - 角色ID: \(characterID), 帖子内容: \"\(String(post.content.prefix(50)))...\"")
         
@@ -561,56 +715,14 @@ class PostViewModel: ObservableObject {
             print("⚠️ 警告: API密钥未配置，将导致API调用失败")
         }
         
-        // 使用VirtualCharacterService生成评论
-        virtualCharacterService.generateCharacterComment(
-            characterID: characterID,
-            forPost: post.content
-        )
-        .receive(on: DispatchQueue.main)
-        .sink(
-            receiveCompletion: { completion in
-                if case .failure(let error) = completion {
-                    print("❌ API生成评论失败: \(error.localizedDescription)")
-                    
-                    // 切换API端点
-                    print("🔄 尝试切换API端点...")
-                    APIConfigManager.shared.switchEndpoint()
-                    
-                    // 不再创建备用回复，只记录错误
-                    print("❌ API生成失败，不创建任何评论")
-                }
-            },
-            receiveValue: { commentContent in
-                print("✅ API生成评论成功: \"\(String(commentContent.prefix(50)))...\"")
-                print("💾 评论内容完整: \"\(commentContent)\"")
-                
-                // 不再添加API生成标记，直接使用原始内容
-                let finalContent = commentContent
-                
-                // 添加评论到帖子
-                let comment = DetailedCommentModel(
-                    id: UUID(),
-            username: character.name,
-                    userAvatar: character.avatar,
-                    content: finalContent,
-            datePosted: Date(),
-            isVirtualCharacter: true,
-            characterID: characterID
+        // 使用统一的inviteCharactersToComment方法，确保所有角色评论生成都使用相同的批量生成流程
+        virtualCharacterService.inviteCharactersToComment(
+            characterIDs: [characterID],
+            postId: post.id.uuidString,
+            postAuthor: post.username
         )
         
-                self.posts[postIndex].comments.append(comment)
-                
-                print("📝 已添加API生成的评论到帖子，通知UI刷新")
-                
-                // 发送通知以刷新UI
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("PostCommentsUpdated"),
-                    object: nil,
-                    userInfo: ["postID": post.id.uuidString]
-                )
-            }
-        )
-        .store(in: &cancellables)
+        print("📝 已请求生成角色评论，通知已发送")
     }
     
     /**
@@ -691,35 +803,87 @@ class PostViewModel: ObservableObject {
         
         print("🔄 PostViewModel: 创建自动生成回复后台任务，ID: \(backgroundTaskID)")
         
+        // 确保帖子索引有效
+        guard postIndex >= 0 && postIndex < posts.count else {
+            print("⚠️ 无效的帖子索引: \(postIndex)")
+            if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            }
+            return
+        }
+        
+        // 获取帖子内容和ID
+        let post = posts[postIndex]
+        let postContent = post.content
+        let postId = post.id
+        
         // 此处简单实现：随机选择1-2个角色回复
         let characters = ["einstein", "shakespeare", "davinci", "goku", "holmes", "naruto"]
         let randomCharacters = Array(characters.shuffled().prefix(Int.random(in: 1...2)))
         
-        // 使用DispatchGroup来跟踪所有任务的完成
-        let group = DispatchGroup()
+        // 使用批量API调用生成回复
+        print("🚀 开始批量生成\(randomCharacters.count)个角色的回复")
         
-        for characterID in randomCharacters {
-            // 避免重复回复
-            // 添加随机延迟，模拟真实场景，但在后台线程中执行
-            group.enter()
-            DispatchQueue.global().asyncAfter(deadline: .now() + Double.random(in: 1...3)) {
-                self.generateVirtualCharacterReply(
-                    characterID: characterID,
-                    toComment: content,
-                    inPost: self.posts[postIndex].content,
-                    completion: { result in
-                        // 处理完成回调
-                        group.leave()
+        // 使用MultiCharacterCommentService一次性生成多个角色的回复
+        MultiCharacterCommentService.shared.generateMultiCharacterComments(
+            characterIDs: randomCharacters,
+            postId: postId.uuidString,
+            postContent: postContent,
+            postAuthor: post.username
+        ) { [weak self] result in
+            guard let self = self else { return }
+            
+            switch result {
+            case .success(let commentsMap):
+                print("✅ 成功批量生成\(commentsMap.count)个角色的回复")
+                
+                // 为每个角色添加回复，添加一定的延迟使回复看起来更自然
+                for (index, (characterID, commentContent)) in commentsMap.enumerated() {
+                    // 添加累加的延迟，让回复看起来更自然
+                    let delay = Double.random(in: 1.5...3.0) + Double(index) * 1.5
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        // 创建虚拟角色回复
+                        let virtualReply = DetailedCommentModel(
+                            username: self.getCharacterName(for: characterID),
+                            userAvatar: self.getCharacterAvatar(for: characterID),
+                            content: commentContent,
+                            datePosted: Date().addingTimeInterval(Double.random(in: 30...120)),
+                            isVirtualCharacter: true,
+                            characterID: characterID
+                        )
+                        
+                        // 添加到帖子
+                        print("📝 添加\(characterID)的回复到帖子")
+                        self.posts[postIndex].comments.insert(virtualReply, at: 0)
+                        
+                        // 发送通知刷新UI
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("PostCommentsUpdated"),
+                            object: nil,
+                            userInfo: ["postID": postId.uuidString]
+                        )
+                        
+                        // 添加震动反馈
+                        self.hapticFeedback()
+                        
+                        // 如果是最后一个角色的回复，结束后台任务
+                        if index == commentsMap.count - 1 {
+                            if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                                print("🏁 所有虚拟角色回复任务已完成")
+                            }
+                        }
                     }
-                )
-            }
-        }
-        
-        // 在所有任务完成后结束后台任务
-        group.notify(queue: .main) {
-            if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
-                UIApplication.shared.endBackgroundTask(backgroundTaskID)
-                print("🏁 所有虚拟角色回复任务已完成")
+                }
+                
+            case .failure(let error):
+                print("❌ 批量生成角色回复失败: \(error.localizedDescription)")
+                
+                // 结束后台任务
+                if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                }
             }
         }
     }
@@ -738,7 +902,7 @@ class PostViewModel: ObservableObject {
         // 创建用户回复评论
         let userReply = DetailedCommentModel(
             id: UUID(),
-                username: "当前用户",
+            username: "当前用户",
             userAvatar: "user_avatar",
             content: replyContent,
             datePosted: Date(),
@@ -752,51 +916,28 @@ class PostViewModel: ObservableObject {
         posts[postIndex].comments.append(userReply)
         print("✅ 用户回复已添加")
         
-        // 获取帖子和用户回复索引
+        // 获取帖子内容用于生成回复
+        let postContent = posts[postIndex].content
         let post = posts[postIndex]
-        let _ = posts[postIndex].comments.count - 1
         
         // 添加后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
             print("⚠️ 后台任务超时")
         }
         
-        // 1. 首先，让被回复的角色回应用户（如果原评论来自虚拟角色）
+        // 准备要生成回复的角色列表
+        var charactersToRespond: [String] = []
+        
+        // 1. 如果原评论来自虚拟角色，添加该角色
         if originalComment.isVirtualCharacter, let characterID = originalComment.characterID {
             print("🤖 被回复的角色将回应用户")
-            // 添加延迟以模拟真实场景
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1.5...3.0)) { [weak self] in
-                guard let self = self else { return }
-                // 使用API生成虚拟角色的回复
-                self.generateVirtualCharacterReply(
-                    characterID: characterID,
-                    toComment: replyContent,
-                    inPost: post.content,
-                    completion: { result in
-                        if case .success(let content) = result {
-                            print("✅ 角色回复生成成功: \(content.prefix(30))...")
-                        }
-                    }
-                )
-            }
+            charactersToRespond.append(characterID)
         }
-        // 如果回复的是帖子作者，让作者回复
+        // 如果回复的是帖子作者，添加作者
         else if originalComment.username == post.username {
             if let authorCharacterId = getCharacterIdByName(post.username) {
                 print("🤖 帖子作者将回应用户回复")
-                DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 2.0...3.5)) { [weak self] in
-                    guard let self = self else { return }
-                    self.generateVirtualCharacterReply(
-                        characterID: authorCharacterId,
-                        toComment: replyContent,
-                        inPost: post.content,
-                        completion: { result in
-                            if case .success(let content) = result {
-                                print("✅ 帖子作者回复生成成功: \(content.prefix(30))...")
-                            }
-                        }
-                    )
-                }
+                charactersToRespond.append(authorCharacterId)
             }
         }
         
@@ -821,39 +962,136 @@ class PostViewModel: ObservableObject {
             // 如果还有可用角色，随机选择一个
             if !availableCharacters.isEmpty {
                 let selectedCharacter = availableCharacters.randomElement()!
+                charactersToRespond.append(selectedCharacter)
+            }
+        }
+        
+        // 如果没有角色需要回应，直接结束
+        if charactersToRespond.isEmpty {
+            if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            }
+            return
+        }
+        
+        print("🔄 准备批量生成\(charactersToRespond.count)个角色的回复")
+        
+        // 使用MultiCharacterCommentService一次性生成多个角色的回复
+        MultiCharacterCommentService.shared.generateMultiCharacterComments(
+            characterIDs: charactersToRespond,
+            postId: post.id.uuidString,
+            postContent: postContent,
+            postAuthor: post.username
+        ) { [weak self] result in
+            guard let self = self else { return }
+            
+            switch result {
+            case .success(let commentsMap):
+                print("✅ 成功批量生成\(commentsMap.count)个角色的回复")
                 
-                // 添加更长的延迟，让这个回复显得更自然
-                DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 4.0...7.0)) { [weak self] in
-                    guard let self = self else { return }
+                // 为每个角色添加回复，添加一定的延迟使回复看起来更自然
+                for (index, (characterID, content)) in commentsMap.enumerated() {
+                    // 根据角色类型添加不同的延迟
+                    var delay: Double
+                    if index == 0 && originalComment.characterID == characterID {
+                        // 被回复的角色回复较快
+                        delay = Double.random(in: 1.5...3.0)
+                    } else {
+                        // 其他角色回复较慢
+                        delay = Double.random(in: 4.0...7.0)
+                    }
                     
-                    // 使用API生成虚拟角色的回复
-                    self.generateVirtualCharacterReply(
-                        characterID: selectedCharacter,
-                        toComment: replyContent,
-                        inPost: post.content,
-                        completion: { result in
-                            if case .success(let content) = result {
-                                print("✅ 额外角色回复生成成功: \(content.prefix(30))...")
-                            }
-                            
-                            // 在任务完成时结束后台任务
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        // 创建虚拟角色回复
+                        let virtualReply = DetailedCommentModel(
+                            username: self.getCharacterName(for: characterID),
+                            userAvatar: self.getCharacterAvatar(for: characterID),
+                            content: content,
+                            datePosted: Date().addingTimeInterval(Double.random(in: 30...120)),
+                            isVirtualCharacter: true,
+                            characterID: characterID,
+                            parentCommentId: userReply.id, // 回复到用户的回复
+                            replyToUsername: "当前用户"
+                        )
+                        
+                        // 添加到帖子
+                        print("📝 添加\(characterID)的回复到用户回复ID: \(userReply.id)")
+                        self.posts[postIndex].addReplyToParent(parentId: userReply.id, reply: virtualReply)
+                        
+                        // 发送通知刷新UI
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("PostCommentsUpdated"),
+                            object: nil,
+                            userInfo: ["postID": post.id.uuidString]
+                        )
+                        
+                        // 添加震动反馈
+                        self.hapticFeedback()
+                        
+                        // 如果是最后一个角色的回复，结束后台任务
+                        if index == commentsMap.count - 1 {
                             if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                                 UIApplication.shared.endBackgroundTask(backgroundTaskID)
                                 print("🏁 所有虚拟角色回复任务已完成")
                             }
                         }
-                    )
+                    }
                 }
-                } else {
-                // 如果没有其他可用角色，直接结束后台任务
-                if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
-                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                
+            case .failure(let error):
+                print("❌ 批量生成角色回复失败: \(error.localizedDescription)")
+                
+                // 回退到逐个生成回复
+                for (index, characterID) in charactersToRespond.enumerated() {
+                    let delay = (index == 0) ? Double.random(in: 1.5...3.0) : Double.random(in: 4.0...7.0)
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        // 使用API生成虚拟角色的回复
+                        self.generateVirtualCharacterReply(
+                            characterID: characterID,
+                            toComment: replyContent,
+                            inPost: postContent,
+                            completion: { result in
+                                if case .success(let content) = result {
+                                    print("✅ 单独生成角色回复 - \(self.getCharacterName(for: characterID)): \(content.prefix(30))...")
+                                    
+                                    // 创建虚拟角色回复
+                                    let virtualReply = DetailedCommentModel(
+                                        username: self.getCharacterName(for: characterID),
+                                        userAvatar: self.getCharacterAvatar(for: characterID),
+                                        content: content,
+                                        datePosted: Date().addingTimeInterval(Double.random(in: 30...120)),
+                                        isVirtualCharacter: true,
+                                        characterID: characterID,
+                                        parentCommentId: userReply.id,
+                                        replyToUsername: "当前用户"
+                                    )
+                                    
+                                    // 添加到帖子
+                                    self.posts[postIndex].addReplyToParent(parentId: userReply.id, reply: virtualReply)
+                                    
+                                    // 发送通知刷新UI
+                                    NotificationCenter.default.post(
+                                        name: NSNotification.Name("PostCommentsUpdated"),
+                                        object: nil,
+                                        userInfo: ["postID": post.id.uuidString]
+                                    )
+                                    
+                                    // 添加震动反馈
+                                    self.hapticFeedback()
+                                    
+                                    // 如果是最后一个角色的回复，结束后台任务
+                                    if index == charactersToRespond.count - 1 {
+                                        if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                                            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                                            print("🏁 所有虚拟角色回复任务已完成")
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
                 }
-            }
-                } else {
-            // 如果不添加额外角色，直接结束后台任务
-            if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
-                UIApplication.shared.endBackgroundTask(backgroundTaskID)
             }
         }
     }
@@ -881,7 +1119,7 @@ class PostViewModel: ObservableObject {
         case "牛顿": return "newton"
         case "李白": return "libai"
         case "福尔摩斯": return "holmes"
-        case "孙悟空": return "goku"
+        case "孙悟空": return "sunwukong"
         case "漩涡鸣人": return "naruto"
         default: return nil
         }
@@ -889,11 +1127,10 @@ class PostViewModel: ObservableObject {
     
     /**
      * 处理评论回复
-     * 处理用户对评论的回复，包括生成虚拟角色回复
      * @param postId 帖子ID
      * @param commentId 评论ID
      * @param commentContent 评论内容
-     * @param replyTo 回复用户名
+     * @param replyTo 回复给的用户名
      */
     func handleCommentReply(postId: UUID, commentId: UUID, commentContent: String, replyTo: String) {
         print("🔄 处理评论回复: postId=\(postId), commentId=\(commentId), content=\(commentContent)")
@@ -904,93 +1141,301 @@ class PostViewModel: ObservableObject {
             return
         }
         
-        // 找到帖子和对应的评论
+        // 找到帖子
         let post = posts[postIndex]
         
-        // 添加用户评论
-        post.addReplyToComment(parentId: commentId, reply: DetailedCommentModel(
-            username: "当前用户",
-            userAvatar: "person.circle.fill",
-            content: commentContent,
-            parentCommentId: commentId,
-            replyToUsername: replyTo
-        ))
+        // 平铺所有评论以便查找目标评论
+        let flattenedComments = getFlattenedComments(forPost: postId)
         
-        print("✅ 已添加用户回复到评论")
-        
-        // 检查是否回复的是虚拟角色的评论
-        let flattenedComments = self.getFlattenedComments(forPost: postId)
-        guard let parentComment = flattenedComments.first(where: { $0.id == commentId }),
-              parentComment.isVirtualCharacter,
-              let characterID = parentComment.characterID else {
-            print("⚠️ 非虚拟角色评论，跳过生成回复")
+        // 查找被回复的评论
+        guard let targetComment = flattenedComments.first(where: { $0.id == commentId }) else {
+            print("❌ 未找到评论: \(commentId)")
             return
         }
         
-        print("🔍 找到虚拟角色评论，准备生成回复，角色ID: \(characterID)")
+        // 打印目标评论的结构，帮助调试
+        print("📊 目标评论结构:")
+        targetComment.printStructure()
         
-        // 使用API生成虚拟角色回复
-        generateVirtualCharacterReply(
-            characterID: characterID,
-            toComment: commentContent,
-            inPost: post.content,
-            completion: { [weak self] result in
+        print("📝 创建用户回复，回复给: \(replyTo)")
+        
+        // 创建用户回复评论
+        let userReply = DetailedCommentModel(
+            username: "当前用户",
+            userAvatar: "person.circle.fill",
+            content: commentContent,
+            datePosted: Date(),
+            isVirtualCharacter: false,
+            characterID: nil,
+            parentCommentId: commentId, // 设置父评论ID为被回复的评论ID
+            replyToUsername: replyTo    // 设置回复用户名
+        )
+        
+        // 保存用户回复的ID，用于后续添加虚拟角色回复
+        let userReplyId = userReply.id
+        print("📝 创建用户回复，ID: \(userReplyId)")
+        
+        // 创建帖子的可变副本
+        let updatedPost = post
+        
+        // 添加用户回复到父评论
+        updatedPost.addReplyToParent(parentId: commentId, reply: userReply)
+        
+        // 更新帖子
+        posts[postIndex] = updatedPost
+        
+        // 检查更新是否成功
+        let updatedFlattenedComments = getFlattenedComments(forPost: updatedPost.id)
+        if let updatedTargetComment = updatedFlattenedComments.first(where: { $0.id == commentId }),
+           let addedReply = updatedTargetComment.replies.first(where: { $0.id == userReplyId }) {
+            print("✅ 成功添加回复，检查到回复ID: \(addedReply.id)")
+            print("📊 更新后的评论结构:")
+            updatedTargetComment.printStructure()
+        } else {
+            print("⚠️ 回复可能未成功添加到嵌套结构中")
+        }
+        
+        // 发送通知刷新UI
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PostCommentsUpdated"),
+            object: nil,
+            userInfo: ["postID": postId.uuidString]
+        )
+        
+        // 确保UI刷新
+        NotificationCenter.default.post(
+            name: NSNotification.Name("RefreshPostComments"),
+            object: nil
+        )
+        
+        // 收集需要回复的角色ID
+        var characterIDsToReply: [String] = []
+        
+        // 检查是否回复的是虚拟角色的评论
+        if targetComment.isVirtualCharacter, let characterID = targetComment.characterID {
+            print("🔍 找到虚拟角色评论，添加到回复列表，角色ID: \(characterID)")
+            characterIDsToReply.append(characterID)
+        }
+        
+        // 如果是回复帖子作者且对方是虚拟角色
+        if targetComment.username == post.username && post.characterID != nil,
+           let characterID = post.characterID, !characterIDsToReply.contains(characterID) {
+            print("🔍 回复帖子作者，添加到回复列表，角色ID: \(characterID)")
+            characterIDsToReply.append(characterID)
+        }
+        
+        // 如果没有角色需要回复
+        if characterIDsToReply.isEmpty {
+            print("⚠️ 没有找到需要回复的虚拟角色，跳过生成回复")
+            return
+        }
+        
+        // 创建后台任务，确保即使用户退出页面也能完成API调用
+        let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            print("⚠️ 生成批量回复的后台任务超时")
+        }
+        
+        // 使用批量API调用生成回复
+        print("🚀 开始批量生成\(characterIDsToReply.count)个角色的回复")
+        
+        // 使用MultiCharacterCommentService一次性生成多个角色的回复
+        MultiCharacterCommentService.shared.generateMultiCharacterComments(
+            characterIDs: characterIDsToReply,
+            postId: postId.uuidString,
+            postContent: post.content,
+            postAuthor: post.username
+        ) { [weak self] result in
             guard let self = self else { return }
             
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success(let replyContent):
-                        print("✅ API生成回复成功: \(replyContent.prefix(50))...")
+            switch result {
+            case .success(let commentsMap):
+                print("✅ 成功批量生成\(commentsMap.count)个角色的回复")
+                
+                // 获取帖子索引
+                guard let postIndex = self.posts.firstIndex(where: { $0.id == postId }) else {
+                    print("❌ 无法找到帖子，无法添加批量生成的回复")
+                    if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    }
+                    return
+                }
+                
+                // 为了模拟自然对话，确定响应时间和顺序
+                // 第一个角色（通常是被回复角色或帖子作者）响应较快
+                let firstCharacterId = characterIDsToReply.first!
+                let otherCharacterIds = Array(characterIDsToReply.dropFirst())
+                
+                // 第一个角色回复
+                if let content = commentsMap[firstCharacterId] {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1.0...2.0)) {
+                        // 创建虚拟角色回复
+                        let virtualReply = DetailedCommentModel(
+                            username: self.getCharacterName(for: firstCharacterId),
+                            userAvatar: self.getCharacterAvatar(for: firstCharacterId),
+                            content: content,
+                            datePosted: Date().addingTimeInterval(Double.random(in: 30...60)),
+                            isVirtualCharacter: true,
+                            characterID: firstCharacterId,
+                            parentCommentId: commentId, // 使用原始评论ID作为父评论ID
+                            replyToUsername: "当前用户"   // 明确设置回复对象
+                        )
                         
-                        // 添加虚拟角色的回复
-                        let characterName = self.getCharacterName(for: characterID)
-                        let characterAvatar = self.getCharacterAvatar(for: characterID)
+                        // 添加到帖子 - 添加到原始评论下
+                        print("📝 添加\(firstCharacterId)的回复到评论ID: \(commentId)")
+                        self.posts[postIndex].addReplyToParent(parentId: commentId, reply: virtualReply)
                         
-                        // 添加API生成的回复到当前用户的评论下
-                        if let userCommentId = self.findLastCommentFromCurrentUser(inPost: postId) {
+                        // 发送通知刷新UI
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("PostCommentsUpdated"),
+                            object: nil,
+                            userInfo: ["postID": postId.uuidString]
+                        )
+                        
+                        // 添加震动反馈
+                        self.hapticFeedback()
+                    }
+                }
+                
+                // 其他角色回复（延迟更长）
+                for (index, characterID) in otherCharacterIds.enumerated() {
+                    if let content = commentsMap[characterID] {
+                        // 添加累加的延迟，让回复看起来更自然
+                        let delay = Double.random(in: 3.0...5.0) + Double(index) * 1.5
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                             // 创建虚拟角色回复
                             let virtualReply = DetailedCommentModel(
-                                username: characterName,
-                                userAvatar: characterAvatar,
-                                content: replyContent,
+                                username: self.getCharacterName(for: characterID),
+                                userAvatar: self.getCharacterAvatar(for: characterID),
+                                content: content,
+                                datePosted: Date().addingTimeInterval(Double.random(in: 60...180)),
                                 isVirtualCharacter: true,
                                 characterID: characterID,
-                                parentCommentId: userCommentId,
-                                replyToUsername: "当前用户"
+                                parentCommentId: commentId, // 使用原始评论ID作为父评论ID
+                                replyToUsername: "当前用户"   // 明确设置回复对象
                             )
                             
                             // 添加到帖子
-                            post.addReplyToComment(parentId: userCommentId, reply: virtualReply)
+                            print("📝 添加\(characterID)的回复到评论ID: \(commentId)")
+                            self.posts[postIndex].addReplyToParent(parentId: commentId, reply: virtualReply)
                             
-                            print("✅ 已添加API生成的虚拟角色回复")
+                            // 发送通知刷新UI
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("PostCommentsUpdated"),
+                                object: nil,
+                                userInfo: ["postID": postId.uuidString]
+                            )
                             
                             // 添加震动反馈
                             self.hapticFeedback()
-                } else {
-                            print("❌ 未找到当前用户的评论ID")
+                            
+                            // 如果是最后一个角色的回复，结束后台任务
+                            if index == otherCharacterIds.count - 1 {
+                                if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                                    print("🏁 所有虚拟角色回复任务已完成")
+                                }
+                            }
                         }
-                        
-                    case .failure(let error):
-                        print("❌ API生成回复失败: \(error.localizedDescription)")
-                        // API失败时不再使用模板回复，直接跳过
-                        print("⚠️ API失败，跳过回复生成")
                     }
+                }
+                
+                // 如果没有其他角色，在第一个角色回复后结束任务
+                if otherCharacterIds.isEmpty {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                            print("🏁 虚拟角色回复任务已完成")
+                        }
+                    }
+                }
+                
+            case .failure(let error):
+                print("❌ 批量生成角色回复失败: \(error.localizedDescription)")
+                
+                // 备用方案：使用原来的单独API调用方法
+                print("🔄 使用备用方案，单独生成回复")
+                
+                // 检查是否回复的是虚拟角色的评论
+                if targetComment.isVirtualCharacter,
+                   let characterID = targetComment.characterID {
+                    print("🔍 找到虚拟角色评论，准备生成回复，角色ID: \(characterID)")
                     
-                    // 发送通知，刷新评论UI
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("PostCommentsUpdated"),
-                        object: nil,
-                        userInfo: ["postID": postId.uuidString]
-                    )
-                    
-                    // 确保UI刷新
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("RefreshPostComments"),
-                        object: nil
+                    // 使用API生成虚拟角色回复
+                    self.generateVirtualCharacterReply(
+                        characterID: characterID,
+                        toComment: commentContent,
+                        inPost: post.content,
+                        completion: { [weak self] result in
+                            guard let self = self else { return }
+                            
+                            DispatchQueue.main.async {
+                                switch result {
+                                case .success(let replyContent):
+                                    print("✅ API生成回复成功: \(replyContent.prefix(50))...")
+                                    
+                                    // 添加虚拟角色的回复
+                                    let characterName = self.getCharacterName(for: characterID)
+                                    let characterAvatar = self.getCharacterAvatar(for: characterID)
+                                    
+                                    // 创建虚拟角色回复，直接回复到原始的评论，而不是用户的回复
+                                    let virtualReply = DetailedCommentModel(
+                                        username: characterName,
+                                        userAvatar: characterAvatar,
+                                        content: replyContent,
+                                        datePosted: Date().addingTimeInterval(Double.random(in: 30...120)),
+                                        isVirtualCharacter: true,
+                                        characterID: characterID,
+                                        parentCommentId: commentId, // 使用原始评论ID作为父评论ID
+                                        replyToUsername: "当前用户"   // 明确设置回复对象
+                                    )
+                                    
+                                    // 添加到帖子 - 添加到原始评论下
+                                    if let postIndex = self.posts.firstIndex(where: { $0.id == postId }) {
+                                        print("📝 添加虚拟角色回复到原始评论下，原始评论ID: \(commentId)")
+                                        
+                                        // 使用临时变量来创建帖子副本
+                                        let updatedPost = self.posts[postIndex]
+                                        updatedPost.addReplyToParent(parentId: commentId, reply: virtualReply)
+                                        
+                                        // 更新帖子数组
+                                        self.posts[postIndex] = updatedPost
+                                        
+                                        print("✅ 已添加API生成的虚拟角色回复到原始评论下")
+                                    }
+                                    
+                                    // 添加震动反馈
+                                    self.hapticFeedback()
+                                    
+                                case .failure(let error):
+                                    print("❌ API生成回复失败: \(error.localizedDescription)")
+                                    // API失败时不再使用模板回复，直接跳过
+                                    print("⚠️ API失败，跳过回复生成")
+                                }
+                                
+                                // 发送通知，刷新评论UI
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("PostCommentsUpdated"),
+                                    object: nil,
+                                    userInfo: ["postID": postId.uuidString]
+                                )
+                                
+                                // 确保UI刷新
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("RefreshPostComments"),
+                                    object: nil
+                                )
+                            }
+                        }
                     )
                 }
+                
+                // 结束后台任务
+                if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                }
             }
-        )
+        }
     }
     
     /**
@@ -999,16 +1444,17 @@ class PostViewModel: ObservableObject {
      * @return 当前用户最后评论的ID，如果未找到则返回nil
      */
     func findLastCommentFromCurrentUser(inPost postId: UUID) -> UUID? {
-        // 查找帖子
-        guard let postIndex = posts.firstIndex(where: { $0.id == postId }) else {
+        // 使用布尔测试直接检查是否存在匹配的帖子
+        guard posts.contains(where: { $0.id == postId }) else {
             print("❌ findLastCommentFromCurrentUser: 未找到帖子")
             return nil
         }
         
-        let post = posts[postIndex]
+        // 获取所有评论（包括嵌套回复）的平铺列表
+        let allComments = getFlattenedComments(forPost: postId)
         
-        // 倒序遍历评论，找到当前用户的最后一条评论
-        for comment in post.comments.reversed() {
+        // 倒序遍历所有评论，找到当前用户的最后一条评论
+        for comment in allComments.reversed() {
             if comment.username == "当前用户" {
                 print("✅ 找到当前用户的最后一条评论，ID: \(comment.id)")
                 return comment.id
@@ -1093,27 +1539,17 @@ class PostViewModel: ObservableObject {
                     .store(in: &self.cancellables)
             }
             
-            // 转换ContentItem为UserPostModel
+            print("📝 将生成的\(contentItems.count)篇内容转换为帖子模型")
+            
+            // 转换为帖子模型
             var userPosts: [UserPostModel] = []
             for item in contentItems {
                 // 从CommentStore获取评论
                 let commentItems = CommentStore.shared.getComments(forContentID: item.id)
                 print("📝 为内容ID=\(item.id)获取到\(commentItems.count)条评论")
                 
-                // 将CommentItem转换为DetailedCommentModel
-                let comments = commentItems.map { commentItem -> DetailedCommentModel in
-                    return DetailedCommentModel(
-                        id: UUID(),
-                        username: commentItem.characterName,
-                        userAvatar: commentItem.characterAvatar ?? "default_avatar",
-                        content: commentItem.content,
-                        datePosted: commentItem.timestamp,
-                        isVirtualCharacter: true,
-                        characterID: commentItem.characterID,
-                        likes: commentItem.likes,
-                        isLikedByCurrentUser: Bool.random()
-                    )
-                }
+                // 使用优化的评论转换方法
+                let comments = convertCommentItems(commentItems: commentItems)
                 
                 let userPost = UserPostModel(
                     id: UUID(uuidString: item.id) ?? UUID(),
@@ -1123,7 +1559,7 @@ class PostViewModel: ObservableObject {
                     images: [],
                     datePosted: item.timestamp,
                     likes: item.likes,
-                    comments: comments, // 使用从CommentStore获取的评论
+                    comments: comments, // 使用转换后的评论
                     isLikedByCurrentUser: false,
                     isBookmarkedByCurrentUser: false,
                     contentType: ContentGeneratorService.ContentType.resonance.rawValue,
@@ -1182,6 +1618,8 @@ class PostViewModel: ObservableObject {
                 datePosted: Date().addingTimeInterval(-1800),
                 isVirtualCharacter: true,
                 characterID: "einstein",
+                parentCommentId: nil,
+                replyToUsername: nil,
                 likes: 15
             )
             
@@ -1242,20 +1680,8 @@ class PostViewModel: ObservableObject {
                             let commentItems = CommentStore.shared.getComments(forContentID: item.id)
                             print("📝 为内容ID=\(item.id)获取到\(commentItems.count)条评论")
                             
-                            // 将CommentItem转换为DetailedCommentModel
-                            let comments = commentItems.map { commentItem -> DetailedCommentModel in
-                                return DetailedCommentModel(
-                                    id: UUID(),
-                                    username: commentItem.characterName,
-                                    userAvatar: commentItem.characterAvatar ?? "default_avatar",
-                                    content: commentItem.content,
-                                    datePosted: commentItem.timestamp,
-                                    isVirtualCharacter: true,
-                                    characterID: commentItem.characterID,
-                                    likes: commentItem.likes,
-                                    isLikedByCurrentUser: Bool.random()
-                                )
-                            }
+                            // 使用优化的评论转换方法
+                            let comments = self.convertCommentItems(commentItems: commentItems)
                             
                             let userPost = UserPostModel(
                                 id: UUID(uuidString: item.id) ?? UUID(),
@@ -1265,7 +1691,7 @@ class PostViewModel: ObservableObject {
                                 images: [],
                                 datePosted: item.timestamp,
                                 likes: item.likes,
-                                comments: comments, // 使用从CommentStore获取的评论
+                                comments: comments, // 使用转换后的评论
                                 isLikedByCurrentUser: false,
                                 isBookmarkedByCurrentUser: false,
                                 contentType: contentType.rawValue,
@@ -1279,9 +1705,52 @@ class PostViewModel: ObservableObject {
                             print("⚠️ 警告：生成\(contentType.rawValue)帖子失败，使用备用帖子")
                             let backupPosts = self.createBackupPosts(for: contentType)
                             continuation.resume(returning: backupPosts)
-            } else {
+                        } else {
                             continuation.resume(returning: userPosts)
                         }
+                    }
+                )
+                .store(in: &self.cancellables)
+        }
+    }
+    
+    /**
+     * 生成单条内容
+     */
+    func generateSinglePost(for characterID: String, contentType: ContentGeneratorService.ContentType) async throws -> UserPostModel {
+        print("🔄 开始生成单条帖子: 角色ID=\(characterID), 内容类型=\(contentType.rawValue)")
+        
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<UserPostModel, Error>) in
+            ContentGeneratorService.shared.generateContent(for: characterID, contentType: contentType)
+                .sink(
+                    receiveCompletion: { completion in
+                        if case .failure(let error) = completion {
+                            continuation.resume(throwing: error)
+                        }
+                    },
+                    receiveValue: { result in
+                        // 从CommentStore获取评论
+                        let commentItems = CommentStore.shared.getComments(forContentID: result.id)
+                        
+                        // 使用优化的评论转换方法
+                        let comments = self.convertCommentItems(commentItems: commentItems)
+                        
+                        let userPost = UserPostModel(
+                            id: UUID(uuidString: result.id) ?? UUID(),
+                            username: result.characterName,
+                            userAvatar: result.characterAvatar ?? "person.circle.fill",
+                            content: result.content,
+                            images: [],
+                            datePosted: result.timestamp,
+                            likes: result.likes,
+                            comments: comments,
+                            isLikedByCurrentUser: false,
+                            isBookmarkedByCurrentUser: false,
+                            contentType: contentType.rawValue,
+                            source: "wormhole" // 添加来源标识，表示来自虫洞探索
+                        )
+                        
+                        continuation.resume(returning: userPost)
                     }
                 )
                 .store(in: &self.cancellables)
@@ -1341,6 +1810,7 @@ class PostViewModel: ObservableObject {
                 datePosted: Date().addingTimeInterval(-Double.random(in: 600...3600)),
                 isVirtualCharacter: true,
                 characterID: character.id,
+                parentCommentId: nil,
                 likes: Int.random(in: 0...50)
             )
             comments.append(comment)
@@ -1392,6 +1862,8 @@ class PostViewModel: ObservableObject {
             datePosted: Date().addingTimeInterval(-1800),
             isVirtualCharacter: true,
             characterID: "yoda",
+            parentCommentId: nil,
+            replyToUsername: nil,
             likes: 15
         )
         
@@ -1399,17 +1871,17 @@ class PostViewModel: ObservableObject {
             id: UUID(),
             username: username,
             userAvatar: avatar,
-                    content: content,
+            content: content,
             images: [],
-                    datePosted: Date(),
+            datePosted: Date(),
             likes: 25,
             comments: [comment],
-                    isLikedByCurrentUser: false,
-                    isBookmarkedByCurrentUser: false,
-                    contentType: ContentGeneratorService.ContentType.resonance.rawValue,
-                    source: "wormhole" // 添加来源标识，表示来自虫洞探索
-                )
-                
+            isLikedByCurrentUser: false,
+            isBookmarkedByCurrentUser: false,
+            contentType: ContentGeneratorService.ContentType.resonance.rawValue,
+            source: "wormhole" // 添加来源标识，表示来自虫洞探索
+        )
+        
         return [emergencyPost]
     }
     
@@ -1480,13 +1952,15 @@ class PostViewModel: ObservableObject {
                         let comments = result.comments.map { commentItem -> DetailedCommentModel in
                             print("✅ 添加评论: 来自=\(commentItem.characterName), 内容=\(commentItem.content.prefix(30))...")
                             return DetailedCommentModel(
-                                id: UUID(),
+                                id: UUID(uuidString: commentItem.id) ?? UUID(),
                                 username: commentItem.characterName,
                                 userAvatar: commentItem.characterAvatar ?? "default_avatar",
                                 content: commentItem.content,
                                 datePosted: commentItem.timestamp,
                                 isVirtualCharacter: true,
-                                characterID: commentItem.characterID,
+                                characterID: commentItem.characterId,
+                                parentCommentId: commentItem.parentCommentId != nil ? UUID(uuidString: commentItem.parentCommentId!) : nil,
+                                replyToUsername: nil,
                                 likes: commentItem.likes,
                                 isLikedByCurrentUser: Bool.random()
                             )
@@ -1620,13 +2094,15 @@ class PostViewModel: ObservableObject {
                             // 将CommentItem转换为DetailedCommentModel
                             let comments = commentItems.map { commentItem -> DetailedCommentModel in
                                 return DetailedCommentModel(
-                                    id: UUID(),
+                                    id: UUID(uuidString: commentItem.id) ?? UUID(),
                                     username: commentItem.characterName,
                                     userAvatar: commentItem.characterAvatar ?? "default_avatar",
                                     content: commentItem.content,
                                     datePosted: commentItem.timestamp,
                                     isVirtualCharacter: true,
-                                    characterID: commentItem.characterID,
+                                    characterID: commentItem.characterId,
+                                    parentCommentId: commentItem.parentCommentId != nil ? UUID(uuidString: commentItem.parentCommentId!) : nil,
+                                    replyToUsername: nil,
                                     likes: commentItem.likes,
                                     isLikedByCurrentUser: Bool.random()
                                 )
@@ -1666,6 +2142,239 @@ class PostViewModel: ObservableObject {
                     }
                 )
                 .store(in: &self.cancellables)
+        }
+    }
+    
+    /**
+     * 添加回复到特定评论
+     * 这个方法是公开的，可以被外部调用
+     * @param parentId 父评论ID
+     * @param reply 回复评论模型
+     */
+    func addReplyToComment(parentId: UUID, reply: DetailedCommentModel) {
+        print("📝 ViewModel: 添加回复到评论ID: \(parentId)")
+        print("📝 回复内容: \"\(reply.content.prefix(30))...\"")
+        print("📝 回复者: \(reply.username), 父评论ID: \(reply.parentCommentId?.uuidString ?? "nil")")
+        
+        // 查找包含目标评论的帖子
+        for (postIndex, post) in posts.enumerated() {
+            print("🔍 检查帖子[\(postIndex)], ID: \(post.id)")
+            
+            // 尝试查找评论 (先平铺所有评论进行查找)
+            let allComments = getFlattenedComments(forPost: post.id)
+            if let targetComment = allComments.first(where: { $0.id == parentId }) {
+                print("✅ 找到目标评论在帖子[\(postIndex)]中，评论用户名: \(targetComment.username)")
+                
+                // 创建帖子的可变副本
+                let updatedPost = post
+                
+                // 直接使用帖子模型的方法添加回复
+                updatedPost.addReplyToParent(parentId: parentId, reply: reply)
+                
+                // 更新帖子数组
+                posts[postIndex] = updatedPost
+                
+                // 输出回复是否成功添加的验证信息
+                let updatedFlattenedComments = getFlattenedComments(forPost: updatedPost.id)
+                if let updatedParentComment = updatedFlattenedComments.first(where: { $0.id == parentId }) {
+                    print("📊 添加回复后，目标评论现在有 \(updatedParentComment.replies.count) 条回复")
+                    
+                    // 验证回复是否存在
+                    let replyExists = updatedParentComment.replies.contains { $0.id == reply.id }
+                    print(replyExists ? "✅ 验证成功: 回复已正确添加" : "❌ 验证失败: 回复未找到")
+                }
+                
+                // 触发UI更新通知
+                objectWillChange.send()
+                
+                print("🔄 已发送ViewModel更新通知")
+                return
+            }
+        }
+        
+        print("⚠️ 未找到对应的父评论ID: \(parentId)，无法添加回复")
+    }
+    
+    /**
+     * 递归查找嵌套评论并添加回复
+     * @param comments 评论数组引用
+     * @param parentId 父评论ID
+     * @param reply 要添加的回复
+     * @return 是否成功添加回复
+     */
+    private func findAndAddReplyToNestedComment(comments: inout [DetailedCommentModel], parentId: UUID, reply: DetailedCommentModel) -> Bool {
+        for i in 0..<comments.count {
+            // 检查当前评论是否是目标父评论
+            if comments[i].id == parentId {
+                comments[i].replies.insert(reply, at: 0)
+                print("🔍 ViewModel: 找到目标评论，ID: \(parentId)，用户名: \(comments[i].username)，添加回复成功")
+                return true
+            }
+            
+            // 递归检查当前评论的回复
+            if !comments[i].replies.isEmpty {
+                var updatedReplies = comments[i].replies
+                if findAndAddReplyToNestedComment(comments: &updatedReplies, parentId: parentId, reply: reply) {
+                    comments[i].replies = updatedReplies
+                    print("🔍 ViewModel: 在评论 \(comments[i].id) (\(comments[i].username)) 的回复中找到目标评论，添加回复成功")
+                    return true
+                }
+            }
+        }
+        
+        return false
+    }
+    
+    /**
+     * 将CommentItem转换为DetailedCommentModel的辅助方法
+     * 确保正确处理嵌套关系
+     */
+    private func convertCommentItems(commentItems: [CommentItem]) -> [DetailedCommentModel] {
+        print("🔄 开始转换评论，总数：\(commentItems.count)条")
+        
+        // 第一步：创建所有评论的映射，供后续处理引用
+        var commentMap = [String: DetailedCommentModel]()
+        var topLevelComments = [DetailedCommentModel]()
+        
+        // 第二步：先创建所有DetailedCommentModel实例
+        let initialComments = commentItems.map { commentItem -> (DetailedCommentModel, String?) in
+            let comment = DetailedCommentModel(
+                id: UUID(uuidString: commentItem.id) ?? UUID(),
+                username: commentItem.characterName,
+                userAvatar: commentItem.characterAvatar ?? "default_avatar",
+                content: commentItem.content,
+                datePosted: commentItem.timestamp,
+                isVirtualCharacter: true,
+                characterID: commentItem.characterId,
+                parentCommentId: nil, // 先设置为nil，后续处理
+                replyToUsername: nil, // 先设置为nil，后续处理
+                likes: commentItem.likes,
+                isLikedByCurrentUser: Bool.random()
+            )
+            
+            // 保存评论ID映射
+            commentMap[commentItem.id] = comment
+            
+            return (comment, commentItem.parentCommentId)
+        }
+        
+        // 第三步：构建评论层次结构
+        for (index, (comment, parentId)) in initialComments.enumerated() {
+            if let parentId = parentId, let parentComment = commentMap[parentId] {
+                // 这是一条回复评论
+                print("📝 评论#\(index+1) ID=\(comment.id)是\(parentComment.username)的回复")
+                
+                // 设置父评论ID和回复用户名
+                var mutableComment = comment
+                mutableComment.parentCommentId = parentComment.id
+                mutableComment.replyToUsername = parentComment.username
+                
+                // 将回复添加到父评论的replies数组中
+                var updatedParent = parentComment
+                updatedParent.replies.append(mutableComment)
+                commentMap[parentId] = updatedParent // 更新映射中的父评论
+                
+                // 打印调试信息
+                print("✅ 已将回复添加到父评论，父评论ID=\(parentId)，父评论用户=\(updatedParent.username)，现有回复数=\(updatedParent.replies.count)")
+            } else {
+                // 这是一条顶级评论
+                topLevelComments.append(comment)
+                print("📝 评论#\(index+1) ID=\(comment.id)是顶级评论，用户=\(comment.username)")
+            }
+        }
+        
+        // 第四步：从commentMap中获取更新后的顶级评论
+        var finalTopLevelComments: [DetailedCommentModel] = []
+        for comment in topLevelComments {
+            if let updatedComment = commentMap[comment.id.uuidString] {
+                finalTopLevelComments.append(updatedComment)
+            } else {
+                finalTopLevelComments.append(comment)
+            }
+        }
+        
+        // 打印最终结构
+        print("📊 评论层次结构:")
+        for (index, comment) in finalTopLevelComments.enumerated() {
+            print("📊 顶级评论[\(index)]: ID=\(comment.id), 用户=\(comment.username), 回复数=\(comment.replies.count)")
+            for (replyIndex, reply) in comment.replies.enumerated() {
+                print("  └─ 回复[\(replyIndex)]: ID=\(reply.id), 用户=\(reply.username), 回复给=\(reply.replyToUsername ?? "未知")")
+            }
+        }
+        
+        print("✅ 评论转换完成: \(finalTopLevelComments.count)条顶级评论，包含嵌套回复")
+        
+        // 返回所有顶级评论，它们的replies数组中已经包含了各自的回复
+        return finalTopLevelComments
+    }
+    
+    /**
+     * 生成历史人物对话帖子
+     * 基于用户提供的话题生成两个历史人物之间的对话
+     */
+    func generateDialoguePosts(topic: String) async throws -> [UserPostModel] {
+        print("🔄 开始生成历史对话帖子: 话题=\(topic)")
+        
+        // 获取对话生成配置
+        let count = ExplorationCountManager.shared.getCount(for: .resonance) // 使用存在的类型
+        print("📊 对话配置的生成数量: \(count)篇")
+        
+        do {
+            // 注意：这里应该添加对话生成功能，临时使用resonance内容生成
+            let result = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[(ContentItem, [CommentItem])], Error>) in
+                ContentGeneratorService.shared.generateRandomContent(contentType: .resonance, count: count, topic: topic)
+                    .sink(
+                        receiveCompletion: { completion in
+                            if case .failure(let error) = completion {
+                                continuation.resume(throwing: error)
+                            }
+                        },
+                        receiveValue: { contentItems in
+                            // 模拟结果格式，每个内容项配一个空的评论数组
+                            let result = contentItems.map { ($0, [CommentItem]()) }
+                            continuation.resume(returning: result)
+                        }
+                    )
+                    .store(in: &self.cancellables)
+            }
+            
+            print("✅ 成功生成\(result.count)篇历史对话内容")
+            
+            // 转换为帖子模型
+            var userPosts: [UserPostModel] = []
+            for (item, commentItems) in result {
+                print("📝 处理对话内容ID=\(item.id)，包含\(commentItems.count)条评论")
+                
+                // 使用优化的评论转换方法
+                let comments = convertCommentItems(commentItems: commentItems)
+                
+                let userPost = UserPostModel(
+                    id: UUID(uuidString: item.id) ?? UUID(),
+                    username: item.characterName,
+                    userAvatar: item.characterAvatar ?? "person.circle.fill",
+                    content: item.content,
+                    images: [],
+                    datePosted: item.timestamp,
+                    likes: item.likes,
+                    comments: comments, // 使用转换后的评论
+                    isLikedByCurrentUser: false,
+                    isBookmarkedByCurrentUser: false,
+                    contentType: ContentGeneratorService.ContentType.resonance.rawValue, // 使用存在的类型
+                    source: "wormhole" // 添加来源标识，表示来自虫洞探索
+                )
+                userPosts.append(userPost)
+            }
+            
+            // 如果没有生成任何帖子，返回备用帖子
+            if userPosts.isEmpty {
+                print("⚠️ 警告：生成历史对话帖子失败，使用备用帖子")
+                return createBackupPosts(for: .resonance) // 使用虫洞共鸣备用帖子
+            }
+            
+            return userPosts
+        } catch {
+            print("❌ 生成历史对话帖子时出错: \(error)")
+            return createBackupPosts(for: .resonance) // 使用虫洞共鸣备用帖子
         }
     }
 }

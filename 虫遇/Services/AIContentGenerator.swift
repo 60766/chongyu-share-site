@@ -207,11 +207,6 @@ class AIContentGenerator {
                                 )
                             }
                             
-                            // 处理回复评论（如果有）
-                            if !result.replyComments.isEmpty {
-                                print("ℹ️ 处理\(result.replyComments.count)条回复评论")
-                            }
-                            
                             // 创建帖子
                             let post = ResonancePost(
                                 id: UUID().uuidString,
@@ -325,7 +320,7 @@ class AIContentGenerator {
             case "怀旧", "念旧", "思念":
                 moodDescription = "回忆过去经历或人物时的情感状态，带着温柔的忧伤"
             case "释然", "豁达":
-                moodDescription = "从困扰或纠结中解脱，看开某事后的轻松感"
+                moodDescription = "从困惑或纠结中解脱，看开某事后的轻松感"
             case "从容", "淡然":
                 moodDescription = "面对变化或挑战时的不急不躁，处变不惊的状态"
                 
@@ -1216,6 +1211,13 @@ class AIContentGenerator {
         • 避免过度装傻 - 可以表现文化差异和不理解，但不要过度夸张到不真实
         • 保持专业底色 - 在幽默的同时保留角色专业领域的思维方式和独特视角
         
+        【创意空间】
+        • 上述要求是基本框架，可以灵活发挥创意
+        • 可尝试不同类型的幽默：讽刺、双关语、夸张、荒谬等
+        • 可以针对各种现代事物发表评论：科技、流行文化、生活方式等
+        • 示例仅作参考，鼓励创造独特的表达方式和笑点
+        • 每次生成时应避免重复相似的梗或表达方式
+        
         ⚠️ 严格禁止重复话题：不同角色绝对不能讨论相同的话题，必须确保话题多样性
         
         创作方向解释：
@@ -1300,6 +1302,14 @@ class AIContentGenerator {
         • 控制叙述节奏 - 不要陷入过长的描述或解释，保持表达的简洁性
         • 使用日常口语 - 采用更接近日常交流的语言，避免过于书面化的表达
         
+        【创意空间】
+        • 上述要求是基本框架，可以灵活发挥创意
+        • 可以尝试不同的情感表达：喜悦、沉思、困惑、希望、担忧等
+        • 可以围绕不同场景展开：工作中的发现、自然观察、人际互动等
+        • 可以采用不同的表达结构：先描述后感悟、先感悟后描述等
+        • 示例仅作参考，鼓励创造独特的表达方式和情感层次
+        • 每次生成时应尝试不同的写作风格和情感基调
+        
         写作格式：
         • 可以用【】作为小标题，但不是必须的
         • 绝对不要添加任何标签或元数据
@@ -1371,6 +1381,13 @@ class AIContentGenerator {
         • 避免过度玄学化 - 不要使用过于玄奥或故弄玄虚的表达，保持思想的清晰可辨
         • 控制修辞密度 - 每句话不要包含过多的修辞手法，保持表达的自然流畅
         • 减少刻意的辞藻堆砌 - 避免过度使用生僻词和华丽辞藻，言简意赅更有力量
+        
+        【创意空间】
+        • 上述格式要求是基本框架，而非严格限制
+        • 可以尝试不同的表达方式、修辞手法和思考角度
+        • 示例仅作参考，不必拘泥于特定风格或主题
+        • 鼓励创新表达，只要保持基本格式要求
+        • 每次生成内容时尝试采用不同的写作风格和情感基调
         
         内容结构与现代解读：
         • 总字数：60-80字（不含表情符号和现代解读）
@@ -1448,6 +1465,14 @@ class AIContentGenerator {
         • 避免过度修辞 - 使用适度的修辞手法，不要堆砌华丽辞藻
         • 保持真实可信 - 叙述应贴近历史人物的真实性格和认知，避免过度现代化
         
+        【创意空间】
+        • 上述要求是基本框架，可以灵活发挥创意
+        • 可尝试不同的叙事视角：内省思考型、事件记录型、对话互动型等
+        • 可选择不同情感基调：沉思冷静、激动兴奋、忧虑不安、满怀希望等
+        • 可变化场景类型：独处时刻、公共场合、重要会议、实验/创作过程等
+        • 结构可以灵活变化：有时以感悟开头，有时以场景描写开头，有时以对话开头
+        • 示例仅作参考，每次生成时应尝试不同的表达方式
+        
         内容长度要求：
         • 控制在120-180字左右
         • 内容要生动具体，避免空洞概括
@@ -1504,6 +1529,13 @@ class AIContentGenerator {
         • 保持语言风格的一致性和角色特色
         • 确保所有角色的内容风格各不相同，避免模式化
         • 可以加入适当的情感表达，增强内容的吸引力
+        
+        【创意空间】
+        • 上述要求是基本框架，可以灵活发挥创意
+        • 可以尝试不同的表达方式、叙事结构和修辞手法
+        • 可以围绕不同主题和场景展开
+        • 示例仅作参考，鼓励创造独特的表达方式
+        • 每次生成时应避免重复相似的观点或表达方式
         
         严格禁止事项：
         • 不要使用标题或明显的格式标记（除非内容类型特别需要）
@@ -1614,6 +1646,14 @@ class AIContentGenerator {
         • 言之有物 - 确保每句话都传达有意义的内容，不要为了"高大上"而堆砌空洞词藻
         • 保持生活化 - 用日常生活中的普通表达方式和例子来阐述深刻道理
         
+        【创意空间】
+        • 上述要求是基本框架，可以灵活发挥创意
+        • 可以尝试不同的表达方式和思考角度
+        • 可以围绕不同主题展开：成长、挫折、成功、关系、自我认知等
+        • 可以采用不同的叙事结构和修辞手法
+        • 示例仅作参考，鼓励创造独特的表达方式和思考深度
+        • 每次生成时应避免重复相似的观点或表达方式
+                
         语言要求：
         • 内容必须【完全使用中文】，严禁使用英文或其他语言
         • 即使是引用、专业术语或概念，也必须全部转换为中文表达
@@ -1644,134 +1684,90 @@ class AIContentGenerator {
     /**
      * 生成带评论的内容
      * @param contentType 内容类型
-     * @param character 角色身份信息
-     * @param commentersCount 评论者数量
-     * @param topic 话题
+     * @param character 角色
+     * @param commenters 评论者数组
+     * @param topic 可选的主题
      */
     func generateContentWithComments(
         contentType: String,
         character: CharacterSystem.CharacterIdentity,
-        commentersCount: Int,
-        topic: String?
-    ) -> Future<(content: String, comments: [(character: String, comment: String)], replyComments: [(replier: String, replyTo: String, content: String)]), Error> {
+        commentersCount: Int = 3,
+        topic: String? = nil
+    ) -> Future<(content: String, comments: [(character: String, comment: String, isReply: Bool, replyTo: String?)]), Error> {
         return Future { promise in
-            print("🔄 开始生成带评论的\(contentType)内容: 角色=\(character.name), 评论数=\(commentersCount)")
+            // 获取随机评论者
+            let commenters = CharacterSystem.shared.getRandomCharacters(count: commentersCount, excludeID: character.id)
             
-            // 从CharacterSystem获取随机评论者
-            let characterSystem = CharacterSystem.shared
-            var commenters: [CharacterSystem.CharacterIdentity] = []
+            // 构建提示词
+            let prompt = self.buildContentWithCommentsPrompt(
+                contentType: contentType,
+                character: character,
+                commenters: commenters,
+                topic: topic
+            )
             
-            // 获取所有可用角色，排除当前角色
-            let allAvailableCharacters = characterSystem.getAllCharacters().filter { $0.id != character.id }
-            
-            // 如果没有足够的角色，则使用默认评论者
-            if allAvailableCharacters.isEmpty {
-                print("⚠️ 没有找到可用的评论者，使用默认角色名")
-                
-                // 根据内容类型选择默认评论者名称
-                let defaultCommenters = ["爱因斯坦", "莎士比亚", "李白", "孔子", "牛顿"].prefix(commentersCount)
-                
-                // 创建提示词
-                let prompt = self.buildContentWithCommentsPrompt(
-                    contentType: contentType,
-                    character: character,
-                    commenters: defaultCommenters.map { ($0, "") },
-                    topic: topic
+            // 使用AI生成内容和评论
+            AINetworkService.shared.sendRequest(prompt: prompt)
+                .sink(
+                    receiveCompletion: { completion in
+                        if case .failure(let error) = completion {
+                            promise(.failure(error))
+                        }
+                    },
+                    receiveValue: { response in
+                        // 解析内容和评论
+                        let result = self.parseContentAndComments(from: response)
+                        switch result {
+                        case .success(let contentAndComments):
+                            print("✅ AI成功生成内容和\(contentAndComments.comments.count)条评论")
+                            promise(.success(contentAndComments))
+                        case .failure(let error):
+                            promise(.failure(error))
+                        }
+                    }
                 )
-                
-                // 生成内容
-                self.generateContent(prompt: prompt)
-                    .sink(
-                        receiveCompletion: { completion in
-                            if case .failure(let error) = completion {
-                                promise(.failure(error))
-                            }
-                        },
-                        receiveValue: { response in
-                            let result = self.parseContentAndComments(from: response)
-                            promise(.success(result))
-                        }
+                .store(in: &self.cancellables)
+        }
+    }
+    
+    /**
+     * 生成带评论的内容项
+     * @param contentType 内容类型
+     * @param character 角色
+     * @param commentersCount 评论者数量
+     * @param topic 可选的主题
+     */
+    func generateContentItemWithComments(
+        contentType: String,
+        character: CharacterSystem.CharacterIdentity,
+        commentersCount: Int = 3,
+        topic: String? = nil
+    ) -> Future<(ContentItem, [CommentItem]), Error> {
+        return Future { promise in
+            // 生成内容和评论
+            self.generateContentWithComments(
+                contentType: contentType,
+                character: character,
+                commentersCount: commentersCount,
+                topic: topic
+            )
+            .sink(
+                receiveCompletion: { completion in
+                    if case .failure(let error) = completion {
+                        promise(.failure(error))
+                    }
+                },
+                receiveValue: { result in
+                    // 处理内容和评论
+                    let processed = self.processContentAndComments(
+                        result: result,
+                        contentType: contentType,
+                        character: character
                     )
-                    .store(in: &self.cancellables)
-            } else {
-                // 如果有足够的角色，随机选择独特的评论者
-                var selectedIds = Set<String>()
-                var remainingCharacters = allAvailableCharacters
-                
-                // 尝试选择多样化的角色类型
-                var typeCount: [CharacterSystem.CharacterType: Int] = [:]
-                
-                // 第一次选择不同类型的角色
-                for _ in 0..<min(commentersCount, allAvailableCharacters.count) {
-                    // 如果remainingCharacters为空，则中断循环
-                    if remainingCharacters.isEmpty {
-                        break
-                    }
-                    
-                    // 优先选择类型较少的角色
-                    let sortedTypes = allAvailableCharacters.map { $0.type }
-                        .filter { type in remainingCharacters.contains(where: { $0.type == type }) }
-                        .sorted { typeCount[$0] ?? 0 < typeCount[$1] ?? 0 }
-                    
-                    if let targetType = sortedTypes.first {
-                        let candidatesOfType = remainingCharacters.filter { $0.type == targetType }
-                        if let selected = candidatesOfType.randomElement() {
-                            commenters.append(selected)
-                            selectedIds.insert(selected.id)
-                            typeCount[selected.type, default: 0] += 1
-                            
-                            // 从剩余角色中移除已选角色
-                            remainingCharacters.removeAll(where: { $0.id == selected.id })
-                        }
-                    }
+                    promise(.success(processed))
                 }
-                
-                // 如果评论者不足，添加随机角色填充
-                while commenters.count < commentersCount && !remainingCharacters.isEmpty {
-                    if let randomCharacter = remainingCharacters.randomElement() {
-                        commenters.append(randomCharacter)
-                        selectedIds.insert(randomCharacter.id)
-                        
-                        // 从剩余角色中移除已选角色
-                        remainingCharacters.removeAll(where: { $0.id == randomCharacter.id })
-                    }
-                }
-                
-                // 如果还是不足，则重复使用已有角色名称
-                if commenters.count < commentersCount {
-                    print("⚠️ 可用角色不足，部分评论者可能重复")
-                    while commenters.count < commentersCount && !allAvailableCharacters.isEmpty {
-                        if let randomCharacter = allAvailableCharacters.randomElement() {
-                            commenters.append(randomCharacter)
-                        }
-                    }
-                }
-                
-                print("✅ 已选择\(commenters.count)位评论者: \(commenters.map { $0.name }.joined(separator: ", "))")
-                
-                // 创建提示词
-                let prompt = self.buildContentWithCommentsPrompt(
-                    contentType: contentType,
-                    character: character,
-                    commenters: commenters.map { ($0.name, "\($0.type.displayName)，专长：\($0.primaryField)") },
-                    topic: topic
-                )
-                
-                // 生成内容
-                self.generateContent(prompt: prompt)
-                    .sink(
-                        receiveCompletion: { completion in
-                            if case .failure(let error) = completion {
-                                promise(.failure(error))
-                            }
-                        },
-                        receiveValue: { response in
-                            let result = self.parseContentAndComments(from: response)
-                            promise(.success(result))
-                        }
-                    )
-                    .store(in: &self.cancellables)
-            }
+            )
+            .store(in: &self.cancellables)
         }
     }
     
@@ -1781,7 +1777,7 @@ class AIContentGenerator {
     private func buildContentWithCommentsPrompt(
         contentType: String,
         character: CharacterSystem.CharacterIdentity,
-        commenters: [(name: String, description: String)],
+        commenters: [CharacterSystem.CharacterIdentity],
         topic: String?
     ) -> String {
         // 获取角色基本信息
@@ -1831,11 +1827,12 @@ class AIContentGenerator {
             • 每句话都要有实质内容，避免废话和填充语
             • 用日常生活的例子和语言解释深刻道理
             
-            语言要求：
-            • 所有内容必须是中文，绝对不允许使用英文
-            • 不得使用任何英文单词、缩写或外来语
-            • 专业术语和概念必须使用纯中文表达
-            • 保持地道、自然的中文表达习惯
+            【创意空间】
+            • 上述格式要求是基本框架，而非严格限制
+            • 可以尝试不同的表达方式、修辞手法和思考角度
+            • 示例仅作参考，不必拘泥于特定风格或主题
+            • 鼓励创新表达，只要保持基本格式要求
+            • 每次生成内容时尝试采用不同的写作风格和情感基调
             """
             
             specialExample = """
@@ -1861,6 +1858,14 @@ class AIContentGenerator {
             • 包含多感官细节描述，增强沉浸感
             • 突出历史人物当时的思考和情感
             • 可以适当展现历史人物鲜为人知的一面
+            
+            【创意空间】
+            • 上述要求是基本框架，可以灵活发挥创意
+            • 可尝试不同的叙事视角：内省思考型、事件记录型、对话互动型等
+            • 可选择不同情感基调：沉思冷静、激动兴奋、忧虑不安、满怀希望等
+            • 可变化场景类型：独处时刻、公共场合、重要会议、实验/创作过程等
+            • 结构可以灵活变化：有时以感悟开头，有时以场景描写开头，有时以对话开头
+            • 示例仅作参考，每次生成时应尝试不同的表达方式
             """
             
             specialExample = """
@@ -1892,6 +1897,13 @@ class AIContentGenerator {
             • 文化错位：角色用自己时代的思维理解现代概念的有趣误解
             • 专业角度：角色以专业领域角度点评现代事物
             • 夸张反应：角色对现代司空见惯的事物表现出极度惊讶
+            
+            【创意空间】
+            • 上述要求是基本框架，可以灵活发挥创意
+            • 可尝试不同类型的幽默：讽刺、双关语、夸张、荒谬等
+            • 可以针对各种现代事物发表评论：科技、流行文化、生活方式等
+            • 示例仅作参考，鼓励创造独特的表达方式和笑点
+            • 每次生成时应避免重复相似的梗或表达方式
             """
             
             specialExample = """
@@ -1917,6 +1929,14 @@ class AIContentGenerator {
             • 可以分享一个具体经历或场景，但不要过于戏剧化
             • 不要过于完美或深刻，真实的情感往往是简单直接的
             • 可以用【】作为小标题，但不是必须的
+            
+            【创意空间】
+            • 上述要求是基本框架，可以灵活发挥创意
+            • 可以尝试不同的情感表达：喜悦、沉思、困惑、希望、担忧等
+            • 可以围绕不同场景展开：工作中的发现、自然观察、人际互动等
+            • 可以采用不同的表达结构：先描述后感悟、先感悟后描述等
+            • 示例仅作参考，鼓励创造独特的表达方式和情感层次
+            • 每次生成时应尝试不同的写作风格和情感基调
             """
             
             specialExample = """
@@ -1955,6 +1975,14 @@ class AIContentGenerator {
             • 避免空洞无物的"鸡汤"内容
             • 避免刻意古风或文言表达
             • 避免故意使用高深术语和专业名词
+            
+            【创意空间】
+            • 上述要求是基本框架，可以灵活发挥创意
+            • 可以尝试不同的表达方式和思考角度
+            • 可以围绕不同主题展开：成长、挫折、成功、关系、自我认知等
+            • 可以采用不同的叙事结构和修辞手法
+            • 示例仅作参考，鼓励创造独特的表达方式和思考深度
+            • 每次生成时应避免重复相似的观点或表达方式
             """
             
             commentFormatting = """
@@ -1969,14 +1997,14 @@ class AIContentGenerator {
         
         // 生成评论者信息
         let commentersInfo = commenters.enumerated().map { index, commenter in
-            return "评论者\(index + 1)：\(commenter.name)" + (commenter.description.isEmpty ? "" : " - \(commenter.description)")
+            return "评论者\(index + 1)：\(commenter.name)" + (commenter.briefDescription.isEmpty ? "" : " - \(commenter.briefDescription)")
         }.joined(separator: "\n")
         
         // 构建完整提示词
         return """
         请完成两项任务：
         1. 首先生成\(character.name)的一篇"\(contentType)"类型内容
-        2. 然后生成\(commenters.count)位不同历史人物对这篇内容的评论
+        2. 然后生成\(commenters.count)位不同历史人物对这篇内容的评论，以及2-3条回复评论
         
         \(characterInfo)
         \(topicInfo)
@@ -2006,22 +2034,23 @@ class AIContentGenerator {
         • 评论格式必须为：[历史人物名]：[评论内容]
         • 严格使用中文冒号"："分隔人物名和评论
         • 确保每条评论都有实际内容，不要生成空评论
-        • 绝对不要在评论末尾添加类似"(不同角度解读)"、"(补充历史背景)"、"(专业延伸)"、"(情感共鸣)"等任何形式的解释性括号标注
+        • 绝对不要在评论结尾添加类似"(不同角度解读)"、"(补充历史背景)"、"(专业延伸)"、"(情感共鸣)"等任何形式的解释性括号标注
         \(commentFormatting.isEmpty ? "" : "\n\(commentFormatting)")
         
-        【追加评论生成要求】
-        • 在生成基础评论后，额外生成2-3条追加评论，这些评论是对基础评论的回复
-        • 追加评论必须使用格式："回复评论：[历史人物名]回复@[被回复者姓名]：[回复内容]"
-        • 回复内容要与被回复评论有直接关联，可以是赞同并补充、质疑反驳、或提出新视角
-        • 回复应该更加口语化，像真实社交媒体互动
-        • 回复者应该是与原评论者不同的历史人物，展现不同时代、不同领域的思想碰撞
-        • 每条回复评论控制在20-50字
-        • 回复评论的语气和风格应与内容类型相匹配：
-          - 虫洞共鸣：深度思考的延伸，相互启发式的哲学对话
-          - 古潮新语：古代视角与现代观点的辩论，互相质疑和补充
-          - 穿越吐槽：幽默加码，一个角色的吐槽被另一个角色用更幽默的方式继续
-          - 日常心情：情感共鸣和安慰，对原评论表达理解或提供不同角度的情感支持
-          - 时空记事：历史细节的补充或纠正，"我当时也在场"的视角
+        【回复评论生成要求】
+        • 在生成基础评论后，额外生成2-3条回复评论
+        • 回复评论必须是针对基础评论的回复，不是对原帖的回复
+        • 回复评论格式必须为：[回复者姓名] 回复 @[被回复者姓名]：[回复内容]
+        • 回复内容要与被回复的评论有直接关联，可以是赞同并补充、质疑反驳或提出新视角
+        • 回复应该更加口语化，像真实社交媒体互动一样自然
+        • 回复评论要简短，控制在20-40字
+        • 回复评论中角色之间应该有互动感，体现角色间的思想碰撞
+        • 不同内容类型的回复风格也应有所不同：
+          - 虫洞共鸣：深度思考的延伸，互相启发
+          - 古潮新语：古代视角与现代观点的辩论
+          - 穿越吐槽：幽默加码，互相调侃
+          - 日常心情：情感共鸣和安慰
+          - 时空记事：历史细节的补充或纠正
         
         【输出格式】
         ---内容开始---
@@ -2029,29 +2058,25 @@ class AIContentGenerator {
         ---内容结束---
         ---评论开始---
         \(commenters.map { $0.name }.joined(separator: "/"))：[评论内容]
+        [回复者姓名] 回复 @[被回复者姓名]：[回复内容]
         ---评论结束---
-        ---追加评论开始---
-        回复评论：[历史人物名]回复@[被回复者姓名]：[回复内容]
-        回复评论：[历史人物名]回复@[被回复者姓名]：[回复内容]
-        回复评论：[历史人物名]回复@[被回复者姓名]：[回复内容]
-        ---追加评论结束---
         
         【重要】
         • 确保严格按照上述模板输出内容
         • 保留所有特殊格式要求（如古潮新语的现代解读、时空记事的时间地点标注等）
         • 不要添加额外的格式标记或说明
         • 每条评论必须有人物名和内容，中间使用中文冒号"："分隔
+        • 每条回复评论必须使用"回复 @"的格式
         • 必须严格使用我提供的评论者名称，顺序可以灵活
         • 严禁在评论结尾添加任何形式的解释性括号，如"(不同角度解读)"、"(补充历史背景)"等
-        • 追加评论必须明确指出是对哪位评论者的回复
         """
     }
     
     /**
      * 解析生成的内容和评论
      */
-    private func parseContentAndComments(from response: String) -> (content: String, comments: [(character: String, comment: String)], replyComments: [(replier: String, replyTo: String, content: String)]) {
-        print("🔍 解析AI返回的内容和评论...")
+    private func parseContentAndComments(from response: String) -> Result<(content: String, comments: [(character: String, comment: String, isReply: Bool, replyTo: String?)]), Error> {
+        print(" 解析AI返回的内容和评论...")
         
         // 匹配内容部分
         let contentRegexPattern = "---内容开始---(.*?)---内容结束---"
@@ -2065,106 +2090,181 @@ class AIContentGenerator {
         print("📄 解析得到的原始内容: \(content.prefix(100))..." + (content.count > 100 ? "..." : ""))
         
         // 检查内容是否包含特定格式特征
-        let _ = content.contains("（现代解读：") && content.contains("）")
+        let containsModernInterpretation = content.contains("（现代解读：") && content.contains("）")
         let timelineHeaderPattern = "【[0-9]+年.*?】"
-        let _ = content.range(of: timelineHeaderPattern, options: .regularExpression) != nil
-        let _ = content.count >= 80 && content.count <= 120 && 
+        let containsTimelineHeader = content.range(of: timelineHeaderPattern, options: .regularExpression) != nil
+        let containsResonancePattern = content.count >= 80 && content.count <= 120 && 
                                       (content.contains("困惑") || content.contains("感悟") || 
                                        content.contains("洞见") || content.contains("智慧") || 
                                        content.contains("经验") || content.contains("挑战"))
+        
+        if containsModernInterpretation {
+            print("🔎 检测到「古潮新语」格式 - 包含现代解读部分")
+        }
+        
+        if containsTimelineHeader {
+            print("🔎 检测到「时空记事」格式 - 包含时间地点标注")
+        }
+        
+        if containsResonancePattern {
+            print("🔎 检测到「虫洞共鸣」格式 - 包含人生洞见特征")
+        }
+        
+        print("📊 内容统计: 总长度=\(content.count)字符, 行数=\(content.components(separatedBy: "\n").count)")
         
         // 匹配评论部分
         let commentsRegexPattern = "---评论开始---(.*?)---评论结束---"
         let commentsRegex = try! NSRegularExpression(pattern: commentsRegexPattern, options: [.dotMatchesLineSeparators])
         let commentsMatch = commentsRegex.firstMatch(in: response, options: [], range: responseRange)
+        let commentsText = commentsMatch != nil ? 
+            (response as NSString).substring(with: commentsMatch!.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines) : 
+            ""
         
-        var comments: [(character: String, comment: String)] = []
+        // 解析每条评论
+        var comments: [(character: String, comment: String, isReply: Bool, replyTo: String?)] = []
+        let commentLines = commentsText.components(separatedBy: .newlines).filter { !$0.isEmpty }
         
-        if let match = commentsMatch {
-            let commentsText = (response as NSString).substring(with: match.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines)
-            print("💬 解析得到的评论文本: \(commentsText)")
-            
-            // 分割每条评论
-            let commentLines = commentsText.components(separatedBy: .newlines)
-            for line in commentLines {
-                let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmedLine.isEmpty else { continue }
+        print("📝 评论行数: \(commentLines.count)")
+        
+        // 主要解析方法：查找"："分隔符和回复评论格式
+        for (index, line) in commentLines.enumerated() {
+            // 检查是否是回复评论格式 "[回复者姓名] 回复 @[被回复者姓名]：[回复内容]"
+            if let replyRange = line.range(of: "回复 @") {
+                // 找出回复者姓名
+                let beforeReplyText = String(line[..<replyRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                let replier = beforeReplyText
                 
-                // 查找第一个中文冒号，分割角色名和评论内容
-                if let colonRange = trimmedLine.range(of: "：") {
-                    let character = String(trimmedLine[..<colonRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                    let comment = String(trimmedLine[colonRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                // 找出被回复者姓名和回复内容
+                let afterReplyText = String(line[replyRange.upperBound...])
+                if let colonRange = afterReplyText.range(of: "：") {
+                    let replyToName = String(afterReplyText[..<colonRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    let replyContent = String(afterReplyText[colonRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
                     
-                    if !character.isEmpty && !comment.isEmpty {
-                        comments.append((character: character, comment: comment))
-                        print("✅ 解析评论: \(character) - \(comment.prefix(30))...")
+                    if !replier.isEmpty && !replyToName.isEmpty && !replyContent.isEmpty {
+                        comments.append((replier, replyContent, true, replyToName))
+                        print("✅ 成功解析回复评论#\(index+1): \(replier) 回复 @\(replyToName): \(replyContent.prefix(20))...")
                     }
                 }
             }
-        }
-        
-        // 匹配追加评论部分
-        let replyCommentsRegexPattern = "---追加评论开始---(.*?)---追加评论结束---"
-        let replyCommentsRegex = try! NSRegularExpression(pattern: replyCommentsRegexPattern, options: [.dotMatchesLineSeparators])
-        let replyCommentsMatch = replyCommentsRegex.firstMatch(in: response, options: [], range: responseRange)
-        
-        var replyComments: [(replier: String, replyTo: String, content: String)] = []
-        
-        if let match = replyCommentsMatch {
-            let replyCommentsText = (response as NSString).substring(with: match.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines)
-            print("💬 解析得到的追加评论文本: \(replyCommentsText)")
-            
-            // 分割每条追加评论
-            let replyLines = replyCommentsText.components(separatedBy: .newlines)
-            for line in replyLines {
-                let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmedLine.isEmpty else { continue }
+            // 检查是否是普通评论格式
+            else if let range = line.range(of: "：") {
+                let character = String(line[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                let comment = String(line[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
                 
-                // 解析"回复评论：[历史人物名]回复@[被回复者姓名]：[回复内容]"格式
-                if trimmedLine.contains("回复@") && trimmedLine.contains("回复评论：") {
-                    // 提取回复者姓名
-                    if let replierStartRange = trimmedLine.range(of: "回复评论："),
-                       let replyToStartRange = trimmedLine.range(of: "回复@", options: [], range: replierStartRange.upperBound..<trimmedLine.endIndex),
-                       let contentStartRange = trimmedLine.range(of: "：", options: [], range: replyToStartRange.upperBound..<trimmedLine.endIndex) {
-                        
-                        let replierEndRange = replyToStartRange.lowerBound
-                        let replier = String(trimmedLine[replierStartRange.upperBound..<replierEndRange]).trimmingCharacters(in: .whitespacesAndNewlines)
-                        
-                        let replyToEndRange = contentStartRange.lowerBound
-                        let replyTo = String(trimmedLine[replyToStartRange.upperBound..<replyToEndRange]).trimmingCharacters(in: .whitespacesAndNewlines)
-                        
-                        let content = String(trimmedLine[contentStartRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
-                        
-                        if !replier.isEmpty && !replyTo.isEmpty && !content.isEmpty {
-                            replyComments.append((replier: replier, replyTo: replyTo, content: content))
-                            print("✅ 解析追加评论: \(replier) 回复 \(replyTo) - \(content.prefix(30))...")
+                // 只有当角色名和评论内容都不为空时才添加
+                if !character.isEmpty && !comment.isEmpty {
+                    comments.append((character, comment, false, nil))
+                    print("✅ 成功解析基础评论#\(index+1): \(character) - \(comment.prefix(20))...")
+                } else if !character.isEmpty && comment.isEmpty {
+                    print("⚠️ 评论内容为空: \(character)")
+                } else {
+                    print("⚠️ 角色名为空")
+                }
+            } else if let range = line.range(of: ":") {
+                // 尝试英文冒号分隔符
+                let character = String(line[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                let comment = String(line[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                if !character.isEmpty && !comment.isEmpty {
+                    comments.append((character, comment, false, nil))
+                    print("✅ 使用英文冒号解析评论#\(index+1): \(character) - \(comment.prefix(20))...")
+                }
+            } else if line.contains("-") {
+                // 尝试破折号分隔符
+                let parts = line.components(separatedBy: "-").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                if parts.count >= 2 && !parts[0].isEmpty && !parts[1].isEmpty {
+                    comments.append((parts[0], parts[1], false, nil))
+                    print("✅ 使用破折号解析评论#\(index+1): \(parts[0]) - \(parts[1].prefix(20))...")
+                }
+            } else {
+                print("⚠️ 无法解析评论行: \(line)")
+            }
+        }
+        
+        // 如果基本解析失败，尝试回退方案
+        if comments.isEmpty && !commentsText.isEmpty {
+            print("⚠️ 标准评论解析失败，尝试备用解析方法...")
+            
+            // 尝试识别可能的评论块
+            if commentLines.count >= 2 {
+                // 可能是历史人物名称单独一行的情况
+                var i = 0
+                while i < (commentLines.count-1) {
+                    let possibleCharacter = commentLines[i].trimmingCharacters(in: .whitespacesAndNewlines)
+                    let possibleComment = commentLines[i+1].trimmingCharacters(in: .whitespacesAndNewlines)
+                    
+                    // 检查第一行是否可能是人名（较短，无标点）
+                    if possibleCharacter.count < 20 && !possibleCharacter.contains("：") && !possibleCharacter.contains(":") {
+                        // 检查第二行是否像评论内容（较长）
+                        if possibleComment.count > 10 {
+                            comments.append((possibleCharacter, possibleComment, false, nil))
+                            print("✅ 备用方法(相邻行)解析成功: \(possibleCharacter) - \(possibleComment.prefix(20))...")
+                            i += 1 // 跳过下一行
                         }
                     }
+                    i += 1 // 移动到下一行
                 }
-                // 尝试解析简化格式"[历史人物名]回复@[被回复者姓名]：[回复内容]"
-                else if trimmedLine.contains("回复@") {
-                    if let replierEndRange = trimmedLine.range(of: "回复@"),
-                       let contentStartRange = trimmedLine.range(of: "：", options: [], range: replierEndRange.upperBound..<trimmedLine.endIndex) {
+            }
+            
+            // 尝试使用\n\n分割评论块
+            if comments.isEmpty {
+                let possibleComments = commentsText.components(separatedBy: "\n\n")
+                print("🔄 备用解析 - 检测到\(possibleComments.count)个可能的评论块")
+                
+                for (index, possibleComment) in possibleComments.enumerated() {
+                    print("🔍 分析评论块#\(index+1): \(possibleComment.prefix(30))...")
+                    
+                    // 尝试使用冒号分割
+                    if let range = possibleComment.range(of: "：") ?? possibleComment.range(of: ":") {
+                        let character = String(possibleComment[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                        let comment = String(possibleComment[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
                         
-                        let replier = String(trimmedLine[..<replierEndRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                        
-                        let replyToEndRange = contentStartRange.lowerBound
-                        let replyTo = String(trimmedLine[replierEndRange.upperBound..<replyToEndRange]).trimmingCharacters(in: .whitespacesAndNewlines)
-                        
-                        let content = String(trimmedLine[contentStartRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
-                        
-                        if !replier.isEmpty && !replyTo.isEmpty && !content.isEmpty {
-                            replyComments.append((replier: replier, replyTo: replyTo, content: content))
-                            print("✅ 解析追加评论(简化格式): \(replier) 回复 \(replyTo) - \(content.prefix(30))...")
+                        if !character.isEmpty && !comment.isEmpty {
+                            comments.append((character, comment, false, nil))
+                            print("✅ 备用方法解析成功: \(character) - \(comment.prefix(20))...")
+                        }
+                    } else {
+                        // 尝试使用换行分割
+                        let lines = possibleComment.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                        if lines.count >= 2 {
+                            let character = lines[0]
+                            let comment = lines[1]
+                            
+                            if character.count < 20 && comment.count > 10 {
+                                comments.append((character, comment, false, nil))
+                                print("✅ 备用方法(多行)解析成功: \(character) - \(comment.prefix(20))...")
+                            }
                         }
                     }
                 }
             }
         }
         
-        print("📊 解析结果: 内容长度=\(content.count)字, 评论数=\(comments.count), 追加评论数=\(replyComments.count)")
+        // 最后筛选，确保没有重复或无效评论
+        var filteredComments: [(character: String, comment: String, isReply: Bool, replyTo: String?)] = []
+        var seenCharacterComments = Set<String>() // 用于检测重复的基础评论
         
-        return (content, comments, replyComments)
+        for (character, comment, isReply, replyTo) in comments {
+            // 跳过空评论
+            if comment.isEmpty {
+                continue
+            }
+            
+            // 处理重复评论者（只针对基础评论）
+            let commentKey = "\(character)-\(isReply ? "reply" : "base")"
+            if !isReply && seenCharacterComments.contains(commentKey) {
+                continue
+            }
+            
+            if !isReply {
+                seenCharacterComments.insert(commentKey)
+            }
+            
+            filteredComments.append((character, comment, isReply, replyTo))
+        }
+        
+        print("📊 最终解析结果: \(filteredComments.count)条有效评论，包含\(filteredComments.filter { $0.isReply }.count)条回复评论")
+        return .success((content, filteredComments))
     }
     
     /**
@@ -2181,7 +2281,7 @@ class AIContentGenerator {
         expectation: String,
         keyword: String? = nil,
         commentersCount: Int = 3
-    ) -> Future<(content: String, comments: [(character: String, comment: String)], replyComments: [(replier: String, replyTo: String, content: String)]), Error> {
+    ) -> Future<(content: String, comments: [(character: String, comment: String, isReply: Bool, replyTo: String?)]), Error> {
         return Future { promise in
             print("🔄 开始生成带评论的虫洞共鸣内容: 角色=\(figure), 情境=\(situation)")
             
@@ -2270,55 +2370,44 @@ class AIContentGenerator {
             let characterSystem = CharacterSystem.shared
             
             // 使用CharacterSystem中的方法查找角色
-            characterSystem.findCharacterByName(name)
-                .sink(
-                    receiveCompletion: { completion in
-                        if case .failure(let error) = completion {
-                            print("❌ 在数据库中查找角色失败: \(error.localizedDescription)")
-                        }
-                    },
-                    receiveValue: { character in
-                        if let foundCharacter = character {
-                            // 找到匹配的角色
-                            promise(.success(foundCharacter))
-                        } else {
-                            print("⚠️ 在数据库中未找到角色: \(name)，尝试使用备用方案")
-                            
-                            // 备用方案：尝试使用模糊匹配
-                            let potentialMatches = characterSystem.getAllCharacters().filter {
-                                $0.name.contains(name) || name.contains($0.name)
-                            }
-                            
-                            if let bestMatch = potentialMatches.first {
-                                print("✅ 找到最佳匹配角色: \(bestMatch.name)")
-                                promise(.success(bestMatch))
-                            } else {
-                                print("⚠️ 无匹配角色，创建临时角色")
-                                
-                                // 创建一个临时角色（优先使用历史人物类型）
-                                let tempCharacter = CharacterSystem.CharacterIdentity(
-                                    id: "temp_\(UUID().uuidString.prefix(8))",
-                                    name: name,
-                                    type: .historical,
-                                    era: "未知时代",
-                                    primaryField: "未知专长",
-                                    briefDescription: "历史人物",
-                                    avatarName: self.getAvatarForCharacter(name: name),
-                                    region: "",
-                                    contentAffinities: [
-                                        "古潮新语": 0.7, 
-                                        "穿越吐槽": 0.7, 
-                                        "日常心情": 0.7, 
-                                        "虫洞共鸣": 0.8, 
-                                        "时空记事": 0.7
-                                    ]
-                                )
-                                promise(.success(tempCharacter))
-                            }
-                        }
-                    }
-                )
-                .store(in: &self.cancellables)
+            if let foundCharacter = characterSystem.findCharacterByName(name) {
+                // 找到匹配的角色
+                promise(.success(foundCharacter))
+            } else {
+                print("⚠️ 在数据库中未找到角色: \(name)，尝试使用备用方案")
+                
+                // 备用方案：尝试使用模糊匹配
+                let potentialMatches = characterSystem.getAllCharacters().filter {
+                    $0.name.contains(name) || name.contains($0.name)
+                }
+                
+                if let bestMatch = potentialMatches.first {
+                    print("✅ 找到最佳匹配角色: \(bestMatch.name)")
+                    promise(.success(bestMatch))
+                } else {
+                    print("⚠️ 无匹配角色，创建临时角色")
+                    
+                    // 创建一个临时角色（优先使用历史人物类型）
+                    let tempCharacter = CharacterSystem.CharacterIdentity(
+                        id: "temp_\(UUID().uuidString.prefix(8))",
+                        name: name,
+                        type: .historical,
+                        era: "未知时代",
+                        primaryField: "未知专长",
+                        briefDescription: "历史人物",
+                        avatarName: self.getAvatarForCharacter(name: name),
+                        region: "",
+                        contentAffinities: [
+                            "古潮新语": 0.7, 
+                            "穿越吐槽": 0.7, 
+                            "日常心情": 0.7, 
+                            "虫洞共鸣": 0.8, 
+                            "时空记事": 0.7
+                        ]
+                    )
+                    promise(.success(tempCharacter))
+                }
+            }
         }
     }
     
@@ -2341,6 +2430,122 @@ class AIContentGenerator {
         
         return avatarMapping[name] ?? "person.fill"
     }
+    
+    /**
+     * 处理内容和评论
+     * @param result 解析结果
+     * @param contentType 内容类型
+     * @param character 角色
+     */
+    private func processContentAndComments(
+        result: (content: String, comments: [(character: String, comment: String, isReply: Bool, replyTo: String?)]),
+        contentType: String,
+        character: CharacterSystem.CharacterIdentity
+    ) -> (ContentItem, [CommentItem]) {
+        // 创建内容项
+        let contentItem = ContentItem(
+            id: UUID().uuidString,
+            characterID: character.id,
+            characterName: character.name,
+            characterType: character.type.rawValue,
+            characterAvatar: character.avatarName,
+            contentType: contentType,
+            content: result.content,
+            timestamp: Date(),
+            likes: Int.random(in: 10...200),
+            comments: [],
+            topics: extractTopicFromContent(result.content)
+        )
+        
+        // 处理评论
+        let commentItems = self.processComments(result.comments, contentID: contentItem.id)
+        
+        print("✅ 成功处理内容和\(commentItems.count)条评论")
+        return (contentItem, commentItems)
+    }
+    
+    /**
+     * 从内容中提取主题
+     */
+    private func extractTopicFromContent(_ content: String) -> String {
+        let sentences = content.components(separatedBy: [".","。","!","！","?","？"])
+        let firstSentence = sentences.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        
+        if firstSentence.count > 10 {
+            return String(firstSentence.prefix(10)) + "..."
+        }
+        return firstSentence
+    }
+    
+    /**
+     * 处理评论
+     */
+    private func processComments(
+        _ commentItems: [(character: String, comment: String, isReply: Bool, replyTo: String?)],
+        contentID: String
+    ) -> [CommentItem] {
+        print("🔄 处理\(commentItems.count)条评论...")
+        
+        var comments: [CommentItem] = []
+        var commentMap: [String: String] = [:] // 角色名到评论ID的映射
+        
+        // 第一步：创建所有非回复评论
+        for item in commentItems where !item.isReply {
+            // 获取角色信息
+            if let characterInfo = CharacterSystem.shared.findCharacterByName(item.character) {
+                // 创建评论
+                let commentId = UUID().uuidString
+                let comment = CommentItem(
+                    id: commentId,
+                    characterId: characterInfo.id,
+                    characterName: characterInfo.name,
+                    characterAvatar: characterInfo.avatarName,
+                    characterRole: characterInfo.primaryField,
+                    content: item.comment,
+                    timestamp: Date(),
+                    likes: Int.random(in: 1...50),
+                    parentCommentId: nil
+                )
+                
+                // 添加到评论列表
+                comments.append(comment)
+                
+                // 保存角色名到评论ID的映射
+                commentMap[item.character] = commentId
+            }
+        }
+        
+        // 第二步：处理回复评论
+        for item in commentItems where item.isReply {
+            // 获取回复者角色信息
+            if let replierInfo = CharacterSystem.shared.findCharacterByName(item.character) {
+                // 查找父评论ID
+                let parentCommentId = item.replyTo.flatMap { commentMap[$0] }
+                
+                // 创建回复评论
+                let comment = CommentItem(
+                    id: UUID().uuidString,
+                    characterId: replierInfo.id,
+                    characterName: replierInfo.name,
+                    characterAvatar: replierInfo.avatarName,
+                    characterRole: replierInfo.primaryField,
+                    content: item.comment,
+                    timestamp: Date(),
+                    likes: Int.random(in: 1...30),
+                    parentCommentId: parentCommentId
+                )
+                
+                // 添加到评论列表
+                comments.append(comment)
+            }
+        }
+        
+        // 保存评论到评论存储
+        CommentStore.shared.saveComments(comments, forContentID: contentID)
+        
+        print("✅ 成功处理\(comments.count)条评论")
+        return comments
+    }
 }
 
 // 虫洞共鸣帖子模型
@@ -2362,4 +2567,4 @@ struct ResonanceComment {
     let content: String
     let timestamp: Date
     let likes: Int
-} 
+}

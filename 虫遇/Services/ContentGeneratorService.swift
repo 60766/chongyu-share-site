@@ -531,48 +531,47 @@ class ContentGeneratorService {
                                 
                                 print("🔄 开始处理\(result.comments.count)条评论...")
                                 
+                                // 存储基础评论的ID和角色名映射，用于后续处理回复评论
+                                var baseCommentIdMap: [String: String] = [:]
+                                
+                                // 首先处理所有评论
                                 for (index, commentData) in result.comments.enumerated() {
                                     dispatchGroup.enter()
                                     
                                     // 尝试查找评论者角色
-                                    self.characterSystem.findCharacterByName(commentData.character)
-                                        .sink(
-                                            receiveCompletion: { completion in
-                                                if case .failure(let error) = completion {
-                                                    print("⚠️ 查找评论者角色失败: \(error.localizedDescription), 使用默认值")
-                                                    // 继续处理，不中断评论生成
-                                                }
-                                                // 不管成功失败都需要离开组
-                                                dispatchGroup.leave()
-                                            },
-                                            receiveValue: { commenter in
-                                                // 创建评论，设置递减的时间戳（最早的评论在最前面）
-                                                let timestamp = now.addingTimeInterval(-Double((result.comments.count - index) * 120))
-                                                
-                                                // 只有当评论内容不为空时才创建评论项
-                                                if !commentData.comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                                    let commentItem = CommentItem(
-                                                        id: UUID().uuidString,
-                                                        contentID: contentItem.id,
-                                                        characterID: commenter?.id ?? "unknown",
-                                                        characterName: commenter?.name ?? commentData.character,
-                                                        characterAvatar: commenter?.avatarName ?? "default_avatar",
-                                                        content: commentData.comment,
-                                                        timestamp: timestamp,
-                                                        likes: Int.random(in: 5...50)
-                                                    )
-                                                    
-                                                    print("📝 创建评论项 #\(index+1): \(commentItem.characterName)")
-                                                    comments.append(commentItem)
-                                                } else {
-                                                    print("⚠️ 跳过空评论内容 - 角色: \(commenter?.name ?? commentData.character)")
-                                                }
-                                            }
+                                    let commenter = self.characterSystem.findCharacterByName(commentData.character)
+                                    
+                                    // 创建评论，设置递减的时间戳（最早的评论在最前面）
+                                    let timestamp = now.addingTimeInterval(-Double((result.comments.count - index) * 120))
+                                    
+                                    // 只有当评论内容不为空时才创建评论项
+                                    if !commentData.comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        let commentId = UUID()
+                                        let commentItem = CommentItem(
+                                            id: commentId.uuidString,
+                                            characterId: commenter?.id ?? "unknown",
+                                            characterName: commenter?.name ?? commentData.character,
+                                            characterAvatar: commenter?.avatarName ?? "default_avatar",
+                                            characterRole: commenter?.primaryField ?? "unknown",
+                                            content: commentData.comment,
+                                            timestamp: timestamp,
+                                            likes: Int.random(in: 5...50),
+                                            parentCommentId: commentData.isReply ? baseCommentIdMap[commentData.replyTo ?? ""] : nil
                                         )
-                                        .store(in: &self.cancellables)
+                                        
+                                        // 保存评论ID和角色名的映射
+                                        baseCommentIdMap[commentData.character] = commentId.uuidString
+                                        
+                                        print("📝 创建评论项 #\(index+1): \(commentItem.characterName)")
+                                        comments.append(commentItem)
+                                    } else {
+                                        print("⚠️ 跳过空评论内容 - 角色: \(commenter?.name ?? commentData.character)")
+                                    }
+                                    
+                                    dispatchGroup.leave()
                                 }
                                 
-                                // 当所有评论都处理完毕时，返回结果
+                                // 等待所有评论处理完成
                                 dispatchGroup.notify(queue: .main) {
                                     print("✅ 所有评论处理完成，共\(comments.count)条评论")
                                     // 按时间排序评论
@@ -589,6 +588,23 @@ class ContentGeneratorService {
     }
     
     /**
+     * 根据内容类型获取随机角色
+     * @param contentType 内容类型
+     * @return Future<CharacterSystem.CharacterIdentity, Error>
+     */
+    func getRandomCharacterForContentType(_ contentType: ContentType) -> Future<CharacterSystem.CharacterIdentity, Error> {
+        return Future { promise in
+            // 使用角色轮换系统获取平衡分配的角色
+            let characters = CharacterRotationSystem.shared.getRecommendedCharacters(count: 1)
+            if let character = characters.first {
+                promise(.success(character))
+            } else {
+                promise(.failure(ContentError.noCharactersAvailable))
+            }
+        }
+    }
+    
+    /**
      * 生成随机内容，并包含评论
      * @param contentType 内容类型
      * @param topic 可选主题
@@ -596,148 +612,31 @@ class ContentGeneratorService {
      */
     func generateRandomContentWithComments(contentType: ContentType, topic: String? = nil) -> Future<(contentItem: ContentItem, comments: [CommentItem]), Error> {
         return Future { promise in
-            // 根据内容类型动态调整评论数量
-            var dynamicCommentersCount = 3
-            
-            // 为不同内容类型设置不同的评论数量范围
-            switch contentType {
-            case .resonance: // 虫洞共鸣
-                // 根据话题复杂度动态调整评论数量
-                // 分析话题复杂度：检查话题字符串中是否包含特定关键词来评估复杂度
-                let complexTopics = ["困境", "挑战", "迷茫", "矛盾", "冲突", "抉择", "选择", "平衡", "深度", "思考", "哲学", "价值", "人生", "意义"]
-                
-                // 检查话题中是否包含复杂度指示词
-                var topicComplexity = 0
-                if let topicString = topic?.lowercased() {
-                    for keyword in complexTopics {
-                        if topicString.contains(keyword) {
-                            topicComplexity += 1
+            // 获取随机角色
+            self.getRandomCharacterForContentType(contentType)
+                .flatMap { character in
+                    // 使用选定角色生成内容
+                    self.generateContentWithComments(for: character.id, contentType: contentType, topic: topic)
+                }
+                .sink(
+                    receiveCompletion: { completion in
+                        if case .failure(let error) = completion {
+                            promise(.failure(error))
                         }
+                    },
+                    receiveValue: { result in
+                        promise(.success(result))
                     }
-                }
-                
-                // 根据复杂度设置评论数量
-                if topicComplexity >= 2 {
-                    // 复杂主题，生成更多评论
-                    dynamicCommentersCount = 4
-                    print("🧠 检测到复杂话题，设置评论数量=4")
-                } else if topicComplexity >= 1 {
-                    // 中等复杂度主题
-                    dynamicCommentersCount = 3
-                    print("📝 检测到中等复杂度话题，设置评论数量=3")
-                } else {
-                    // 简单主题
-                    dynamicCommentersCount = Int.random(in: 2...3)
-                    print("📌 检测到一般话题，设置评论数量=\(dynamicCommentersCount)")
-                }
-                
-                print("🌟 开始生成虫洞共鸣内容: 话题=\(topic ?? "未指定")，评论数=\(dynamicCommentersCount)")
-                
-            case .ancient2modern: // 古潮新语
-                // 深度思考类内容，评论数量较多，3-4条
-                dynamicCommentersCount = Int.random(in: 3...4)
-                print("🌟 开始生成古潮新语内容: 设置评论数=\(dynamicCommentersCount)，突出思想深度和现代意义")
-                
-            case .creativeIdea: // 穿越吐槽
-                // 轻松幽默类内容，评论数量适中，2-3条
-                dynamicCommentersCount = Int.random(in: 2...3)
-                print("🌟 开始生成穿越吐槽内容: 设置评论数=\(dynamicCommentersCount)，注重幽默和文化对比")
-                
-            case .mood: // 日常心情
-                // 情感抒发类内容，评论数量适中，2-3条
-                dynamicCommentersCount = Int.random(in: 2...3)
-                print("🌟 开始生成日常心情内容: 设置评论数=\(dynamicCommentersCount)，注重情感共鸣和生活智慧")
-                
-            case .timelineEvent: // 时空记事
-                // 叙事类内容，评论数量较多，3-4条
-                dynamicCommentersCount = Int.random(in: 3...4)
-                print("🌟 开始生成时空记事内容: 设置评论数=\(dynamicCommentersCount)，注重历史视角和知识补充")
-            }
-            
-            // 使用角色轮换系统获取一个角色
-            let characters = CharacterRotationSystem.shared.getRecommendedCharacters(count: 1)
-            guard let character = characters.first else {
-                let error = NSError(domain: "ContentGeneratorService", code: 1001, userInfo: [NSLocalizedDescriptionKey: "无法获取随机角色"])
-                print("❌ 生成随机角色失败: \(error.localizedDescription)")
-                promise(.failure(error))
-                return
-            }
-            
-            print("👤 已选择随机角色: \(character.name) (\(character.type.displayName))")
-            
-            // 根据内容类型选择合适的话题
-            var selectedTopic = topic
-            if selectedTopic == nil {
-                // 如果未提供话题，为特定内容类型选择专业话题
-                if contentType == .resonance { // 虫洞共鸣
-                    // 为虫洞共鸣选择情境和期望组合作为话题
-                    let situations = [
-                        "工作压力与平衡", "人际关系困扰", "目标实现与坚持", "自我价值与认同", 
-                        "心灵成长与突破", "决策困境与选择", "专注力与效率", "创造力与灵感"
-                    ]
-                    
-                    let expectations = [
-                        "内心平静", "方向指引", "行动勇气", "深度思考", 
-                        "情感理解", "实用智慧", "新视角", "自我突破"
-                    ]
-                    
-                    let selectedSituation = situations.randomElement() ?? "生活的挑战"
-                    let selectedExpectation = expectations.randomElement() ?? "内心平静"
-                    
-                    selectedTopic = "\(selectedSituation)与\(selectedExpectation)"
-                    
-                } else if contentType == .ancient2modern { // 古潮新语
-                    let topicCategories = ["科技类", "交通类", "生活类", "社交类", "职场类", "休闲类", "文化类"]
-                    let selectedCategory = topicCategories.randomElement() ?? "科技类"
-                    
-                    let topicsByCategory: [String: [String]] = [
-                        "科技类": ["智能手机", "无人机", "电子支付", "人工智能", "VR/AR", "智能家居"],
-                        "交通类": ["共享单车", "电动车", "高铁", "地铁", "网约车", "堵车"],
-                        "生活类": ["外卖", "奶茶", "快递", "健身房", "网购", "短视频"],
-                        "社交类": ["社交媒体", "点赞", "评论区争论", "表情包", "网络用语", "直播"],
-                        "职场类": ["996工作制", "居家办公", "打工人", "副业", "创业", "内卷"],
-                        "休闲类": ["密室逃脱", "剧本杀", "电子游戏", "露营", "瑜伽", "咖啡馆"],
-                        "文化类": ["二次元", "饭圈", "追剧", "网文", "潮流穿搭", "国潮"]
-                    ]
-                    
-                    if let topics = topicsByCategory[selectedCategory] {
-                        selectedTopic = topics.randomElement()
-                    }
-                }
-            }
-            
-            // 使用选定的角色生成带评论的内容
-            self.generateContentWithComments(
-                for: character.id,
-                contentType: contentType,
-                topic: selectedTopic,
-                commentersCount: dynamicCommentersCount
-            )
-            .sink(
-                receiveCompletion: { completion in
-                    if case .failure(let error) = completion {
-                        print("❌ 生成内容失败: \(error.localizedDescription)")
-                        promise(.failure(error))
-                    }
-                },
-                receiveValue: { result in
-                    print("✅ 成功生成内容和\(result.comments.count)条评论")
-                    promise(.success(result))
-                }
-            )
-            .store(in: &self.cancellables)
+                )
+                .store(in: &self.cancellables)
         }
     }
     
     /**
-     * 批量生成带评论的随机内容
-     * 该方法一次性生成指定数量和类型的内容，保持一次API调用
-     * @param contentType 内容类型
-     * @param count 要生成的内容数量
-     * @param topic 可选主题
-     * @return Future<[(contentItem: ContentItem, comments: [CommentItem])], Error>
+     * 生成多篇带评论的内容
+     * 适用于批量生成内容
      */
-    func generateRandomContentBatchWithComments(
+    func generatePostsWithComments(
         contentType: ContentType,
         count: Int = 3,
         topic: String? = nil
@@ -769,6 +668,47 @@ class ContentGeneratorService {
         }
     }
     
+    /**
+     * 批量生成随机内容和评论
+     * @param contentType 内容类型
+     * @param count 生成数量
+     * @return Future<[(contentItem: ContentItem, comments: [CommentItem])], Error>
+     */
+    func generateRandomContentBatchWithComments(contentType: ContentType, count: Int) -> Future<[(contentItem: ContentItem, comments: [CommentItem])], Error> {
+        return Future { promise in
+            var results: [(contentItem: ContentItem, comments: [CommentItem])] = []
+            let group = DispatchGroup()
+            var errors: [Error] = []
+            
+            for _ in 0..<count {
+                group.enter()
+                
+                self.generateRandomContentWithComments(contentType: contentType)
+                    .sink(
+                        receiveCompletion: { completion in
+                            if case .failure(let error) = completion {
+                                errors.append(error)
+                                group.leave()
+                            }
+                        },
+                        receiveValue: { contentItem, comments in
+                            results.append((contentItem: contentItem, comments: comments))
+                            group.leave()
+                        }
+                    )
+                    .store(in: &self.cancellables)
+            }
+            
+            group.notify(queue: .main) {
+                if results.isEmpty && !errors.isEmpty {
+                    promise(.failure(errors.first ?? ContentError.unknown))
+                } else {
+                    promise(.success(results))
+                }
+            }
+        }
+    }
+    
     // MARK: - 助手方法
     
     /**
@@ -791,6 +731,7 @@ class ContentGeneratorService {
         case noCharactersAvailable
         case contentGenerationFailed
         case invalidContentType
+        case unknown
     }
     
     /**
@@ -847,6 +788,23 @@ class ContentGeneratorService {
 }
 
 /**
+ * 评论项结果
+ */
+struct CommentItemResult {
+    let character: String
+    let comment: String
+    let isReply: Bool
+    let replyTo: String?
+    
+    init(character: String, comment: String, isReply: Bool = false, replyTo: String? = nil) {
+        self.character = character
+        self.comment = comment
+        self.isReply = isReply
+        self.replyTo = replyTo
+    }
+}
+
+/**
  * 生成的内容项
  */
 struct ContentItem {
@@ -866,13 +824,112 @@ struct ContentItem {
 /**
  * 生成的评论项
  */
-struct CommentItem {
-    let id: String
-    let contentID: String
-    let characterID: String
-    let characterName: String
-    let characterAvatar: String?
-    let content: String
-    let timestamp: Date
-    let likes: Int
+public struct CommentItem {
+    public let id: String
+    public let characterId: String
+    public let characterName: String
+    public let characterAvatar: String?
+    public let characterRole: String
+    public let content: String
+    public let timestamp: Date
+    public let likes: Int
+    public let parentCommentId: String?
+    
+    public var isReply: Bool {
+        return parentCommentId != nil
+    }
+    
+    public init(id: UUID, characterId: String, characterName: String, characterAvatar: String?, characterRole: String, content: String, timestamp: Date, likes: Int, parentCommentId: String?) {
+        self.id = id.uuidString
+        self.characterId = characterId
+        self.characterName = characterName
+        self.characterAvatar = characterAvatar
+        self.characterRole = characterRole
+        self.content = content
+        self.timestamp = timestamp
+        self.likes = likes
+        self.parentCommentId = parentCommentId
+    }
+    
+    public init(id: String, characterId: String, characterName: String, characterAvatar: String?, characterRole: String, content: String, timestamp: Date, likes: Int, parentCommentId: String?) {
+        self.id = id
+        self.characterId = characterId
+        self.characterName = characterName
+        self.characterAvatar = characterAvatar
+        self.characterRole = characterRole
+        self.content = content
+        self.timestamp = timestamp
+        self.likes = likes
+        self.parentCommentId = parentCommentId
+    }
+}
+
+/**
+ * 处理评论数据，将原始评论数据转换为CommentItem对象
+ */
+public func processComments(
+    _ commentItems: [(character: String, comment: String, isReply: Bool, replyTo: String?)],
+    contentID: String
+) -> [CommentItem] {
+    print("🔄 处理\(commentItems.count)条评论...")
+    
+    var comments: [CommentItem] = []
+    var commentMap: [String: String] = [:] // 角色名到评论ID的映射
+    
+    // 第一步：创建所有非回复评论
+    for item in commentItems where !item.isReply {
+        // 获取角色信息
+        if let characterInfo = CharacterSystem.shared.findCharacterByName(item.character) {
+            // 创建评论
+            let commentId = UUID().uuidString
+            let comment = CommentItem(
+                id: commentId,
+                characterId: characterInfo.id,
+                characterName: characterInfo.name,
+                characterAvatar: characterInfo.avatarName,
+                characterRole: characterInfo.primaryField,
+                content: item.comment,
+                timestamp: Date(),
+                likes: Int.random(in: 1...50),
+                parentCommentId: nil
+            )
+            
+            // 添加到评论列表
+            comments.append(comment)
+            
+            // 保存角色名到评论ID的映射
+            commentMap[item.character] = commentId
+        }
+    }
+    
+    // 第二步：处理回复评论
+    for item in commentItems where item.isReply {
+        // 获取回复者角色信息
+        if let replierInfo = CharacterSystem.shared.findCharacterByName(item.character) {
+            // 查找父评论ID
+            let parentCommentId = item.replyTo.flatMap { commentMap[$0] }
+            
+            // 创建回复评论
+            let comment = CommentItem(
+                id: UUID().uuidString,
+                characterId: replierInfo.id,
+                characterName: replierInfo.name,
+                characterAvatar: replierInfo.avatarName,
+                characterRole: replierInfo.primaryField,
+                content: item.comment,
+                timestamp: Date(),
+                likes: Int.random(in: 1...30),
+                parentCommentId: parentCommentId
+            )
+            
+            // 添加到评论列表
+            comments.append(comment)
+        }
+    }
+    
+    // 保存评论到评论存储
+    CommentStore.shared.saveComments(comments, forContentID: contentID)
+    
+    print("✅ 成功处理\(comments.count)条评论")
+    return comments
 } 

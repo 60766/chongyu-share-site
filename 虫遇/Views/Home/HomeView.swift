@@ -894,7 +894,9 @@ struct HomeView: View {
                             .id(forceRefreshID) // 添加动态ID实现强制刷新
                     }
                 }
-                .coordinateSpace(name: "scroll")
+                .scrollDismissesKeyboard(.immediately) // 滚动时立即隐藏键盘
+                .scrollIndicators(.hidden) // 隐藏滚动指示器，提供更干净的UI
+                .coordinateSpace(name: "scroll") // 保留坐标空间名称
                 .onPreferenceChange(AppScrollOffsetPreferenceKey.self) { value in
                     // 根据滚动位置控制导航栏显示
                     withAnimation {
@@ -931,14 +933,6 @@ struct HomeView: View {
                                 if !Task.isCancelled {
                                     // 在主线程更新UI状态
                                     await MainActor.run {
-                                        // 延迟3秒后隐藏按钮
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                                            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                                print("⏱️ 延迟3秒后隐藏按钮，设置isGeneratingPosts = false")
-                                                isGeneratingPosts = false
-                                            }
-                                        }
-                                        
                                         // 强制刷新视图
                                         forceRefreshID = UUID()
                                         
@@ -1321,6 +1315,26 @@ struct HomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NewPostsGenerated"))) { _ in
             // 强制刷新视图
                 self.forceRefreshID = UUID()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NewPostGenerated"))) { _ in
+            // 单篇帖子生成时刷新视图
+            self.forceRefreshID = UUID()
+            
+            // 如果列表滚动到顶部，确保新帖子可见
+            if self.scrollOffset < 50 {
+                // 轻微震动提示新帖子出现
+                HapticFeedback.light()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NewPostsGenerated"))) { notification in
+            // 批量帖子生成时刷新视图
+            self.forceRefreshID = UUID()
+            
+            // 如果列表滚动到顶部，确保新帖子可见
+            if self.scrollOffset < 50 {
+                // 轻微震动提示新帖子出现
+                HapticFeedback.medium()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("HomeViewShouldRefresh"))) { _ in
             // 如果帖子为空，则重新加载
@@ -1924,9 +1938,6 @@ struct HomeView: View {
                 print("  - \(contentType.rawValue): 权重=\(weight), 分配数量=\(count)")
             }
             
-            // 使用生成服务一次性生成所有内容
-            var allPosts: [UserPostModel] = []
-            
             // 为每种类型分别生成帖子和评论
             for contentType in contentTypes {
                 // 获取当前类型分配的数量
@@ -1936,20 +1947,20 @@ struct HomeView: View {
                 }
                 
                 // 生成特定类型的帖子
-                print("🌟 正在生成\(contentType.rawValue)类型的\(typeCount)篇帖子...")
+                print("🌟 正在批量生成\(contentType.rawValue)类型的\(typeCount)篇帖子...")
                 
                 try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                    // 使用批量生成方法一次性生成所有该类型的帖子
-                    ContentGeneratorService.shared.generateRandomContentBatchWithComments(
+                    // 使用批量生成方法，一次性生成所有指定类型的帖子
+                    ContentGeneratorService.shared.generatePostsWithComments(
                         contentType: contentType,
-                        count: typeCount
+                        count: typeCount,
+                        topic: nil
                     )
                     .sink(
                         receiveCompletion: { completion in
                             if case .failure(let error) = completion {
                                 print("❌ 生成\(contentType.rawValue)类型帖子失败: \(error.localizedDescription)")
                                 continuation.resume(throwing: error)
-                                localCancellables.removeAll()
                             } else {
                                 print("✅ 完成\(contentType.rawValue)类型帖子的API请求")
                                 continuation.resume(returning: ())
@@ -1958,68 +1969,136 @@ struct HomeView: View {
                         receiveValue: { results in
                             print("✅ 成功生成\(results.count)篇\(contentType.rawValue)类型帖子")
                             
-                            // 将生成的内容和评论转换为UserPostModel
+                            // 将所有结果转换为UserPostModel
                             let posts = results.map { result -> UserPostModel in
+                                // 将生成的内容和评论转换为UserPostModel
                                 let post = self.postViewModel.convertContentItemToUserPost(result.contentItem)
                                 
                                 // 将CommentItem转换为DetailedCommentModel
-                                let comments = result.comments.map { commentItem -> DetailedCommentModel in
-                                    return DetailedCommentModel(
-                                        id: UUID(uuidString: commentItem.id) ?? UUID(),
-                                        username: commentItem.characterName,
-                                        userAvatar: commentItem.characterAvatar != nil ? commentItem.characterAvatar! : "person.circle.fill",
-                                        content: commentItem.content,
-                                        datePosted: commentItem.timestamp,
-                                        isVirtualCharacter: true,
-                                        characterID: commentItem.characterID,
-                                        likes: commentItem.likes,
-                                        isLikedByCurrentUser: false
-                                    )
+                                var comments: [DetailedCommentModel] = result.comments.map { commentItem -> DetailedCommentModel in
+                                    // 获取评论的基本信息
+                                    let commentId = UUID(uuidString: commentItem.id) ?? UUID()
+                                    
+                                    // 检查是否是回复评论
+                                    if commentItem.isReply {
+                                        // 处理回复评论
+                                        return DetailedCommentModel(
+                                            id: commentId,
+                                            username: commentItem.characterName,
+                                            userAvatar: commentItem.characterAvatar != nil ? commentItem.characterAvatar! : "person.circle.fill",
+                                            content: commentItem.content,
+                                            datePosted: commentItem.timestamp,
+                                            isVirtualCharacter: true,
+                                            characterID: commentItem.characterId,
+                                            parentCommentId: nil, // 暂时设为nil，后面会更新
+                                            replyToUsername: self.findUsernameById(commentItem.parentCommentId!, in: result.comments), // 查找被回复者用户名
+                                            likes: commentItem.likes,
+                                            isLikedByCurrentUser: false
+                                        )
+                                    } else {
+                                        // 处理普通评论
+                                        return DetailedCommentModel(
+                                            id: commentId,
+                                            username: commentItem.characterName,
+                                            userAvatar: commentItem.characterAvatar != nil ? commentItem.characterAvatar! : "person.circle.fill",
+                                            content: commentItem.content,
+                                            datePosted: commentItem.timestamp,
+                                            isVirtualCharacter: true,
+                                            characterID: commentItem.characterId,
+                                            parentCommentId: nil,
+                                            replyToUsername: nil,
+                                            likes: commentItem.likes,
+                                            isLikedByCurrentUser: false
+                                        )
+                                    }
                                 }
                                 
+                                // 第二次遍历，处理回复评论的parentCommentId
+                                for i in 0..<comments.count {
+                                    if let replyToUsername = comments[i].replyToUsername {
+                                        // 查找被回复评论的ID
+                                        for j in 0..<comments.count {
+                                            if comments[j].username == replyToUsername {
+                                                comments[i].parentCommentId = comments[j].id
+                                                break
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // 确保评论能正确生成虚拟回复
+                                for comment in comments {
+                                    // 设置评论的虚拟角色标识，确保能正确触发虚拟回复逻辑
+                                    if comment.isVirtualCharacter && comment.characterID != nil {
+                                        // 记录虚拟角色已回复过该用户的状态
+                                        if let replyToUsername = comment.replyToUsername {
+                                            let userRepliedCharactersKey = "user_\(replyToUsername)_replied_characters"
+                                            var repliedCharacters = UserDefaults.standard.stringArray(forKey: userRepliedCharactersKey) ?? []
+                                            if !repliedCharacters.contains(comment.characterID!) {
+                                                repliedCharacters.append(comment.characterID!)
+                                                UserDefaults.standard.set(repliedCharacters, forKey: userRepliedCharactersKey)
+                                            }
+                                            
+                                            // 如果是帖子作者回复，标记已回复
+                                            if comment.username == post.username {
+                                                for parentComment in comments {
+                                                    if parentComment.username == replyToUsername {
+                                                        let commentAuthorReplyKey = "author_replied_\(parentComment.id.uuidString)"
+                                                        UserDefaults.standard.set(true, forKey: commentAuthorReplyKey)
+                                                        break
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // 确保帖子中的评论也能正确显示嵌套关系
                                 post.comments = comments
+                                post.updateCommentRelationships()
+                                
                                 // 添加来源标记为"onekey"，确保一键生成的帖子能正确显示权重控制组件
                                 post.source = "onekey"
+                                
                                 return post
                             }
                             
-                            // 添加到总帖子列表
-                            allPosts.append(contentsOf: posts)
+                            // 每生成一种类型的帖子就立即更新UI显示
+                            Task { @MainActor in
+                                // 将当前类型生成的帖子添加到视图模型的最前面
+                                self.postViewModel.posts.insert(contentsOf: posts, at: 0)
+                                
+                                // 通知系统显示新内容
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("NewPostsGenerated"),
+                                    object: nil
+                                )
+                                
+                                // 强制刷新视图
+                                self.forceRefreshID = UUID()
+                                
+                                print("🎉 UI更新完成，新增\(posts.count)篇\(contentType.rawValue)类型帖子")
+                                
+                                // 提供触觉反馈，表示新帖子已生成
+                                HapticFeedback.light()
+                            }
                         }
                     )
                     .store(in: &localCancellables)
                 }
             }
             
-            // 按时间戳排序，确保最新内容在前
-            let sortedPosts = allPosts.sorted(by: { $0.datePosted > $1.datePosted })
-            
-            print("✅ 成功生成\(sortedPosts.count)个帖子")
-            for (index, post) in sortedPosts.enumerated() {
-                print("📝 帖子#\(index+1): 类型=\(post.contentType ?? "未知"), ID=\(post.id), 作者=\(post.username), 评论数=\(post.comments.count)")
-                for (cIndex, comment) in post.comments.enumerated() {
-                    print("👤 评论#\(cIndex+1): 来自=\(comment.username), 内容=\(comment.content.prefix(20))...")
-                }
-            }
-            
-            // 添加到ViewModel
+            // 所有类型的帖子都生成完成后的最终处理
             await MainActor.run {
-                print("📊 将新帖子添加到视图模型")
-                postViewModel.posts.insert(contentsOf: sortedPosts, at: 0)
-                
-                // 通知系统显示新内容
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("NewPostsGenerated"),
-                    object: nil,
-                    userInfo: ["count": sortedPosts.count]
-                )
-                
-                // 强制刷新视图
-                forceRefreshID = UUID()
-                print("🎉 UI刷新完成，新帖子应该可见")
+                // 生成状态设置为false
+                self.isGeneratingPosts = false
+                print("✅ 所有帖子生成完成，生成状态设置为false")
                 
                 // 内容生成完成，恢复权重管理器状态
                 ContentTypeWeightManager.shared.setGeneratingContent(false)
+                
+                // 成功生成所有帖子的触觉反馈
+                HapticFeedback.success()
                 
                 // 再次打印权重，确认没有被重置
                 ContentTypeWeightManager.shared.printAllWeights()
@@ -2062,8 +2141,6 @@ struct HomeView: View {
                 }
                 print("⚠️ 显示错误提示: \(generateError)")
                 
-                // 重要: 保持isGeneratingPosts为true，确保按钮在显示错误时不会缩回
-                
                 // 3秒后隐藏错误提示并重置生成状态
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                     print("⏱️ 错误提示显示3秒后，开始隐藏错误并缩回按钮")
@@ -2089,6 +2166,11 @@ struct HomeView: View {
         
         // 清理本地取消令牌
         localCancellables.removeAll()
+    }
+    
+    // 辅助函数：根据评论ID查找用户名
+    private func findUsernameById(_ commentId: String, in comments: [CommentItem]) -> String? {
+        return comments.first(where: { $0.id == commentId })?.characterName
     }
     
     // MARK: - 帖子操作方法

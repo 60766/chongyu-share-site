@@ -3,6 +3,173 @@ import Combine
 import UIKit
 
 /**
+ * 角色数据管理器
+ * 负责加载、缓存和提供角色数据
+ */
+class CharacterDataManager {
+    // 单例实例
+    static let shared = CharacterDataManager()
+    
+    // 缓存的角色数据
+    private var characterData: [String: [String: Any]] = [:]
+    
+    // ID别名映射 - 将别名映射到标准ID
+    private var idAliases: [String: String] = [
+        "goku": "sunwukong",    // 孙悟空的别名
+        "wukong": "sunwukong",  // 孙悟空的另一别名
+        "kongzi": "confucius",  // 孔子的别名
+        "leonardo": "davinci"   // 达芬奇的别名
+    ]
+    
+    // 初始化方法
+    private init() {
+        loadCharacterData()
+    }
+    
+    /**
+     * 加载角色数据
+     */
+    private func loadCharacterData() {
+        // 从characters.json加载数据
+        guard let url = Bundle.main.url(forResource: "characters", withExtension: "json"),
+              let data = try? Data(contentsOf: url) else {
+            print("⚠️ 无法加载characters.json文件")
+            return
+        }
+        
+        // 解析JSON数据
+        do {
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let characters = json["characters"] as? [[String: Any]] {
+                
+                // 构建以ID为键的字典
+                for character in characters {
+                    if let id = character["id"] as? String {
+                        characterData[id.lowercased()] = character
+                        
+                        // 记录角色信息用于调试
+                        if let name = character["name"] as? String,
+                           let avatar = character["avatarName"] as? String {
+                            print("📋 加载角色: \(id) -> 名称: \(name), 头像: \(avatar)")
+                        }
+                    }
+                }
+                
+                print("✅ 成功加载角色数据，共 \(characterData.count) 个角色")
+                
+                // 检查常用ID是否存在
+                let importantIds = ["einstein", "shakespeare", "sunwukong", "confucius", "davinci"]
+                for id in importantIds {
+                    if characterData[id] != nil {
+                        print("✓ 角色存在: \(id)")
+                    } else {
+                        print("⚠️ 角色不存在: \(id)")
+                    }
+                }
+                
+                // 检查别名是否能正确映射
+                for (alias, standardId) in idAliases {
+                    if characterData[standardId] != nil {
+                        print("✓ 别名映射有效: \(alias) -> \(standardId)")
+                    } else {
+                        print("⚠️ 别名映射无效: \(alias) -> \(standardId)，找不到标准ID")
+                    }
+                }
+            }
+        } catch {
+            print("⚠️ 解析characters.json出错: \(error.localizedDescription)")
+        }
+    }
+    
+    /**
+     * 获取角色属性
+     * @param id 角色ID
+     * @param attribute 属性名
+     * @return 属性值
+     */
+    func getAttribute(id: String, attribute: String) -> String? {
+        let lowercaseId = id.lowercased()
+        
+        // 检查是否有缓存数据
+        if characterData.isEmpty {
+            loadCharacterData()
+        }
+        
+        // 查找角色数据
+        var character: [String: Any]?
+        
+        // 直接查找
+        character = characterData[lowercaseId]
+        
+        // 如果直接查找失败，尝试通过别名映射查找
+        if character == nil, let standardId = idAliases[lowercaseId] {
+            character = characterData[standardId]
+            print("🔄 通过别名映射查找角色: \(lowercaseId) -> \(standardId)")
+        }
+        
+        // 获取属性值
+        if let value = character?[attribute] as? String {
+            return value
+        }
+        
+        print("⚠️ 无法获取角色 \(id) 的 \(attribute) 属性")
+        return nil
+    }
+    
+    /**
+     * 获取角色名称
+     * @param id 角色ID
+     * @return 角色名称
+     */
+    func getName(for id: String) -> String? {
+        return getAttribute(id: id, attribute: "name")
+    }
+    
+    /**
+     * 获取角色头像
+     * @param id 角色ID
+     * @return 角色头像名称
+     */
+    func getAvatarName(for id: String) -> String? {
+        return getAttribute(id: id, attribute: "avatarName")
+    }
+    
+    /**
+     * 获取所有角色IDs
+     * @return 角色ID数组
+     */
+    func getAllCharacterIds() -> [String] {
+        return Array(characterData.keys)
+    }
+    
+    /**
+     * 获取所有可用的角色信息
+     * @return 角色信息数组
+     */
+    func getAllCharactersInfo() -> [(id: String, name: String, avatar: String)] {
+        var result: [(id: String, name: String, avatar: String)] = []
+        
+        for (id, characterInfo) in characterData {
+            if let name = characterInfo["name"] as? String,
+               let avatar = characterInfo["avatarName"] as? String {
+                result.append((id: id, name: name, avatar: avatar))
+            }
+        }
+        
+        return result
+    }
+    
+    /**
+     * 添加ID别名映射
+     * @param alias 别名
+     * @param standardId 标准ID
+     */
+    func addIdAlias(alias: String, standardId: String) {
+        idAliases[alias.lowercased()] = standardId.lowercased()
+    }
+}
+
+/**
  * 虚拟角色服务
  * 处理虚拟角色的交互、评论生成等功能
  */
@@ -23,6 +190,7 @@ class VirtualCharacterService {
     private let memoryManager = ConversationMemoryManager()
     private let promptGenerator = AIPromptGenerator()
     private let personalityManager = CharacterPersonalityManager.shared
+    private let characterDataManager = CharacterDataManager.shared
     
     // 取消令牌
     private var cancellables = Set<AnyCancellable>()
@@ -309,15 +477,17 @@ class VirtualCharacterService {
      * @param characterID 角色ID
      * @param userComment 用户评论内容
      * @param postContent 帖子内容
+     * @param postAuthor 帖子作者
      * @param completion 完成回调
      */
     func generateCharacterComment(
         characterID: String,
         userComment: String,
         postContent: String,
+        postAuthor: String? = nil,
         completion: @escaping (Result<String, Error>) -> Void
     ) {
-        print("🚀 开始生成角色评论回复: 角色=\(characterID)")
+        print("🚀 开始生成角色评论回复: 角色=\(characterID), 帖子作者=\(postAuthor ?? "未指定")")
         print("📝 用户评论: \"\(userComment.prefix(50))...\"")
         print("📄 帖子内容: \"\(postContent.prefix(50))...\"")
         
@@ -336,6 +506,10 @@ class VirtualCharacterService {
         if isEnhancedPrompt {
             // 直接使用CommentManager中构建的增强提示词
             prompt = userComment
+            // 如果有帖子作者信息，添加到提示词中
+            if let author = postAuthor, !author.isEmpty {
+                prompt = prompt.replacingOccurrences(of: "帖子作者：帖子作者", with: "帖子作者：\(author)")
+            }
             print("🔍 检测到增强提示词，直接使用 - 长度: \(prompt.count)字符")
             
             // 提取原始用户评论以判断长度
@@ -451,6 +625,7 @@ class VirtualCharacterService {
                 characterID: characterID,
                 userComment: userComment,
                 postContent: postContent,
+                postAuthor: postAuthor,
                 semanticModel: semanticModel,
                 memories: memories
             )
@@ -498,6 +673,83 @@ class VirtualCharacterService {
         cancellables.insert(cancellable)
     }
     
+    /**
+     * 邀请角色参与帖子讨论
+     * @param characterIDs 被邀请的角色ID列表，可以是单个或多个
+     * @param postId 当前帖子ID
+     * @param postAuthor 帖子作者名称，可选
+     */
+    func inviteCharactersToComment(characterIDs: [String], postId: String, postAuthor: String? = nil) {
+        print("🔔 开始邀请角色参与讨论 - 角色数量: \(characterIDs.count), 帖子ID: \(postId), 帖子作者: \(postAuthor ?? "未指定")")
+        
+        // 过滤空ID，规范化角色ID
+        let validCharacterIDs = characterIDs.filter { !$0.isEmpty }.map { $0.lowercased() }
+        
+        if validCharacterIDs.isEmpty {
+            print("⚠️ 没有有效的角色ID，取消邀请")
+            return
+        }
+        
+        // 验证角色ID
+        for characterID in validCharacterIDs {
+            let characterName = getCharacterName(for: characterID)
+            let characterAvatar = getCharacterAvatar(for: characterID)
+            print("👤 邀请角色: ID=\(characterID), 名称=\(characterName), 头像=\(characterAvatar)")
+        }
+        
+        // 获取帖子数据
+        guard let viewModel = getPostViewModel() else {
+            print("❌ VirtualCharacterService: 无法获取PostViewModel实例")
+            return
+        }
+        
+        // 查找对应帖子
+        guard let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) else {
+            print("❌ VirtualCharacterService: 未找到指定的帖子ID: \(postId)")
+            return
+        }
+        
+        let post = viewModel.posts[postIndex]
+        
+        // 如果没有提供帖子作者，尝试从帖子中获取
+        let finalPostAuthor = postAuthor ?? post.username
+        print("👤 最终使用的帖子作者: \(finalPostAuthor)")
+        
+        // 统一使用MultiCharacterCommentService处理所有角色评论生成，无论是单个还是多个角色
+        print("🔄 使用批量评论生成服务处理\(validCharacterIDs.count)个角色")
+        MultiCharacterCommentService.shared.generateMultiCharacterComments(
+            characterIDs: validCharacterIDs,
+            postId: postId,
+            postContent: post.content,
+            postAuthor: finalPostAuthor,
+            isInvited: true,  // 标记为邀请的角色评论
+            completion: { result in
+            switch result {
+            case .success(let commentsMap):
+                print("✅ 批量生成成功，共生成\(commentsMap.count)条评论")
+                
+                // 批量评论已经在MultiCharacterCommentService中添加到帖子
+                // 通过CommentsGenerated通知处理，不需要再发送CharacterReplyGenerated通知
+                
+            case .failure(let error):
+                print("❌ 批量生成角色评论失败 - \(error.localizedDescription)")
+                
+                // 不再回退到逐个生成模式，直接返回错误
+                print("⚠️ 批量生成失败，不再尝试单独生成")
+                
+                // 发送批量生成失败的通知
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("CharacterReplyGenerationFailed"),
+                    object: nil,
+                    userInfo: [
+                        "postID": postId,
+                        "error": error.localizedDescription
+                    ]
+                )
+            }
+        })
+    }
+    
     // MARK: - 测试方法
     
     /**
@@ -517,12 +769,31 @@ class VirtualCharacterService {
         // 随机选择一个测试帖子
         let testPost = testPosts.randomElement() ?? "这是一个测试帖子。"
         
-        // 使用传入的角色ID或随机选择一个角色
-        let characters = ["einstein", "shakespeare", "davinci", "goku", "holmes", "naruto"]
-        let finalCharacterID = characterID ?? characters.randomElement() ?? "einstein"
+        // 获取所有可用的角色
+        let availableCharacters = characterDataManager.getAllCharacterIds()
+        
+        // 使用传入的角色ID、随机选择一个可用角色，或使用默认角色
+        let finalCharacterID: String
+        if let providedID = characterID {
+            finalCharacterID = providedID
+        } else if !availableCharacters.isEmpty {
+            // 随机选择一个可用角色
+            finalCharacterID = availableCharacters.randomElement() ?? "einstein"
+            print("🎲 随机选择可用角色: \(finalCharacterID)")
+        } else {
+            // 使用默认角色
+            finalCharacterID = "einstein"
+            print("⚠️ 没有可用角色，使用默认角色: einstein")
+        }
+        
+        // 获取角色信息
+        let characterName = getCharacterName(for: finalCharacterID)
+        let characterAvatar = getCharacterAvatar(for: finalCharacterID)
         
         print("\n📝 API测试: 生成虚拟角色评论")
         print("🔹 使用角色ID: \(finalCharacterID)")
+        print("🔹 角色名称: \(characterName)")
+        print("🔹 角色头像: \(characterAvatar)")
         print("🔹 测试帖子内容: \"\(testPost)\"")
         
         // 发起API请求
@@ -542,12 +813,6 @@ class VirtualCharacterService {
                     print("📊 评论统计:")
                     print("  - 字数: \(commentContent.count)")
                     print("  - 段落数: \(commentContent.components(separatedBy: "\n\n").count)")
-                    
-                    // 不再检查模板语言
-                    print("👍 质量评估: 评论质量良好")
-                    
-                    // 不再使用characterSpecificElements变量进行检查
-                    print("✅ 角色相关性: 评论符合角色特点")
                     
                     print("\n💬 生成的评论内容:")
                     print("------------------------------")
@@ -585,7 +850,7 @@ class VirtualCharacterService {
                                     print("  回复给: \(parentUsername)")
                                     
                                     // 将回复添加到父评论下
-                                    post.addReplyToComment(parentId: parentId, reply: replyComment)
+                                    post.addReplyToParent(parentId: parentId, reply: replyComment)
                                     
                                     // 发送真实通知更新UI
                                     NotificationCenter.default.post(
@@ -618,7 +883,7 @@ class VirtualCharacterService {
                                     print("  头像: \(newComment.userAvatar)")
                                     
                                     // 添加评论到帖子
-                                    postViewModel.posts[postIndex].comments.append(newComment)
+                                    postViewModel.posts[postIndex].comments.insert(newComment, at: 0)
                                     
                                     // 发送真实通知更新UI
                                     NotificationCenter.default.post(
@@ -657,22 +922,15 @@ class VirtualCharacterService {
      * @return 角色头像系统图标名称
      */
     private func getCharacterAvatar(for characterID: String) -> String {
-        switch characterID {
-        case "einstein":
-            return "atom" 
-        case "shakespeare":
-            return "book.fill"
-        case "davinci":
-            return "paintpalette.fill"
-        case "goku":
-            return "person.fill.viewfinder"
-        case "holmes":
-            return "magnifyingglass"
-        case "naruto":
-            return "tornado"
-        default:
-            return "person.circle.fill"
+        // 首先尝试从角色数据管理器中获取
+        if let avatar = characterDataManager.getAvatarName(for: characterID) {
+            print("✅ 从CharacterDataManager获取头像: \(characterID) -> \(avatar)")
+            return avatar
         }
+        
+        // 如果找不到角色数据，返回默认头像
+        print("⚠️ 未找到角色ID \(characterID) 对应的头像，返回默认头像")
+        return "person.circle.fill"
     }
     
     /**
@@ -681,28 +939,98 @@ class VirtualCharacterService {
      * @return 角色名称
      */
     private func getCharacterName(for characterID: String) -> String {
-        switch characterID {
-        case "einstein":
-            return "爱因斯坦"
-        case "shakespeare":
-            return "莎士比亚"
-        case "davinci":
-            return "达芬奇"
-        case "goku":
-            return "孙悟空"
-        case "holmes":
-            return "福尔摩斯"
-        case "naruto":
-            return "漩涡鸣人"
-        case "confucius":
-            return "孔子"
-        case "newton":
-            return "牛顿"
-        case "libai":
-            return "李白"
-        default:
-            return "虚拟角色"
+        // 中文名称映射
+        let characterNames: [String: String] = [
+            "einstein": "爱因斯坦",
+            "shakespeare": "莎士比亚", 
+            "davinci": "达芬奇",
+            "confucius": "孔子",
+            "curie": "居里夫人",
+            "libai": "李白",
+            "newton": "牛顿",
+            "holmes": "福尔摩斯",
+            "naruto": "鸣人",
+            "sunwukong": "孙悟空",
+            "goku": "孙悟空",
+            "socrates": "苏格拉底",
+            "nietzsche": "尼采",
+            "darwin": "达尔文",
+            "luxun": "鲁迅",
+            "plato": "柏拉图",
+            "dufu": "杜甫",
+            "aristotle": "亚里士多德",
+            "napoleon": "拿破仑",
+            "picasso": "毕加索",
+            "vangogh": "梵高",
+            "quyuan": "屈原",
+            "laozi": "老子",
+            "mozart": "莫扎特",
+            "beethoven": "贝多芬",
+            "heraclitus": "赫拉克利特",
+            "zhuangzi": "庄子",
+            "marquez": "马尔克斯",
+            "hawking": "霍金",
+            "edison": "爱迪生",
+            "tesla": "特斯拉",
+            "kant": "康德",
+            "hegel": "黑格尔",
+            "baudelaire": "波德莱尔",
+            "kafka": "卡夫卡",
+            "smith": "亚当·斯密",
+            "marx": "马克思",
+            "camus": "加缪",
+            "freud": "弗洛伊德",
+            "jung": "荣格",
+            "heidegger": "海德格尔",
+            "xuzhimo": "徐志摩",
+            "hemingway": "海明威",
+            "bach": "巴赫",
+            "turing": "图灵",
+            "feynman": "费曼",
+            "popper": "波普尔",
+            "tagore": "泰戈尔",
+            "schopenhauer": "叔本华",
+            "dostoevsky": "陀思妥耶夫斯基",
+            "lincoln": "林肯",
+            "gandhi": "甘地",
+            "beauvoir": "波伏娃",
+            "yangming": "王阳明",
+            "xiaobo": "王小波",
+            "pascal": "帕斯卡",
+            "russell": "罗素",
+            "wittgenstein": "维特根斯坦",
+            "sartre": "萨特",
+            "wordsworth": "华兹华斯",
+            "qingzhao": "李清照"
+        ]
+        
+        // 先检查是否有中文名称映射
+        if let chineseName = characterNames[characterID.lowercased()] {
+            print("✅ 使用中文名称映射: \(characterID) -> \(chineseName)")
+            return chineseName
         }
+        
+        // 尝试从角色数据管理器中获取
+        if let name = characterDataManager.getName(for: characterID) {
+            print("✅ 从CharacterDataManager获取名称: \(characterID) -> \(name)")
+            return name
+        }
+        
+        // 如果找不到角色数据，返回ID的首字母大写形式作为名称
+        print("⚠️ 未找到角色ID \(characterID) 对应的名称，返回ID首字母大写形式")
+        return characterID.capitalized
+    }
+    
+    /**
+     * 从角色数据中获取属性值
+     * @param id 角色ID
+     * @param attribute 要获取的属性名
+     * @return 属性值，如果不存在则返回nil
+     */
+    private func getCharacterAttributeFromData(id: String, attribute: String) -> String? {
+        // 已经通过CharacterDataManager处理，此方法可以直接返回nil
+        // 保留此方法是为了向后兼容
+        return nil
     }
     
     /**
@@ -788,6 +1116,82 @@ class VirtualCharacterService {
             return (post.comments[0].id, post.comments[0].username)
         }
         return nil
+    }
+    
+    /**
+     * 构建批量提示词
+     * @param characterIDs 角色ID列表
+     * @param postContent 帖子内容
+     * @param postAuthor 帖子作者
+     * @return 批量提示词
+     */
+    private func buildBatchPrompt(characterIDs: [String], postContent: String, postAuthor: String? = nil) -> String {
+        // 收集角色信息，包括名称、性格特点和专业领域
+        let characterInfo = characterIDs.map { id -> String in
+            let name = characterDataManager.getName(for: id) ?? id.capitalized
+            
+            // 尝试获取角色的性格特点
+            var traits = ""
+            if let personality = personalityManager.getPersonality(for: id) {
+                let tone = personality.tone
+                let knowledgeAreas = personality.knowledgeAreas.joined(separator: "、")
+                traits = "（性格特点：\(tone)，专业领域：\(knowledgeAreas)）"
+            }
+            
+            return "- \(name) (ID: \(id)) \(traits)"
+        }.joined(separator: "\n")
+        
+        // 获取帖子作者信息 - 如果提供了作者名称则使用，否则使用默认值
+        let authorInfo = postAuthor ?? "帖子作者"
+        print("👤 使用帖子作者: \(authorInfo)")
+        
+        let prompt = """
+        你需要为以下角色分别生成评论回复。每个角色都有自己的风格和特点。针对同一个帖子内容，生成每个角色独特的回复。
+
+        帖子内容："\(postContent)"
+        帖子作者：\(authorInfo)
+
+        角色列表：
+        \(characterInfo)
+
+        请按照以下格式生成每个角色的回复：
+
+        [角色ID]
+        这里是该角色的评论内容...
+
+        [下一个角色ID]
+        这里是下一个角色的评论内容...
+
+        重要任务要求：
+        1. 为每个角色找到与帖子内容或作者的联系点或共鸣点，这可能是：
+           - 角色的专业领域与帖子的关联
+           - 角色的人生经历与帖子作者的情感共鸣
+           - 角色特有的观点与帖子内容的思想碰撞
+           - 角色可能对作者(即\(authorInfo))的直接回应或评价
+        
+        2. 基于找到的联系点，让角色进行有深度、有趣且有个性的评论
+           - 避免泛泛而谈，要体现角色与帖子内容或作者的真实互动
+           - 让评论展现角色如何从自己独特视角理解帖子
+           - 创造让用户感到"这评论太有趣了"的惊喜效果
+           - 适当加入角色特有的幽默感、智慧或视角
+
+        3. 每个角色的回复必须符合其性格、风格和背景
+        4. 每个回复控制在25-50字之间，简短有力
+        5. 不要重复引用帖子内容
+        6. 不要使用固定句式开头，如"作为[角色]"
+        7. 确保每个角色评论都以[角色ID]开头，便于解析
+        8. 每个角色的评论应当清晰分隔，不要混淆
+        9. 可以在适当情况下直接称呼作者名字，增加互动感
+        10. 使用通俗易懂的语言，避免晦涩难懂的表达
+        11. 不要使用专业术语或高深理论，确保普通用户能理解
+        12. 禁止添加任何形式的注释、解释或理论分析
+        13. 不要在评论后添加"注："或类似的解释说明
+        14. 评论必须是纯粹的内容，不包含任何元解释
+        15. 禁止使用括号中的内容，如"(微笑)"、"(思考中)"等
+        """
+        
+        print("📋 构建批量提示词，包含\(characterIDs.count)个角色")
+        return prompt
     }
 }
 

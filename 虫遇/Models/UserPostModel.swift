@@ -277,7 +277,13 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
     
     /// 添加评论或回复
     func addComment(username: String, userAvatar: String, content: String, parentCommentId: UUID? = nil, replyToUsername: String? = nil, isVirtualCharacter: Bool = false, characterID: String? = nil) {
+        // 创建一个新的评论ID或使用提供的ID
+        let commentId = UUID()
+        
+        print("🔵 创建新评论 - ID: \(commentId), 用户: \(username), 是否为回复: \(parentCommentId != nil)")
+        
         let newComment = DetailedCommentModel(
+            id: commentId,
             username: username,
             userAvatar: userAvatar,
             content: content,
@@ -288,44 +294,237 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         )
         
         if let parentId = parentCommentId {
+            print("🔵 添加为回复 - 父评论ID: \(parentId)")
             addReplyToParent(parentId: parentId, reply: newComment)
         } else {
+            print("🔵 添加为顶级评论")
             comments.insert(newComment, at: 0)
+            
+            // 打印当前评论数量
+            print("📊 添加后顶级评论数量: \(comments.count)")
+            
+            // 发送通知刷新UI - 确保在主线程发送
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PostCommentsUpdated"),
+                    object: nil,
+                    userInfo: ["postID": self.id.uuidString, "commentID": commentId.uuidString]
+                )
+                
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshPostComments"),
+                    object: nil,
+                    userInfo: ["commentID": commentId.uuidString]
+                )
+                
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("CommentAdded"),
+                    object: nil,
+                    userInfo: ["commentID": commentId.uuidString]
+                )
+            }
         }
     }
     
     /// 添加回复到指定的父评论
-    private func addReplyToParent(parentId: UUID, reply: DetailedCommentModel) {
+    func addReplyToParent(parentId: UUID, reply: DetailedCommentModel) {
+        print("🔍 尝试添加回复到父评论 - 父评论ID: \(parentId), 回复ID: \(reply.id)")
+        
         // 优先在顶级评论中查找父评论
         if let index = comments.firstIndex(where: { $0.id == parentId }) {
-            comments[index].replies.insert(reply, at: 0)
+            print("✅ 在顶级评论中找到父评论 - 索引: \(index), 用户名: \(comments[index].username)")
+            
+            // 创建评论的可变副本
+            var updatedComment = comments[index]
+            
+            // 添加回复到该评论的replies数组
+            updatedComment.replies.insert(reply, at: 0)
+            
+            // 更新原始数组中的评论
+            comments[index] = updatedComment
+            
+            // 打印回复数量
+            print("📊 该父评论现在有 \(comments[index].replies.count) 条回复")
+            print("📊 回复内容: \"\(reply.content.prefix(30))...\"")
+            
+            // 发送通知刷新UI - 确保在主线程发送
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PostCommentsUpdated"),
+                    object: nil,
+                    userInfo: ["postID": self.id.uuidString, "commentID": reply.id.uuidString]
+                )
+                
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshPostComments"),
+                    object: nil,
+                    userInfo: ["commentID": reply.id.uuidString]
+                )
+                
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("CommentAdded"),
+                    object: nil,
+                    userInfo: ["commentID": reply.id.uuidString]
+                )
+                
+                // 延迟再次发送通知，确保UI更新
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("RefreshPostComments"),
+                        object: nil,
+                        userInfo: ["commentID": reply.id.uuidString]
+                    )
+                }
+            }
             return
         }
         
-        // 递归查找父评论
+        // 在嵌套回复中查找父评论
+        var found = false
         var updatedComments = comments
-        if findAndAddReply(to: &updatedComments, parentId: parentId, reply: reply) {
+        
+        for i in 0..<updatedComments.count {
+            var updatedReplies = updatedComments[i].replies
+            if findAndAddReplyToNestedComment(comments: &updatedReplies, parentId: parentId, reply: reply) {
+                print("✅ 在评论 \(updatedComments[i].id) (\(updatedComments[i].username)) 的回复中找到目标评论并添加了回复")
+                
+                // 更新原始评论的回复数组
+                updatedComments[i].replies = updatedReplies
+                found = true
+                break
+            }
+        }
+        
+        if found {
+            // 更新评论数组
             comments = updatedComments
+            
+            // 打印更新后的评论结构
+            print("📊 更新后评论结构:")
+            for (index, comment) in comments.enumerated() {
+                print("📊 顶级评论[\(index)]: ID=\(comment.id), 用户名=\(comment.username), 回复数=\(comment.replies.count)")
+                comment.printStructure()
+            }
+            
+            // 发送通知刷新UI - 确保在主线程发送
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PostCommentsUpdated"),
+                    object: nil,
+                    userInfo: ["postID": self.id.uuidString, "commentID": reply.id.uuidString]
+                )
+                
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshPostComments"),
+                    object: nil,
+                    userInfo: ["commentID": reply.id.uuidString]
+                )
+                
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("CommentAdded"),
+                    object: nil,
+                    userInfo: ["commentID": reply.id.uuidString]
+                )
+                
+                // 延迟再次发送通知，确保UI更新
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("RefreshPostComments"),
+                        object: nil,
+                        userInfo: ["commentID": reply.id.uuidString]
+                    )
+                }
+            }
+        } else {
+            print("❌ 未找到父评论，将作为顶级评论添加")
+            // 如果没有找到父评论，将回复作为顶级评论添加
+            var newTopLevelComment = reply
+            newTopLevelComment.parentCommentId = nil // 清除父评论ID
+            comments.insert(newTopLevelComment, at: 0)
+            
+            // 发送通知刷新UI - 确保在主线程发送
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PostCommentsUpdated"),
+                    object: nil,
+                    userInfo: ["postID": self.id.uuidString, "commentID": reply.id.uuidString]
+                )
+                
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshPostComments"),
+                    object: nil,
+                    userInfo: ["commentID": reply.id.uuidString]
+                )
+                
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("CommentAdded"),
+                    object: nil,
+                    userInfo: ["commentID": reply.id.uuidString]
+                )
+                
+                // 延迟再次发送通知，确保UI更新
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("RefreshPostComments"),
+                        object: nil,
+                        userInfo: ["commentID": reply.id.uuidString]
+                    )
+                }
+            }
         }
     }
     
-    /// 递归查找父评论并添加回复
-    private func findAndAddReply(to replies: inout [DetailedCommentModel], parentId: UUID, reply: DetailedCommentModel) -> Bool {
-        for i in 0..<replies.count {
-            if replies[i].id == parentId {
-                replies[i].replies.insert(reply, at: 0)
+    /**
+     * 递归查找嵌套评论并添加回复
+     * @param comments 评论数组引用
+     * @param parentId 父评论ID
+     * @param reply 要添加的回复
+     * @return 是否成功添加回复
+     */
+    private func findAndAddReplyToNestedComment(comments: inout [DetailedCommentModel], parentId: UUID, reply: DetailedCommentModel) -> Bool {
+        print("🔍 递归查找父评论ID: \(parentId)，当前层级评论数: \(comments.count)")
+        
+        for i in 0..<comments.count {
+            // 检查当前评论是否是目标父评论
+            if comments[i].id == parentId {
+                print("✅ 找到目标父评论，ID: \(parentId)，用户名: \(comments[i].username)")
+                
+                // 创建评论的可变副本
+                var updatedComment = comments[i]
+                
+                // 添加回复到该评论的replies数组
+                updatedComment.replies.insert(reply, at: 0)
+                
+                // 更新原始数组中的评论
+                comments[i] = updatedComment
+                
+                print("✅ 成功添加回复，父评论目前有\(comments[i].replies.count)条回复")
                 return true
             }
             
-            if !replies[i].replies.isEmpty {
-                var updatedReplies = replies[i].replies
-                if findAndAddReply(to: &updatedReplies, parentId: parentId, reply: reply) {
-                    replies[i].replies = updatedReplies
+            // 递归检查当前评论的回复
+            if !comments[i].replies.isEmpty {
+                print("👉 检查评论 \(comments[i].id) (\(comments[i].username)) 的\(comments[i].replies.count)条回复")
+                
+                var updatedReplies = comments[i].replies
+                if findAndAddReplyToNestedComment(comments: &updatedReplies, parentId: parentId, reply: reply) {
+                    // 创建评论的可变副本并更新
+                    var updatedComment = comments[i]
+                    updatedComment.replies = updatedReplies
+                    comments[i] = updatedComment
+                    
+                    print("✅ 在评论 \(comments[i].id) (\(comments[i].username)) 的回复中找到目标评论并添加了回复")
+                    
+                    // 打印更新后的结构
+                    print("📊 更新后的回复结构:")
+                    comments[i].printStructure()
+                    
                     return true
                 }
             }
         }
         
+        print("❌ 在当前层级未找到ID为 \(parentId) 的评论")
         return false
     }
     
@@ -438,21 +637,143 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
     }
     
     /**
-     * 添加回复到特定评论
-     * 这个方法是公开的，可以被外部调用
-     * @param parentId 父评论ID
-     * @param reply 回复评论模型
+     * 更新评论之间的嵌套关系
+     * 确保所有回复评论都正确指向其父评论
+     * 特别用于一键生成的帖子，确保评论嵌套关系正确
      */
-    func addReplyToComment(parentId: UUID, reply: DetailedCommentModel) {
-        print("📝 添加回复到评论ID: \(parentId)")
+    func updateCommentRelationships() {
+        print("🔄 开始更新评论嵌套关系 - 帖子ID: \(id), 评论数: \(comments.count)")
         
-        // 使用现有的私有方法实现
-        addReplyToParent(parentId: parentId, reply: reply)
+        // 如果评论数量少于2，不需要处理嵌套关系
+        if comments.count < 2 {
+            print("⏩ 评论数量少于2，跳过处理")
+            return
+        }
         
-        // 保存更新
-        saveData()
+        // 创建用户名到评论ID的映射，用于快速查找
+        var usernameToCommentMap: [String: UUID] = [:]
         
-        print("✅ 回复已添加到评论")
+        // 第一次遍历，建立用户名到评论ID的映射
+        for comment in comments {
+            usernameToCommentMap[comment.username] = comment.id
+        }
+        
+        // 第二次遍历，处理回复评论的parentCommentId
+        var updatedComments = comments
+        for i in 0..<updatedComments.count {
+            if let replyToUsername = updatedComments[i].replyToUsername {
+                // 如果有replyToUsername但没有parentCommentId，尝试设置parentCommentId
+                if updatedComments[i].parentCommentId == nil {
+                    if let parentId = usernameToCommentMap[replyToUsername] {
+                        updatedComments[i].parentCommentId = parentId
+                        print("✅ 为评论 \(updatedComments[i].id) 设置父评论ID: \(parentId)")
+                    }
+                }
+            }
+        }
+        
+        // 更新评论数组
+        comments = updatedComments
+        
+        // 更新评论列表结构
+        // 获取所有顶级评论（不包含回复）
+        var topLevelComments: [DetailedCommentModel] = []
+        var replyComments: [DetailedCommentModel] = []
+        
+        // 将评论分为顶级评论和回复评论
+        for comment in comments {
+            if comment.parentCommentId == nil {
+                var commentCopy = comment
+                commentCopy.replies = [] // 清空回复列表，后面重新组织
+                topLevelComments.append(commentCopy)
+            } else {
+                replyComments.append(comment)
+            }
+        }
+        
+        // 将所有回复添加到对应的主评论下
+        for reply in replyComments {
+            if let parentId = reply.parentCommentId {
+                // 找到顶级父评论
+                if let index = topLevelComments.firstIndex(where: { $0.id == parentId }) {
+                    topLevelComments[index].replies.append(reply)
+                    print("✅ 将评论 \(reply.id) 添加到父评论 \(parentId) 的回复列表中")
+                }
+            }
+        }
+        
+        // 排序回复（按时间倒序，最新的在前面）
+        for i in 0..<topLevelComments.count {
+            topLevelComments[i].replies.sort { $0.datePosted > $1.datePosted }
+        }
+        
+        // 更新评论数组，只保留顶级评论，回复评论只存在于顶级评论的replies属性中
+        // 这样可以避免回复评论在UI中重复显示
+        comments = topLevelComments
+        print("✅ 评论嵌套关系更新完成，更新后顶级评论数: \(comments.count)")
+    }
+    
+    /**
+     * 更新点赞数
+     * @param delta 点赞数变化量
+     * @return 更新后的帖子
+     */
+    func updateLikes(delta: Int) -> UserPostModel {
+        return UserPostModel(
+            id: id,
+            username: username,
+            userAvatar: userAvatar,
+            content: content,
+            images: images,
+            datePosted: datePosted,
+            likes: likes + delta,
+            comments: comments,
+            isLikedByCurrentUser: isLikedByCurrentUser,
+            isBookmarkedByCurrentUser: isBookmarkedByCurrentUser,
+            contentType: contentType,
+            characterID: characterID,
+            source: source
+        )
+    }
+    
+    /**
+     * 添加评论对象
+     * 直接添加一个DetailedCommentModel对象作为评论
+     */
+    func addComment(_ comment: DetailedCommentModel) {
+        print("🔵 添加评论对象 - ID: \(comment.id), 用户: \(comment.username), 是否为回复: \(comment.parentCommentId != nil)")
+        
+        if let parentId = comment.parentCommentId {
+            print("🔵 添加为回复 - 父评论ID: \(parentId)")
+            addReplyToParent(parentId: parentId, reply: comment)
+        } else {
+            print("🔵 添加为顶级评论")
+            comments.insert(comment, at: 0)
+            
+            // 打印当前评论数量
+            print("📊 添加后顶级评论数量: \(comments.count)")
+            
+            // 发送通知刷新UI - 确保在主线程发送
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PostCommentsUpdated"),
+                    object: nil,
+                    userInfo: ["postID": self.id.uuidString, "commentID": comment.id.uuidString]
+                )
+                
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshPostComments"),
+                    object: nil,
+                    userInfo: ["commentID": comment.id.uuidString]
+                )
+                
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("CommentAdded"),
+                    object: nil,
+                    userInfo: ["commentID": comment.id.uuidString]
+                )
+            }
+        }
     }
 }
 
@@ -592,29 +913,6 @@ extension UserPostModel {
         
         // 返回格式化后的内容
         return formattedContent
-    }
-    
-    /**
-     * 更新点赞数
-     * @param delta 点赞数变化量
-     * @return 更新后的帖子
-     */
-    func updateLikes(delta: Int) -> UserPostModel {
-        return UserPostModel(
-            id: id,
-            username: username,
-            userAvatar: userAvatar,
-            content: content,
-            images: images,
-            datePosted: datePosted,
-            likes: likes + delta,
-            comments: comments,
-            isLikedByCurrentUser: isLikedByCurrentUser,
-            isBookmarkedByCurrentUser: isBookmarkedByCurrentUser,
-            contentType: contentType,
-            characterID: characterID,
-            source: source
-        )
     }
 }
 

@@ -15,10 +15,11 @@ struct CharacterModel: Identifiable {
     let category: CharacterCategory  // 角色分类
     let universe: String?     // 所属宇宙/世界观(虚构角色)
     let famousQuotes: [String]? // 名言/经典台词
+    let characterID: String?  // 角色ID，用于API调用和统一标识
     
     // 默认初始化方法，支持向后兼容
     init(name: String, avatar: String, era: String, profession: String, bio: String, category: CharacterCategory,
-         universe: String? = nil, famousQuotes: [String]? = nil) {
+         universe: String? = nil, famousQuotes: [String]? = nil, characterID: String? = nil) {
         self.name = name
         self.avatar = avatar
         self.era = era
@@ -27,6 +28,7 @@ struct CharacterModel: Identifiable {
         self.category = category
         self.universe = universe
         self.famousQuotes = famousQuotes
+        self.characterID = characterID
     }
     
     // 判断是否为虚构角色
@@ -105,7 +107,8 @@ struct CharacterModel: Identifiable {
             bio: "《龙珠》系列主角，热爱战斗和变强，拥有不断突破自我极限的坚韧精神。",
             category: .animeCharacter,
             universe: "龙珠",
-            famousQuotes: ["我要超越超级赛亚人！", "这还不是我的最终形态！"]
+            famousQuotes: ["我要超越超级赛亚人！", "这还不是我的最终形态！"],
+            characterID: "sunwukong"
         ),
         Self(
             name: "漩涡鸣人",

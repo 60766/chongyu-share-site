@@ -140,10 +140,17 @@ struct FullscreenPostDetailView: View {
     
     // 滑动状态
     @State private var dragOffset: CGFloat = 0.0
+    @State private var dampedOffset: CGFloat = 0.0
     @State private var isDragging: Bool = false
     @State private var swipeDirection: SwipeDirection = .none
     @State private var isTransitioning: Bool = false
     @State private var displayState: DisplayState = .current
+    
+    // 添加滚动状态变量
+    @State private var isScrolled: Bool = false
+    
+    // 标题栏背景透明度
+    @State private var titleBarBackgroundOpacity: CGFloat = 0
     
     // 双缓冲显示技术变量 - 用于过渡过程中显示下一页内容
     @State private var nextPagePost: UserPostModel? = nil
@@ -169,6 +176,10 @@ struct FullscreenPostDetailView: View {
     @State private var shareItems: [Any] = []
     @State private var showingShareSheet: Bool = false
     @State private var showingCommentTextArea: Bool = false
+    @State private var showHistoricalFigureSelection: Bool = false
+    
+    // 添加关注状态变量
+    @State private var isFollowed: Bool = false
     
     // 控制任务生命周期的状态
     @State private var isViewActive: Bool = true
@@ -398,13 +409,16 @@ struct FullscreenPostDetailView: View {
                                             .padding(.horizontal, 16)
                                             .padding(.bottom, 10)
                                         } else {
-                                            // 多图网格 - 更紧凑的布局
-                                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                                                ForEach(nextPost.images, id: \.self) { image in
-                                                    Image(image)
+                                            // 四张及以上图片 - 网格布局
+                                            let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 3)
+                                            let displayCount = min(nextPost.images.count, 9) // 最多显示9张
+                                            
+                                            LazyVGrid(columns: columns, spacing: 6) {
+                                                ForEach(0..<displayCount, id: \.self) { index in
+                                                    Image(nextPost.images[index])
                                                         .resizable()
                                                         .scaledToFill()
-                                                        .frame(height: 150)
+                                                        .frame(height: 100)
                                                         .clipShape(RoundedRectangle(cornerRadius: 12))
                                                 }
                                             }
@@ -413,184 +427,198 @@ struct FullscreenPostDetailView: View {
                                         }
                                     }
                                 }
+                                .frame(maxWidth: .infinity)
+                                
+                                // 互动栏 - 简化版本，仅显示图标
+                                HStack(spacing: 24) {
+                                    // 点赞按钮
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "heart")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.secondary)
+                                        Text("\(nextPost.likes)")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    // 评论按钮
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "bubble.right")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.secondary)
+                                        Text("\(nextPost.comments.count)")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    // 收藏按钮
+                                    Image(systemName: "bookmark")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    // 更多按钮
+                                    Image(systemName: "ellipsis")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.secondary)
+                                        .rotationEffect(.degrees(90))
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
                                 
                                 // 分隔线
-                                Divider()
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.15))
+                                    .frame(height: 0.5)
                                     .padding(.horizontal, 16)
-                                    .opacity(0.6)
-                            }
-                            
-                            // 互动栏 - 预先显示点赞和评论等信息
-                            HStack(spacing: 20) {
-                                // 点赞按钮
-                                HStack(spacing: 4) {
-                                    Image(systemName: nextPost.isLikedByCurrentUser ? "heart.fill" : "heart")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(nextPost.isLikedByCurrentUser ? .red : .secondary)
-                                    
-                                    Text("\(nextPost.likes)")
-                                        .font(.system(size: 13))
-                                        .foregroundColor(nextPost.isLikedByCurrentUser ? .red.opacity(0.8) : .secondary)
-                                }
                                 
-                                // 评论按钮
-                                HStack(spacing: 4) {
-                                    Image(systemName: "bubble.left")
-                                        .font(.system(size: 15))
-                                        .foregroundColor(.secondary)
-                                    
-                                    Text("\(nextPost.comments.count)")
-                                        .font(.system(size: 13))
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                // 收藏按钮
-                                Image(systemName: nextPost.isBookmarkedByCurrentUser ? "bookmark.fill" : "bookmark")
-                                    .font(.system(size: 15))
-                                    .foregroundColor(nextPost.isBookmarkedByCurrentUser ? FPDVDesignSystem.Colors.primary : .secondary)
-                                
-                                Spacer()
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            
-                            // 分隔线
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.08))
-                                .frame(height: 1)
-                                .padding(.horizontal, 16)
-                            
-                            // 评论区标题 - 与主视图保持相同结构
-                            HStack {
-                                HStack(spacing: 6) {
-                                    Text("评论")
+                                // 评论区占位
+                                VStack(alignment: .leading, spacing: 16) {
+                                    Text("评论 \(nextPost.comments.count)")
                                         .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.primary)
+                                        .padding(.horizontal, 16)
+                                        .padding(.top, 14)
                                     
-                                    // 显示评论总数
-                                    Text("(\(nextPost.getTotalCommentsCount()))")
-                                        .font(.system(size: 15))
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                Spacer()
-                                
-                                // 排序按钮
-                                HStack(spacing: 4) {
-                                    Text("最新")
-                                        .font(.system(size: 14))
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 10))
-                                }
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(Color.secondary.opacity(0.06))
-                                .cornerRadius(15)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 14)
-                            
-                            // 分隔线
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.08))
-                                .frame(height: 1)
-                                .padding(.horizontal, 16)
-                            
-                            // 简化的评论区域 - 仅显示前三条评论
-                            VStack(spacing: 0) {
-                                let topComments = Array(nextPost.getTopLevelComments().prefix(3))
-                                
-                                if topComments.isEmpty {
-                                    // 无评论状态
-                                    Text("暂无评论，快来说点什么~")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.secondary)
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                        .padding(.vertical, 40)
-                                } else {
-                                    // 显示前三条评论
-                                    ForEach(topComments) { comment in
-                                        HStack(alignment: .top, spacing: 12) {
-                                            // 用户头像
-                                            Circle()
-                                                .fill(Color.gray.opacity(0.1))
-                                                .frame(width: 32, height: 32)
-                                                .overlay(
-                                                    Text(String(comment.username.prefix(1).uppercased()))
-                                                        .font(.system(size: 14))
-                                                        .foregroundColor(.gray)
-                                                )
-                                            
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                // 用户名
-                                                Text(comment.username)
-                                                    .font(.system(size: 14, weight: .medium))
+                                    // 显示前两条评论
+                                    ForEach(nextPost.comments.prefix(2), id: \.id) { comment in
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            HStack(spacing: 10) {
+                                                // 头像
+                                                Image(comment.userAvatar)
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fill)
+                                                    .frame(width: 32, height: 32)
+                                                    .clipShape(Circle())
                                                 
-                                                // 评论内容
-                                                Text(comment.content)
-                                                    .font(.system(size: 14))
-                                                    .lineSpacing(4)
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    // 用户名
+                                                    Text(comment.username)
+                                                        .font(.system(size: 14, weight: .medium))
+                                                    
+                                                    // 评论内容
+                                                    Text(comment.content)
+                                                        .font(.system(size: 15))
+                                                        .lineSpacing(4)
+                                                }
+                                                
+                                                Spacer()
                                             }
+                                            
+                                            // 评论时间和点赞
+                                            HStack {
+                                                Text(comment.getFormattedTimeAgo())
+                                                    .font(.system(size: 12))
+                                                    .foregroundColor(.secondary)
+                                                
+                                                Spacer()
+                                                
+                                                // 点赞图标
+                                                Image(systemName: "heart")
+                                                    .font(.system(size: 12))
+                                                    .foregroundColor(.secondary)
+                                                
+                                                // 点赞数
+                                                Text("\(comment.likes)")
+                                                    .font(.system(size: 12))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .padding(.leading, 42) // 与头像对齐
                                         }
                                         .padding(.horizontal, 16)
-                                        .padding(.vertical, 10)
-                                        
-                                        if comment.id != topComments.last?.id {
-                                            Divider()
+                                    }
+                                    
+                                    // 查看更多评论
+                                    if nextPost.comments.count > 2 {
+                                        Button(action: {}) {
+                                            Text("查看更多评论")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(FPDVDesignSystem.Colors.primary)
                                                 .padding(.horizontal, 16)
+                                                .padding(.vertical, 10)
                                         }
                                     }
+                                    
+                                    // 底部间距
+                                    Spacer(minLength: 60)
                                 }
                             }
-                            .padding(.bottom, 80) // 为评论输入框留出空间
                         }
                     }
-                    .edgesIgnoringSafeArea(.all)
-                    // 修改：根据滑动方向设置初始偏移，确保新页面从正确方向进入
-                    .offset(x: swipeDirection == .left ? UIScreen.main.bounds.width - dragOffset : -UIScreen.main.bounds.width + dragOffset)
-                    // 添加：过渡透明度效果，随着拖动增加透明度
-                    .opacity(min(1.0, abs(dragOffset) / (UIScreen.main.bounds.width * 0.7)))
-                    .background(Color(.systemBackground))
-                    .zIndex(-1) // 确保在主内容下方
+                    .offset(x: swipeDirection == .left ? -UIScreen.main.bounds.width + dampedOffset : UIScreen.main.bounds.width + dampedOffset)
+                    .opacity(0.95) // 稍微降低透明度，增强层次感
+                    .transition(.opacity)
                 }
                 
-                // 主内容视图
-            ScrollView {
-                VStack(spacing: 0) {
-                    // 顶部导航栏
-                    makeTopBar()
-                    
-                    // 帖子内容
-                    makePostContent()
-                    
-                    // 帖子互动栏
-                    makeInteractionBar()
-                    
-                    // 分隔线
-                    makeContentDivider()
-                    
-                    // 评论区
-                    makeCommentsSection()
-                        .id("comments")
-                }
-                    // 添加底部安全区域内边距，确保内容不被输入框遮挡
-                    .safeAreaInset(edge: .bottom) {
-                        // 输入框占位区域，调整高度从40减少为35
-                        Color.clear.frame(height: 35)
+                // 主内容视图 - 使用ZStack包装以便添加固定的顶部导航栏
+                ZStack(alignment: .top) {
+                    // 滚动内容
+                    ZStack(alignment: .bottom) {
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                // 添加一个空白区域代替标题栏的高度
+                                Color.clear
+                                    .frame(height: 44 + getSafeAreaTop())
+                                
+                                // 帖子内容
+                                makePostContent()
+                                
+                                // 帖子互动栏
+                                makeInteractionBar()
+                                
+                                // 分隔线
+                                makeContentDivider()
+                                
+                                // 评论区
+                                makeCommentsSection()
+                                    .id("comments")
+                            }
+                            // 添加底部安全区域内边距，确保内容不被输入框遮挡
+                            .safeAreaInset(edge: .bottom) {
+                                // 输入框占位区域，调整高度从35增加到60，确保足够空间
+                                Color.clear.frame(height: 60)
+                            }
+                            .background(
+                                GeometryReader { proxy in
+                                    Color.clear.preference(
+                                        key: FullscreenScrollOffsetKey.self,
+                                        value: proxy.frame(in: .named("scroll")).minY
+                                    )
+                                }
+                            )
+                        }
+                        .coordinateSpace(name: "scroll")
+                        .offset(x: dragOffset)
+                        // 优化不透明度变化，更平滑过渡 - 随着拖动逐渐降低透明度
+                        .opacity(isTransitioning ? 
+                            (abs(dragOffset) > UIScreen.main.bounds.width * 0.8 ? 0.3 : 
+                             1.0 - min(0.7, abs(dragOffset) / UIScreen.main.bounds.width)) 
+                            : 1.0)
+                        
+                        // 评论输入视图 - 放在ZStack底部，确保它在滚动内容上方但不遮挡
+                        CommentInputView(commentManager: viewModel.commentManager)
                     }
+                    
+                    // 固定的顶部导航栏
+                    makeTopBar()
+                        .background(
+                            // 根据滚动位置调整标题栏背景透明度
+                            Color(.systemBackground)
+                                .opacity(titleBarBackgroundOpacity)
+                        )
+                        .zIndex(1) // 确保标题栏始终在最上层
                 }
-                .offset(x: dragOffset)
-                // 优化不透明度变化，更平滑过渡 - 随着拖动逐渐降低透明度
-                .opacity(isTransitioning ? 
-                    (abs(dragOffset) > UIScreen.main.bounds.width * 0.8 ? 0.3 : 
-                     1.0 - min(0.7, abs(dragOffset) / UIScreen.main.bounds.width)) 
-                    : 1.0)
-                .zIndex(0) // 主内容始终在最上层
             }
-            .coordinateSpace(name: "scroll")
             .onPreferenceChange(FullscreenScrollOffsetKey.self) { offset in
-                // ... existing code ...
+                // 计算标题栏背景透明度
+                let threshold: CGFloat = 50 // 滚动多少距离开始变化
+                let opacity = min(1, max(0, -offset / threshold))
+                withAnimation(.easeOut(duration: 0.2)) {
+                    titleBarBackgroundOpacity = opacity
+                }
             }
+            
             .animation(.spring(response: 0.35, dampingFraction: 0.8), value: dragOffset)
             .wechatStyleImageViewer(
                 isPresented: $showingExpandedImage,
@@ -605,6 +633,9 @@ struct FullscreenPostDetailView: View {
                     .onChanged { value in
                         // 如果正在过渡动画中，忽略所有手势
                         guard !isTransitioning else { return }
+                        
+                        // 检查是否有输入框正在获取焦点，如果有则忽略滑动手势
+                        guard !isAnyTextInputActive() else { return }
                         
                         // 只处理主要是水平方向的滑动，减少与垂直滚动冲突
                         if abs(value.translation.height) < abs(value.translation.width) * 0.8 {
@@ -1243,6 +1274,9 @@ struct FullscreenPostDetailView: View {
                             // 如果正在过渡动画中，忽略所有手势
                             guard !isTransitioning else { return }
                             
+                            // 检查是否有输入框正在获取焦点，如果有则忽略滑动手势
+                            guard !isAnyTextInputActive() else { return }
+                            
                             // 只处理水平方向的滑动，并添加水平性检查
                             if abs(value.translation.height) < abs(value.translation.width) * 0.8 {
                                 // 对于右滑和左滑，确保水平滑动为主
@@ -1477,15 +1511,6 @@ struct FullscreenPostDetailView: View {
                     swipeDirection = .none
                 }
             }
-            
-            // 评论输入视图
-            CommentInputView(commentManager: viewModel.commentManager)
-                .background(
-                    // 添加背景和阴影，使其更清晰地与内容分离
-                    Color(.systemBackground)
-                        .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: -2)
-                        .edgesIgnoringSafeArea(.bottom)
-                )
             
             // 自定义时空特效覆盖层
             if showCustomTimeSpaceEffect {
@@ -1878,143 +1903,208 @@ struct FullscreenPostDetailView: View {
     // 顶部导航栏 - 优化版本 (UI优化项#1)
     private func makeTopBar() -> some View {
         HStack(spacing: 16) {
-            // 返回按钮 - 保留但不执行实际操作，由系统级返回按钮负责返回
-            Button(action: {}) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.clear) // 使按钮不可见
-            }
-            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
-            .scaleEffect(1.0) // 默认比例，按下时会自动变化
-            .contentShape(Circle()) // 确保点击区域正确
-            .disabled(true) // 禁用按钮
-                            
+            // 占位区域，保持布局平衡
+            Color.clear
+                .frame(width: 33, height: 33)
+                             
             Spacer()
-                            
-            // 标题 - 改进版本
+                             
+            // 标题 - 居中
             Text("动态详情")
                 .font(.system(size: 17, weight: .medium))
-                .foregroundColor(FPDVDesignSystem.Colors.primary)
-                            
+                .foregroundColor(.primary)
+             
             Spacer()
-                            
-            // 删除分享按钮，增加占位空间保持对称
+                             
+            // 占位区域，保持布局平衡
             Color.clear
-                .frame(width: 16, height: 16)
+                .frame(width: 33, height: 33)
         }
         .padding(.horizontal, 16)
-        .frame(height: 44)
+        .padding(.vertical, 10)
         .padding(.top, getSafeAreaTop())
-        .background(Color(.systemBackground).opacity(0.98))
-        .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
+        .background(
+            // 背景 - 根据滚动状态改变透明度
+            Rectangle()
+                .fill(Color(.systemBackground))
+                .opacity(isScrolled ? 0.9 : 1.0)
+                .edgesIgnoringSafeArea(.top)
+        )
     }
     
     // 获取顶部安全区域高度
     private func getSafeAreaTop() -> CGFloat {
-        let scenes = UIApplication.shared.connectedScenes
-        let windowScene = scenes.first as? UIWindowScene
-        let window = windowScene?.windows.first
-        return window?.safeAreaInsets.top ?? 0
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            return window.safeAreaInsets.top
+        }
+        return 0
     }
     
     // 帖子内容区域
     private func makePostContent() -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // 用户信息区域
-            HStack(spacing: 12) {
-                // 头像
-                Image(viewModel.post.userAvatar)
+        VStack(spacing: 0) {
+            // 用户头像和信息区域
+            makeUserInfoSection()
+            
+            // 帖子内容区域
+            makePostContentSection()
+        }
+        .padding(.vertical, 10) // 整体垂直内边距
+    }
+    
+    // 用户头像和信息区域
+    private func makeUserInfoSection() -> some View {
+        HStack(spacing: 12) {
+            // 用户头像
+            AsyncImage(url: URL(string: viewModel.post.userAvatar)) { image in
+                image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: 40, height: 40)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color.gray.opacity(0.1), lineWidth: 1)
-                    )
-                
-                // 用户名和时间
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(viewModel.post.username)
-                        .font(.system(size: 15, weight: .medium))
-                    
-                    Text(viewModel.post.getFormattedTimeAgo())
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary.opacity(0.8))
-                }
-                
-                Spacer()
-                
-                // 关注按钮
-                Button(action: {}) {
-                    Text("关注")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(FPDVDesignSystem.Colors.primary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 5)
-                        .background(
-                            Capsule()
-                                .stroke(FPDVDesignSystem.Colors.primary, lineWidth: 1)
-                        )
-                }
+            } placeholder: {
+                Color.gray.opacity(0.2)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 4) // 进一步减少用户信息区域底部内边距
+            .frame(width: 42, height: 42)
+            .clipShape(Circle())
             
-            // 正文内容 - 确保只显示一次内容
-            Text(viewModel.post.content)
-                .font(.system(size: 16))
-                .lineSpacing(5)
-                .fixedSize(horizontal: false, vertical: true)
-                .lineLimit(nil) // 确保可以显示多行
-                .padding(.horizontal, 16)
-                .padding(.bottom, 4) // 进一步减少正文底部内边距
-                .id("post_content") // 添加ID以确保内容更新时视图刷新
+            // 用户名和发布时间
+            VStack(alignment: .leading, spacing: 4) {
+                Text(viewModel.post.username)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+                
+                Text(viewModel.post.getFormattedTimeAgo())
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
             
-            // 图片内容 - 使用微信朋友圈风格布局
+            Spacer()
+            
+            // 关注按钮 - 可点击并切换状态
+            Button(action: {
+                // 触觉反馈
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred(intensity: 0.5)
+                
+                // 切换关注状态
+                isFollowed.toggle()
+                
+                // 保存关注状态到UserDefaults
+                saveFollowStatus()
+                
+                // 显示提示信息
+                let toastMessage = isFollowed ? "已关注 \(viewModel.post.username)" : "已取消关注 \(viewModel.post.username)"
+                
+                // 发送通知更新UI
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ShowToast"),
+                    object: nil,
+                    userInfo: ["message": toastMessage]
+                )
+                
+                // 这里可以添加实际的关注/取消关注API调用
+            }) {
+                Text(isFollowed ? "已关注" : "关注")
+                    .font(.system(size: 14))
+                    .foregroundColor(isFollowed ? .secondary : FPDVDesignSystem.Colors.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        isFollowed 
+                            ? Color.secondary.opacity(0.06) 
+                            : FPDVDesignSystem.Colors.primary.opacity(0.08)
+                    )
+                    .cornerRadius(14)
+            }
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 12)
+        .onAppear {
+            // 在视图出现时检查关注状态
+            checkFollowStatus()
+        }
+    }
+    
+    // 添加检查关注状态的函数
+    private func checkFollowStatus() {
+        // 从UserDefaults获取关注列表
+        let followedUsers = UserDefaults.standard.stringArray(forKey: "FollowedUsers") ?? []
+        
+        // 检查当前用户是否在关注列表中
+        isFollowed = followedUsers.contains(viewModel.post.username)
+    }
+    
+    // 添加保存关注状态的函数
+    private func saveFollowStatus() {
+        // 从UserDefaults获取当前关注列表
+        var followedUsers = UserDefaults.standard.stringArray(forKey: "FollowedUsers") ?? []
+        
+        if isFollowed {
+            // 如果是关注操作，将用户名添加到列表中（避免重复）
+            if !followedUsers.contains(viewModel.post.username) {
+                followedUsers.append(viewModel.post.username)
+            }
+        } else {
+            // 如果是取消关注操作，从列表中移除用户名
+            followedUsers.removeAll { $0 == viewModel.post.username }
+        }
+        
+        // 保存更新后的关注列表
+        UserDefaults.standard.set(followedUsers, forKey: "FollowedUsers")
+    }
+    
+    // 帖子内容区域
+    private func makePostContentSection() -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // 帖子文字内容
+            if !viewModel.post.content.isEmpty {
+                Text(viewModel.post.content)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(Color.primary.opacity(0.8))
+                    .lineSpacing(5.0)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, calculateDynamicPadding(text: viewModel.post.content))
+                    .padding(.trailing, 16)
+                    .padding(.bottom, viewModel.post.images.isEmpty ? 0 : 8) // 如果有图片，增加底部间距
+                    .id("post_content")
+                    .frame(maxWidth: .infinity, alignment: .leading) // 确保文本始终左对齐
+            }
+            
+            // 图片内容区域 - 微信朋友圈风格
             if !viewModel.post.images.isEmpty {
-                // 根据图片数量选择不同的布局
                 switch viewModel.post.images.count {
                 case 1:
-                    // 单图布局 - 微信朋友圈风格
                     singleImageView(viewModel.post.images[0])
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 4)
                 case 2:
-                    // 两张图片布局 - 微信朋友圈风格
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 2)
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 4)
+                        .padding(.top, 4)
                 case 3:
-                    // 三张图片布局 - 微信朋友圈风格
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 4)
+                        .padding(.top, 4)
                 case 4:
-                    // 四张图片布局 - 微信朋友圈2×2网格
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 2)
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 4)
+                        .padding(.top, 4)
                 case 5, 6:
-                    // 5-6张图片布局 - 微信朋友圈3×2网格
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 4)
+                        .padding(.top, 4)
                 default:
-                    // 7-9张图片布局 - 微信朋友圈3×3网格
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 4)
+                        .padding(.top, 4)
                 }
             }
         }
+        .padding(.vertical, 2)
     }
     
     // 单图显示 - 微信朋友圈风格
     private func singleImageView(_ imageName: String) -> some View {
         GeometryReader { geometry in
-            // 修改为靠左对齐
+            // 修改为靠左对齐但有适当的左边距
             HStack {
                 Button(action: {
                     selectedImageIndex = 0
@@ -2079,8 +2169,10 @@ struct FullscreenPostDetailView: View {
                 
                 Spacer(minLength: 0)
             }
+            .padding(.leading, 16) // 添加左边距，与文本内容对齐
         }
         .frame(height: calculateImageSectionHeight(for: [imageName]))
+        .padding(.top, 8) // 添加顶部间距，使布局更加美观
     }
     
     // 微信朋友圈风格的网格布局
@@ -2218,71 +2310,114 @@ struct FullscreenPostDetailView: View {
     
     // 帖子互动栏
     private func makeInteractionBar() -> some View {
-        HStack(spacing: 20) {
-            // 点赞按钮
-            Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred(intensity: 0.4)
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: viewModel.post.isLikedByCurrentUser ? "heart.fill" : "heart")
-                        .font(.system(size: 16))
-                        .foregroundColor(viewModel.post.isLikedByCurrentUser ? .red : .secondary)
+        VStack(spacing: 0) {
+            HStack(alignment: .center) {
+                // 点赞按钮 - 左侧
+                Button(action: {
+                    // 添加触觉反馈
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred(intensity: 0.4)
                     
-                    Text("\(viewModel.post.likes)")
-                        .font(.system(size: 13))
-                        .foregroundColor(viewModel.post.isLikedByCurrentUser ? .red.opacity(0.8) : .secondary)
+                    // 更新点赞状态
+                    viewModel.toggleLike()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: viewModel.post.isLikedByCurrentUser ? "heart.fill" : "heart")
+                            .font(.system(size: 16))
+                            .foregroundColor(viewModel.post.isLikedByCurrentUser ? .red : .secondary)
+                        
+                        Text("\(viewModel.post.likes)")
+                            .font(.system(size: 13))
+                            .foregroundColor(viewModel.post.isLikedByCurrentUser ? .red.opacity(0.8) : .secondary)
+                    }
+                    .frame(minWidth: 50, alignment: .leading)
+                    .padding(.vertical, 8)
+                }
+                .contentShape(Capsule())
+                
+                Spacer()
+                
+                // 右侧按钮组 - 紧凑排列
+                HStack(spacing: 24) {
+                    // 邀请历史人物按钮
+                    Button(action: {
+                        // 添加触觉反馈
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred(intensity: 0.4)
+                        
+                        // 显示历史人物选择视图
+                        showHistoricalFigureSelection = true
+                    }) {
+                        ZStack {
+                            // 使用固定大小的容器确保不同图标状态下大小一致
+                            Rectangle()
+                                .fill(Color.clear)
+                                .frame(width: 22, height: 22)
+                            
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    .sheet(isPresented: $showHistoricalFigureSelection) {
+                        HistoricalFigureSelectionView(postId: viewModel.post.id.uuidString, postAuthor: viewModel.post.username)
+                            .presentationDetents([.medium])
+                    }
+                    .contentShape(Rectangle())
+                    .frame(width: 22, height: 38)
+
+                    // 分享按钮
+                    Button(action: {
+                        // 添加触觉反馈
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred(intensity: 0.4)
+                        
+                        // 分享帖子
+                        let content = viewModel.post.content
+                        let shareContent = "来自虫遇的分享：\n\(content.prefix(50))...\n"
+                        
+                        // 创建分享项
+                        let activityVC = UIActivityViewController(
+                            activityItems: [shareContent],
+                            applicationActivities: nil
+                        )
+                        
+                        // 获取当前的UIWindow场景
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let rootViewController = windowScene.windows.first?.rootViewController {
+                            // 在iPad上设置弹出位置
+                            if let popoverController = activityVC.popoverPresentationController {
+                                popoverController.sourceView = rootViewController.view
+                                popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2, width: 0, height: 0)
+                                popoverController.permittedArrowDirections = []
+                            }
+                            rootViewController.present(activityVC, animated: true)
+                        }
+                    }) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.secondary)
+                            .frame(width: 22, height: 38)
+                    }
                 }
             }
-            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
-            .scaleEffect(1.0) // 默认比例，按下时会自动变化
-            .contentShape(Capsule()) // 确保点击区域正确
+            .padding(.horizontal, 22)
+            .padding(.vertical, 8)
             
-            // 评论按钮
-            Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred(intensity: 0.4)
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "bubble.left")
-                        .font(.system(size: 15))
-                        .foregroundColor(.secondary)
-                    
-                    Text("\(viewModel.post.comments.count)")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                }
-            }
-            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
-            .scaleEffect(1.0) // 默认比例，按下时会自动变化
-            .contentShape(Capsule()) // 确保点击区域正确
-            
-            // 收藏按钮
-            Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred(intensity: 0.4)
-            }) {
-                Image(systemName: viewModel.post.isBookmarkedByCurrentUser ? "bookmark.fill" : "bookmark")
-                    .font(.system(size: 15))
-                    .foregroundColor(viewModel.post.isBookmarkedByCurrentUser ? FPDVDesignSystem.Colors.primary : .secondary)
-            }
-            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
-            .scaleEffect(1.0) // 默认比例，按下时会自动变化
-            .contentShape(Capsule()) // 确保点击区域正确
-            
-            Spacer()
+            // 添加分隔线
+            Rectangle()
+                .fill(Color.gray.opacity(0.08))
+                .frame(height: 1)
+                .padding(.horizontal, 22)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 4)  // 减少顶部内边距，让互动栏更接近图片
-        .padding(.bottom, 8)
+        .background(Color(.systemBackground))
     }
     
-    // 分隔线
+    // 分隔线 - 完全移除
     private func makeContentDivider() -> some View {
-        Divider()
-            .padding(.horizontal, 16)
-            .padding(.top, 0) // 减少顶部内边距
-            .opacity(0.6)
+        Color.clear
+            .frame(height: 0)  // 减小到0，因为我们已经在上面添加了分隔线
     }
     
     /// 创建评论区域
@@ -2301,30 +2436,15 @@ struct FullscreenPostDetailView: View {
                 }
                 
                 Spacer()
-                
-                // 排序按钮
-                Button(action: {}) {
-                    HStack(spacing: 4) {
-                        Text("最新")
-                            .font(.system(size: 14))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10))
-                    }
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.secondary.opacity(0.06))
-                    .cornerRadius(15)
-                }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10) // 减少垂直内边距
+            .padding(.horizontal, 22)
+            .padding(.vertical, 10)
             
             // 分隔线
             Rectangle()
                 .fill(Color.gray.opacity(0.08))
                 .frame(height: 1)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 22)
             
             // 评论列表
             CommentsListView(
@@ -2336,19 +2456,19 @@ struct FullscreenPostDetailView: View {
                     viewModel.post.likeComment(commentId: comment.id)
                 }
             )
-            .padding(.top, 4) // 减少顶部内边距
+            .padding(.top, 4)
             
             // 底部提示文字
             if !viewModel.post.getTopLevelComments().isEmpty {
                 Text("虫洞已开启 · 等你一起相遇～")
-                    .font(.system(size: 12))  // 稍微减小字体大小
-                    .foregroundColor(.secondary.opacity(0.5))  // 降低一点透明度，使文字更轻柔
-                    .padding(.top, 10)  
-                    .padding(.bottom, 4)  // 减少底部padding
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary.opacity(0.5))
+                    .padding(.top, 10)
+                    .padding(.bottom, 4)
             }
         }
         .background(Color(.systemBackground))
-        .padding(.bottom, 45)  // 减少评论区整体底部内边距
+        .padding(.bottom, 45)
     }
     
     // 在文件适当位置添加辅助函数，使页面过渡更流畅
@@ -2988,6 +3108,35 @@ struct FullscreenPostDetailView: View {
             return calculateGridHeight(imagesCount: min(images.count, 9), columns: 3)
         }
     }
+    
+    // 计算动态内边距的辅助函数
+    private func calculateDynamicPadding(text: String) -> CGFloat {
+        let charCount = text.count
+        let minPadding: CGFloat = 16  // 标准内边距
+        let maxPadding: CGFloat = 24  // 短文本内边距
+        let threshold = 10  // 临界字符数
+        
+        if charCount <= threshold {
+            return maxPadding
+        } else if charCount >= threshold * 2 {
+            return minPadding
+        } else {
+            // 在临界值之间进行线性插值，实现平滑过渡
+            let ratio = CGFloat(charCount - threshold) / CGFloat(threshold)
+            return maxPadding - (maxPadding - minPadding) * ratio
+        }
+    }
+    
+    // 在类中添加检查输入框焦点状态的方法
+    private func isAnyTextInputActive() -> Bool {
+        // 检查当前是否有任何文本输入框处于活跃状态
+        guard let currentResponder = UIResponder.currentFirstResponder() else {
+            return false
+        }
+        
+        // 检查第一响应者是否是文本输入类控件
+        return currentResponder is UITextField || currentResponder is UITextView
+    }
 }
 
 /**
@@ -3006,11 +3155,42 @@ class FullscreenPostDetailViewModel: ObservableObject {
         self.commentManager = CommentManager(post: post)
     }
     
+    // 添加点赞功能
+    func toggleLike() {
+        // 更新点赞状态
+        let updatedPost = post.toggleLike(isLiked: !post.isLikedByCurrentUser)
+        post = updatedPost
+        
+        // 发送通知以更新其他视图
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PostLikeUpdated"),
+            object: nil,
+            userInfo: ["postID": post.id.uuidString]
+        )
+    }
+    
+    // 添加收藏功能
+    func toggleBookmark() {
+        // 更新收藏状态
+        let updatedPost = post.toggleBookmark(isBookmarked: !post.isBookmarkedByCurrentUser)
+        post = updatedPost
+        
+        // 发送通知以更新其他视图
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PostBookmarkUpdated"),
+            object: nil,
+            userInfo: ["postID": post.id.uuidString]
+        )
+    }
+    
     // 添加更新帖子的方法
     func updatePost(_ newPost: UserPostModel) {
         // 立即更新数据模型
         self.post = newPost
-        self.commentManager = CommentManager(post: newPost)
+        
+        // 更新现有 CommentManager 实例的 currentPost 属性，而不是创建新实例
+        // 这样可以保留草稿状态和其他用户交互状态
+        self.commentManager.currentPost = newPost
         
         // 清除缓存
         nextPostCache = nil
@@ -3055,12 +3235,8 @@ class FullscreenPostDetailViewModel: ObservableObject {
         if let foundPost = allPosts.first(where: { $0.id.uuidString == id.uuidString }) {
             print("✅ 找到匹配的帖子: \(foundPost.id.uuidString)")
             
-            // 更新当前帖子
+            // 更新当前帖子，使用 updatePost 方法确保一致性
             updatePost(foundPost)
-            
-            // 清除缓存以避免潜在问题
-            nextPostCache = nil
-            prevPostCache = nil
             
             print("✅ 帖子同步完成")
         } else {
@@ -3706,12 +3882,17 @@ class AdaptiveLayoutManager {
         // 兼容iOS 15及以上版本
         if #available(iOS 15.0, *) {
             // 使用新API获取窗口场景
-            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let window = windowScene.windows.first(where: { $0.isKeyWindow }) else {
+            let windowScenes = UIApplication.shared.connectedScenes
+                .filter { $0.activationState == .foregroundActive }
+                .compactMap { $0 as? UIWindowScene }
+            
+            if let windowScene = windowScenes.first,
+               let window = windowScene.windows.first(where: { $0.isKeyWindow }) {
+                return window.safeAreaInsets
+            } else {
                 // 提供默认值
                 return UIEdgeInsets(top: 44, left: 0, bottom: 34, right: 0)
             }
-            return window.safeAreaInsets
         } else {
             // 旧版本继续使用旧API
             let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow })
@@ -3989,5 +4170,20 @@ private struct ButtonAnimationModifier: ViewModifier {
                 }
             }
         )
+    }
+}
+
+// UIResponder扩展，用于获取当前第一响应者
+extension UIResponder {
+    private static weak var _currentFirstResponder: UIResponder?
+    
+    static func currentFirstResponder() -> UIResponder? {
+        _currentFirstResponder = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.findFirstResponder(_:)), to: nil, from: nil, for: nil)
+        return _currentFirstResponder
+    }
+    
+    @objc private func findFirstResponder(_ sender: Any) {
+        UIResponder._currentFirstResponder = self
     }
 }

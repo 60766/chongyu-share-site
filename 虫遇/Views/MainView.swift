@@ -12,11 +12,13 @@ struct MainView: View {
     // 获取安全区域
     var safeAreaInsets: EdgeInsets {
         if #available(iOS 15.0, *) {
-            // iOS 15及以上使用UIWindowScene.windows
-            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let window = windowScene.windows.first else {
-                return EdgeInsets()
-            }
+            // iOS 15及以上使用UIWindowScene
+            let windowScenes = UIApplication.shared.connectedScenes
+                .filter { $0.activationState == .foregroundActive }
+                .compactMap { $0 as? UIWindowScene }
+            
+            if let windowScene = windowScenes.first,
+               let window = windowScene.windows.first {
             let insets = window.safeAreaInsets
             return EdgeInsets(
                 top: insets.top,
@@ -24,6 +26,8 @@ struct MainView: View {
                 bottom: insets.bottom,
                 trailing: insets.right
             )
+            }
+            return EdgeInsets()
         } else {
             // iOS 15以下使用旧API
             let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow })

@@ -9,9 +9,6 @@ struct CommentView: View {
     // 评论数据
     let comment: DetailedCommentModel
     
-    // 所有评论数据，用于查找回复
-    var allComments: [DetailedCommentModel]? = nil
-    
     // 回调函数
     var onReply: (DetailedCommentModel) -> Void
     var onLike: (DetailedCommentModel) -> Void
@@ -22,21 +19,9 @@ struct CommentView: View {
     @State private var showOptions: Bool = false
     @State private var isPressed: Bool = false
     
-    // 是否是回复评论
-    private var isReply: Bool {
-        return comment.parentCommentId != nil
-    }
-    
-    // 查找当前评论的回复
-    private var replies: [DetailedCommentModel] {
-        guard let allComments = allComments else { return [] }
-        return allComments.filter { $0.parentCommentId == comment.id }
-    }
-    
     // 初始化函数
-    init(comment: DetailedCommentModel, allComments: [DetailedCommentModel]? = nil, onReply: @escaping (DetailedCommentModel) -> Void = { _ in }, onLike: @escaping (DetailedCommentModel) -> Void = { _ in }) {
+    init(comment: DetailedCommentModel, onReply: @escaping (DetailedCommentModel) -> Void = { _ in }, onLike: @escaping (DetailedCommentModel) -> Void = { _ in }) {
         self.comment = comment
-        self.allComments = allComments
         self.onReply = onReply
         self.onLike = onLike
         
@@ -134,19 +119,6 @@ struct CommentView: View {
                             }
                         }
                         
-                        // 如果是回复评论，显示回复对象
-                        if isReply {
-                            if let replyToName = comment.replyToName {
-                                Text("回复 @\(replyToName)")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.blue.opacity(0.8))
-                            } else if let replyToUsername = comment.replyToUsername {
-                                Text("回复 @\(replyToUsername)")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.blue.opacity(0.8))
-                            }
-                        }
-                        
                         // 评论时间
                         Text(timeAgoString(from: comment.datePosted))
                             .font(.system(size: 12))
@@ -176,8 +148,8 @@ struct CommentView: View {
                     .font(.system(size: 15))
                     .foregroundColor(
                         comment.isVirtualCharacter ? 
-                            .primary : 
-                            Color.primary.opacity(0.9)
+                            Color.primary.opacity(0.8) : 
+                            Color.primary.opacity(0.8)
                     )
                     .lineSpacing(4) // 优化行间距
                     .fixedSize(horizontal: false, vertical: true)
@@ -215,6 +187,12 @@ struct CommentView: View {
                     Button(action: {
                         hapticFeedback(style: .light)
                         onReply(comment)
+                        
+                        // 发送通知，让CommentInputView获取焦点并弹出键盘
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("FocusCommentInput"),
+                            object: nil
+                        )
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: "arrowshape.turn.up.left")
@@ -265,17 +243,7 @@ struct CommentView: View {
                         lineWidth: 0.5 // 极细的边框
                     )
             )
-            
-            // 显示回复评论
-            if !isReply && !replies.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(replies, id: \.id) { reply in
-                        CommentView(comment: reply, onReply: onReply, onLike: onLike)
-                            .padding(.leading, 24) // 缩进回复评论
-                    }
-                }
-                .padding(.top, 4)
-            }
+            // 移除阴影以实现更极简的设计
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
@@ -294,23 +262,20 @@ struct CommentView: View {
             Button(action: {
                 onReply(comment)
             }) {
-                Label("回复", systemImage: "arrowshape.turn.up.left")
+                Label("回复评论", systemImage: "arrowshape.turn.up.left")
+            }
+            
+            // 复制选项
+            Button(action: {
+                UIPasteboard.general.string = comment.content
+                hapticFeedback(style: .medium)
+            }) {
+                Label("复制内容", systemImage: "doc.on.doc")
             }
         }
-        .actionSheet(isPresented: $showOptions) {
-            ActionSheet(
-                title: Text("评论操作"),
-                message: nil,
-                buttons: [
-                    .default(Text(isLiked ? "取消点赞" : "点赞")) {
-                        toggleLike()
-                    },
-                    .default(Text("回复")) {
-                        onReply(comment)
-                    },
-                    .cancel(Text("取消"))
-                ]
-            )
+        .onTapGesture {
+            // 点击评论区域轻触反馈
+            hapticFeedback(style: .soft)
         }
     }
     

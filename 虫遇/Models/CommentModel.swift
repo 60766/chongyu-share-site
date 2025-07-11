@@ -21,7 +21,6 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
     // 评论回复相关
     var parentCommentId: UUID? = nil
     var replyToUsername: String? = nil
-    var replyToName: String? = nil // 被回复者的名称，用于显示
     var replies: [DetailedCommentModel] = []
     
     // 交互状态
@@ -40,7 +39,6 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
         characterID: String? = nil,
         parentCommentId: UUID? = nil,
         replyToUsername: String? = nil,
-        replyToName: String? = nil,
         replies: [DetailedCommentModel] = [],
         likes: Int = 0,
         isLikedByCurrentUser: Bool = false
@@ -54,7 +52,6 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
         self.characterID = characterID
         self.parentCommentId = parentCommentId
         self.replyToUsername = replyToUsername
-        self.replyToName = replyToName
         self.replies = replies
         self.likes = likes
         self.isLikedByCurrentUser = isLikedByCurrentUser
@@ -121,6 +118,27 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
     
     static func == (lhs: DetailedCommentModel, rhs: DetailedCommentModel) -> Bool {
         return lhs.id == rhs.id
+    }
+    
+    // MARK: - Debug Helpers
+    
+    /// 打印评论及其嵌套结构，帮助调试
+    func printStructure(indent: Int = 0) {
+        let indentation = String(repeating: "  ", count: indent)
+        print("\(indentation)📝 评论ID: \(id.uuidString.prefix(8)), 用户: \(username)")
+        
+        if let parentCommentId = parentCommentId {
+            print("\(indentation)  ↪️ 父评论ID: \(parentCommentId.uuidString.prefix(8))")
+        }
+        
+        if let replyToUsername = replyToUsername {
+            print("\(indentation)  ↪️ 回复给: \(replyToUsername)")
+        }
+        
+        if !replies.isEmpty {
+            print("\(indentation)  ⤵️ \(replies.count)条回复:")
+            replies.forEach { $0.printStructure(indent: indent + 1) }
+        }
     }
 }
 

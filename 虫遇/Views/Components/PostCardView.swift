@@ -52,6 +52,14 @@ class CommentLoader: ObservableObject {
             object: nil
         )
         
+        // 添加对角色回复生成失败的通知监听
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCharacterReplyGenerationFailed(_:)),
+            name: NSNotification.Name("CharacterReplyGenerationFailed"),
+            object: nil
+        )
+        
         print("📡 CommentLoader: 已注册PostCommentsUpdated和CharacterReplyGenerated通知监听")
     }
     
@@ -66,6 +74,12 @@ class CommentLoader: ObservableObject {
         NotificationCenter.default.removeObserver(
             self,
             name: NSNotification.Name("CharacterReplyGenerated"),
+            object: nil
+        )
+        
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSNotification.Name("CharacterReplyGenerationFailed"),
             object: nil
         )
         
@@ -90,18 +104,21 @@ class CommentLoader: ObservableObject {
         
         print("📣 CommentLoader: 收到评论更新通知，帖子ID: \(postIDString)")
         
-        // 检查是否与当前加载的帖子匹配
-        if let currentID = currentPostID, currentID == postID {
-            print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，即将刷新评论")
-            
-            // 在主线程执行UI更新
-            DispatchQueue.main.async {
+        // 在主线程执行UI更新
+        DispatchQueue.main.async {
+            // 检查是否与当前加载的帖子匹配
+            if let currentID = self.currentPostID, currentID == postID {
+                print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，即将刷新评论")
+                self.refreshComments()
+            } else {
+                print("ℹ️ CommentLoader: 评论更新通知与当前加载的帖子不匹配")
+                print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
+                print("  通知帖子ID: \(postIDString)")
+                
+                // 即使帖子ID不匹配，也尝试刷新当前帖子的评论
+                print("🔄 CommentLoader: 尝试刷新当前帖子评论，可能有角色回复")
                 self.refreshComments()
             }
-        } else {
-            print("ℹ️ CommentLoader: 评论更新通知与当前加载的帖子不匹配")
-            print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
-            print("  通知帖子ID: \(postIDString)")
         }
     }
     
@@ -116,16 +133,34 @@ class CommentLoader: ObservableObject {
             return
         }
         
-        print("📣 CommentLoader: 收到角色回复生成通知 - 帖子ID: \(postID), 角色ID: \(characterID)")
+        // 检查是否为邀请的角色评论
+        let isInvited = userInfo["isInvited"] as? Bool ?? false
+        
+        print("📣 CommentLoader: 收到角色回复生成通知 - 帖子ID: \(postID), 角色ID: \(characterID), 是否邀请: \(isInvited)")
         print("💬 回复内容: \"\(String(replyContent.prefix(50)))...\"")
         
         // 检查是否与当前加载的帖子匹配
         if let currentID = currentPostID, currentID.uuidString == postID {
-            print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，添加角色回复")
+            print("✅ CommentLoader: 帖子ID匹配当前加载的帖子")
             
             // 在主线程执行UI更新
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
+                
+                // 如果是邀请的角色评论，检查是否已经存在相同角色ID的评论
+                if isInvited {
+                    // 检查是否已经存在该角色的评论
+                    let existingComment = self.allComments.first { comment in
+                        comment.isVirtualCharacter && 
+                        comment.characterID == characterID &&
+                        comment.parentCommentId == nil // 顶级评论
+                    }
+                    
+                    if existingComment != nil {
+                        print("⚠️ CommentLoader: 已存在该角色的邀请评论，跳过添加")
+                        return
+                    }
+                }
                 
                 // 创建虚拟角色评论对象
                 let comment = DetailedCommentModel(
@@ -145,6 +180,39 @@ class CommentLoader: ObservableObject {
             }
         } else {
             print("ℹ️ CommentLoader: 角色回复通知与当前加载的帖子不匹配")
+            print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
+            print("  通知帖子ID: \(postID)")
+        }
+    }
+    
+    // 处理角色回复生成失败的通知
+    @objc private func handleCharacterReplyGenerationFailed(_ notification: Notification) {
+        // 提取通知中的帖子ID和错误信息
+        guard let userInfo = notification.userInfo,
+              let postID = userInfo["postID"] as? String,
+              let errorMessage = userInfo["error"] as? String else {
+            print("⚠️ CommentLoader: 收到角色回复生成失败通知，但缺少必要信息")
+            return
+        }
+        
+        print("📣 CommentLoader: 收到角色回复生成失败通知 - 帖子ID: \(postID)")
+        print("❌ 错误信息: \"\(errorMessage)\"")
+        
+        // 检查是否与当前加载的帖子匹配
+        if let currentID = currentPostID, currentID.uuidString == postID {
+            print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，显示错误信息")
+            
+            // 在主线程执行UI更新
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                
+                // 设置错误信息
+                self.errorMessage = "生成角色评论失败: \(errorMessage)"
+                
+                print("✅ CommentLoader: 已设置错误信息")
+            }
+        } else {
+            print("ℹ️ CommentLoader: 角色回复失败通知与当前加载的帖子不匹配")
             print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
             print("  通知帖子ID: \(postID)")
         }
@@ -2366,14 +2434,6 @@ struct PostCardView: View {
                 .padding(.vertical, 2)  // 从3减小到2，使整体更紧凑
                 .background(showComments ? DesignSystem.Colors.comment.opacity(0.1) : Color.clear)
                 .cornerRadius(8)
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            // 收藏按钮
-            Button(action: toggleBookmark) {
-                Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
-                    .font(.system(size: 16.0))  // 从18.0减小到16.0
-                    .foregroundColor(isBookmarked ? DesignSystem.Colors.bookmark : .gray)
             }
             .buttonStyle(PlainButtonStyle())
             

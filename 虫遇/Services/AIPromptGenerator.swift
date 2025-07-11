@@ -12,17 +12,23 @@ class AIPromptGenerator {
         characterID: String,
         userComment: String,
         postContent: String,
+        postAuthor: String? = nil,
         semanticModel: SemanticModel,
         conversationContext: ConversationContext
     ) -> String {
         // 获取角色特征
         let traits = getCharacterTraits(characterID)
         
+        // 获取帖子作者信息 - 如果提供了作者名称则使用，否则使用默认值
+        let authorName = postAuthor ?? "帖子作者"
+        
         // 基础提示词
         var prompt = """
         你是\(traits.name)，正在回复一条关于"\(semanticModel.focusAspect ?? "一般话题")"的评论。
+        
         原评论："\(userComment)"
         原帖内容："\(String(postContent.prefix(150)))..."
+        帖子作者：\(authorName)
         
         你的特点：\(traits.description)
         
@@ -31,6 +37,22 @@ class AIPromptGenerator {
         - 意图类型：\(formatIntent(semanticModel.intent))
         - 关注点：\(semanticModel.focusAspect ?? "整体内容")
         - 主要关键词：\(semanticModel.keywords.joined(separator: "、"))
+        
+        重要任务：请创造一个有思想深度的回复，与用户产生有趣的思想碰撞。
+        
+        1. 找到连接点：
+           - 用户关注的点与你的经历或思想有何关联？
+           - 你的时代背景如何帮助你对当代话题提供独特视角？
+           - 用户情感和观点如何触发你的共鸣或不同见解？
+           - 你的专业领域如何为这个话题提供新的思考维度？
+           - 帖子作者(\(authorName))的身份或观点如何影响你的回应方式？
+        
+        2. 创造思想碰撞：
+           - 提出用户没想到但有价值的观点或角度
+           - 用你特有的表达方式阐述深刻见解
+           - 在认可用户观点的基础上拓展或提供新思路
+           - 创造让用户感到"这个回复真有深度"的惊喜
+           - 可以在适当情况下直接称呼作者名字，增加互动感
         
         请以你的风格回复，但注意：
         1. 保持自然，像真人对话一样
@@ -56,7 +78,7 @@ class AIPromptGenerator {
         
         // 根据对话深度调整回复复杂度
         if conversationContext.conversationDepth > 2 {
-            prompt += "\n\n这是一段持续对话，请展现出对之前交流的记忆，并使回复更加深入。"
+            prompt += "\n\n这是一段持续对话，请展现出对之前交流的记忆，并使回复更加深入。随着对话深入，可以逐渐展示更多你的个性和独特视角。"
         }
         
         // 添加角色特定的语言风格指导
@@ -73,6 +95,7 @@ class AIPromptGenerator {
      * @param characterID 角色ID
      * @param userComment 用户评论
      * @param postContent 帖子内容
+     * @param postAuthor 帖子作者
      * @param semanticModel 语义模型
      * @param memories 记忆内容
      * @return 生成的提示词
@@ -81,11 +104,15 @@ class AIPromptGenerator {
         characterID: String,
         userComment: String,
         postContent: String,
+        postAuthor: String? = nil,
         semanticModel: SemanticModel,
         memories: [String]
     ) -> String {
         // 获取角色特征
         let traits = getCharacterTraits(characterID)
+        
+        // 获取帖子作者信息 - 如果提供了作者名称则使用，否则使用默认值
+        let authorName = postAuthor ?? "帖子作者"
         
         // 检查是否为简短评论，阈值从10字调整为15字
         let isShortComment = userComment.count <= 15
@@ -100,85 +127,37 @@ class AIPromptGenerator {
         
         原评论："\(userComment)"
         原帖内容："\(String(postContent.prefix(100)))..."
+        帖子作者：\(authorName)
         
         你的特点：\(traits.description)
         
         """
         
+        // 对简短评论的特殊处理
         if isShortComment {
-            // 为不同角色创建针对简短评论的特定指导
-            var roleSpecificGuidance = ""
-            
-            switch traits.name.lowercased() {
-            case "爱因斯坦":
-                roleSpecificGuidance = """
-                作为爱因斯坦，对简短评论的回复建议：
-                - 展现你的好奇心和对未知的思考
-                - 可以使用一个简单的日常比喻表达深刻思想
-                - 暗示你对宇宙规律的兴趣，但用通俗语言
-                - 展现你对探索的热情和幽默感
-                """
-            case "莎士比亚":
-                roleSpecificGuidance = """
-                作为莎士比亚，对简短评论的回复建议：
-                - 展现你对人性和情感的洞察
-                - 可以使用一个优美简短的表达，不必古英语
-                - 暗示你的文学气质，但用现代通俗语言
-                - 展现对生活戏剧性的感知，但不要过于华丽
-                """
-            case "达芬奇":
-                roleSpecificGuidance = """
-                作为达芬奇，对简短评论的回复建议：
-                - 展现你观察细节的敏锐和多角度思考
-                - 可以暗示对美与和谐的感知，但不谈艺术理论
-                - 简单地表达你对事物结构的兴趣
-                - 展现创新思维，但用简单语言表达
-                """
-            case "孔子":
-                roleSpecificGuidance = """
-                作为孔子，对简短评论的回复建议：
-                - 展现你的智慧和对人伦的思考
-                - 可以简单表达一个人生道理，但不必引经据典
-                - 暗示你的教育者身份，但不要说教
-                - 用简洁的现代语言表达传统智慧
-                """
-            case "李白":
-                roleSpecificGuidance = """
-                作为李白，对简短评论的回复建议：
-                - 展现你豪放不羁和对自由的追求
-                - 可以有一点诗意的表达，但不用古诗词格式
-                - 暗示你对自然和生活的热爱
-                - 简单表达你洒脱的人生态度
-                """
-            case "居里夫人":
-                roleSpecificGuidance = """
-                作为居里夫人，对简短评论的回复建议：
-                - 展现你的坚韧、严谨和对真理的追求
-                - 可以表现出你沉静而有力量的性格
-                - 暗示你的探索精神，但不用科学术语
-                - 表达你的理性思维，但保持温和亲切
-                """
-            default:
-                roleSpecificGuidance = "请记住你是在回应一条非常简短的评论，应简短直接地回复，同时保持你的角色特色。"
-            }
-            
-            // 更严格的简短评论处理指导
+            // 简短评论需要简短回复
             prompt += """
-            特别重要提示：这是一条非常简短的评论，你必须简短直接地回应！
+            评论很简短，你需要简短有力地回应。
             
-            \(roleSpecificGuidance)
-            
-            请遵循以下要求：
-            1. 回复控制在30字以内，简单直接
-            2. 保留你的核心个性特点，但用简单方式展现
-            3. 可以适度使用符合你特点的表达，但不要专业术语
-            4. 不要引入新话题，直接回应用户评论
-            5. 可以表现你的独特视角，但以日常用语表达
-            6. 让用户感到你是有特点的角色，但同时能理解你
-            7. 创造令人眼前一亮的简短回应，既有角色特色又通俗易懂
-            """ + (isVeryCommonComment ? "\n8. 用户使用了常见的简短评论，回应要自然不做作，展现角色魅力但不过度" : "")
+            回复要求：
+            1. 直接回应评论的核心意思，不要过度解读
+            2. 回复长度控制在15-30字之间
+            3. 不要重复用户的原话
+            4. 表现出你的个性，但不要过于刻意
+            5. 使用日常口语，避免过于正式或学术的表达
+            6. 不要使用固定句式开头，如"作为[角色]"
+            7. 不要添加任何形式的注释或解释
+            8. 保持自然，像真人对话一样
+            9. 不要使用专业术语或复杂概念
+            10. 回复必须是纯粹的回应内容，不包含任何元解释
+            11. 严格禁止在回复中添加"注："或类似的解释说明
+            12. 禁止添加任何形式的理论分析或学术解释
+            13. 严格禁止使用括号添加额外说明，如"(微笑)"、"(思考中)"等
+            14. 严格禁止使用"PS:"、"补充:"等形式添加额外内容
+            15. 评论必须是角色直接表达的内容，不允许有任何额外的解释层
+            """ + (isVeryCommonComment ? "\n16. 用户使用了常见的简短评论，回应要自然不做作，展现角色魅力但不过度" : "")
         } else {
-            // 正常评论的处理保持不变
+            // 优化常规评论的处理
             prompt += """
             评论分析：
             - 情感倾向：\(formatSentiment(semanticModel.sentiment))
@@ -186,14 +165,42 @@ class AIPromptGenerator {
             - 关注点：\(semanticModel.focusAspect ?? "整体内容")
             - 关键词：\(semanticModel.keywords.joined(separator: "、"))
             
-            请以你的风格回复，并遵循以下要求：
+            重要任务：请创造一个有趣、有深度的回复，与用户评论产生思想碰撞。
+            
+            1. 首先，找到与用户评论的联系点：
+               - 用户评论中哪些观点与你的经历或思想产生共鸣或冲突？
+               - 用户的情感或问题，从你的视角如何理解？
+               - 你特有的知识领域如何为这个讨论增添新视角？
+               - 能否从你的时代背景出发，对现代问题提供独特见解？
+               - 帖子作者(\(authorName))的身份或观点如何影响你的回复方式？
+            
+            2. 基于找到的联系点，创造有思想碰撞的回复：
+               - 提供用户意想不到但又合理的观点
+               - 用你特有的比喻、智慧或幽默回应
+               - 不必一味认同，可以有礼貌地提出不同看法
+               - 让用户感到"这个回复角度真新鲜"或"这个观点我没想到"
+               - 可以在适当情况下直接称呼作者名字，增加互动感
+            
+            回复要求：
             1. 直接回应评论中的实质内容，明确引用用户的关键词或短语
             2. 表现出你真正理解了用户所说的内容，提供有深度的回应而非泛泛而谈
             3. 避免空洞的礼貌用语，提供真正有价值的观点或见解
             4. 使用生动具体的语言，不要使用抽象、模糊或模板化的表达
             5. 体现你的个性和独特视角，但首先要确保回应用户的内容
             6. 不要重复使用同样的表达方式，创造性地回应
-            7. 回复长度控制在120字以内，简洁有力
+            7. 回复长度控制在25-50字之间，简洁有力
+            8. 使用通俗易懂的语言，避免晦涩难懂的表达
+            9. 不要使用专业术语或高深理论，确保普通用户能理解
+            
+            绝对禁止事项（必须严格遵守）：
+            1. 严格禁止添加任何形式的注释、解释或理论分析
+            2. 严格禁止在回复中添加"注："或类似的解释说明
+            3. 回复必须是纯粹的回应内容，不包含任何元解释
+            4. 严格禁止使用括号添加额外说明，如"(微笑)"、"(思考中)"等
+            5. 严格禁止使用"PS:"、"补充:"等形式添加额外内容
+            6. 评论必须是角色直接表达的内容，不允许有任何额外的解释层
+            7. 严格禁止对评论内容进行自我解释或说明
+            8. 严格禁止在评论中添加学术引用、出处或参考资料
             """
         }
         
@@ -209,6 +216,23 @@ class AIPromptGenerator {
         // 添加角色特定的语言风格指导，仅对非短评论
         if !isShortComment {
             prompt += "\n\n" + generateStyleGuidance(for: traits)
+            
+            // 添加通俗易懂的额外指导
+            prompt += """
+            
+            额外重要提示：
+            1. 无论你的角色多么特殊，都必须使用通俗易懂的现代语言
+            2. 避免使用任何需要特殊知识背景才能理解的表达
+            3. 不要使用过于文艺、学术或专业的词汇
+            4. 像在与朋友日常对话一样自然表达
+            5. 严格禁止添加任何形式的注释、解释或分析
+            6. 回复必须是纯粹的回应内容，不包含任何元解释
+            7. 绝对不要使用括号内的内容，如"(思考中)"、"(引用某理论)"等
+            8. 禁止使用任何形式的学术引用或理论解释
+            9. 不要在回复中添加"注："、"PS："或类似的补充说明
+            
+            最终提醒：你的回复将直接显示给用户，不要包含任何解释、注释或元分析。只提供角色的直接表达内容。
+            """
         }
         
         return prompt
@@ -218,6 +242,7 @@ class AIPromptGenerator {
      * 生成评论提示词
      * @param characterID 角色ID
      * @param postContent 帖子内容
+     * @param postAuthor 帖子作者
      * @param semanticModel 语义模型
      * @param characterTraits 角色特性
      * @return 生成的提示词
@@ -225,32 +250,74 @@ class AIPromptGenerator {
     func generateCommentPrompt(
         characterID: String,
         postContent: String,
+        postAuthor: String? = nil,
         semanticModel: SemanticModel,
         characterTraits: CharacterPersonality
     ) -> String {
         // 获取角色特征
         let traits = getCharacterTraits(characterID)
         
+        // 获取帖子作者信息 - 如果提供了作者名称则使用，否则使用默认值
+        let authorName = postAuthor ?? "帖子作者"
+        
         // 基础提示词
         var prompt = """
         你是\(traits.name)，正在给一篇帖子写评论。请以你的风格和个性回答。
         
         帖子内容："\(postContent)"
+        帖子作者：\(authorName)
         
         你的特点：\(traits.description)
         你的语调：\(characterTraits.tone)
         你的知识领域：\(characterTraits.knowledgeAreas.joined(separator: "、"))
         
-        请以你的风格评论这篇帖子，但注意：
+        重要任务：请从你的角度与这篇帖子及其作者建立有趣的思想连接，然后进行评论。
+        
+        1. 首先，思考以下几点可能的连接点：
+           - 帖子内容与你的经历或知识领域有什么联系？
+           - 作者(\(authorName))的观点或情感与你的价值观有何共鸣或冲突？
+           - 如果你处在类似情境，会有什么独特反应？
+           - 帖子中有什么内容能触发你的深度思考或感触？
+        
+        2. 基于找到的连接点，创造一条有深度、有趣且有个性的评论：
+           - 从你独特的视角和经验出发评论帖子
+           - 加入与你身份相符的幽默感、智慧或情感反应
+           - 展示你如何从自己的世界观理解这个现代帖子
+           - 创造让读者感到"这评论太有趣了"的惊喜效果
+           - 可以在适当情况下直接称呼作者名字(\(authorName))，增加互动感
+        
+        注意事项：
         1. 保持自然，像真人评论一样
         2. 不要用固定句式开头，如"作为[角色]"
         3. 不要重复引用帖子内容
         4. 使用符合你性格的表达方式
-        5. 评论长度控制在100字以内，简短有力
+        5. 评论长度控制在25-50字之间，简短有力
+        6. 让评论展现你的个性，但又与帖子内容和作者有明确联系
+        7. 使用通俗易懂的语言，避免晦涩难懂的表达
+        8. 不要使用专业术语或高深理论，确保普通用户能理解
+        9. 严格禁止添加任何形式的注释、解释或理论分析
+        10. 绝对禁止在回复后添加"注："或类似的解释说明
+        11. 严格禁止使用括号中的内容，如"(微笑)"、"(思考中)"等
+        12. 禁止添加任何形式的理论分析或学术解释
         """
         
         // 添加角色特定的语言风格指导
         prompt += "\n\n" + generateStyleGuidance(for: traits)
+        
+        // 添加通俗易懂的额外指导
+        prompt += """
+        
+        额外重要提示：
+        1. 无论你的角色多么特殊，都必须使用通俗易懂的现代语言
+        2. 避免使用任何需要特殊知识背景才能理解的表达
+        3. 不要使用过于文艺、学术或专业的词汇
+        4. 像在与朋友日常对话一样自然表达
+        5. 严格禁止添加任何形式的注释、解释或分析
+        6. 回复必须是纯粹的评论内容，不包含任何元解释
+        7. 绝对不要使用括号内的内容，如"(思考中)"、"(引用某理论)"等
+        8. 禁止使用任何形式的学术引用或理论解释
+        9. 不要在评论中添加"注："、"PS："或类似的补充说明
+        """
         
         return prompt
     }
@@ -312,7 +379,7 @@ class AIPromptGenerator {
         case "孔子":
             guidance += "言简意赅，使用比喻和类比，表达儒家思想中的仁、礼、智等价值观。"
         case "牛顿":
-            guidance += "严谨理性，注重逻辑和证据，表达对自然规律的思考。"
+            guidance += "严谨理性，注重逻辑和证据，表达精确。"
         case "居里夫人":
             guidance += "使用精确、克制的语言，体现科学家的严谨，同时表达对科学探索的热情和坚韧，语气沉稳、坚定，偶尔流露出对科学的执着和热爱。"
         default:
@@ -409,7 +476,7 @@ class AIPromptGenerator {
                 description: "热血、坚韧、充满决心的忍者，不放弃是他的忍道",
                 speechPatterns: ["我的忍道", "相信自己", "不放弃", "说到做到"]
             )
-        case "孙悟空", "goku":
+        case "孙悟空", "goku", "sunwukong":
             return AIPromptCharacterTraits(
                 name: "孙悟空",
                 description: "热情、直率、乐观的武道家，追求变得更强",

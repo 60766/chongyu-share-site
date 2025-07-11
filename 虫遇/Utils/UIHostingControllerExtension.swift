@@ -8,19 +8,20 @@ import UIKit
 extension UIHostingController {
     
     /**
-     * 完全禁用安全区域（增强版）
-     * 通过递归查找子视图并设置safeAreaInsets为零实现
+     * 增强版禁用安全区域
+     * 递归处理所有视图，确保完全禁用安全区域
      */
     func disableSafeAreaEnhanced() {
-        // 递归遍历所有子视图并禁用安全区域
-        if let viewClass = NSClassFromString("_UIRemoteKeyboardWindow") {
-            // 兼容iOS 15+的窗口获取方式
+        // 处理所有窗口
+        func process(viewClass: AnyClass) {
             if #available(iOS 15.0, *) {
+                // 使用新API获取窗口场景
                 for scene in UIApplication.shared.connectedScenes {
-                    if let windowScene = scene as? UIWindowScene {
+                    if scene.activationState == .foregroundActive,
+                       let windowScene = scene as? UIWindowScene {
                         for window in windowScene.windows {
                             if type(of: window) != viewClass {
-                                process(view: window)
+                                process(viewClass: type(of: window))
                             }
                         }
                     }
@@ -29,7 +30,7 @@ extension UIHostingController {
                 // 旧版iOS的窗口获取方式
                 for window in UIApplication.shared.windows {
                     if type(of: window) != viewClass {
-                        process(view: window)
+                        process(viewClass: type(of: window))
                     }
                 }
             }
@@ -57,28 +58,26 @@ extension UIHostingController {
     /**
      * 递归处理视图及其子视图的安全区域
      */
-    private func process(view: UIView) {
-        // 处理当前视图
-        if let viewClass = object_getClass(view) {
-            let selector = #selector(getter: UIView.safeAreaInsets)
-            if class_getInstanceMethod(viewClass, selector) != nil {
-                let key = "safeAreaProcessed_\(viewClass)"
-                if objc_getAssociatedObject(view, key) == nil {
-                    let originalImpl = class_replaceMethod(viewClass, selector, imp_implementationWithBlock({ _ in
-                        UIEdgeInsets.zero
-                    } as @convention(block) (UIView) -> UIEdgeInsets), nil)
-                    
-                    objc_setAssociatedObject(view, key, true, .OBJC_ASSOCIATION_RETAIN)
-                    if let original = originalImpl {
-                        objc_setAssociatedObject(view, "\(key)_original", original, .OBJC_ASSOCIATION_RETAIN)
-                    }
+    private func process(viewClass: AnyClass) {
+        // 处理指定的视图类
+        let selector = #selector(getter: UIView.safeAreaInsets)
+        if class_getInstanceMethod(viewClass, selector) != nil {
+            let key = "safeAreaProcessed_\(viewClass)"
+            
+            // 检查是否已经处理过这个类
+            if objc_getAssociatedObject(viewClass, key) == nil {
+                let originalImpl = class_replaceMethod(viewClass, selector, imp_implementationWithBlock({ _ in
+                    UIEdgeInsets.zero
+                } as @convention(block) (UIView) -> UIEdgeInsets), nil)
+                
+                // 标记这个类已经被处理过
+                objc_setAssociatedObject(viewClass, key, true, .OBJC_ASSOCIATION_RETAIN)
+                
+                // 保存原始实现以便可能的恢复
+                if let original = originalImpl {
+                    objc_setAssociatedObject(viewClass, "\(key)_original", original, .OBJC_ASSOCIATION_RETAIN)
                 }
             }
-        }
-        
-        // 递归处理所有子视图
-        for subview in view.subviews {
-            process(view: subview)
         }
     }
     
@@ -215,7 +214,8 @@ extension View {
     }
     
     /**
-     * 设置 prefersHomeIndicatorAutoHidden 方法覆盖
+     * 设置 Home Indicator 自动隐藏的运行时方法
+     * 为任何UIViewController添加prefersHomeIndicatorAutoHidden方法
      */
     @objc static func setupPrefersHomeIndicatorAutoHidden(for viewController: UIViewController) {
         // 检查是否已经是自定义子类

@@ -1,7 +1,13 @@
 import SwiftUI
 import Combine
 import UIKit // 如果还没有导入
-// 使用ColorExtensions提供的Color(hex:)方法
+// 导入数据模型
+import SwiftData
+
+// 注意: TimeSpaceParticleView, TimeSpaceRippleView 和 SwipeDirection 
+// 定义在 TimeSpaceTransitionEffect.swift 文件中
+// 虫遇项目中所有视图组件都在同一模块内，可以直接引用
+// 不需要特殊导入语句，但确保该文件是项目的编译目标一部分
 
 // 导入NavigationHelper
 // 由于无法直接导入Utils模块，我们在此处定义所需的辅助类
@@ -105,185 +111,11 @@ private struct FullscreenScrollOffsetKey: PreferenceKey {
     }
 }
 
-// 定义滑动方向枚举
-enum SwipeDirection {
-    case left
-    case right
-    case none
-}
-
 // 定义显示状态枚举，用于处理视图转换
 private enum DisplayState {
     case current     // 当前显示的动态
     case transitioning(direction: SwipeDirection, progress: CGFloat) // 正在过渡
     case nextPagePreview  // 下一页预览
-}
-
-/**
- * 穿越时空粒子效果视图
- * 在页面转换过程中显示，增强穿越时空的主题感
- */
-struct TimeSpaceParticleView: View {
-    @State private var phase: CGFloat = 0
-    let direction: SwipeDirection
-    
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // 背景层 - 仍然使用协调的色彩，但略微提高对比度
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.92, green: 0.94, blue: 0.98, opacity: 0.85),  // 淡蓝白色
-                        Color(red: 0.94, green: 0.92, blue: 0.97, opacity: 0.85)   // 淡紫白色
-                    ]),
-                    startPoint: direction == .left ? .trailing : .leading,
-                    endPoint: direction == .left ? .leading : .trailing
-                )
-                
-                // 粒子层 - 增加粒子数量，提高不透明度和尺寸
-                ForEach(0..<45, id: \.self) { index in
-                    Circle()
-                        .fill(Color(red: 0.6, green: 0.7, blue: 0.95, opacity: Double.random(in: 0.3...0.6)))
-                        .frame(width: CGFloat.random(in: 3...10))
-                        .position(
-                            x: CGFloat.random(in: 0...geometry.size.width),
-                            y: CGFloat.random(in: 0...geometry.size.height)
-                        )
-                        .offset(x: offsetForIndex(index, width: geometry.size.width))
-                        .animation(
-                            Animation.linear(duration: Double.random(in: 0.4...0.8))
-                                .repeatForever(autoreverses: false),
-                            value: phase
-                        )
-                }
-                
-                // 光线效果 - 增强光线效果，增加数量和不透明度
-                ForEach(0..<15, id: \.self) { index in
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    .clear, 
-                                    Color(red: 0.65, green: 0.7, blue: 0.95, opacity: 0.45), 
-                                    .clear
-                                ]),
-                                startPoint: direction == .left ? .trailing : .leading,
-                                endPoint: direction == .left ? .leading : .trailing
-                            )
-                        )
-                        .frame(width: CGFloat.random(in: 100...350), height: CGFloat.random(in: 1.5...3))
-                        .rotationEffect(.degrees(Double.random(in: -15...15)))
-                        .position(
-                            x: CGFloat.random(in: 0...geometry.size.width),
-                            y: CGFloat.random(in: 0...geometry.size.height)
-                        )
-                        .offset(x: offsetForIndex(index + 40, width: geometry.size.width) * 1.5)
-                        .animation(
-                            Animation.linear(duration: Double.random(in: 0.5...0.9))
-                                .repeatForever(autoreverses: false),
-                            value: phase
-                        )
-                }
-                
-                // 方向指示箭头 - 增强可见度
-                Image(systemName: direction == .left ? "chevron.left" : "chevron.right")
-                    .font(.system(size: 40, weight: .light))
-                    .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.95, opacity: 0.8))
-                    .offset(x: direction == .left ? -30 : 30)
-                    .opacity(phase == 1.0 ? 0.9 : 0.6)
-                    .animation(
-                        Animation.easeInOut(duration: 0.6)
-                            .repeatForever(autoreverses: true),
-                        value: phase
-                    )
-            }
-            .onAppear {
-                // 使用异步调用避免在视图更新过程中修改状态
-                DispatchQueue.main.async {
-                    self.phase = 1.0
-                }
-            }
-            .drawingGroup() // 使用离屏渲染提高性能
-        }
-        .edgesIgnoringSafeArea(.all)
-    }
-    
-    // 根据方向计算偏移量
-    private func offsetForIndex(_ index: Int, width: CGFloat) -> CGFloat {
-        let baseOffset = direction == .left ? width * 2 : -width * 2
-        return phase * baseOffset
-    }
-}
-
-/**
- * 时空波纹效果视图
- * 作为备选效果，模拟穿越时空时的空间波纹
- */
-struct TimeSpaceRippleView: View {
-    @State private var animating = false
-    let direction: SwipeDirection
-    
-    var body: some View {
-        ZStack {
-            // 背景层 - 保持协调的色彩，略微增强对比度
-            Color(red: 0.93, green: 0.95, blue: 0.98, opacity: 0.9)
-                .edgesIgnoringSafeArea(.all)
-            
-            // 波纹效果 - 增强波纹的可见度
-            ForEach(0..<4, id: \.self) { index in
-                Circle()
-                    .stroke(Color(red: 0.6, green: 0.7, blue: 0.95, opacity: 0.3 - Double(index) * 0.04), lineWidth: 2.5)
-                    .scaleEffect(animating ? 1 + CGFloat(index) * 0.25 : 0.2)
-                    .opacity(animating ? 0 : 0.7)
-                    .animation(
-                        Animation.easeOut(duration: 0.8)
-                            .repeatForever(autoreverses: false)
-                            .delay(Double(index) * 0.2),
-                        value: animating
-                    )
-            }
-            
-            // 中心光效 - 增强光晕效果
-            Circle()
-                .fill(
-                    RadialGradient(
-                        gradient: Gradient(colors: [
-                            Color(red: 0.65, green: 0.75, blue: 0.95, opacity: 0.7), 
-                            .clear
-                        ]),
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 140
-                    )
-                )
-                .frame(width: 100, height: 100)
-                .opacity(animating ? 0.6 : 0.3)
-                .animation(
-                    Animation.easeInOut(duration: 0.8)
-                        .repeatForever(autoreverses: true),
-                    value: animating
-                )
-            
-            // 方向指示 - 增强指示箭头的可见度
-            Image(systemName: direction == .left ? "chevron.left" : "chevron.right")
-                .font(.system(size: 40, weight: .medium))
-                .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.9, opacity: 0.8))
-                .offset(x: direction == .left ? -30 : 30)
-                .opacity(animating ? 0.9 : 0.6)
-                .animation(
-                    Animation.easeInOut(duration: 0.6)
-                        .repeatForever(autoreverses: true),
-                    value: animating
-                )
-        }
-        .onAppear {
-            // 使用异步调用避免在视图更新过程中修改状态
-            DispatchQueue.main.async {
-                self.animating = true
-            }
-        }
-        .drawingGroup() // 使用离屏渲染提高性能
-    }
 }
 
 /**
@@ -296,7 +128,7 @@ struct FullscreenPostDetailView: View {
     
     // 回调函数
     var onDismiss: (() -> Void)?
-    var onLike: ((UserCommentModel) -> Void)?
+    var onLike: ((DetailedCommentModel) -> Void)?
     var onReport: (() -> Void)?
     var onShare: (() -> Void)?
     // 添加获取上一个和下一个帖子的回调
@@ -313,6 +145,9 @@ struct FullscreenPostDetailView: View {
     @State private var isTransitioning: Bool = false
     @State private var displayState: DisplayState = .current
     
+    // 添加滚动状态变量
+    @State private var isScrolled: Bool = false
+    
     // 双缓冲显示技术变量 - 用于过渡过程中显示下一页内容
     @State private var nextPagePost: UserPostModel? = nil
     @State private var nextPageVisible: Bool = false
@@ -324,8 +159,9 @@ struct FullscreenPostDetailView: View {
     // 添加新内容状态变量
     @State private var showAddContentView: Bool = false
     @State private var isLastPost: Bool = false
+    @State private var isFirstPost: Bool = false
     
-    // 边界状态变量
+    // 状态变量
     @State private var hasNextPost: Bool = true
     @State private var hasPrevPost: Bool = true
     
@@ -355,11 +191,22 @@ struct FullscreenPostDetailView: View {
     @State private var isWormholeDragging: Bool = false
     @State private var showWormholeSwipeIndicator: Bool = false
     
+    // 自定义时空特效状态
+    @State private var showCustomTimeSpaceEffect: Bool = false
+    
+    // 添加虫洞共鸣的状态变量
+    @State private var selectedSituation: String = "寻找答案"
+    @State private var selectedExpectation: String = "新视角"
+    @State private var situations = ["寻找答案", "做决定", "需要灵感", "思考人生"]
+    @State private var expectations = ["被看见", "新视角", "实用建议", "共鸣与安慰"]
+    @State private var explorationKeyword: String = ""
+    @State private var isDirecctedMode: Bool = false
+    
     // 初始化方法
     init(
         post: UserPostModel, 
         onDismiss: (() -> Void)? = nil, 
-        onLike: ((UserCommentModel) -> Void)? = nil,
+        onLike: ((DetailedCommentModel) -> Void)? = nil,
         onReport: (() -> Void)? = nil,
         onShare: (() -> Void)? = nil,
         onNextPost: ((UUID) -> UserPostModel?)? = nil,
@@ -711,28 +558,44 @@ struct FullscreenPostDetailView: View {
                 }
                 
                 // 主内容视图
-            ScrollView {
-                VStack(spacing: 0) {
-                    // 顶部导航栏
-                    makeTopBar()
-                    
-                    // 帖子内容
-                    makePostContent()
-                    
-                    // 帖子互动栏
-                    makeInteractionBar()
-                    
-                    // 分隔线
-                    makeContentDivider()
-                    
-                    // 评论区
-                    makeCommentsSection()
-                        .id("comments")
-                }
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // 顶部导航栏
+                        makeTopBar()
+                        
+                        // 帖子内容区域
+                        makePostContent()
+                        
+                        // 帖子互动栏
+                        makeInteractionBar()
+                        
+                        // 分隔线
+                        makeContentDivider()
+                        
+                        // 评论区
+                        makeCommentsSection()
+                            .id("comments")
+                    }
+                    .background(
+                        // 使用GeometryReader检测滚动
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: FullscreenScrollOffsetKey.self,
+                                value: proxy.frame(in: .named("scrollView")).minY
+                            )
+                        }
+                    )
                     // 添加底部安全区域内边距，确保内容不被输入框遮挡
                     .safeAreaInset(edge: .bottom) {
-                        // 输入框占位区域，调整高度从40减少为40
-                        Color.clear.frame(height: 40)
+                        // 输入框占位区域，调整高度从40减少为35
+                        Color.clear.frame(height: 35)
+                    }
+                }
+                .coordinateSpace(name: "scrollView")
+                .onPreferenceChange(FullscreenScrollOffsetKey.self) { value in
+                    // 当滚动位置小于-10时设置为已滚动状态
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isScrolled = value < -10
                     }
                 }
                 .offset(x: dragOffset)
@@ -742,7 +605,14 @@ struct FullscreenPostDetailView: View {
                      1.0 - min(0.7, abs(dragOffset) / UIScreen.main.bounds.width)) 
                     : 1.0)
                 .zIndex(0) // 主内容始终在最上层
-            }
+            
+            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: dragOffset)
+            .wechatStyleImageViewer(
+                isPresented: $showingExpandedImage,
+                images: viewModel.post.images,
+                initialIndex: selectedImageIndex
+            )
+            
             // 添加水平滑动手势
             .simultaneousGesture(
                 // 增加最小滑动距离要求，避免微小移动触发手势
@@ -814,8 +684,8 @@ struct FullscreenPostDetailView: View {
                                                                 // 预加载图片和评论
                                                                 Task { 
                                                                     await Task.yield() // 让UI优先更新
-                                                                    await preloadImagesForPostAsync(nextPost)
-                                                                    await preloadCommentsForPostAsync(nextPost)
+                                                                    _ = await preloadImagesForPostAsync(nextPost)
+                                                                    _ = await preloadCommentsForPostAsync(nextPost)
                                                                 }
                                                             }
                                                         }
@@ -831,8 +701,8 @@ struct FullscreenPostDetailView: View {
                                                                 // 预加载图片和评论
                                                                 Task {
                                                                     await Task.yield() // 让UI优先更新
-                                                                    await preloadImagesForPostAsync(prevPost)
-                                                                    await preloadCommentsForPostAsync(prevPost)
+                                                                    _ = await preloadImagesForPostAsync(prevPost)
+                                                                    _ = await preloadCommentsForPostAsync(prevPost)
                                                                 }
                                                             }
                                                         }
@@ -1029,20 +899,36 @@ struct FullscreenPostDetailView: View {
                             // 处理右滑动作
                             print("⭐️ 处理普通右滑动作")
                             
+                            // 检查是否为第一篇帖子，如果是也显示探索虫洞深处页面
+                            if isFirstPost {
+                                print("⭐️ 第一篇帖子右滑，显示虫洞探索页面")
+                                
+                                // 添加振动反馈
+                                let feedback = UIImpactFeedbackGenerator(style: .medium)
+                                feedback.impactOccurred()
+                                
+                                // 显示虫洞探索页面
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    dragOffset = 0
+                                    showAddContentView = true
+                                }
+                                return
+                            }
+                            // 对于非首篇帖子，保持原有的向前翻页逻辑
                             // 直接尝试获取并显示上一篇帖子，简化决策
-                            if let onPrevPost = onPrevPost, let directPrevPost = onPrevPost(viewModel.post.id) {
+                            else if let onPrevPost = onPrevPost, let directPrevPost = onPrevPost(viewModel.post.id) {
                                 print("⭐️ 使用上一篇帖子: \(directPrevPost.id)")
                                 let generator = UIImpactFeedbackGenerator(style: .light)
                                 generator.impactOccurred()
                                 performPageTransition(direction: .right, nextPost: directPrevPost, velocity: speedAbsolute)
-                            } 
+                            }
                             // 如果没有找到上一篇但有缓存
                             else if let prevPost = nextPagePost {
                                 print("⭐️ 使用缓存的上一篇帖子: \(prevPost.id)")
                                 let generator = UIImpactFeedbackGenerator(style: .light)
                                 generator.impactOccurred()
                                 performPageTransition(direction: .right, nextPost: prevPost, velocity: speedAbsolute)
-                            } 
+                            }
                             // 没有上一篇
                             else {
                                 print("⭐️ 没有上一篇帖子，恢复原位")
@@ -1099,7 +985,7 @@ struct FullscreenPostDetailView: View {
                         }
                     }
                     
-                    VStack(spacing: 0) {
+                    VStack(alignment: .center, spacing: 0) {
                         // 顶部区域 - 使用ZStack而不是HStack进行绝对定位
                         ZStack(alignment: .center) {
                             // 透明背景确保布局稳定
@@ -1128,25 +1014,26 @@ struct FullscreenPostDetailView: View {
                         Spacer()
                             .frame(minHeight: 0)
                         
-                        // 顶部间距 - 大幅增加空间
+                        // 顶部间距 - 保持原有间距
                         Spacer()
                             .frame(height: UIScreen.main.bounds.height * 0.05)
                         
-                        // 黑洞主视觉 - 进一步减小高度
+                        // 黑洞主视觉 - 保持原有高度
                         BlackHoleView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: UIScreen.main.bounds.height * 0.38)  // 增大黑洞视觉比例
+                            .frame(height: UIScreen.main.bounds.height * 0.38)
                             .padding(.bottom, 16)
+                            .frame(width: UIScreen.main.bounds.width) // 确保黑洞视图宽度充满屏幕
                         
-                        // 删除原有的两行说明文字
-                        
-                        // 使用灵活的Spacer自动分配空间
+                        // 固定高度的Spacer，保持原有间距
                         Spacer()
-                            .frame(minHeight: 0, idealHeight: UIScreen.main.bounds.height * 0.04)
+                            .frame(height: UIScreen.main.bounds.height * 0.04)
                         
-                        // 将说明文字移到按钮上方，并添加视觉增强效果
+                        // 文字提示和选择组件的容器 - 使用固定位置
                         ZStack {
-                            // 背景轻微高亮 - 优化为渐变并添加精致的边框
+                            // 文字内容 - 仅在非虫洞共鸣时显示
+                            ZStack {
+                                // 背景轻微高亮
                             RoundedRectangle(cornerRadius: 15)
                                 .fill(
                                     LinearGradient(
@@ -1174,83 +1061,76 @@ struct FullscreenPostDetailView: View {
                                 )
                                 .frame(width: 332, height: 32)
                             
-                            // 文字内容 - 优化字重和透明度
+                                // 文字内容
                             Text("每种内容类型将带你进入不同的时空交流维度")
-                                .font(.system(size: 13, weight: .light))
-                                .foregroundColor(.white.opacity(0.45))  // 微调透明度
+                                .font(.system(size: 13, weight: .light, design: .rounded))
+                                .foregroundColor(.white.opacity(0.5))
+                                    .tracking(0.8)
                                 .multilineTextAlignment(.center)
-                                .frame(width: 300)  // 文字宽度稍小于背景
-                                .shadow(color: Color.black.opacity(0.5), radius: 0.5, x: 0, y: 0.5) // 极微小的阴影增强可读性
+                                .frame(width: 300)
+                                .shadow(color: Color.black.opacity(0.5), radius: 0.5, x: 0, y: 0.5)
+                                    .shadow(color: Color.white.opacity(0.1), radius: 2, x: 0, y: 0)
+                            }
+                            .opacity(creationTypeManager.selectedIndex != 0 ? 1.0 : 0.0)
+                            
+                            // 情境和期望选择组件 - 仅在虫洞共鸣时显示（优化版本）
+                            if creationTypeManager.selectedIndex == 0 {
+                                // 构建获取黑洞视图中心坐标的几何读取器
+                                GeometryReader { geometry in
+                                    // 使用自适应布局管理器计算黑洞中心点坐标
+                                    let blackHoleCenterX = geometry.size.width / 2
+                                    let layoutManager = AdaptiveLayoutManager.shared
+                                    let blackHoleCenterY = geometry.size.height * layoutManager.blackHoleCenterYFactor()
+                                    
+                                    // 获取当前设备方向 - 移除未使用的变量
+                                    // let isPortrait = AdaptiveLayoutManager.Orientation.current() == .portrait
+                                    
+                                    SituationExpectationView(
+                                        selectedSituation: $selectedSituation,
+                                        selectedExpectation: $selectedExpectation,
+                                        situations: situations,
+                                        expectations: expectations,
+                                        centerPosition: CGPoint(x: blackHoleCenterX, y: blackHoleCenterY) // 传入计算得到的黑洞中心点
+                                    )
+                                    .frame(width: geometry.size.width, height: geometry.size.width) // 使用屏幕宽度作为高度，创建正方形布局
+                                }
+                                .frame(height: UIScreen.main.bounds.height * 0.38) // 匹配黑洞视图的高度
+                                .offset(y: AdaptiveLayoutManager.shared.componentYOffset()) // 使用自适应布局管理器计算偏移量
+                                .zIndex(200) // 确保按钮显示在黑洞上层
+                                // 添加设备方向变化监听
+                                .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+                                    // 方向变化时触发重新布局
+                                    // 这里不需要额外代码，SwiftUI会自动重新计算GeometryReader中的值
+                                }
+                            }
                         }
-                        .padding(.bottom, 16)  // 减少与按钮的间距
+                        .frame(height: 32) // 保持固定容器高度
+                        .padding(.bottom, 16)
+                        .frame(width: UIScreen.main.bounds.width) // 确保整个容器宽度充满屏幕
                         
-                        // 创作类型按钮
-                        CreationTypeButtonsView()
+                        // 创作类型按钮 - 完全保持原有位置
+                        虫遇.CreationTypeButtonsView()
                             .environmentObject(CreationTypeManager.shared)
-                            .frame(height: 70)  // 保持按钮高度
-                            .padding(.bottom, 24)  // 增加与主按钮间的间距
+                            .frame(height: 70)
+                            .padding(.bottom, 24)
+                            .frame(width: UIScreen.main.bounds.width) // 确保按钮视图宽度充满屏幕
                         
                         // 主按钮 - 开启时空对话
                         Button(action: {
                             // 记录操作开始时间，用于防止可能的重复触发
-                            let operationStartTime = Date()
+                            _ = Date() // 如果后续需要，可重新启用
                             
                             // 立即重置所有相关状态
                             showWormholeSwipeIndicator = false
                             
-                            // 额外检查，防止转场状态混乱
-                            if isTransitioning {
-                                print("⚠️ 警告：点击按钮时发现正在转场中，先重置转场状态")
-                                isTransitioning = false
-                                dragOffset = 0
-                                return
-                            }
-                            
-                            // 使用类似滑动返回的动画效果
-                            isTransitioning = true
-                            
-                            // 提供触觉反馈
-                            let feedback = UIImpactFeedbackGenerator(style: .light)
+                            // 触发触觉反馈
+                            let feedback = UIImpactFeedbackGenerator(style: .medium)
                             feedback.impactOccurred()
                             
-                            // 使用与页面转场相同的动画序列
-                            let initialEffectDuration: Double = 0.12
-                            let slideOutDuration: Double = 0.2
-                            
-                            // 第一阶段：显示时空效果
-                            withAnimation(.easeIn(duration: initialEffectDuration)) {
-                                showingTimeSpaceEffect = true
-                                // 从顶部返回而不是右滑
-                                timeSpaceDirection = .right
-                            }
-                            
-                            // 第二阶段：页面滑出
-                            DispatchQueue.main.asyncAfter(deadline: .now() + initialEffectDuration) {
-                                withAnimation(.spring(response: slideOutDuration, dampingFraction: 0.85, blendDuration: 0.08)) {
-                                    // 向右滑出
-                                    dragOffset = UIScreen.main.bounds.width
-                                    showingTimeSpaceEffect = false
-                                }
-                                
-                                // 第三阶段：关闭页面并重置
-                                DispatchQueue.main.asyncAfter(deadline: .now() + slideOutDuration) {
-                                    // 关闭虫洞探索页面
-                                    showAddContentView = false
-                                    
-                                    // 重置状态
-                                    dragOffset = 0
-                                    swipeDirection = .none
-                                    isTransitioning = false
-                                    
-                                    // 延迟一点调用onDismiss
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                        // 额外检查以确保不会出现重复调用
-                                        let elapsedTime = Date().timeIntervalSince(operationStartTime)
-                                        if elapsedTime < 1.0 && !showAddContentView {
-                                            onDismiss?()
-                                        }
-                                    }
-                                }
+                            // 显示时空特效视图 - 使用简化版实现
+                            withAnimation {
+                                // 设置全屏时空特效
+                                showCustomTimeSpaceEffect = true
                             }
                         }) {
                             HStack(spacing: 10) {  // 增加图标与文字间距
@@ -1258,9 +1138,12 @@ struct FullscreenPostDetailView: View {
                                     .font(.system(size: 18))  // 增大图标尺寸
                                     .symbolRenderingMode(.hierarchical) // 使用分层渲染增强图标细节
                                 
+                                // 保持文字不变，无论选择哪个按钮
                                 Text("启动虫洞捕捉")
-                                    .font(.system(size: 18, weight: .semibold))  // 增大文字尺寸
-                                    .kerning(0.3) // 添加轻微字间距
+                                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                    .tracking(1.2) // 增加字间距，提升未来科技感
+                                    .kerning(0.5) // 精细调整字符间距
+                                    .shadow(color: Color.black.opacity(0.2), radius: 0.5, x: 0, y: 0.5) // 微小阴影增强可读性
                             }
                             .foregroundColor(.black)
                             .frame(height: 56)  // 增加按钮高度
@@ -1313,6 +1196,7 @@ struct FullscreenPostDetailView: View {
                             )  // 增强边框对比度
                         }
                         .padding(.bottom, 40)  // 调整与底部的距离
+                        .frame(maxWidth: .infinity) // 确保按钮容器宽度充满屏幕，以实现水平居中
                         
                         // 底部空间，确保布局不贴底
                         Spacer()
@@ -1328,7 +1212,7 @@ struct FullscreenPostDetailView: View {
                                 .foregroundColor(.white.opacity(0.8))
                                 .padding(12)
                                 .background(Circle().fill(Color.black.opacity(0.3)))
-                                .offset(x: 20 + dragOffset * 0.1) // 跟随拖动稍微移动
+                                .offset(x: isDragging ? (20 + dragOffset * 0.1) : 20) // 拖动时跟随移动，提示时保持固定
                                 .opacity(isDragging ? min(1.0, dragOffset / 30) : 0.8) // 动态不透明度
                             
                             Spacer()
@@ -1336,6 +1220,26 @@ struct FullscreenPostDetailView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.leading, 16)
                         .opacity(showWormholeSwipeIndicator || (isDragging && dragOffset > 10) ? 0.8 : 0)
+                        .animation(.easeOut(duration: 0.2), value: showWormholeSwipeIndicator || isDragging)
+                    }
+                    
+                    // 左滑指示器 - 仅在开始拖动时显示或短暂提示时显示
+                    if (isDragging && dragOffset < 0 && swipeDirection == .left) || showWormholeSwipeIndicator {
+                        HStack {
+                            Spacer()
+                            
+                            // 右侧箭头指示器
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 28, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                                .padding(12)
+                                .background(Circle().fill(Color.black.opacity(0.3)))
+                                .offset(x: isDragging ? (-20 + dragOffset * 0.1) : -20) // 拖动时跟随移动，提示时保持固定
+                                .opacity(isDragging ? min(1.0, abs(dragOffset) / 30) : 0.8) // 动态不透明度
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.trailing, 16)
+                        .opacity(showWormholeSwipeIndicator || (isDragging && dragOffset < -10) ? 0.8 : 0)
                         .animation(.easeOut(duration: 0.2), value: showWormholeSwipeIndicator || isDragging)
                     }
                 }
@@ -1356,8 +1260,8 @@ struct FullscreenPostDetailView: View {
                             
                             // 只处理水平方向的滑动，并添加水平性检查
                             if abs(value.translation.height) < abs(value.translation.width) * 0.8 {
-                                // 对于右滑, 确保水平滑动为主
-                                if value.translation.width > 0 {
+                                // 对于右滑和左滑，确保水平滑动为主
+                                if value.translation.width > 0 || value.translation.width < 0 {
                                     // 使用与主视图完全相同的拖动偏移量计算方式
                                     let rawOffset = value.translation.width
                                     let screenWidth = UIScreen.main.bounds.width
@@ -1388,14 +1292,14 @@ struct FullscreenPostDetailView: View {
                                             generator.impactOccurred(intensity: 0.3)
                                         }
                                         
-                                        // 更新滑动方向为右滑
-                                        swipeDirection = .right
+                                        // 更新滑动方向
+                                        swipeDirection = rawOffset > 0 ? .right : .left
                                         
                                         // 显示时空效果 - 与主视图相同的时空效果
                                         if abs(dampedOffset) > screenWidth * 0.15 && !showingTimeSpaceEffect {
                                             withAnimation(.easeIn(duration: 0.1)) {
                                                 showingTimeSpaceEffect = true
-                                                timeSpaceDirection = .right
+                                                timeSpaceDirection = swipeDirection
                                             }
                                         }
                                     }
@@ -1418,16 +1322,21 @@ struct FullscreenPostDetailView: View {
                             // 使用与主视图相同的右滑判断逻辑
                             let validRightSwipe = finalOffset > screenWidth * 0.12 || (finalOffset > screenWidth * 0.05 && velocityX > 150)
                             
+                            // 添加左滑判断逻辑，与主视图保持一致
+                            let validLeftSwipe = finalOffset < -screenWidth * 0.08 || (finalOffset < -screenWidth * 0.02 && velocityX < -100)
+                            
                             // 重置拖动状态 - 提前重置，防止状态锁定
                             isDragging = false
                             
                             // 记录详细调试日志
-                            print("⭐️ 虫洞探索页面滑动结束 - validRightSwipe=\(validRightSwipe), dragOffset=\(finalOffset), velocityX=\(velocityX)")
+                            print("⭐️ 虫洞探索页面滑动结束 - validRightSwipe=\(validRightSwipe), validLeftSwipe=\(validLeftSwipe), dragOffset=\(finalOffset), velocityX=\(velocityX)")
                             
-                            // 强制右滑阈值，与主视图保持一致
+                            // 强制过渡阈值，与主视图保持一致
                             let forceTransitionThreshold = screenWidth * 0.4
                             let forceRightTransition = finalOffset > forceTransitionThreshold
+                            let forceLeftTransition = finalOffset < -forceTransitionThreshold
                             
+                            // 右滑返回
                             if validRightSwipe || forceRightTransition {
                                 print("⭐️ 虫洞探索页面右滑返回")
                                 
@@ -1476,7 +1385,55 @@ struct FullscreenPostDetailView: View {
                                         }
                                     }
                                 }
-                            } else {
+                            }
+                            // 左滑返回
+                            else if validLeftSwipe || forceLeftTransition {
+                                print("⭐️ 虫洞探索页面左滑返回")
+                                
+                                // 提供相同的触觉反馈
+                                let feedback = UIImpactFeedbackGenerator(style: .light)
+                                feedback.impactOccurred()
+                                
+                                // 关闭添加内容页面，使用与页面转场相同的动画效果
+                                isTransitioning = true
+                                
+                                // 时间参数与页面转场相同
+                                let initialEffectDuration: Double = 0.12
+                                let slideOutDuration: Double = 0.2
+                                
+                                // 使用与页面转场相同的动画序列
+                                withAnimation(.easeIn(duration: initialEffectDuration)) {
+                                    showingTimeSpaceEffect = true
+                                    timeSpaceDirection = .left
+                                }
+                                
+                                // 第二阶段动画
+                                DispatchQueue.main.asyncAfter(deadline: .now() + initialEffectDuration) {
+                                    // 滑出动画 - 向左滑出
+                                    withAnimation(.spring(response: slideOutDuration, dampingFraction: 0.85, blendDuration: 0.08)) {
+                                        dragOffset = -screenWidth // 向左滑出
+                                        showingTimeSpaceEffect = false
+                                    }
+                                    
+                                    // 动画完成后执行状态重置
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + slideOutDuration) {
+                                        // 关闭虫洞探索页面
+                                        showAddContentView = false
+                                        
+                                        // 重置所有状态
+                                        dragOffset = 0
+                                        swipeDirection = .none
+                                        isTransitioning = false
+                                        
+                                        // 恢复完整状态
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                            // 重置边界
+                                            checkBoundaries()
+                                        }
+                                    }
+                                }
+                            } 
+                            else {
                                 // 不满足右滑条件，复位
                                 resetPosition()
                             }
@@ -1505,6 +1462,26 @@ struct FullscreenPostDetailView: View {
                                     }
                                 }
                             }
+                            
+                            // 依次显示左右滑动提示
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                                // 确保用户没有正在滑动
+                                if showAddContentView && !isDragging && dragOffset == 0 {
+                                    withAnimation(.easeIn(duration: 0.3)) {
+                                        showWormholeSwipeIndicator = true
+                                    }
+                                    
+                                    // 短暂提示后隐藏
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                                        // 再次检查状态，避免与用户操作冲突
+                                        if showWormholeSwipeIndicator && !isDragging {
+                                            withAnimation(.easeOut(duration: 0.3)) {
+                                                showWormholeSwipeIndicator = false
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1524,6 +1501,122 @@ struct FullscreenPostDetailView: View {
                         .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: -2)
                         .edgesIgnoringSafeArea(.bottom)
                 )
+            
+            // 自定义时空特效覆盖层
+            if showCustomTimeSpaceEffect {
+                GeometryReader { geometry in
+                    // 计算黑洞中心位置 - 位于屏幕中央偏上的位置
+                    let centerX = geometry.size.width / 2
+                    // 向上调整Y轴位置，使特效从随机漫游按钮位置开始
+                    let centerY = geometry.size.height / 2 + geometry.size.height * 0.25 - 290 // 修改为与其他文件一致
+                    let blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
+                    
+                    // 使用自定义位置的TimeSpaceEffectView
+                    TimeSpaceEffectView(
+                        isActive: $showCustomTimeSpaceEffect, 
+                        centerPosition: blackHoleCenterPosition
+                    ) {
+                        // 特效完成后的回调
+                        print("⭐️ 时空特效完成，准备生成帖子并返回主页面")
+                        
+                        // 获取PostViewModel的实例
+                        let postViewModel = PostViewModel.shared
+                        
+                        // 获取选中的创作类型索引
+                        let typeIndex = CreationTypeManager.shared.selectedIndex
+                        print("⭐️ 当前选中的创作类型索引: \(typeIndex)")
+                        
+                        // 使用Task在异步上下文中生成帖子
+                        Task {
+                            print("⭐️ 开始生成帖子...")
+                            
+                            // 添加加载状态
+                            await MainActor.run {
+                                // 在主线程显示加载指示器
+                                let feedback = UIImpactFeedbackGenerator(style: .medium)
+                                feedback.prepare()
+                                feedback.impactOccurred()
+                            }
+                            
+                            // 简化帖子生成逻辑，移除超时限制
+                            print("⭐️ 开始生成帖子，无超时限制...")
+                            var newPosts: [UserPostModel] = []
+                            
+                            do {
+                                // 创建内容生成任务，不再添加超时限制
+                                print("📱 开始生成内容，类型索引: \(typeIndex)")
+                                
+                                // 直接生成内容，等待直到完成
+                                if typeIndex == 0 {
+                                    print("📱 生成虫洞共鸣内容...")
+                                    // 虫洞共鸣类型
+                                    newPosts = try await postViewModel.generateResonancePosts(
+                                        situation: selectedSituation,
+                                        expectation: selectedExpectation,
+                                        keyword: explorationKeyword.isEmpty ? nil : explorationKeyword
+                                    )
+                                } else {
+                                    print("📱 生成\(typeIndex)类型内容...")
+                                    // 其他类型
+                                    newPosts = try await postViewModel.generatePostsByCreationType(typeIndex: typeIndex)
+                                }
+                                
+                                print("📱 内容生成完成，获得 \(newPosts.count) 篇帖子")
+                                
+                            } catch {
+                                print("⚠️ 生成帖子过程出错: \(error.localizedDescription)")
+                            }
+                            
+                            print("⭐️ 生成过程完成，获得 \(newPosts.count) 篇新帖子")
+                            
+                            // 添加到数据模型
+                            if !newPosts.isEmpty {
+                                print("⭐️ 将新帖子添加到数据模型")
+                                postViewModel.addPosts(newPosts)
+                                
+                                // 发送通知，通知主页刷新
+                                print("⭐️ 发送通知刷新主页")
+                                NotificationCenter.default.post(name: NSNotification.Name("NewPostsGenerated"), object: nil)
+                                NotificationCenter.default.post(name: NSNotification.Name("PostsUpdated"), object: nil)
+                                
+                                // 添加触觉反馈，让用户知道生成成功
+                                await MainActor.run {
+                                    let successFeedback = UINotificationFeedbackGenerator()
+                                    successFeedback.notificationOccurred(.success)
+                                }
+                            } else {
+                                print("⚠️ 生成的帖子数组为空")
+                                // 当生成内容失败时，显示反馈给用户
+                                await MainActor.run {
+                                    let errorFeedback = UINotificationFeedbackGenerator()
+                                    errorFeedback.notificationOccurred(.error)
+                                }
+                            }
+                            
+                            // 确保0.5秒后关闭虫洞探索页面
+                            await MainActor.run {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    // 关闭虫洞探索页面
+                                    showAddContentView = false
+                                    
+                                    // 重置状态
+                                    dragOffset = 0
+                                    swipeDirection = .none
+                                    isTransitioning = false
+                                    
+                                    // 延迟一点调用onDismiss
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                        print("⭐️ 调用onDismiss回调")
+                                        onDismiss?()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .edgesIgnoringSafeArea(.all)
+                .zIndex(1000) // 确保特效显示在最上层
+            }
         }
         // 禁用用户交互当正在过渡中
         .disabled(isTransitioning)
@@ -1800,35 +1893,33 @@ struct FullscreenPostDetailView: View {
     // 顶部导航栏 - 优化版本 (UI优化项#1)
     private func makeTopBar() -> some View {
         HStack(spacing: 16) {
-            // 返回按钮 - 保留但不执行实际操作，由系统级返回按钮负责返回
-            Button(action: {}) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.clear) // 使按钮不可见
-            }
-            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
-            .scaleEffect(1.0) // 默认比例，按下时会自动变化
-            .contentShape(Circle()) // 确保点击区域正确
-            .disabled(true) // 禁用按钮
-                            
+            // 占位区域，保持布局平衡
+            Color.clear
+                .frame(width: 33, height: 33)
+                             
             Spacer()
-                            
-            // 标题 - 改进版本
+                             
+            // 标题 - 居中
             Text("动态详情")
                 .font(.system(size: 17, weight: .medium))
-                .foregroundColor(FPDVDesignSystem.Colors.primary)
-                            
+                .foregroundColor(.primary)
+             
             Spacer()
-                            
-            // 删除分享按钮，增加占位空间保持对称
+                             
+            // 占位区域，保持布局平衡
             Color.clear
-                .frame(width: 16, height: 16)
+                .frame(width: 33, height: 33)
         }
         .padding(.horizontal, 16)
-        .frame(height: 44)
+        .padding(.vertical, 10)
         .padding(.top, getSafeAreaTop())
-        .background(Color(.systemBackground).opacity(0.98))
-        .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
+        .background(
+            // 背景 - 根据滚动状态改变透明度
+            Rectangle()
+                .fill(Color(.systemBackground))
+                .opacity(isScrolled ? 0.9 : 1.0)
+                .edgesIgnoringSafeArea(.top)
+        )
     }
     
     // 获取顶部安全区域高度
@@ -1841,225 +1932,420 @@ struct FullscreenPostDetailView: View {
     
     // 帖子内容区域
     private func makePostContent() -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // 用户信息区域
-            HStack(spacing: 12) {
-                // 头像
-                Image(viewModel.post.userAvatar)
+        VStack(spacing: 0) {
+            // 用户头像和信息区域
+            makeUserInfoSection()
+            
+            // 帖子内容区域
+            makePostContentSection()
+        }
+        .padding(.vertical, 10) // 整体垂直内边距
+    }
+    
+    // 用户头像和信息区域
+    private func makeUserInfoSection() -> some View {
+        HStack(spacing: 12) {
+            // 用户头像
+            AsyncImage(url: URL(string: viewModel.post.userAvatar)) { image in
+                image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: 40, height: 40)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color.gray.opacity(0.1), lineWidth: 1)
-                    )
-                
-                // 用户名和时间
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(viewModel.post.username)
-                        .font(.system(size: 15, weight: .medium))
-                    
-                    Text(viewModel.post.getFormattedTimeAgo())
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary.opacity(0.8))
-                }
-                
-                Spacer()
-                
-                // 关注按钮
-                Button(action: {
-                    // 在这里可以添加关注用户的逻辑
-                }) {
-                    Text("关注")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(FPDVDesignSystem.Colors.primary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 5)
-                        .background(
-                            Capsule()
-                                .stroke(FPDVDesignSystem.Colors.primary.opacity(0.8), lineWidth: 1)
-                                .background(Capsule().fill(FPDVDesignSystem.Colors.primary.opacity(0.05)))
-                        )
-                }
+            } placeholder: {
+                Color.gray.opacity(0.2)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 14)
+            .frame(width: 42, height: 42)
+            .clipShape(Circle())
             
-            // 正文内容
-            Text(viewModel.post.content)
-                .font(.system(size: 16))
-                .lineSpacing(5)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 14)
+            // 用户名和发布时间
+            VStack(alignment: .leading, spacing: 4) {
+                Text(viewModel.post.username)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+                
+                Text(viewModel.post.getFormattedTimeAgo())
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
             
-            // 图片内容 - 关键优化：使用 GeometryReader 提前确定布局尺寸
-            ZStack(alignment: .center) {
-                // 预先计算图片区域的大小
-                let imageHeight: CGFloat = !viewModel.post.images.isEmpty ? (viewModel.post.images.count == 1 ? 230 : 160) : 0
-                let hasImages = !viewModel.post.images.isEmpty
-                
-                // 占位区域 - 只有在有图片时才显示，防止内容跳动
-                if hasImages {
-                    // 创建占位区域，确保图片加载期间保持布局稳定
-                    Color.clear
-                        .frame(height: imageHeight + 10) // 加上底部padding，保持布局一致
-                        .onAppear {
-                            // 使用异步调用避免在视图更新过程中执行预加载操作
-                            DispatchQueue.main.async {
-                                // 在视图出现时立即预加载图片，防止延迟加载导致布局变化
-                                for imageName in viewModel.post.images {
-                                    _ = UIImage(named: imageName)
-                                }
-                            }
-                        }
-                }
-                
-                // 实际图片内容
+            Spacer()
+            
+            // 关注按钮 - 弱化视觉效果
+            Button(action: {
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred(intensity: 0.3)
+            }) {
+                Text("关注")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)  // 使用次要颜色
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.secondary.opacity(0.06))  // 降低背景不透明度
+                    .cornerRadius(14)
+            }
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 12)
+    }
+    
+    // 帖子内容区域
+    private func makePostContentSection() -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // 帖子文字内容
+            if !viewModel.post.content.isEmpty {
+                Text(viewModel.post.content)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(DesignSystem.Colors.primaryText)
+                    .lineSpacing(5.0)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 16) // 从22减小到16
+                    .padding(.bottom, 0)
+                    .id("post_content")
+            }
+            
+            // 图片内容区域 - 微信朋友圈风格
             if !viewModel.post.images.isEmpty {
-                    Group {
-                if viewModel.post.images.count == 1 {
-                            // 单图显示 - 设置固定高度，避免加载时的布局变化
-                    Image(viewModel.post.images[0])
-                        .resizable()
-                        .scaledToFill()
-                                .frame(maxHeight: 230)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                switch viewModel.post.images.count {
+                case 1:
+                    singleImageView(viewModel.post.images[0])
+                case 2:
+                    wechatStyleGridLayout(images: viewModel.post.images, columns: 2)
                         .padding(.horizontal, 16)
-                                .padding(.bottom, 10)
-                } else if viewModel.post.images.count == 2 {
-                            // 两张图片并排显示 - 设置固定高度
-                    HStack(spacing: 6) {
-                        ForEach(0..<2, id: \.self) { index in
-                            Image(viewModel.post.images[index])
-                                .resizable()
-                                .scaledToFill()
-                                .frame(height: 160)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                            .padding(.bottom, 10)
-                } else if viewModel.post.images.count == 3 {
-                    // 三张图片布局 - 左侧一张大图，右侧两张小图
-                    let totalWidth = UIScreen.main.bounds.width - 32 // 考虑边距
-                    let smallImageSize = (totalWidth * 0.33) - 2 // 右侧小图尺寸
-                    let largeImageSize = (totalWidth * 0.67) - 2 // 左侧大图尺寸
-                    
-                    HStack(spacing: 6) {
-                        // 左侧大图
-                        Image(viewModel.post.images[0])
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: largeImageSize, height: largeImageSize)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        
-                        // 右侧两张小图垂直排列
-                        VStack(spacing: 6) {
-                            Image(viewModel.post.images[1])
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: smallImageSize, height: smallImageSize)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                            
-                            Image(viewModel.post.images[2])
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: smallImageSize, height: smallImageSize)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                            .padding(.bottom, 10)
-                } else {
-                            // 多图网格 - 更紧凑的布局
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                        ForEach(viewModel.post.images, id: \.self) { image in
-                            Image(image)
-                                .resizable()
-                                .scaledToFill()
-                                        .frame(height: 150)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                            .padding(.bottom, 10)
-                        }
-                    }
-                    // 增加渐变显示效果，防止突然出现造成布局跳动
-                    .transition(.opacity.animation(.easeIn(duration: 0.1)))
+                        .padding(.bottom, 0) // 从2减小到0
+                case 3:
+                    wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 0) // 从2减小到0
+                case 4:
+                    wechatStyleGridLayout(images: viewModel.post.images, columns: 2)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 0) // 从2减小到0
+                case 5, 6:
+                    wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 0) // 从2减小到0
+                default:
+                    wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 0) // 从2减小到0
                 }
             }
         }
+        .padding(.vertical, 2)
+    }
+    
+    // 单图显示 - 微信朋友圈风格
+    private func singleImageView(_ imageName: String) -> some View {
+        GeometryReader { geometry in
+            // 修改为靠左对齐
+            HStack {
+                Button(action: {
+                    selectedImageIndex = 0
+                    showingExpandedImage = true
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred(intensity: 0.5)
+                }) {
+                    if imageName.contains("_image_") {
+                        // 用户上传的图片
+                        PostImageView(
+                            imageId: imageName,
+                            contentMode: .fit,
+                            height: calculateSingleImageHeight(for: imageName, width: geometry.size.width * 0.85), // 调整为85%宽度
+                            cornerRadius: 3 // 微信风格的小圆角
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                        .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 3)
+                                .stroke(Color(.systemGray5), lineWidth: 0.5)
+                        )
+                    } else if let uiImage = UIImage(named: imageName) {
+                        // 内置图片资源
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: geometry.size.width * 0.85) // 限制最大宽度为容器的85%
+                            .frame(maxHeight: calculateSingleImageHeight(for: imageName, width: geometry.size.width * 0.85))
+                            .cornerRadius(3)
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                            .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .stroke(Color(.systemGray5), lineWidth: 0.5)
+                            )
+                    } else {
+                        // 占位图 - 精简版实现
+                        ZStack {
+                            Rectangle()
+                                .fill(Color.secondary.opacity(0.1))
+                                .frame(maxWidth: geometry.size.width * 0.85) // 限制最大宽度
+                                .cornerRadius(3)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                                )
+                            
+                            VStack(spacing: 8) {
+                                Image(systemName: "photo")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.gray)
+                                
+                                Text("图片加载失败")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        .frame(height: 180) // 设置默认高度
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Spacer(minLength: 0)
+            }
+        }
+        .frame(height: calculateImageSectionHeight(for: [imageName]))
+    }
+    
+    // 微信朋友圈风格的网格布局
+    private func wechatStyleGridLayout(images: [String], columns: Int) -> some View {
+        GeometryReader { geometry in
+            let totalWidth = geometry.size.width
+            let spacing: CGFloat = 2 // 微信风格的小间距
+            
+            // 计算每个图片的尺寸
+            let itemWidth = (totalWidth - (spacing * CGFloat(columns - 1))) / CGFloat(columns)
+            
+            // 计算行数
+            let rows = Int(ceil(Double(images.count) / Double(columns)))
+            
+            VStack(spacing: spacing) {
+                ForEach(0..<rows, id: \.self) { row in
+                    HStack(spacing: spacing) {
+                        ForEach(0..<columns, id: \.self) { column in
+                            let index = row * columns + column
+                            if index < images.count {
+                                Button(action: {
+                                    selectedImageIndex = index
+                                    showingExpandedImage = true
+                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                    generator.impactOccurred(intensity: 0.5)
+                                }) {
+                                    wechatStyleImageItem(images[index], size: itemWidth)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            } else {
+                                // 占位，保持网格结构完整
+                                Color.clear
+                                    .frame(width: itemWidth, height: itemWidth)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .frame(height: calculateGridHeight(imagesCount: images.count, columns: columns))
+    }
+    
+    // 微信风格的单个图片项
+    private func wechatStyleImageItem(_ imageName: String, size: CGFloat) -> some View {
+        Group {
+            if imageName.contains("_image_") {
+                // 用户上传的图片
+                PostImageView(
+                    imageId: imageName,
+                    contentMode: .fill,
+                    cornerRadius: 3
+                )
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                )
+            } else if let uiImage = UIImage(named: imageName) {
+                // 内置图片
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .cornerRadius(3)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 3)
+                            .stroke(Color(.systemGray5), lineWidth: 0.5)
+                    )
+            } else {
+                // 占位图
+                ZStack {
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.1))
+                        .cornerRadius(3)
+                    
+                    ProgressView()
+                        .scaleEffect(1.0)
+                }
+                .frame(width: size, height: size)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                )
+            }
+        }
+    }
+    
+    // 计算单图高度
+    private func calculateSingleImageHeight(for imageName: String, width: CGFloat) -> CGFloat {
+        // 用户上传的图片用固定高度
+        if imageName.contains("_image_") {
+            return 200.0 // 微信朋友圈单图高度
+        }
+        
+        // 获取图片
+        guard let uiImage = UIImage(named: imageName) else { 
+            return 200.0 // 默认高度
+        }
+        
+        // 计算图片宽高比
+        let aspectRatio = uiImage.size.width / uiImage.size.height
+        
+        // 基于宽度和比例计算高度，保持原始比例
+        var calculatedHeight = width / aspectRatio
+        
+        // 微信朋友圈风格：限制最小和最大高度
+        calculatedHeight = min(max(calculatedHeight, 120.0), 220.0)
+        
+        // 根据内容类型调整高度
+        if aspectRatio > 2.0 {
+            // 超宽图片限制高度
+            calculatedHeight = min(calculatedHeight, 150.0)
+        } else if aspectRatio < 0.5 {
+            // 超窄图片提高高度
+            calculatedHeight = min(calculatedHeight, 220.0)
+        }
+        
+        return calculatedHeight
+    }
+    
+    // 计算网格布局的高度
+    private func calculateGridHeight(imagesCount: Int, columns: Int) -> CGFloat {
+        let screenWidth = UIScreen.main.bounds.width - 32 // 考虑边距
+        let spacing: CGFloat = 2 // 微信风格的小间距
+        let itemWidth = (screenWidth - (spacing * CGFloat(columns - 1))) / CGFloat(columns)
+        
+        // 计算行数
+        let rows = Int(ceil(Double(imagesCount) / Double(columns)))
+        
+        // 计算总高度 = 行数 * 单元格高度 + (行数-1) * 间距
+        return (CGFloat(rows) * itemWidth) + (CGFloat(rows - 1) * spacing)
     }
     
     // 帖子互动栏
     private func makeInteractionBar() -> some View {
-        HStack(spacing: 20) {
-            // 点赞按钮
-            Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred(intensity: 0.4)
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: viewModel.post.isLikedByCurrentUser ? "heart.fill" : "heart")
-                        .font(.system(size: 16))
-                        .foregroundColor(viewModel.post.isLikedByCurrentUser ? .red : .secondary)
+        VStack(spacing: 0) {
+            HStack(alignment: .center) {
+                // 点赞按钮 - 左侧
+                Button(action: {
+                    // 添加触觉反馈
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred(intensity: 0.4)
                     
-                    Text("\(viewModel.post.likes)")
-                        .font(.system(size: 13))
-                        .foregroundColor(viewModel.post.isLikedByCurrentUser ? .red.opacity(0.8) : .secondary)
+                    // 更新点赞状态
+                    viewModel.toggleLike()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: viewModel.post.isLikedByCurrentUser ? "heart.fill" : "heart")
+                            .font(.system(size: 16))
+                            .foregroundColor(viewModel.post.isLikedByCurrentUser ? .red : .secondary)
+                        
+                        Text("\(viewModel.post.likes)")
+                            .font(.system(size: 13))
+                            .foregroundColor(viewModel.post.isLikedByCurrentUser ? .red.opacity(0.8) : .secondary)
+                    }
+                    .frame(minWidth: 50, alignment: .leading)
+                    .padding(.vertical, 8)
+                }
+                .contentShape(Capsule())
+                
+                Spacer()
+                
+                // 右侧按钮组 - 紧凑排列
+                HStack(spacing: 24) {
+                    // 收藏按钮 - 使用闪光星星图标，更符合时空穿越收藏主题
+                    Button(action: {
+                        // 添加触觉反馈
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred(intensity: 0.4)
+                        
+                        // 更新收藏状态
+                        viewModel.toggleBookmark()
+                    }) {
+                        ZStack {
+                            // 使用固定大小的容器确保不同图标状态下大小一致
+                            Rectangle()
+                                .fill(Color.clear)
+                                .frame(width: 22, height: 22)
+                            
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(viewModel.post.isBookmarkedByCurrentUser ? .yellow : .secondary)
+                                .scaleEffect(viewModel.post.isBookmarkedByCurrentUser ? 1.2 : 1.0)
+                                .animation(.spring(response: 0.3, dampingFraction: 0.5), value: viewModel.post.isBookmarkedByCurrentUser)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    .contentShape(Rectangle())
+                    .frame(width: 22, height: 38)
+
+                    // 分享按钮
+                    Button(action: {
+                        // 添加触觉反馈
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred(intensity: 0.4)
+                        
+                        // 分享帖子
+                        let content = viewModel.post.content
+                        let shareContent = "来自虫遇的分享：\n\(content.prefix(50))...\n"
+                        
+                        // 创建分享项
+                        let activityVC = UIActivityViewController(
+                            activityItems: [shareContent],
+                            applicationActivities: nil
+                        )
+                        
+                        // 获取当前的UIWindow场景
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let rootViewController = windowScene.windows.first?.rootViewController {
+                            // 在iPad上设置弹出位置
+                            if let popoverController = activityVC.popoverPresentationController {
+                                popoverController.sourceView = rootViewController.view
+                                popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2, width: 0, height: 0)
+                                popoverController.permittedArrowDirections = []
+                            }
+                            rootViewController.present(activityVC, animated: true)
+                        }
+                    }) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.secondary)
+                            .frame(width: 22, height: 38)
+                    }
                 }
             }
-            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
-            .scaleEffect(1.0) // 默认比例，按下时会自动变化
-            .contentShape(Capsule()) // 确保点击区域正确
+            .padding(.horizontal, 22)
+            .padding(.vertical, 8)
             
-            // 评论按钮
-            Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred(intensity: 0.4)
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "bubble.left")
-                        .font(.system(size: 15))
-                        .foregroundColor(.secondary)
-                    
-                    Text("\(viewModel.post.comments.count)")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                }
-            }
-            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
-            .scaleEffect(1.0) // 默认比例，按下时会自动变化
-            .contentShape(Capsule()) // 确保点击区域正确
-            
-            // 收藏按钮
-            Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred(intensity: 0.4)
-            }) {
-                Image(systemName: viewModel.post.isBookmarkedByCurrentUser ? "bookmark.fill" : "bookmark")
-                    .font(.system(size: 15))
-                    .foregroundColor(viewModel.post.isBookmarkedByCurrentUser ? FPDVDesignSystem.Colors.primary : .secondary)
-            }
-            // 使用更安全的轻量级替代方案，避免引用FPDVScaleButtonStyle
-            .scaleEffect(1.0) // 默认比例，按下时会自动变化
-            .contentShape(Capsule()) // 确保点击区域正确
-            
-            Spacer()
+            // 添加分隔线
+            Rectangle()
+                .fill(Color.gray.opacity(0.08))
+                .frame(height: 1)
+                .padding(.horizontal, 22)
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 12)
+        .background(Color(.systemBackground))
     }
     
-    // 分隔线
+    // 分隔线 - 完全移除
     private func makeContentDivider() -> some View {
-        Divider()
-            .padding(.horizontal, 16)
-            .opacity(0.6)
+        Color.clear
+            .frame(height: 0)  // 减小到0，因为我们已经在上面添加了分隔线
     }
     
     /// 创建评论区域
@@ -2078,30 +2364,15 @@ struct FullscreenPostDetailView: View {
                 }
                 
                 Spacer()
-                
-                // 排序按钮
-                Button(action: {}) {
-                    HStack(spacing: 4) {
-                        Text("最新")
-                            .font(.system(size: 14))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10))
-                    }
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.secondary.opacity(0.06))
-                    .cornerRadius(15)
-                }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 22)
+            .padding(.vertical, 10)
             
             // 分隔线
             Rectangle()
                 .fill(Color.gray.opacity(0.08))
                 .frame(height: 1)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 22)
             
             // 评论列表
             CommentsListView(
@@ -2113,19 +2384,19 @@ struct FullscreenPostDetailView: View {
                     viewModel.post.likeComment(commentId: comment.id)
                 }
             )
-            .padding(.top, 6)
+            .padding(.top, 4)
             
             // 底部提示文字
             if !viewModel.post.getTopLevelComments().isEmpty {
                 Text("虫洞已开启 · 等你一起相遇～")
-                    .font(.system(size: 12))  // 稍微减小字体大小
-                    .foregroundColor(.secondary.opacity(0.5))  // 降低一点透明度，使文字更轻柔
-                    .padding(.top, 12)  
-                    .padding(.bottom, 5)  // 减少底部padding
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary.opacity(0.5))
+                    .padding(.top, 10)
+                    .padding(.bottom, 4)
             }
         }
         .background(Color(.systemBackground))
-        .padding(.bottom, 55)  // 减少评论区整体底部内边距
+        .padding(.bottom, 45)
     }
     
     // 在文件适当位置添加辅助函数，使页面过渡更流畅
@@ -2184,12 +2455,12 @@ struct FullscreenPostDetailView: View {
         
         // 优化2：使用低优先级线程进行预加载，避免与UI动画竞争资源
         Task(priority: .background) {
-            // 预加载操作
-            async let imagesTask = preloadImagesForPostAsync(nextPost)
-            async let commentsTask = preloadCommentsForPostAsync(nextPost)
+            // 预加载操作 - 确保获取异步函数的正确返回值
+            let imagesTask = await preloadImagesForPostAsync(nextPost)
+            let commentsTask = await preloadCommentsForPostAsync(nextPost)
             
-            // 非阻塞式等待 - 继续UI动画而不等待预加载完成
-            _ = await (imagesTask, commentsTask)
+            // 不再需要额外的等待，因为上面已经使用了 await
+            print("预加载完成：图片(\(imagesTask ? "成功" : "完成"))，评论(\(commentsTask ? "成功" : "完成"))")
         }
         
         // 优化3：使用单一动画队列而不是嵌套的延迟调用，减少动画竞争
@@ -2305,7 +2576,7 @@ struct FullscreenPostDetailView: View {
     }
     
     // 优化异步版本的图片预加载 - 使用批处理减少线程切换
-    private func preloadImagesForPostAsync(_ post: UserPostModel) async {
+    private func preloadImagesForPostAsync(_ post: UserPostModel) async -> Bool {
         // 创建一个批处理组，减少过多的线程切换
         var batchCounter = 0
         let batchSize = 3
@@ -2323,10 +2594,12 @@ struct FullscreenPostDetailView: View {
                 batchCounter = 0
             }
         }
+        
+        return true
     }
     
     // 优化异步版本的评论预加载
-    private func preloadCommentsForPostAsync(_ post: UserPostModel) async {
+    private func preloadCommentsForPostAsync(_ post: UserPostModel) async -> Bool {
         // 预加载评论数据
         _ = post.getTotalCommentsCount()
         let topLevelComments = post.getTopLevelComments()
@@ -2347,6 +2620,8 @@ struct FullscreenPostDetailView: View {
                 batchCounter = 0
             }
         }
+        
+        return true
     }
     
     // 恢复原位 - 当滑动不满足触发翻页条件时
@@ -2436,10 +2711,10 @@ struct FullscreenPostDetailView: View {
                     viewModel.preloadNextPost(nextPost)
                     
                     // 预加载图片和评论 - 使用新的异步函数
-                    await preloadImagesForPostAsync(nextPost)
+                    _ = await preloadImagesForPostAsync(nextPost)
                     print("⭐️ 下一篇帖子图片预加载完成: \(nextPost.id)")
                     
-                    await preloadCommentsForPostAsync(nextPost)
+                    _ = await preloadCommentsForPostAsync(nextPost)
                     print("⭐️ 下一篇帖子评论预加载完成: \(nextPost.id)")
                 }
             } else {
@@ -2477,10 +2752,10 @@ struct FullscreenPostDetailView: View {
                     viewModel.preloadPrevPost(prevPost)
                     
                     // 预加载图片和评论 - 使用新的异步函数
-                    await preloadImagesForPostAsync(prevPost)
+                    _ = await preloadImagesForPostAsync(prevPost)
                     print("⭐️ 上一篇帖子图片预加载完成: \(prevPost.id)")
                     
-                    await preloadCommentsForPostAsync(prevPost)
+                    _ = await preloadCommentsForPostAsync(prevPost)
                     print("⭐️ 上一篇帖子评论预加载完成: \(prevPost.id)")
                 }
             } else {
@@ -2647,6 +2922,7 @@ struct FullscreenPostDetailView: View {
         hasNextPost = nextPostExists
         hasPrevPost = prevPostExists
         isLastPost = reallyLastPost
+        isFirstPost = !prevPostExists  // 如果没有上一篇帖子，则为第一篇
         
         // 确保状态一致性
         if hasNextPost && isLastPost {
@@ -2659,7 +2935,7 @@ struct FullscreenPostDetailView: View {
         
         // 如果状态发生了变化，记录日志
         if oldHasNextPost != hasNextPost || oldHasPrevPost != hasPrevPost || oldIsLastPost != isLastPost {
-            print("⭐️ 边界状态已更新: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost), isLastPost=\(isLastPost)")
+            print("⭐️ 边界状态已更新: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost), isLastPost=\(isLastPost), isFirstPost=\(isFirstPost)")
         }
     }
     
@@ -2707,6 +2983,59 @@ struct FullscreenPostDetailView: View {
         print("⭐️ 经过多次尝试，无法确定是否为最后一篇帖子，默认非最后一篇")
         return false
     }
+    
+    // 计算图片区域高度
+    private func calculateImageSectionHeight(for images: [String]) -> CGFloat {
+        // 根据图片数量选择不同的计算方法
+        switch images.count {
+        case 0:
+            return 0 // 无图片时高度为0
+        case 1:
+            // 单图高度 - 使用UIImage计算实际高度
+            if images[0].contains("_image_") {
+                return 200.0 // 用户上传图片使用固定高度
+            } else if let uiImage = UIImage(named: images[0]) {
+                // 计算图片宽高比
+                let aspectRatio = uiImage.size.width / uiImage.size.height
+                let screenWidth = UIScreen.main.bounds.width - 32 // 考虑边距
+                let adjustedWidth = screenWidth * 0.85 // 按85%宽度显示
+                
+                // 基于宽度和比例计算高度，保持原始比例
+                var calculatedHeight = adjustedWidth / aspectRatio
+                
+                // 限制最小和最大高度
+                calculatedHeight = min(max(calculatedHeight, 120.0), 220.0)
+                
+                // 根据内容类型调整高度
+                if aspectRatio > 2.0 {
+                    // 超宽图片限制高度
+                    calculatedHeight = min(calculatedHeight, 150.0)
+                } else if aspectRatio < 0.5 {
+                    // 超窄图片提高高度
+                    calculatedHeight = min(calculatedHeight, 220.0)
+                }
+                
+                return calculatedHeight
+            } else {
+                return 180.0 // 默认图片高度
+            }
+        case 2:
+            // 两图布局 - 按照微信风格计算
+            return calculateGridHeight(imagesCount: 2, columns: 2)
+        case 3:
+            // 三图布局 - 微信风格，一行三张
+            return calculateGridHeight(imagesCount: 3, columns: 3)
+        case 4:
+            // 四图布局 - 微信风格，2x2网格
+            return calculateGridHeight(imagesCount: 4, columns: 2)
+        case 5, 6:
+            // 5-6张图片 - 微信风格，两行三列网格
+            return calculateGridHeight(imagesCount: images.count, columns: 3)
+        default:
+            // 7-9张图片 - 微信风格，最多三行三列
+            return calculateGridHeight(imagesCount: min(images.count, 9), columns: 3)
+        }
+    }
 }
 
 /**
@@ -2723,6 +3052,34 @@ class FullscreenPostDetailViewModel: ObservableObject {
     init(post: UserPostModel) {
         self.post = post
         self.commentManager = CommentManager(post: post)
+    }
+    
+    // 添加点赞功能
+    func toggleLike() {
+        // 更新点赞状态
+        let updatedPost = post.toggleLike(isLiked: !post.isLikedByCurrentUser)
+        post = updatedPost
+        
+        // 发送通知以更新其他视图
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PostLikeUpdated"),
+            object: nil,
+            userInfo: ["postID": post.id.uuidString]
+        )
+    }
+    
+    // 添加收藏功能
+    func toggleBookmark() {
+        // 更新收藏状态
+        let updatedPost = post.toggleBookmark(isBookmarked: !post.isBookmarkedByCurrentUser)
+        post = updatedPost
+        
+        // 发送通知以更新其他视图
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PostBookmarkUpdated"),
+            object: nil,
+            userInfo: ["postID": post.id.uuidString]
+        )
     }
     
     // 添加更新帖子的方法
@@ -2848,5 +3205,865 @@ struct BlackHoleParticleRing: View {
     
     private func getFrame() -> CGRect {
         return CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width * 0.65, height: UIScreen.main.bounds.width * 0.65)
+    }
+}
+
+// MARK: - 辅助视图组件
+
+/**
+ * 情境和期望选择视图
+ * 将复杂的嵌套视图分解为更简单的子视图
+ */
+struct SituationExpectationView: View {
+    @Binding var selectedSituation: String
+    @Binding var selectedExpectation: String
+    let situations: [String]
+    let expectations: [String]
+    let centerPosition: CGPoint // 新增参数，接收黑洞中心点坐标
+    
+    // 状态变量，用于控制提示的显示
+    @State private var showHint: Bool = true
+    
+    var body: some View {
+        ZStack {
+            // 情境选择 - 上半部环绕
+            OrbitalSelectionView(
+                items: situations,
+                selectedItem: $selectedSituation,
+                icon: "brain",
+                title: "此刻我正在...",
+                angleRange: 205.0...335.0,  // 修改角度范围，将上部区域集中在正上方
+                radius: AdaptiveLayoutManager.shared.orbitalRadius(),  // 使用自适应布局管理器计算半径
+                themeColor: Color(red: 0.2, green: 0.4, blue: 0.8), // 更柔和的蓝色调
+                centerPosition: centerPosition // 传入黑洞中心点
+            )
+            
+            // 期望选择 - 下半部环绕
+            OrbitalSelectionView(
+                items: expectations,
+                selectedItem: $selectedExpectation,
+                icon: "sparkles",
+                title: "希望得到的是...",
+                angleRange: 25.0...155.0,  // 修改角度范围，将下部区域集中在正下方
+                radius: AdaptiveLayoutManager.shared.orbitalRadius(),  // 使用自适应布局管理器计算半径
+                themeColor: Color(red: 0.6, green: 0.3, blue: 0.7), // 更柔和的紫色调
+                centerPosition: centerPosition // 传入黑洞中心点
+            )
+            
+            // 使用提示 - 仅在初次显示时出现
+            if showHint {
+                VStack(spacing: 4) {
+                    Text("请从上下环绕的按钮中选择")
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    Text("点击按钮即可选择对应选项")
+                        .font(.system(size: 11, weight: .light, design: .rounded))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.black.opacity(0.5))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                        )
+                )
+                .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
+                .position(x: centerPosition.x, y: centerPosition.y)
+                .opacity(showHint ? 1 : 0)
+                .onAppear {
+                    // 3秒后自动隐藏提示
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        withAnimation(.easeOut(duration: 0.5)) {
+                            showHint = false
+                        }
+                    }
+                }
+                // 点击任何地方隐藏提示
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showHint = false
+                    }
+                }
+            }
+        }
+        // 添加设备方向变化监听
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            // 方向变化时触发重新布局
+            // 这里不需要额外代码，SwiftUI会自动重新计算布局
+        }
+        // 当选择改变时隐藏提示
+        .onChange(of: selectedSituation) { _, _ in
+            if showHint {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    showHint = false
+                }
+            }
+        }
+        .onChange(of: selectedExpectation) { _, _ in
+            if showHint {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    showHint = false
+                }
+            }
+        }
+    }
+}
+
+// 优化环绕式选择视图
+struct OrbitalSelectionView: View {
+    let items: [String]
+    @Binding var selectedItem: String
+    let icon: String
+    let title: String
+    let angleRange: ClosedRange<Double>
+    let radius: CGFloat
+    let themeColor: Color
+    let centerPosition: CGPoint // 接收黑洞中心点坐标
+    
+    // 状态变量，控制初始动画效果
+    @State private var showInitialAnimation = true
+    
+    // 获取当前设备类型
+    private var deviceType: AdaptiveLayoutManager.DeviceType {
+        return AdaptiveLayoutManager.DeviceType.current()
+    }
+    
+    // 获取当前屏幕方向
+    private var orientation: AdaptiveLayoutManager.Orientation {
+        return AdaptiveLayoutManager.Orientation.current()
+    }
+    
+    // 计算标签偏移量 - 根据设备类型和方向动态调整
+    private var labelOffset: CGFloat {
+        switch (deviceType, orientation) {
+        case (.smallPhone, _):
+            return 35
+        case (.mediumPhone, _):
+            return 40
+        case (.largePhone, _):
+            return 45
+        case (.tablet, _):
+            return 50
+        }
+    }
+    
+    // 计算按钮字体大小 - 根据设备类型和方向动态调整
+    private var buttonFontSize: CGFloat {
+        switch (deviceType, orientation) {
+        case (.smallPhone, _):
+            return 10 // 减小字体大小
+        case (.mediumPhone, _):
+            return 11 // 减小字体大小
+        case (.largePhone, _):
+            return 12 // 减小字体大小
+        case (.tablet, _):
+            return 13 // 减小字体大小
+        }
+    }
+    
+    // 计算按钮内边距 - 根据设备类型和方向动态调整
+    private var buttonPadding: (vertical: CGFloat, horizontal: CGFloat) {
+        switch (deviceType, orientation) {
+        case (.smallPhone, _):
+            return (3, 8) // 减小内边距
+        case (.mediumPhone, _):
+            return (4, 10) // 减小内边距
+        case (.largePhone, _):
+            return (5, 12) // 减小内边距
+        case (.tablet, _):
+            return (6, 14) // 减小内边距
+        }
+    }
+    
+    var body: some View {
+        OrbitalSelectionContent(
+            title: title,
+            icon: icon,
+            items: items,
+            selectedItem: $selectedItem,
+            showInitialAnimation: $showInitialAnimation,
+            centerPosition: centerPosition,
+            radius: radius,
+            labelOffset: labelOffset,
+            angleRange: angleRange,
+            themeColor: themeColor,
+            deviceType: deviceType,
+            orientation: orientation,
+            buttonFontSize: buttonFontSize,
+            buttonPadding: buttonPadding
+        )
+        .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.width)
+        // 添加设备方向变化监听
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            // 方向变化时触发重新布局
+            // 这里不需要额外代码，SwiftUI会自动重新计算布局
+        }
+    }
+}
+
+/**
+ * 轨道选择视图内容
+ * 将复杂视图拆分为更小的组件，以便编译器更好地进行类型检查
+ */
+private struct OrbitalSelectionContent: View {
+    let title: String
+    let icon: String
+    let items: [String]
+    @Binding var selectedItem: String
+    @Binding var showInitialAnimation: Bool
+    let centerPosition: CGPoint
+    let radius: CGFloat
+    let labelOffset: CGFloat
+    let angleRange: ClosedRange<Double>
+    let themeColor: Color
+    let deviceType: AdaptiveLayoutManager.DeviceType
+    let orientation: AdaptiveLayoutManager.Orientation
+    let buttonFontSize: CGFloat
+    let buttonPadding: (vertical: CGFloat, horizontal: CGFloat)
+    
+    var body: some View {
+        ZStack {
+            // 标签部分
+            CategoryLabel(
+                title: title,
+                icon: icon,
+                centerPosition: centerPosition,
+                radius: radius,
+                labelOffset: labelOffset,
+                angleRange: angleRange,
+                themeColor: themeColor
+            )
+            
+            // 按钮部分
+            ButtonsLayout(
+                items: items,
+                selectedItem: $selectedItem,
+                showInitialAnimation: $showInitialAnimation,
+                centerPosition: centerPosition,
+                radius: radius,
+                angleRange: angleRange,
+                themeColor: themeColor,
+                buttonFontSize: buttonFontSize,
+                buttonPadding: buttonPadding
+            )
+        }
+    }
+}
+
+/**
+ * 类别标签组件
+ * 显示轨道选择视图的标题
+ */
+private struct CategoryLabel: View {
+    let title: String
+    let icon: String
+    let centerPosition: CGPoint
+    let radius: CGFloat
+    let labelOffset: CGFloat
+    let angleRange: ClosedRange<Double>
+    let themeColor: Color
+    
+    // 计算标签的背景颜色 - 使用更中性的色调
+    private var labelBackgroundColor: Color {
+        // 采用更符合Apple设计的中性半透明背景
+        if title.contains("此刻") {
+            return Color(red: 0.2, green: 0.2, blue: 0.25).opacity(0.4)  // 深蓝灰色
+        } else if title.contains("希望") {
+            return Color(red: 0.25, green: 0.2, blue: 0.25).opacity(0.4)  // 深紫灰色
+        } else {
+            return Color.black.opacity(0.4)  // 其他标签使用深黑色
+        }
+    }
+    
+    // 计算标签的边框颜色 - 使用柔和的分隔色调
+    private var labelBorderColor: Color {
+        if title.contains("此刻") {
+            return Color(red: 0.3, green: 0.5, blue: 0.9).opacity(0.25)  // 淡蓝色边框
+        } else if title.contains("希望") {
+            return Color(red: 0.6, green: 0.3, blue: 0.7).opacity(0.25)  // 淡紫色边框
+        } else {
+            return Color.white.opacity(0.2)  // 其他标签使用淡白色
+        }
+    }
+    
+    // 计算标签的位置偏移
+    private var additionalOffset: CGFloat {
+        if title.contains("此刻") || title.contains("希望") {
+            return 15  // 保持与交互区域的距离
+        } else {
+            return 0
+        }
+    }
+    
+    // 计算图标颜色 - 使用更柔和的颜色
+    private var iconColor: Color {
+        if title.contains("此刻") {
+            return Color(red: 0.4, green: 0.6, blue: 1.0).opacity(0.7)  // 柔和蓝色
+        } else if title.contains("希望") {
+            return Color(red: 0.7, green: 0.4, blue: 0.9).opacity(0.7)  // 柔和紫色
+        } else {
+            return Color.white.opacity(0.7)  // 其他图标使用白色
+        }
+    }
+    
+    // 计算文本颜色 - 确保在任何背景下都能清晰阅读
+    private var textColor: Color {
+        return Color.white.opacity(0.85)  // 所有文本使用高对比度白色
+    }
+    
+    var body: some View {
+        VStack(spacing: 2) {
+            HStack(spacing: 3) {
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .regular))
+                    .foregroundColor(iconColor)
+                
+                Text(title)
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundColor(textColor)
+                    .tracking(0.3)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(labelBackgroundColor)
+                    .overlay(
+                        Capsule()
+                            .stroke(labelBorderColor, lineWidth: 0.8)
+                    )
+            )
+            // 使用更微妙的阴影，增强深色背景下的可见性
+            .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
+        }
+        .position(
+            x: centerPosition.x + CGFloat(cos((angleRange.lowerBound + angleRange.upperBound) * 0.5 * .pi / 180.0)) * (radius + labelOffset + additionalOffset),
+            y: centerPosition.y + CGFloat(sin((angleRange.lowerBound + angleRange.upperBound) * 0.5 * .pi / 180.0)) * (radius + labelOffset + additionalOffset)
+        )
+        .opacity(0.85)
+        .scaleEffect(0.95)
+        .accessibilityLabel(Text("\(title) 分类"))
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityAddTraits(.isStaticText)
+    }
+}
+
+/**
+ * 按钮布局组件
+ * 处理轨道选择视图中的按钮布局
+ */
+private struct ButtonsLayout: View {
+    let items: [String]
+    @Binding var selectedItem: String
+    @Binding var showInitialAnimation: Bool
+    let centerPosition: CGPoint
+    let radius: CGFloat
+    let angleRange: ClosedRange<Double>
+    let themeColor: Color
+    let buttonFontSize: CGFloat
+    let buttonPadding: (vertical: CGFloat, horizontal: CGFloat)
+    
+    var body: some View {
+        ForEach(items.indices, id: \.self) { index in
+            let item = items[index]
+            let isSelected = selectedItem == item
+            
+            // 计算按钮位置
+            let position = calculateButtonPosition(for: index)
+            
+            // 按钮视图
+            OrbitalButton(
+                item: item,
+                isSelected: isSelected,
+                index: index,
+                position: position,
+                showInitialAnimation: $showInitialAnimation,
+                themeColor: themeColor,
+                buttonFontSize: buttonFontSize,
+                buttonPadding: buttonPadding,
+                onSelect: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        selectedItem = item
+                        if showInitialAnimation {
+                            showInitialAnimation = false
+                        }
+                    }
+                }
+            )
+        }
+    }
+    
+    // 计算按钮位置
+    private func calculateButtonPosition(for index: Int) -> CGPoint {
+        let totalAngle = angleRange.upperBound - angleRange.lowerBound
+        
+        // 根据按钮数量动态调整角度分布
+        let angle: Double
+        if items.count <= 3 {
+            // 按钮较少时，分布得更开
+            let segmentAngle = totalAngle / Double(max(1, items.count + 1))
+            let startAngle = angleRange.lowerBound + segmentAngle
+            angle = startAngle + Double(index) * segmentAngle
+        } else {
+            // 按钮较多时，均匀分布
+            let segmentAngle = totalAngle / Double(max(1, items.count - 1))
+            angle = angleRange.lowerBound + Double(index) * segmentAngle
+        }
+        
+        // 计算位置
+        let radian = angle * .pi / 180.0
+        let x = centerPosition.x + cos(radian) * radius
+        let y = centerPosition.y + sin(radian) * radius
+        
+        return CGPoint(x: x, y: y)
+    }
+}
+
+/**
+ * 轨道按钮组件
+ * 表示轨道选择视图中的单个按钮
+ */
+private struct OrbitalButton: View {
+    let item: String
+    let isSelected: Bool
+    let index: Int
+    let position: CGPoint
+    @Binding var showInitialAnimation: Bool
+    let themeColor: Color
+    let buttonFontSize: CGFloat
+    let buttonPadding: (vertical: CGFloat, horizontal: CGFloat)
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: {
+            onSelect()
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred(intensity: 0.4)
+        }) {
+            ButtonContent(
+                text: item,
+                isSelected: isSelected,
+                fontSize: buttonFontSize,
+                padding: buttonPadding,
+                themeColor: themeColor
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .position(position)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        .accessibilityLabel(Text(item))
+        .accessibilityHint(Text(isSelected ? "已选择" : "点击选择"))
+        .accessibilityAddTraits(.isButton)
+        .modifier(ButtonAnimationModifier(
+            showAnimation: showInitialAnimation && !isSelected,
+            index: index,
+            themeColor: themeColor,
+            animationState: $showInitialAnimation,
+            buttonText: item
+        ))
+    }
+}
+
+/**
+ * 情境按钮组件 - 保留但不直接使用
+ */
+struct SituationButton: View {
+    let situation: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(situation)
+                .font(.system(size: 11, weight: isSelected ? .semibold : .regular, design: .rounded))
+                .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+                .padding(.vertical, 4)
+                .padding(.horizontal, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 13)
+                        .fill(isSelected ? Color.white.opacity(0.25) : Color.clear)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 13)
+                                .stroke(isSelected ? Color.white.opacity(0.6) : Color.white.opacity(0.3), lineWidth: 1)
+                        )
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+/**
+ * 期望按钮组件 - 保留但不直接使用
+ */
+struct ExpectationButton: View {
+    let expectation: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(expectation)
+                .font(.system(size: 11, weight: isSelected ? .semibold : .regular, design: .rounded))
+                .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+                .padding(.vertical, 4)
+                .padding(.horizontal, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 13)
+                        .fill(isSelected ? Color.white.opacity(0.25) : Color.clear)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 13)
+                                .stroke(isSelected ? Color.white.opacity(0.6) : Color.white.opacity(0.3), lineWidth: 1)
+                        )
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+/**
+ * 自适应布局管理器
+ * 根据设备特性和屏幕方向动态计算布局参数
+ */
+class AdaptiveLayoutManager {
+    static let shared = AdaptiveLayoutManager()
+    
+    // 用户偏好键
+    private enum UserPreferenceKeys {
+        static let centerYOffset = "layout.centerYOffset"
+        static let componentOffset = "layout.componentOffset"
+        static let orbitalRadius = "layout.orbitalRadius"
+        static let useCustomLayout = "layout.useCustomLayout"
+    }
+    
+    // 设备类型枚举
+    enum DeviceType {
+        case smallPhone    // iPhone SE, 5s等
+        case mediumPhone   // iPhone 8, XR, 11等
+        case largePhone    // iPhone Pro Max系列
+        case tablet        // iPad系列
+        
+        // 根据屏幕尺寸判断设备类型
+        static func current() -> DeviceType {
+            let screenHeight = UIScreen.main.bounds.height
+            let idiom = UIDevice.current.userInterfaceIdiom
+            
+            if idiom == .pad {
+                return .tablet
+            } else {
+                if screenHeight < 700 {
+                    return .smallPhone
+                } else if screenHeight < 800 {
+                    return .mediumPhone
+                } else {
+                    return .largePhone
+                }
+            }
+        }
+    }
+    
+    // 屏幕方向枚举
+    enum Orientation {
+        case portrait
+        case landscape
+        
+        // 获取当前屏幕方向
+        static func current() -> Orientation {
+            let screenSize = UIScreen.main.bounds.size
+            return screenSize.width < screenSize.height ? .portrait : .landscape
+        }
+    }
+    
+    // 获取当前设备的安全区域
+    var safeAreaInsets: UIEdgeInsets {
+        // 兼容iOS 15及以上版本
+        if #available(iOS 15.0, *) {
+            // 使用新API获取窗口场景
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first(where: { $0.isKeyWindow }) else {
+                // 提供默认值
+                return UIEdgeInsets(top: 44, left: 0, bottom: 34, right: 0)
+            }
+            return window.safeAreaInsets
+        } else {
+            // 旧版本继续使用旧API
+            let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow })
+            return window?.safeAreaInsets ?? UIEdgeInsets(top: 44, left: 0, bottom: 34, right: 0)
+        }
+    }
+    
+    // 是否使用自定义布局
+    var useCustomLayout: Bool {
+        get {
+            return UserDefaults.standard.bool(forKey: UserPreferenceKeys.useCustomLayout)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: UserPreferenceKeys.useCustomLayout)
+        }
+    }
+    
+    // 计算黑洞中心Y坐标因子
+    func blackHoleCenterYFactor() -> CGFloat {
+        // 如果使用自定义布局，从UserDefaults获取
+        if useCustomLayout, let customValue = UserDefaults.standard.object(forKey: UserPreferenceKeys.centerYOffset) as? CGFloat {
+            return customValue
+        }
+        
+        // 否则使用默认计算
+        let deviceType = DeviceType.current()
+        let orientation = Orientation.current()
+        let safeAreaTop = safeAreaInsets.top
+        
+        // 根据设备类型和方向动态调整
+        switch (deviceType, orientation) {
+        case (.smallPhone, .portrait):
+            return 0.14 + (safeAreaTop > 20 ? 0.01 : 0)
+        case (.mediumPhone, .portrait):
+            return 0.12 + (safeAreaTop > 20 ? 0.01 : 0)
+        case (.largePhone, .portrait):
+            return 0.11 + (safeAreaTop > 20 ? 0.01 : 0)
+        case (.tablet, .portrait):
+            return 0.1
+        case (_, .landscape):
+            // 横屏时调整位置更靠近顶部
+            return 0.08
+        }
+    }
+    
+    // 计算整体组件的Y轴偏移量
+    func componentYOffset() -> CGFloat {
+        // 如果使用自定义布局，从UserDefaults获取
+        if useCustomLayout, let customValue = UserDefaults.standard.object(forKey: UserPreferenceKeys.componentOffset) as? CGFloat {
+            return customValue
+        }
+        
+        // 否则使用默认计算
+        let deviceType = DeviceType.current()
+        let orientation = Orientation.current()
+        let screenHeight = UIScreen.main.bounds.height
+        
+        // 根据设备类型和方向动态调整
+        switch (deviceType, orientation) {
+        case (.smallPhone, .portrait):
+            return -screenHeight * 0.08
+        case (.mediumPhone, .portrait):
+            return -screenHeight * 0.1
+        case (.largePhone, .portrait):
+            return -screenHeight * 0.12
+        case (.tablet, .portrait):
+            return -screenHeight * 0.1
+        case (_, .landscape):
+            // 横屏时减小偏移量
+            return -screenHeight * 0.06
+        }
+    }
+    
+    // 计算按钮环绕半径
+    func orbitalRadius() -> CGFloat {
+        // 如果使用自定义布局，从UserDefaults获取
+        if useCustomLayout, let customValue = UserDefaults.standard.object(forKey: UserPreferenceKeys.orbitalRadius) as? CGFloat {
+            return customValue
+        }
+        
+        // 否则使用默认计算
+        let deviceType = DeviceType.current()
+        let orientation = Orientation.current()
+        let screenWidth = UIScreen.main.bounds.width
+        
+        // 根据设备类型和方向动态调整 - 减小半径值以确保按钮不会超出屏幕
+        switch (deviceType, orientation) {
+        case (.smallPhone, _):
+            return screenWidth * 0.32 // 从0.36减小到0.32
+        case (.mediumPhone, _):
+            return screenWidth * 0.34 // 从0.38减小到0.34
+        case (.largePhone, _):
+            return screenWidth * 0.36 // 从0.4减小到0.36
+        case (.tablet, .portrait):
+            return screenWidth * 0.28 // 从0.3减小到0.28
+        case (.tablet, .landscape):
+            return screenWidth * 0.22 // 从0.25减小到0.22
+        }
+    }
+    
+    // 保存自定义布局设置
+    func saveCustomLayout(centerYFactor: CGFloat, componentOffset: CGFloat, radius: CGFloat) {
+        UserDefaults.standard.set(centerYFactor, forKey: UserPreferenceKeys.centerYOffset)
+        UserDefaults.standard.set(componentOffset, forKey: UserPreferenceKeys.componentOffset)
+        UserDefaults.standard.set(radius, forKey: UserPreferenceKeys.orbitalRadius)
+        useCustomLayout = true
+    }
+    
+    // 重置为默认布局
+    func resetToDefaultLayout() {
+        UserDefaults.standard.removeObject(forKey: UserPreferenceKeys.centerYOffset)
+        UserDefaults.standard.removeObject(forKey: UserPreferenceKeys.componentOffset)
+        UserDefaults.standard.removeObject(forKey: UserPreferenceKeys.orbitalRadius)
+        useCustomLayout = false
+    }
+    
+    // 获取当前布局设置
+    func getCurrentLayoutSettings() -> (centerYFactor: CGFloat, componentOffset: CGFloat, radius: CGFloat) {
+        return (
+            centerYFactor: blackHoleCenterYFactor(),
+            componentOffset: componentYOffset(),
+            radius: orbitalRadius()
+        )
+    }
+    
+    private init() {}
+}
+
+/**
+ * 按钮内容视图
+ * 封装了按钮的外观样式
+ */
+private struct ButtonContent: View {
+    let text: String
+    let isSelected: Bool
+    let fontSize: CGFloat
+    let padding: (vertical: CGFloat, horizontal: CGFloat)
+    let themeColor: Color
+    
+    // 判断按钮所属的类别
+    private var isPartOfSituation: Bool {
+        // 基于已知的情境选项判断
+        let situationOptions = ["寻找答案", "做决定", "需要灵感", "思考人生"]
+        return situationOptions.contains(text)
+    }
+    
+    private var isPartOfExpectation: Bool {
+        // 基于已知的期望选项判断
+        let expectationOptions = ["被看见", "新视角", "实用建议", "共鸣与安慰"]
+        return expectationOptions.contains(text)
+    }
+    
+    // 根据按钮所属类别确定颜色
+    private var buttonThemeColor: Color {
+        if isPartOfSituation {
+            return Color(red: 0.2, green: 0.4, blue: 0.8) // 使用更柔和的蓝色
+        } else if isPartOfExpectation {
+            return Color(red: 0.6, green: 0.3, blue: 0.7) // 使用更柔和的紫色
+        } else {
+            return themeColor // 其他情况使用传入的主题色
+        }
+    }
+    
+    // 按钮背景色 - 提供更好的反馈
+    private var buttonBackgroundColor: Color {
+        if isSelected {
+            // 选中状态使用更高饱和度
+            return buttonThemeColor.opacity(0.45)
+        } else {
+            // 未选中状态使用统一的暗色调
+            return Color(white: 0.12, opacity: 0.6)
+        }
+    }
+    
+    // 按钮边框色 - 增强可见性和层次感
+    private var buttonBorderColor: Color {
+        if isSelected {
+            return buttonThemeColor.opacity(0.7)
+        } else {
+            return Color.white.opacity(0.25)
+        }
+    }
+    
+    var body: some View {
+        Text(text)
+            .font(.system(size: fontSize, weight: isSelected ? .medium : .regular, design: .rounded))
+            .foregroundColor(isSelected ? .white : .white.opacity(0.85))
+            .padding(.vertical, padding.vertical)
+            .padding(.horizontal, padding.horizontal)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(buttonBackgroundColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(
+                                buttonBorderColor, 
+                                lineWidth: isSelected ? 1.0 : 0.7
+                            )
+                    )
+            )
+            // 使用更微妙的阴影效果，符合iOS设计语言
+            .shadow(
+                color: isSelected ? buttonThemeColor.opacity(0.4) : Color.black.opacity(0.2), 
+                radius: isSelected ? 4 : 2, 
+                x: 0, 
+                y: 0
+            )
+            // 缩小选中状态的放大效果，更加微妙
+            .scaleEffect(isSelected ? 1.08 : 1.0)
+    }
+}
+
+/**
+ * 按钮动画修饰符
+ * 封装了按钮的脉冲动画效果
+ */
+private struct ButtonAnimationModifier: ViewModifier {
+    let showAnimation: Bool
+    let index: Int
+    let themeColor: Color
+    @Binding var animationState: Bool
+    let buttonText: String
+    
+    // 判断按钮所属的类别
+    private var isPartOfSituation: Bool {
+        // 基于已知的情境选项判断
+        let situationOptions = ["寻找答案", "做决定", "需要灵感", "思考人生"]
+        return situationOptions.contains(buttonText)
+    }
+    
+    private var isPartOfExpectation: Bool {
+        // 基于已知的期望选项判断
+        let expectationOptions = ["被看见", "新视角", "实用建议", "共鸣与安慰"]
+        return expectationOptions.contains(buttonText)
+    }
+    
+    // 根据按钮所属类别确定动画颜色
+    private var animationColor: Color {
+        if isPartOfSituation {
+            return Color(red: 0.2, green: 0.4, blue: 0.8).opacity(0.5) // 使用更柔和的蓝色
+        } else if isPartOfExpectation {
+            return Color(red: 0.6, green: 0.3, blue: 0.7).opacity(0.5) // 使用更柔和的紫色
+        } else {
+            return themeColor.opacity(0.5) // 其他情况使用传入的主题色
+        }
+    }
+    
+    func body(content: Content) -> some View {
+        content.overlay(
+            Group {
+                if showAnimation {
+                    // 创建一个简化的圆形动画
+                    let animationDuration: Double = 1.5
+                    let repeatCount: Int = 3
+                    let animationDelay: Double = Double(index) * 0.2
+                    
+                    Circle()
+                        .stroke(animationColor, lineWidth: 1.2)
+                        .scaleEffect(1.2)
+                        .opacity(0)
+                        .animation(
+                            Animation.easeInOut(duration: animationDuration)
+                                .repeatCount(repeatCount)
+                                .delay(animationDelay),
+                            value: showAnimation
+                        )
+                        .onAppear {
+                            // 减少自动关闭时间，提高响应性
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                                withAnimation {
+                                    self.animationState = false
+                                }
+                            }
+                        }
+                }
+            }
+        )
     }
 }

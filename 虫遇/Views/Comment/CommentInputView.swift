@@ -580,36 +580,19 @@ struct CommentInputView: View {
                 }
             }
             
-            // 添加对FocusCommentInput通知的监听
-            NotificationCenter.default.addObserver(
-                forName: NSNotification.Name("FocusCommentInput"),
-                object: nil,
-                queue: .main
-            ) { _ in
-                // 自动聚焦到输入框
-                textFieldFocused = true
-                
-                // 如果需要，可以展开全屏模式
-                if !isExpanded && commentManager.commentText.count > 30 {
-                    // 无动画直接展开
-                    isExpanded = true
-                }
+            // 监听键盘显示通知
+            NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { notification in
+                handleKeyboardNotification(notification, isShowing: true)
             }
             
-            // 添加对ScrollCommentToBottom通知的监听
-            NotificationCenter.default.addObserver(
-                forName: NSNotification.Name("ScrollCommentToBottom"),
-                object: nil,
-                queue: .main
-            ) { _ in
-                // 让输入框获得焦点但不显示键盘
-                textFieldFocused = true
-                
-                // 延迟一点执行，确保输入框已经准备好
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    // 完成后立即取消焦点，这样文本会滚动到底部但不会弹出键盘
-                    textFieldFocused = false
-                }
+            // 监听键盘隐藏通知
+            NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { notification in
+                handleKeyboardNotification(notification, isShowing: false)
+            }
+            
+            // 监听回复按钮点击通知，激活输入框
+            NotificationCenter.default.addObserver(forName: NSNotification.Name("FocusCommentInput"), object: nil, queue: .main) { _ in
+                focusInputField()
             }
         }
         .onDisappear {
@@ -652,10 +635,10 @@ struct CommentInputView: View {
             // 强制更新评论列表
             commentManager.updateCommentLists()
             
-            // 在主线程生成虚拟角色回复
-            Task {
-                await commentManager.generateVirtualReply()
-            }
+            // 不需要在这里调用生成虚拟角色回复，因为CommentManager.submitComment()已经调用了
+            // Task {
+            //     await commentManager.generateVirtualReply()
+            // }
         }
     }
     
@@ -873,6 +856,32 @@ struct CommentInputView: View {
             name: UIResponder.keyboardWillHideNotification,
             object: nil
         )
+    }
+    
+    // 激活输入框并弹出键盘的方法
+    private func focusInputField() {
+        // 设置焦点状态
+        textFieldFocused = true
+        
+        // 延迟一点点时间确保状态已更新
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // 触发键盘显示
+            UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
+        }
+    }
+    
+    // 处理键盘显示和隐藏的通知
+    private func handleKeyboardNotification(_ notification: Notification, isShowing: Bool) {
+        if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+            keyboardHeight = keyboardFrame.height
+            keyboardVisible = isShowing
+            
+            // 调整底部内边距，避免被键盘遮挡
+            bottomPadding = keyboardFrame.height
+            
+            // 更新视图偏移量以避免键盘遮挡
+            updateViewOffset()
+        }
     }
 }
 
@@ -1135,7 +1144,20 @@ struct AutoSizingTextView: UIViewRepresentable {
         // 尝试查找CommentManager实例
         private func findCommentManager() -> CommentManager? {
             // 尝试通过环境查找CommentManager
-            let keyWindow = UIApplication.shared.windows.filter {$0.isKeyWindow}.first
+            var keyWindow: UIWindow?
+            
+            if #available(iOS 15.0, *) {
+                // iOS 15及以上使用UIWindowScene.windows
+                let windowScenes = UIApplication.shared.connectedScenes
+                    .filter { $0.activationState == .foregroundActive }
+                    .compactMap { $0 as? UIWindowScene }
+                
+                keyWindow = windowScenes.first?.windows.first(where: { $0.isKeyWindow })
+            } else {
+                // iOS 15以下使用UIApplication.windows
+                keyWindow = UIApplication.shared.windows.filter {$0.isKeyWindow}.first
+            }
+            
             if let rootViewController = keyWindow?.rootViewController {
                 // 使用运行时反射查找CommentManager
                 let mirror = Mirror(reflecting: rootViewController)

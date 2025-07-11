@@ -14,6 +14,7 @@ struct PostInteractionBar: View {
     // 回调函数
     var onCommentTap: () -> Void
     var onShareTap: () -> Void
+    var onInviteTap: (() -> Void)? = nil
     
     // 动画状态
     @State private var likeScale: CGFloat = 1.0
@@ -23,7 +24,7 @@ struct PostInteractionBar: View {
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
     
     var body: some View {
-        HStack(spacing: DesignSystem.Spacing.l) {
+        HStack(spacing: DesignSystem.Spacing.xl) {
             // 点赞按钮
             Button(action: {
                 // 触觉反馈
@@ -47,7 +48,7 @@ struct PostInteractionBar: View {
                     }
                 }
             }) {
-                HStack(spacing: DesignSystem.Spacing.xs) {
+                HStack(spacing: DesignSystem.Spacing.s) {
                     Image(systemName: isLiked ? "heart.fill" : "heart")
                         .font(DesignSystem.Typography.body)
                         .foregroundColor(isLiked ? DesignSystem.Colors.like : DesignSystem.Colors.secondaryText)
@@ -57,12 +58,13 @@ struct PostInteractionBar: View {
                         .font(DesignSystem.Typography.subheadline)
                         .foregroundColor(isLiked ? DesignSystem.Colors.like : DesignSystem.Colors.secondaryText)
                 }
-                .padding(.vertical, DesignSystem.Spacing.xs)
-                .padding(.horizontal, DesignSystem.Spacing.s)
+                .padding(.vertical, DesignSystem.Spacing.s)
+                .padding(.horizontal, DesignSystem.Spacing.m)
                 .background(
                     Capsule()
                         .fill(isLiked ? DesignSystem.Colors.like.opacity(0.1) : Color.clear)
                 )
+                .contentShape(Capsule())
             }
             .buttonStyle(PlainButtonStyle())
             
@@ -71,7 +73,7 @@ struct PostInteractionBar: View {
                 feedbackGenerator.impactOccurred()
                 onCommentTap()
             }) {
-                HStack(spacing: DesignSystem.Spacing.xs) {
+                HStack(spacing: DesignSystem.Spacing.s) {
                     Image(systemName: "bubble.left")
                         .font(DesignSystem.Typography.body)
                         .foregroundColor(DesignSystem.Colors.secondaryText)
@@ -80,16 +82,34 @@ struct PostInteractionBar: View {
                         .font(DesignSystem.Typography.subheadline)
                         .foregroundColor(DesignSystem.Colors.secondaryText)
                 }
-                .padding(.vertical, DesignSystem.Spacing.xs)
-                .padding(.horizontal, DesignSystem.Spacing.s)
+                .padding(.vertical, DesignSystem.Spacing.s)
+                .padding(.horizontal, DesignSystem.Spacing.m)
                 .background(
                     Capsule()
                         .fill(Color.clear)
                 )
+                .contentShape(Capsule())
             }
             .buttonStyle(PlainButtonStyle())
             
             Spacer()
+            
+            // 邀请历史人物按钮
+            Button(action: {
+                feedbackGenerator.impactOccurred()
+                onInviteTap?()
+            }) {
+                Image(systemName: "infinity.circle")
+                    .font(DesignSystem.Typography.body)
+                    .foregroundColor(DesignSystem.Colors.secondaryText)
+                    .padding(DesignSystem.Spacing.m)
+                    .background(
+                        Circle()
+                            .fill(Color.gray.opacity(0.08))
+                    )
+                    .contentShape(Circle())
+            }
+            .buttonStyle(PlainButtonStyle())
             
             // 收藏按钮
             Button(action: {
@@ -113,11 +133,12 @@ struct PostInteractionBar: View {
                     .font(DesignSystem.Typography.body)
                     .foregroundColor(isBookmarked ? DesignSystem.Colors.bookmark : DesignSystem.Colors.secondaryText)
                     .scaleEffect(bookmarkScale)
-                    .padding(DesignSystem.Spacing.s)
+                    .padding(DesignSystem.Spacing.m)
                     .background(
                         Circle()
                             .fill(isBookmarked ? DesignSystem.Colors.bookmark.opacity(0.1) : Color.clear)
                     )
+                    .contentShape(Circle())
             }
             .buttonStyle(PlainButtonStyle())
             
@@ -129,16 +150,22 @@ struct PostInteractionBar: View {
                 Image(systemName: "square.and.arrow.up")
                     .font(DesignSystem.Typography.body)
                     .foregroundColor(DesignSystem.Colors.secondaryText)
-                    .padding(DesignSystem.Spacing.s)
+                    .padding(DesignSystem.Spacing.m)
                     .background(
                         Circle()
-                            .fill(Color.gray.opacity(0.05))
+                            .fill(Color.gray.opacity(0.08))
                     )
+                    .contentShape(Circle())
             }
             .buttonStyle(PlainButtonStyle())
         }
-        .padding(.horizontal, DesignSystem.Spacing.m)
-        .padding(.vertical, DesignSystem.Spacing.s)
+        .padding(.horizontal, DesignSystem.Spacing.l)
+        .padding(.vertical, DesignSystem.Spacing.m)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(DesignSystem.Colors.cardBackground.opacity(0.98))
+                .shadow(color: Color.black.opacity(0.03), radius: 3, x: 0, y: 1)
+        )
         .onAppear {
             // 预先准备触觉反馈，减少延迟
             feedbackGenerator.prepare()
