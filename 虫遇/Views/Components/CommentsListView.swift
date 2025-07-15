@@ -372,8 +372,11 @@ struct CommentThreadView: View {
                         return reply1.datePosted > reply2.datePosted
                     }
                     
-                    ForEach(sortedReplies) { reply in
-                        if reply.id != sortedReplies.first?.id {
+                    // 对已排序的回复进行分组处理，使同一虚拟角色的对话保持连续
+                    let groupedReplies = groupRepliesByCharacter(sortedReplies)
+                    
+                    ForEach(groupedReplies) { reply in
+                        if reply.id != groupedReplies.first?.id {
                             Divider()
                                 .padding(.leading, 48) // 增加左侧间距
                                 .padding(.trailing, 16)
@@ -455,6 +458,80 @@ struct CommentThreadView: View {
         return result
     }
     
+    // 对回复进行分组，使同一角色的对话保持连续
+    private func groupRepliesByCharacter(_ replies: [DetailedCommentModel]) -> [DetailedCommentModel] {
+        if replies.isEmpty {
+            return []
+        }
+        
+        // 调试日志
+        print("📊 开始分组评论，总计 \(replies.count) 条")
+        
+        // 创建一个包含所有回复的可变副本
+        var remainingReplies = replies
+        var result: [DetailedCommentModel] = []
+        
+        // 处理所有回复，直到没有剩余回复
+        while !remainingReplies.isEmpty {
+            // 获取第一个未处理的回复作为起点
+            let currentReply = remainingReplies.removeFirst()
+            result.append(currentReply)
+            
+            // 调试日志
+            print("👤 添加回复: \(currentReply.username) - \(currentReply.content.prefix(20))...")
+            
+            // 查找与当前回复相关的对话链
+            var conversationChain: [DetailedCommentModel] = []
+            var index = 0
+            
+            // 查找所有相关回复
+            while index < remainingReplies.count {
+                let nextReply = remainingReplies[index]
+                
+                // 检查是否为对话链的一部分:
+                // 1. 直接回复关系：nextReply回复currentReply或已添加的任何回复
+                let isDirectReply = nextReply.replyToUsername == currentReply.username || 
+                                   result.contains { r in nextReply.replyToUsername == r.username }
+                                   
+                // 2. 相同虚拟角色的连续对话
+                let isSameCharacterReply = nextReply.isVirtualCharacter && currentReply.isVirtualCharacter && 
+                                         nextReply.username == currentReply.username
+                
+                // 3. 主题关联：如果已经在结果中的最后一个回复是对nextReply的回复
+                let isRelatedByTopic = !result.isEmpty && nextReply.username == result.last?.replyToUsername
+                
+                if isDirectReply || isSameCharacterReply || isRelatedByTopic {
+                    // 添加到对话链
+                    conversationChain.append(nextReply)
+                    // 从剩余回复中移除
+                    remainingReplies.remove(at: index)
+                    
+                    // 调试日志
+                    var reason = ""
+                    if isDirectReply { reason += "直接回复 " }
+                    if isSameCharacterReply { reason += "同一角色 " }
+                    if isRelatedByTopic { reason += "主题关联 " }
+                    print("  🔗 添加到对话链: \(nextReply.username) - \(nextReply.content.prefix(20))... 原因: \(reason)")
+                } else {
+                    index += 1
+                }
+            }
+            
+            // 将对话链中的回复添加到结果
+            result.append(contentsOf: conversationChain)
+            
+            // 调试日志
+            if !conversationChain.isEmpty {
+                print("✅ 添加对话链，共 \(conversationChain.count) 条回复")
+            }
+        }
+        
+        // 调试日志
+        print("📊 分组完成，总计 \(result.count) 条回复")
+        
+        return result
+    }
+
     // 切换展开状态
     private func toggleExpand(for commentId: UUID) {
         withAnimation {
