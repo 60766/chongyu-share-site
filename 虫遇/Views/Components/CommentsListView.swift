@@ -111,6 +111,12 @@ struct CommentsListView: View {
                                 if let comment = findComment(id: commentId, in: comments) {
                                     onReply?(comment)
                                 }
+                            },
+                            onLike: { commentId in
+                                // 找到对应的评论并调用回调
+                                if let comment = findComment(id: commentId, in: comments) {
+                                    onLike?(comment)
+                                }
                             }
                         )
                         
@@ -238,6 +244,19 @@ struct CommentsListView: View {
             refreshTrigger.toggle()
             refreshCounter += 1
         }
+        
+        // 监听虚拟角色回复添加通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("VirtualCharacterReplyAdded"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            print("📢 CommentsListView收到VirtualCharacterReplyAdded通知")
+            
+            // 触发视图刷新
+            refreshTrigger.toggle()
+            refreshCounter += 1
+        }
     }
 }
 
@@ -299,6 +318,7 @@ struct CommentHeaderView: View {
 struct CommentThreadView: View {
     let comment: DetailedCommentModel
     let replyAction: (UUID) -> Void
+    let onLike: (UUID) -> Void  // 添加点赞回调
     
     // 状态变量
     @State private var refreshTrigger: Bool = false
@@ -324,63 +344,55 @@ struct CommentThreadView: View {
                 }
             )
             
-            // 显示回复
+            // 显示回复 - 只保留一层嵌套
             if expandedComments.contains(comment.id) && !comment.replies.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(comment.replies) { reply in
-                        if reply.id != comment.replies.first?.id {
+                    // 收集所有回复，包括嵌套回复，展平为一层
+                    let allReplies = collectAllReplies(comment: comment)
+                    
+                    // 对所有回复进行排序
+                    let sortedReplies = allReplies.sorted { reply1, reply2 in
+                        // 首先检查是否存在直接回复关系
+                        // 如果reply2是对reply1的回复，则reply2应该排在reply1后面
+                        if reply2.replyToUsername == reply1.username {
+                            return true
+                        }
+                        // 如果reply1是对reply2的回复，则reply1应该排在reply2后面
+                        if reply1.replyToUsername == reply2.username {
+                            return false
+                        }
+                        
+                        // 如果没有直接回复关系，则按照之前的规则排序
+                        // 如果一个是用户评论，一个是虚拟角色评论，用户评论优先
+                        if reply1.isVirtualCharacter != reply2.isVirtualCharacter {
+                            return !reply1.isVirtualCharacter // 用户评论（非虚拟角色）排在前面
+                        }
+                        
+                        // 如果都是用户评论或都是虚拟角色评论，则按时间倒序排列（较新的在上方）
+                        return reply1.datePosted > reply2.datePosted
+                    }
+                    
+                    ForEach(sortedReplies) { reply in
+                        if reply.id != sortedReplies.first?.id {
                             Divider()
                                 .padding(.leading, 48) // 增加左侧间距
                                 .padding(.trailing, 16)
                                 .padding(.vertical, 2) // 添加垂直间距
                         }
                         
-                        // 回复内容
+                        // 回复内容 - 不再显示展开按钮，因为所有回复都在同一层
                         CommentItemView(
                             comment: reply,
                             replyAction: replyAction,
                             isLiked: likedComments.contains(reply.id),
-                            showExpandButton: !reply.replies.isEmpty,
-                            replyCount: reply.replies.count,
-                            isExpanded: expandedComments.contains(reply.id),
-                            onToggleExpand: {
-                                toggleExpand(for: reply.id)
-                            },
+                            showExpandButton: false, // 不再显示展开按钮
+                            replyCount: 0,
+                            isExpanded: false,
+                            onToggleExpand: nil,
                             onLike: {
                                 toggleLike(for: reply.id)
                             }
                         )
-                        
-                        // 嵌套回复
-                        if expandedComments.contains(reply.id) && !reply.replies.isEmpty {
-                            VStack(alignment: .leading, spacing: 0) {
-                                ForEach(reply.replies) { nestedReply in
-                                    if nestedReply.id != reply.replies.first?.id {
-                                        Divider()
-                                            .padding(.leading, 48) // 增加左侧间距
-                                            .padding(.trailing, 16)
-                                            .padding(.vertical, 2) // 添加垂直间距
-                                    }
-                                    
-                                    CommentItemView(
-                                        comment: nestedReply,
-                                        replyAction: replyAction,
-                                        isLiked: likedComments.contains(nestedReply.id),
-                                        showExpandButton: !nestedReply.replies.isEmpty,
-                                        replyCount: nestedReply.replies.count,
-                                        isExpanded: expandedComments.contains(nestedReply.id),
-                                        onToggleExpand: {
-                                            toggleExpand(for: nestedReply.id)
-                                        },
-                                        onLike: {
-                                            toggleLike(for: nestedReply.id)
-                                        }
-                                    )
-                                }
-                            }
-                            .padding(.vertical, 2) // 增加垂直间距
-                            .padding(.leading, 20) // 增加左侧间距
-                        }
                     }
                 }
                 .padding(.vertical, 6) // 增加垂直间距
@@ -413,6 +425,36 @@ struct CommentThreadView: View {
         }
     }
     
+    // 递归收集所有回复，并将它们展平为一层
+    private func collectAllReplies(comment: DetailedCommentModel) -> [DetailedCommentModel] {
+        var allReplies: [DetailedCommentModel] = []
+        
+        // 添加直接回复
+        allReplies.append(contentsOf: comment.replies)
+        
+        // 递归收集所有嵌套回复并展平
+        for reply in comment.replies {
+            allReplies.append(contentsOf: collectNestedReplies(reply))
+        }
+        
+        return allReplies
+    }
+    
+    // 递归收集嵌套回复
+    private func collectNestedReplies(_ comment: DetailedCommentModel) -> [DetailedCommentModel] {
+        var result: [DetailedCommentModel] = []
+        
+        // 添加直接回复
+        result.append(contentsOf: comment.replies)
+        
+        // 递归收集更深层的嵌套回复
+        for reply in comment.replies {
+            result.append(contentsOf: collectNestedReplies(reply))
+        }
+        
+        return result
+    }
+    
     // 切换展开状态
     private func toggleExpand(for commentId: UUID) {
         withAnimation {
@@ -435,6 +477,9 @@ struct CommentThreadView: View {
                 let generator = UIImpactFeedbackGenerator(style: .light)
                 generator.impactOccurred()
             }
+            
+            // 调用回调函数，更新模型数据
+            onLike(commentId)
         }
     }
     
@@ -493,6 +538,100 @@ struct CommentThreadView: View {
             
             refreshCounter += 1
         }
+        
+        // 监听虚拟角色回复添加通知，自动展开包含新回复的评论
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("VirtualCharacterReplyAdded"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let userInfo = notification.userInfo,
+                  let parentCommentID = userInfo["parentCommentID"] as? String else {
+                return
+            }
+            
+            // 检查是否是当前评论或其回复收到了新回复
+            if comment.id.uuidString == parentCommentID {
+                print("📢 CommentThreadView收到针对当前评论的虚拟角色回复通知")
+                
+                // 自动展开当前评论的回复
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    expandedComments.insert(comment.id)
+                }
+                
+                // 增加刷新计数器，强制视图更新
+                refreshCounter += 1
+                
+                // 添加轻微振动反馈
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+            }
+            
+            // 检查是否是当前评论的回复收到了新回复
+            for reply in comment.replies {
+                if reply.id.uuidString == parentCommentID {
+                    print("📢 CommentThreadView收到针对回复的虚拟角色回复通知")
+                    
+                    // 自动展开当前评论及其回复
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                        expandedComments.insert(comment.id)
+                        expandedComments.insert(reply.id)
+                    }
+                    
+                    // 增加刷新计数器，强制视图更新
+                    refreshCounter += 1
+                    
+                    // 添加轻微振动反馈
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred()
+                    
+                    break
+                }
+            }
+        }
+        
+        // 监听展开评论通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ExpandComment"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let userInfo = notification.userInfo,
+                  let commentId = userInfo["commentId"] as? String else {
+                return
+            }
+            
+            // 检查是否需要展开当前评论
+            if comment.id.uuidString == commentId {
+                print("📢 CommentThreadView收到展开评论通知 - 当前评论")
+                
+                // 展开评论
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    expandedComments.insert(comment.id)
+                }
+                
+                // 增加刷新计数器，强制视图更新
+                refreshCounter += 1
+            }
+            
+            // 检查是否需要展开当前评论中的某个回复
+            for reply in comment.replies {
+                if reply.id.uuidString == commentId {
+                    print("📢 CommentThreadView收到展开评论通知 - 嵌套回复")
+                    
+                    // 确保当前评论和目标回复都被展开
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                        expandedComments.insert(comment.id)
+                        expandedComments.insert(reply.id)
+                    }
+                    
+                    // 增加刷新计数器，强制视图更新
+                    refreshCounter += 1
+                    
+                    break
+                }
+            }
+        }
     }
 }
 
@@ -510,6 +649,21 @@ struct CommentItemView: View {
     var isExpanded: Bool = false
     var onToggleExpand: (() -> Void)? = nil
     var onLike: (() -> Void)? = nil
+    
+    // 修改判断是否是当前用户的评论的方式
+    private var isCurrentUserComment: Bool {
+        // 使用UserDefaults存储的用户ID或系统生成的设备标识符来判断
+        // 从UserDefaults获取当前用户ID
+        let currentUserId = UserDefaults.standard.string(forKey: "current_user_id") ?? UIDevice.current.identifierForVendor?.uuidString ?? ""
+        
+        // 从评论中获取用户ID
+        let commentUserId = comment.userId ?? ""
+        
+        // 如果评论没有userId但有特殊标记，也认为是当前用户的评论
+        let isMarkedAsCurrent = comment.isCurrentUser || comment.username == "当前用户"
+        
+        return commentUserId == currentUserId || isMarkedAsCurrent
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -601,26 +755,28 @@ struct CommentItemView: View {
                         
                         Spacer()
                         
-                        // 回复按钮
-                        Button(action: {
-                            replyAction(comment.id)
-                            
-                            // 发送通知，让CommentInputView获取焦点并弹出键盘
-                            NotificationCenter.default.post(
-                                name: NSNotification.Name("FocusCommentInput"),
-                                object: nil
-                            )
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrowshape.turn.up.left")
-                                    .font(.system(size: 13))
-                                Text("回复")
-                                    .font(.system(size: 13))
+                        // 回复按钮 - 当不是当前用户的评论时才显示
+                        if !isCurrentUserComment {
+                            Button(action: {
+                                replyAction(comment.id)
+                                
+                                // 发送通知，让CommentInputView获取焦点并弹出键盘
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("FocusCommentInput"),
+                                    object: nil
+                                )
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrowshape.turn.up.left")
+                                        .font(.system(size: 13))
+                                    Text("回复")
+                                        .font(.system(size: 13))
+                                }
+                                .foregroundColor(.gray.opacity(0.8))
                             }
-                            .foregroundColor(.gray.opacity(0.8))
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(.vertical, 4) // 从6减小到4
                         }
-                        .buttonStyle(PlainButtonStyle())
-                        .padding(.vertical, 4) // 从6减小到4
                         
                         // 点赞按钮
                         Button(action: {
@@ -629,8 +785,16 @@ struct CommentItemView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: isLiked ? "heart.fill" : "heart")
                                     .font(.system(size: 13))
-                                if comment.likes > 0 {
-                                    Text("\(comment.likes)")
+                                
+                                // 动态计算显示的点赞数：如果已点赞但原始数据未更新，则+1显示
+                                let displayLikes = isLiked && !comment.isLikedByCurrentUser ? 
+                                    comment.likes + 1 : 
+                                    ((!isLiked && comment.isLikedByCurrentUser) ? 
+                                        max(0, comment.likes - 1) : 
+                                        comment.likes)
+                                
+                                if displayLikes > 0 {
+                                    Text("\(displayLikes)")
                                         .font(.system(size: 13))
                                 }
                             }
