@@ -14,6 +14,10 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
     var datePosted: Date
     var userAvatar: String
     
+    // 用户标识相关
+    var userId: String? = nil
+    var isCurrentUser: Bool = false
+    
     // 虚拟角色相关属性
     var isVirtualCharacter: Bool
     var characterID: String?
@@ -35,6 +39,8 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
         userAvatar: String,
         content: String,
         datePosted: Date = Date(),
+        userId: String? = nil,
+        isCurrentUser: Bool = false,
         isVirtualCharacter: Bool = false,
         characterID: String? = nil,
         parentCommentId: UUID? = nil,
@@ -48,6 +54,8 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
         self.content = content.trimmingCharacters(in: .whitespacesAndNewlines)
         self.datePosted = datePosted
         self.userAvatar = userAvatar
+        self.userId = userId
+        self.isCurrentUser = isCurrentUser
         self.isVirtualCharacter = isVirtualCharacter
         self.characterID = characterID
         self.parentCommentId = parentCommentId

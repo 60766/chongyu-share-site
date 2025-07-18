@@ -556,38 +556,56 @@ struct FullscreenPostDetailView: View {
                     // 滚动内容
                     ZStack(alignment: .bottom) {
                         ScrollView {
-                            VStack(spacing: 0) {
-                                // 添加一个空白区域代替标题栏的高度
-                                Color.clear
-                                    .frame(height: 44 + getSafeAreaTop())
-                                
-                                // 帖子内容
-                                makePostContent()
-                                
-                                // 帖子互动栏
-                                makeInteractionBar()
-                                
-                                // 分隔线
-                                makeContentDivider()
-                                
-                                // 评论区
-                                makeCommentsSection()
-                                    .id("comments")
-                            }
-                            // 添加底部安全区域内边距，确保内容不被输入框遮挡
-                            .safeAreaInset(edge: .bottom) {
-                                // 输入框占位区域，调整高度从35增加到60，确保足够空间
-                                Color.clear.frame(height: 60)
-                            }
-                            .background(
-                                GeometryReader { proxy in
-                                    Color.clear.preference(
-                                        key: FullscreenScrollOffsetKey.self,
-                                        value: proxy.frame(in: .named("scroll")).minY
-                                    )
+                            ScrollViewReader { scrollProxy in
+                                VStack(spacing: 0) {
+                                    // 顶部锚点，用于滚动到顶部
+                                    Color.clear
+                                        .frame(height: 1)
+                                        .id("scroll_top_\(viewModel.post.id.uuidString)")
+                                    
+                                    // 添加一个空白区域代替标题栏的高度
+                                    Color.clear
+                                        .frame(height: 44 + getSafeAreaTop())
+                                    
+                                    // 帖子内容
+                                    makePostContent()
+                                    
+                                    // 帖子互动栏
+                                    makeInteractionBar()
+                                    
+                                    // 分隔线
+                                    makeContentDivider()
+                                    
+                                    // 评论区
+                                    makeCommentsSection()
+                                        .id("comments_\(viewModel.post.id.uuidString)")
                                 }
-                            )
+                                // 添加底部安全区域内边距，确保内容不被输入框遮挡
+                                .safeAreaInset(edge: .bottom) {
+                                    // 输入框占位区域，调整高度从35增加到60，确保足够空间
+                                    Color.clear.frame(height: 60)
+                                }
+                                .background(
+                                    GeometryReader { proxy in
+                                        Color.clear.preference(
+                                            key: FullscreenScrollOffsetKey.self,
+                                            value: proxy.frame(in: .named("scroll")).minY
+                                        )
+                                    }
+                                )
+                                .onChange(of: viewModel.post.id) { _, _ in
+                                    // 当帖子ID变化时，立即滚动到顶部（无动画）
+                                    scrollProxy.scrollTo("scroll_top_\(viewModel.post.id.uuidString)", anchor: .top)
+                                }
+                                // 在视图出现时立即滚动到顶部
+                                .onAppear {
+                                    // 无动画滚动到顶部
+                                    scrollProxy.scrollTo("scroll_top_\(viewModel.post.id.uuidString)", anchor: .top)
+                                }
+                            }
                         }
+                        .scrollDisabled(isTransitioning) // 在过渡期间禁用滚动
+                        .scrollIndicators(.hidden) // 隐藏滚动指示器
                         .coordinateSpace(name: "scroll")
                         .offset(x: dragOffset)
                         // 优化不透明度变化，更平滑过渡 - 随着拖动逐渐降低透明度
@@ -1951,6 +1969,7 @@ struct FullscreenPostDetailView: View {
             makePostContentSection()
         }
         .padding(.vertical, 10) // 整体垂直内边距
+        .id("post_content_\(viewModel.post.id.uuidString)")
     }
     
     // 用户头像和信息区域
@@ -2019,6 +2038,7 @@ struct FullscreenPostDetailView: View {
         }
         .padding(.horizontal, 22)
         .padding(.vertical, 12)
+        .id("user_info_section_\(viewModel.post.id.uuidString)")
         .onAppear {
             // 在视图出现时检查关注状态
             checkFollowStatus()
@@ -2066,7 +2086,7 @@ struct FullscreenPostDetailView: View {
                     .padding(.leading, calculateDynamicPadding(text: viewModel.post.content))
                     .padding(.trailing, 16)
                     .padding(.bottom, viewModel.post.images.isEmpty ? 0 : 8) // 如果有图片，增加底部间距
-                    .id("post_content")
+                    .id("post_text_content_\(viewModel.post.id.uuidString)")
                     .frame(maxWidth: .infinity, alignment: .leading) // 确保文本始终左对齐
             }
             
@@ -2075,26 +2095,32 @@ struct FullscreenPostDetailView: View {
                 switch viewModel.post.images.count {
                 case 1:
                     singleImageView(viewModel.post.images[0])
+                        .id("image_section_\(viewModel.post.id.uuidString)")
                 case 2:
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 2)
                         .padding(.horizontal, 16)
                         .padding(.top, 4)
+                        .id("image_section_\(viewModel.post.id.uuidString)")
                 case 3:
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
                         .padding(.horizontal, 16)
                         .padding(.top, 4)
+                        .id("image_section_\(viewModel.post.id.uuidString)")
                 case 4:
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 2)
                         .padding(.horizontal, 16)
                         .padding(.top, 4)
+                        .id("image_section_\(viewModel.post.id.uuidString)")
                 case 5, 6:
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
                         .padding(.horizontal, 16)
                         .padding(.top, 4)
+                        .id("image_section_\(viewModel.post.id.uuidString)")
                 default:
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
                         .padding(.horizontal, 16)
                         .padding(.top, 4)
+                        .id("image_section_\(viewModel.post.id.uuidString)")
                 }
             }
         }
@@ -2412,6 +2438,7 @@ struct FullscreenPostDetailView: View {
                 .padding(.horizontal, 22)
         }
         .background(Color(.systemBackground))
+        .id("interaction_bar_\(viewModel.post.id.uuidString)")
     }
     
     // 分隔线 - 完全移除
@@ -2480,8 +2507,6 @@ struct FullscreenPostDetailView: View {
         // 禁用交互，防止动画期间的用户操作
         isTransitioning = true
         
-        let screenWidth = UIScreen.main.bounds.width
-        
         // 触发轻量级触觉反馈 - 降低强度减轻资源消耗
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.prepare() // 提前准备减少延迟
@@ -2507,24 +2532,6 @@ struct FullscreenPostDetailView: View {
         // 立即更新数据模型并显示下一页
         self.nextPagePost = nextPost
         
-        // 更短、更快的动画时间，减少用户等待
-        let initialEffectDuration: Double = 0.12
-        let slideOutDuration: Double = 0.2
-        
-        // 添加转场保障计时器 - 如果转场在合理时间内未完成会强制恢复
-        let transitionTimeout: Double = 1.2 // 缩短超时时间
-        
-        // 保存状态用于恢复
-        var transitionCancelled = false
-        let transitionStartTime = Date()
-        
-        // 优化1：合并初始动画和滑出动画减少动画层叠
-        withAnimation(.easeIn(duration: initialEffectDuration)) {
-            self.showingTimeSpaceEffect = true
-            self.timeSpaceDirection = direction
-            self.nextPageVisible = true
-        }
-        
         // 优化2：使用低优先级线程进行预加载，避免与UI动画竞争资源
         Task(priority: .background) {
             // 预加载操作 - 确保获取异步函数的正确返回值
@@ -2535,94 +2542,26 @@ struct FullscreenPostDetailView: View {
             print("预加载完成：图片(\(imagesTask ? "成功" : "完成"))，评论(\(commentsTask ? "成功" : "完成"))")
         }
         
-        // 优化3：使用单一动画队列而不是嵌套的延迟调用，减少动画竞争
-        DispatchQueue.main.asyncAfter(deadline: .now() + initialEffectDuration) {
-            // 如果转场已被取消则退出
-            guard !transitionCancelled else { return }
-            
-            // 滑出动画 - 使用更短的响应时间和更高的弹性
-            withAnimation(.spring(response: slideOutDuration, dampingFraction: 0.85, blendDuration: 0.08)) {
-                self.dragOffset = direction == .left ? -screenWidth : screenWidth
-                self.showingTimeSpaceEffect = false
-            }
-            
-            // 准备完成转场 - 直接安排下一步而不是再嵌套一层
-            let completionDeadline = DispatchTime.now() + slideOutDuration
-            
-            // 优化4：直接在主队列中调度完成动作，减少队列切换开销
-            DispatchQueue.main.asyncAfter(deadline: completionDeadline) {
-                // 如果转场已被取消则退出
-                guard !transitionCancelled else { return }
-                
-                // 最后安全检查，确保目标帖子仍然有效
-                if nextPost.id.uuidString == currentPostId {
-                    print("⚠️ 严重警告：检测到帖子ID冲突，尝试恢复...")
-                    
-                    // 额外安全机制 - 如果确实是ID相同但实际是不同的帖子，仍然允许切换
-                    if nextPost !== self.viewModel.post {
-                        print("⚠️ 但确认是不同帖子实例，继续切换...")
-                    } else {
-                        // 复位状态并退出
-                        self.resetTransitionState()
-                        return
-                    }
-                }
-                
-                // 更新数据模型 - 直接在当前线程执行
-                self.viewModel.updatePost(nextPost)
-                
-                // 记录完成状态
-                print("⭐️ 页面过渡完成: 当前帖子ID已更新为 \(nextPost.id.uuidString)")
-                
-                // 优化5：立即重置关键状态，避免动画层叠
-                self.dragOffset = 0
-                self.swipeDirection = .none
-                self.showingTimeSpaceEffect = false
-                self.nextPageVisible = false
-                
-                // 优化6：直接清理状态，不使用额外的嵌套异步调用
-                self.nextPagePost = nil
-                self.isTransitioning = false
-                
-                // 发送通知，要求评论区域刷新
-                NotificationCenter.default.post(name: NSNotification.Name("RefreshCommentsSection"), object: nil)
-                
-                // 更新边界状态和预加载下一篇 - 放在最后进行
-                self.checkBoundaries()
-                self.preloadAdjacentPosts()
-            }
-        }
+        // 直接更新数据模型，不使用滑动动画
+        // 更新数据模型 - 直接在当前线程执行
+        self.viewModel.updatePost(nextPost)
         
-        // 设置安全超时，防止转场卡住
-        DispatchQueue.main.asyncAfter(deadline: .now() + transitionTimeout) {
-            // 检查转场是否仍在进行中
-            if self.isTransitioning && !transitionCancelled {
-                // 计算转场已经持续的时间
-                let elapsedTime = Date().timeIntervalSince(transitionStartTime)
-                
-                // 如果超过了安全时间，强制结束转场
-                if elapsedTime >= transitionTimeout * 0.9 {
-                    print("⚠️ 转场超时(\(String(format: "%.1f", elapsedTime))秒)，强制恢复...")
-                    
-                    // 标记转场已取消
-                    transitionCancelled = true
-                    
-                    // 还原所有状态
-                    self.resetTransitionState()
-                    
-                    // 触发轻微震动通知用户 - 使用更轻量的反馈方式
-                    let errorFeedback = UINotificationFeedbackGenerator()
-                    errorFeedback.prepare()
-                    errorFeedback.notificationOccurred(.warning)
-                    
-                    // 提供视觉反馈 - 使用更简单的动画
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        self.dragOffset = 0
-                        self.showingTimeSpaceEffect = false
-                    }
-                }
-            }
-        }
+        // 记录完成状态
+        print("⭐️ 页面过渡完成: 当前帖子ID已更新为 \(nextPost.id.uuidString)")
+        
+        // 立即重置关键状态
+        self.dragOffset = 0
+        self.swipeDirection = .none
+        self.showingTimeSpaceEffect = false
+        self.nextPageVisible = false
+        
+        // 清理状态
+        self.nextPagePost = nil
+        self.isTransitioning = false
+        
+        // 更新边界状态和预加载下一篇
+        self.checkBoundaries()
+        self.preloadAdjacentPosts()
     }
     
     // 重置转场状态的辅助方法 - 优化为更轻量级实现

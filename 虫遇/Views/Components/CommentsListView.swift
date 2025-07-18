@@ -352,31 +352,57 @@ struct CommentThreadView: View {
                     
                     // 对所有回复进行排序
                     let sortedReplies = allReplies.sorted { reply1, reply2 in
-                        // 首先检查是否存在直接回复关系
-                        // 如果reply2是对reply1的回复，则reply2应该排在reply1后面
+                        // 构建回复链，确保对话连贯性
+                        
+                        // 规则1：直接回复关系优先 - 如果reply2是对reply1的直接回复，reply2应该紧跟在reply1后面
+                        if reply2.parentCommentId == reply1.id {
+                            return true
+                        }
+                        
+                        // 规则2：直接回复关系优先 - 如果reply1是对reply2的直接回复，reply1应该紧跟在reply2后面
+                        if reply1.parentCommentId == reply2.id {
+                            return false
+                        }
+                        
+                        // 规则3：用户名匹配 - 如果reply2回复的是reply1的用户，reply2应该排在reply1后面
                         if reply2.replyToUsername == reply1.username {
                             return true
                         }
-                        // 如果reply1是对reply2的回复，则reply1应该排在reply2后面
+                        
+                        // 规则4：用户名匹配 - 如果reply1回复的是reply2的用户，reply1应该排在reply2后面
                         if reply1.replyToUsername == reply2.username {
                             return false
                         }
                         
-                        // 如果没有直接回复关系，则按照之前的规则排序
-                        // 如果一个是用户评论，一个是虚拟角色评论，用户评论优先
-                        if reply1.isVirtualCharacter != reply2.isVirtualCharacter {
-                            return !reply1.isVirtualCharacter // 用户评论（非虚拟角色）排在前面
+                        // 规则5：处理同一对话链 - 如果两条回复都回复了同一个人，按时间排序
+                        if let replyTo1 = reply1.replyToUsername, 
+                           let replyTo2 = reply2.replyToUsername,
+                           replyTo1 == replyTo2 {
+                            // 如果都是回复同一个人，按时间倒序排列（新的在上方）
+                            return reply1.datePosted > reply2.datePosted
                         }
                         
-                        // 如果都是用户评论或都是虚拟角色评论，则按时间倒序排列（较新的在上方）
+                        // 规则6：同一发送者的多条消息 - 按时间排序
+                        if reply1.username == reply2.username {
+                            // 同一用户的多条消息，按时间倒序排列（新的在上方）
+                            return reply1.datePosted > reply2.datePosted
+                        }
+                        
+                        // 规则7：虚拟角色回复优先显示
+                        if reply1.isVirtualCharacter && !reply2.isVirtualCharacter {
+                            return true
+                        }
+                        
+                        if !reply1.isVirtualCharacter && reply2.isVirtualCharacter {
+                            return false
+                        }
+                        
+                        // 默认规则：按时间倒序排列（新的在上方）
                         return reply1.datePosted > reply2.datePosted
                     }
                     
-                    // 对已排序的回复进行分组处理，使同一虚拟角色的对话保持连续
-                    let groupedReplies = groupRepliesByCharacter(sortedReplies)
-                    
-                    ForEach(groupedReplies) { reply in
-                        if reply.id != groupedReplies.first?.id {
+                    ForEach(sortedReplies) { reply in
+                        if reply.id != sortedReplies.first?.id {
                             Divider()
                                 .padding(.leading, 48) // 增加左侧间距
                                 .padding(.trailing, 16)
@@ -440,6 +466,16 @@ struct CommentThreadView: View {
             allReplies.append(contentsOf: collectNestedReplies(reply))
         }
         
+        // 打印收集到的回复数量，帮助调试
+        print("📊 收集到 \(allReplies.count) 条回复，评论ID: \(comment.id)")
+        
+        // 打印每条回复的父评论ID，帮助调试
+        for reply in allReplies {
+            if let parentId = reply.parentCommentId {
+                print("🔗 回复ID: \(reply.id), 父评论ID: \(parentId), 回复给: \(reply.replyToUsername ?? "无")")
+            }
+        }
+        
         return allReplies
     }
     
@@ -458,80 +494,6 @@ struct CommentThreadView: View {
         return result
     }
     
-    // 对回复进行分组，使同一角色的对话保持连续
-    private func groupRepliesByCharacter(_ replies: [DetailedCommentModel]) -> [DetailedCommentModel] {
-        if replies.isEmpty {
-            return []
-        }
-        
-        // 调试日志
-        print("📊 开始分组评论，总计 \(replies.count) 条")
-        
-        // 创建一个包含所有回复的可变副本
-        var remainingReplies = replies
-        var result: [DetailedCommentModel] = []
-        
-        // 处理所有回复，直到没有剩余回复
-        while !remainingReplies.isEmpty {
-            // 获取第一个未处理的回复作为起点
-            let currentReply = remainingReplies.removeFirst()
-            result.append(currentReply)
-            
-            // 调试日志
-            print("👤 添加回复: \(currentReply.username) - \(currentReply.content.prefix(20))...")
-            
-            // 查找与当前回复相关的对话链
-            var conversationChain: [DetailedCommentModel] = []
-            var index = 0
-            
-            // 查找所有相关回复
-            while index < remainingReplies.count {
-                let nextReply = remainingReplies[index]
-                
-                // 检查是否为对话链的一部分:
-                // 1. 直接回复关系：nextReply回复currentReply或已添加的任何回复
-                let isDirectReply = nextReply.replyToUsername == currentReply.username || 
-                                   result.contains { r in nextReply.replyToUsername == r.username }
-                                   
-                // 2. 相同虚拟角色的连续对话
-                let isSameCharacterReply = nextReply.isVirtualCharacter && currentReply.isVirtualCharacter && 
-                                         nextReply.username == currentReply.username
-                
-                // 3. 主题关联：如果已经在结果中的最后一个回复是对nextReply的回复
-                let isRelatedByTopic = !result.isEmpty && nextReply.username == result.last?.replyToUsername
-                
-                if isDirectReply || isSameCharacterReply || isRelatedByTopic {
-                    // 添加到对话链
-                    conversationChain.append(nextReply)
-                    // 从剩余回复中移除
-                    remainingReplies.remove(at: index)
-                    
-                    // 调试日志
-                    var reason = ""
-                    if isDirectReply { reason += "直接回复 " }
-                    if isSameCharacterReply { reason += "同一角色 " }
-                    if isRelatedByTopic { reason += "主题关联 " }
-                    print("  🔗 添加到对话链: \(nextReply.username) - \(nextReply.content.prefix(20))... 原因: \(reason)")
-                } else {
-                    index += 1
-                }
-            }
-            
-            // 将对话链中的回复添加到结果
-            result.append(contentsOf: conversationChain)
-            
-            // 调试日志
-            if !conversationChain.isEmpty {
-                print("✅ 添加对话链，共 \(conversationChain.count) 条回复")
-            }
-        }
-        
-        // 调试日志
-        print("📊 分组完成，总计 \(result.count) 条回复")
-        
-        return result
-    }
-
     // 切换展开状态
     private func toggleExpand(for commentId: UUID) {
         withAnimation {
@@ -773,7 +735,7 @@ struct CommentItemView: View {
                         // 用户名
                         Text(comment.username)
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(comment.isVirtualCharacter ? getCharacterColor(for: comment.characterID ?? "") : .primary)
+                            .foregroundColor(.primary)
                         
                         // 角色标签
                         if comment.isVirtualCharacter, let characterID = comment.characterID {
@@ -909,12 +871,7 @@ struct UserAvatarView: View {
                 .clipShape(Circle())
                 .overlay(
                     Circle()
-                        .stroke(
-                            isVirtualCharacter ? 
-                                getCharacterColor(for: characterID ?? "").opacity(0.4) : 
-                                Color.clear, 
-                            lineWidth: 1
-                        )
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
         } else {

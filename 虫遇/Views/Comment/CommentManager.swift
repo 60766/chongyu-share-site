@@ -58,6 +58,8 @@ class CommentManager: ObservableObject {
     
     // 虚拟角色服务
     private let virtualCharacterService = VirtualCharacterService.shared
+    // 角色个性管理器
+    private let personalityManager = CharacterPersonalityManager.shared
     
     // 取消订阅标记
     private var cancellables = Set<AnyCancellable>()
@@ -307,49 +309,35 @@ class CommentManager: ObservableObject {
     }
     
     /**
-     * 更新评论列表
-     * 分离顶级评论和所有回复，并按小红书风格处理评论层级
+     * 更新评论列表（严格对话流排序）
      */
     func updateCommentLists() {
-        // 获取所有顶级评论（不包含回复）
-        var topLevelResults: [DetailedCommentModel] = []
-        
-        // 创建一个字典，用于将回复分组到各自的主评论下
-        var commentMap: [UUID: DetailedCommentModel] = [:]
-        
-        // 先找出所有主评论
-        for comment in currentPost.comments {
-            if comment.parentCommentId == nil {
-                var commentCopy = comment
-                commentCopy.replies = [] // 清空回复列表，后面重新组织
-                commentMap[comment.id] = commentCopy
-                topLevelResults.append(commentCopy)
+        let allCommentsArray = currentPost.comments
+        print("==== DEBUG: currentPost.comments ====")
+        for c in allCommentsArray {
+            print("id=\(c.id), parentCommentId=\(String(describing: c.parentCommentId)), user=\(c.username), content=\(c.content)")
+        }
+        print("==== END ====")
+        // 递归平铺：每个评论后紧跟所有直接回复它的评论（同级按时间正序）
+        func flatten(parentId: UUID?) -> [DetailedCommentModel] {
+            let children = allCommentsArray
+                .filter { $0.parentCommentId == parentId }
+                .sorted { $0.datePosted < $1.datePosted }
+            var result: [DetailedCommentModel] = []
+            for child in children {
+                result.append(child)
+                result.append(contentsOf: flatten(parentId: child.id))
             }
+            return result
         }
-        
-        // 将所有回复添加到对应的主评论下
-        // 小红书风格：所有回复都作为一级回复，通过replyToUsername标记回复关系
-        for comment in currentPost.comments {
-            if comment.parentCommentId != nil {
-                // 找到顶级父评论
-                if let rootComment = findRootComment(for: comment, in: currentPost.comments) {
-                    if let index = topLevelResults.firstIndex(where: { $0.id == rootComment.id }) {
-                        topLevelResults[index].replies.append(comment)
-                    }
-                }
-            }
+        let flat = flatten(parentId: nil)
+        print("==== DEBUG: allComments (平铺后) ====")
+        for c in flat {
+            print("id=\(c.id), parentCommentId=\(String(describing: c.parentCommentId)), user=\(c.username), content=\(c.content)")
         }
-        
-        // 排序回复（按时间倒序，最新的在前面）
-        for i in 0..<topLevelResults.count {
-            topLevelResults[i].replies.sort { $0.datePosted > $1.datePosted }
-        }
-        
-        // 更新顶级评论列表（按时间倒序，最新的在前面）
-        self.topLevelComments = topLevelResults.sorted { $0.datePosted > $1.datePosted }
-        
-        // 创建包含所有评论和回复的扁平列表
-        self.allComments = getAllCommentsFlattened()
+        print("==== END ====")
+        self.allComments = flat
+        self.topLevelComments = allCommentsArray.filter { $0.parentCommentId == nil }
     }
     
     /**
@@ -433,21 +421,57 @@ class CommentManager: ObservableObject {
                 userAvatar: currentUserAvatar,
                 content: processedContent, // 不需要显式添加@前缀
                 parentCommentId: replyTo.id,
-                replyToUsername: replyTo.username // 使用回复对象的用户名
+                replyToUsername: replyTo.username, // 使用回复对象的用户名
+                userId: UserDefaults.standard.string(forKey: "current_user_id") ?? UIDevice.current.identifierForVendor?.uuidString,
+                isCurrentUser: true
             )
             
             print("✅ 已添加回复评论 - ID: \(newCommentId), 回复给: \(replyTo.username), 内容: \"\(processedContent.prefix(30))...\"")
             print("✅ 父评论ID: \(replyTo.id)")
+            
+            // 检查是否回复的是虚拟角色的评论
+            if replyTo.isVirtualCharacter {
+                print("🤖 检测到回复的是虚拟角色评论，将触发针对性回复")
+                
+                // 获取虚拟角色ID
+                if let characterID = replyTo.characterID {
+                    // 使用Task异步生成虚拟角色的回复
+                    Task {
+                        await generateVirtualCharacterReplyToUser(
+                            characterID: characterID,
+                            userComment: processedContent,
+                            parentCommentID: replyTo.id,
+                            replyToUsername: currentUsername,
+                            originalComment: replyTo.content
+                        )
+                    }
+                }
+            } else {
+                // 如果回复的不是虚拟角色，走普通的虚拟角色回复生成逻辑
+                Task {
+                    print("🤖 开始生成虚拟角色回复")
+                    await generateVirtualReply()
+                }
+            }
         } else {
             // 添加顶级评论 - 无需特殊处理
             newCommentId = UUID()
             currentPost.addComment(
                 username: currentUsername,
                 userAvatar: currentUserAvatar,
-                content: processedContent
+                content: processedContent,
+                userId: UserDefaults.standard.string(forKey: "current_user_id") ?? UIDevice.current.identifierForVendor?.uuidString,
+                isCurrentUser: true
             )
             
             print("✅ 已添加顶级评论 - ID: \(newCommentId), 内容: \"\(processedContent.prefix(30))...\"")
+            
+            // 生成虚拟角色回复
+            // 对于每条用户评论，都进行回复生成
+            Task {
+                print("🤖 开始生成虚拟角色回复")
+                await generateVirtualReply()
+            }
         }
         
         // 重置状态
@@ -517,13 +541,6 @@ class CommentManager: ObservableObject {
                 )
                 self.objectWillChange.send()
             }
-        }
-        
-        // 生成虚拟角色回复
-        // 对于每条用户评论，都进行回复生成
-        Task {
-            print("🤖 开始生成虚拟角色回复")
-            await generateVirtualReply()
         }
     }
     
@@ -608,7 +625,6 @@ class CommentManager: ObservableObject {
         
         // 记录已回复过此用户的角色，避免重复
         let userRepliedCharactersKey = "replied_characters_to_\(targetUsername)"
-        var repliedCharacters = UserDefaults.standard.stringArray(forKey: userRepliedCharactersKey) ?? []
         
         // 分开处理帖子作者和其他角色
         var authorCharacter: String? = nil
@@ -790,6 +806,19 @@ class CommentManager: ObservableObject {
                                     }
                                     
                                     print("✅ 虚拟角色回复已添加 - 角色: \(CharacterDataManager.shared.getName(for: characterID) ?? characterID), 回复给: \(targetUsername), 评论ID: \(targetCommentID)")
+                                    
+                                    // 确保评论可见（展开评论链）
+                                    self.ensureReplyVisible(commentId: targetCommentID)
+                                    
+                                    // 发送通知，告知UI虚拟角色回复已添加，需要更新显示
+                                    NotificationCenter.default.post(
+                                        name: NSNotification.Name("VirtualCharacterReplyAdded"),
+                                        object: nil,
+                                        userInfo: [
+                                            "parentCommentID": targetCommentID.uuidString,
+                                            "replyCommentID": virtualReply.id.uuidString
+                                        ]
+                                    )
                                 }
                             }
                             
@@ -803,6 +832,159 @@ class CommentManager: ObservableObject {
             }
         } catch {
             print("❌ 批量API生成回复失败: \(error.localizedDescription)")
+        }
+    }
+    
+    /**
+     * 生成虚拟角色对用户评论的回复
+     * 专门处理用户回复虚拟角色评论的情况
+     * 只有被回复的虚拟角色会回复用户
+     */
+    @MainActor
+    func generateVirtualCharacterReplyToUser(
+        characterID: String,
+        userComment: String,
+        parentCommentID: UUID,
+        replyToUsername: String,
+        originalComment: String
+    ) async {
+        print("🤖 开始生成虚拟角色(\(characterID))对用户回复的回应")
+        
+        // 检查是否已经对此评论生成过回复
+        let commentRepliedKey = "replied_to_user_comment_\(parentCommentID.uuidString)_\(userComment.hash)"
+        if UserDefaults.standard.bool(forKey: commentRepliedKey) {
+            print("🤖 已经对用户回复生成过回应，跳过")
+            return
+        }
+        
+        // 获取角色名称
+        let characterName = getCharacterName(for: characterID)
+        let characterAvatar = getCharacterAvatar(for: characterID)
+        
+        // 获取角色特性 - 修复类型不匹配问题
+        let characterTraits = personalityManager.getPersonality(for: characterID) ?? 
+            CharacterPersonality(
+                tone: "有智慧的",
+                knowledgeAreas: ["历史", "文化"],
+                speechPatterns: []
+            )
+        
+        // 构建专门的提示词，用于生成对用户回复的回应
+        let prompt = """
+        请先判断用户的回复内容是否与帖子主题或上下文有关联：
+        - 如果有关联，请结合帖子内容和上下文，按照下方要求生成回复。
+        - 如果没有关联（用户只是单纯和你闲聊或提问），请直接根据你的个性、知识和风格自由回复用户，不必强行拉回帖子主题。
+
+        你是\(characterName)，一个\(characterTraits.tone)的历史人物，专长领域是\(characterTraits.knowledgeAreas.joined(separator: "、"))。
+
+        帖子主题："\(currentPost.content)"
+
+        对话历史：
+        - 你之前说："\(originalComment)"
+        - 用户"\(replyToUsername)"回复你："\(userComment)"
+
+        请以\(characterName)的身份回复，注意：
+        1. 直接针对用户的回复内容做出个性化回应，表现出你对用户的关注
+        2. 保持你的独特风格、语气和专业视角
+        3. 考虑帖子主题和之前的对话，保持连贯性
+        4. 回复长度控制在15-30字之间，简短有力
+        5. 如果用户提问，给予简明的回答；如果用户表达观点，给予简短的回应
+        6. 表现出适当的情感反应，增强对话的真实感
+        7. 不要使用"作为[角色]"的开头，不要添加元分析或角色扮演描述
+
+        直接输出\(characterName)的回复内容。
+        """
+        
+        // 添加模拟打字延迟
+        do {
+            try await Task.sleep(nanoseconds: UInt64(Double.random(in: 1.5...3.0) * 1_000_000_000))
+        } catch {
+            print("⚠️ 延迟模拟被中断")
+        }
+        
+        // 使用Combine方式调用API
+        return await withCheckedContinuation { continuation in
+            AINetworkService.shared.sendRequest(prompt: prompt)
+                .sink(
+                    receiveCompletion: { completion in
+                        switch completion {
+                        case .finished:
+                            break
+                        case .failure(let error):
+                            print("❌ 生成虚拟角色回复失败: \(error.localizedDescription)")
+                        }
+                        continuation.resume()
+                    },
+                    receiveValue: { [weak self] response in
+                        guard let self = self else { return }
+                        
+                        // 清理API返回的内容
+                        let cleanedResponse = self.cleanResponseContent(response)
+                        print("✅ 生成虚拟角色回复成功: \"\(cleanedResponse.prefix(30))...\"")
+                        
+                        // 标记此评论已被回复
+                        UserDefaults.standard.set(true, forKey: commentRepliedKey)
+                        
+                        // 在主线程上添加回复，添加延迟使回复看起来更自然
+                        DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1.0...2.0)) {
+                            // 创建虚拟角色回复
+                            let virtualReply = DetailedCommentModel(
+                                username: characterName,
+                                userAvatar: characterAvatar,
+                                content: cleanedResponse,
+                                datePosted: Date().addingTimeInterval(Double.random(in: 15...30)),
+                                isVirtualCharacter: true,
+                                characterID: characterID,
+                                parentCommentId: parentCommentID,
+                                replyToUsername: replyToUsername
+                            )
+                            
+                            // 添加到帖子
+                            self.currentPost.addComment(virtualReply)
+                            
+                            // 更新评论列表
+                            self.updateCommentLists()
+                            
+                            // 确保评论可见（展开评论链）
+                            self.ensureReplyVisible(commentId: parentCommentID)
+                            
+                            // 生成批次ID
+                            let batchId = UUID().uuidString
+                            
+                            // 发送通知更新UI
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("PostCommentsUpdated"),
+                                object: nil,
+                                userInfo: [
+                                    "postID": self.currentPost.id.uuidString,
+                                    "batchId": batchId
+                                ]
+                            )
+                            
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("RefreshPostComments"),
+                                object: nil,
+                                userInfo: [
+                                    "batchId": batchId
+                                ]
+                            )
+                            
+                            // 发送特定通知，告知UI虚拟角色回复已添加到特定评论下
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("VirtualCharacterReplyAdded"),
+                                object: nil,
+                                userInfo: [
+                                    "parentCommentID": parentCommentID.uuidString,
+                                    "replyCommentID": virtualReply.id.uuidString,
+                                    "characterID": characterID
+                                ]
+                            )
+                            
+                            print("✅ 虚拟角色回复已添加 - 角色: \(characterName), 回复给: \(replyToUsername)")
+                        }
+                    }
+                )
+                .store(in: &self.cancellables)
         }
     }
     
@@ -931,12 +1113,21 @@ class CommentManager: ObservableObject {
     }
     
     /**
-     * 清理回复内容，移除括号中的内容和其他不需要的元素
-     * @param content 原始回复内容
-     * @return 清理后的内容
+     * 清理API返回的内容
+     * 移除可能的角色前缀和其他不需要的元素
      */
     private func cleanResponseContent(_ content: String) -> String {
-        var cleanedContent = content
+        var cleanedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 移除可能的角色名前缀，如"爱因斯坦："
+        let characterNames = CharacterDataManager.shared.getAllCharactersInfo().map { $0.name }
+        for name in characterNames {
+            if cleanedContent.hasPrefix("\(name)：") || cleanedContent.hasPrefix("\(name):") {
+                cleanedContent = cleanedContent.replacingOccurrences(of: "\(name)：", with: "")
+                cleanedContent = cleanedContent.replacingOccurrences(of: "\(name):", with: "")
+                break
+            }
+        }
         
         // 移除所有括号及其中的内容，支持中文和英文括号
         let bracketPatterns = [
@@ -956,131 +1147,19 @@ class CommentManager: ObservableObject {
             )
         }
         
-        // 移除"注："及其后面的解释内容，包括多行内容
+        // 移除"注："及其后面的解释内容
         let notePatterns = [
             "注：[^\\n]*",               // "注："后面的内容
             "注:[^\\n]*",                // "注:"后面的内容
-            "注意：[^\\n]*",             // "注意："后面的内容
-            "注意:[^\\n]*",              // "注意:"后面的内容
             "PS：[^\\n]*",               // "PS："后面的内容
             "PS:[^\\n]*",                // "PS:"后面的内容
             "P\\.S\\.：[^\\n]*",         // "P.S.："后面的内容
             "P\\.S\\.:[^\\n]*",          // "P.S.:"后面的内容
             "补充：[^\\n]*",             // "补充："后面的内容
-            "补充:[^\\n]*",              // "补充:"后面的内容
-            "说明：[^\\n]*",             // "说明："后面的内容
-            "说明:[^\\n]*",              // "说明:"后面的内容
-            "解释：[^\\n]*",             // "解释："后面的内容
-            "解释:[^\\n]*",              // "解释:"后面的内容
-            "备注：[^\\n]*",             // "备注："后面的内容
-            "备注:[^\\n]*",              // "备注:"后面的内容
-            "附：[^\\n]*",               // "附："后面的内容
-            "附:[^\\n]*"                 // "附:"后面的内容
+            "补充:[^\\n]*"               // "补充:"后面的内容
         ]
         
         for pattern in notePatterns {
-            cleanedContent = cleanedContent.replacingOccurrences(
-                of: pattern,
-                with: "",
-                options: .regularExpression
-            )
-        }
-        
-        // 移除多行注释，如果注释占单独一行或多行
-        let multilineNotePatterns = [
-            "\\n注：[\\s\\S]*",          // 换行后的"注："及其后面所有内容
-            "\\n注:[\\s\\S]*",           // 换行后的"注:"及其后面所有内容
-            "\\n补充：[\\s\\S]*",        // 换行后的"补充："及其后面所有内容
-            "\\n补充:[\\s\\S]*",         // 换行后的"补充:"及其后面所有内容
-            "\\n说明：[\\s\\S]*",        // 换行后的"说明："及其后面所有内容
-            "\\n说明:[\\s\\S]*",         // 换行后的"说明:"及其后面所有内容
-            "\\n解释：[\\s\\S]*",        // 换行后的"解释："及其后面所有内容
-            "\\n解释:[\\s\\S]*",         // 换行后的"解释:"及其后面所有内容
-            "\\n备注：[\\s\\S]*",        // 换行后的"备注："及其后面所有内容
-            "\\n备注:[\\s\\S]*",         // 换行后的"备注:"及其后面所有内容
-            "\\nPS：[\\s\\S]*",          // 换行后的"PS："及其后面所有内容
-            "\\nPS:[\\s\\S]*",           // 换行后的"PS:"及其后面所有内容
-            "\\nP\\.S\\.：[\\s\\S]*",    // 换行后的"P.S.："及其后面所有内容
-            "\\nP\\.S\\.:[\\s\\S]*",     // 换行后的"P.S.:"及其后面所有内容
-            "\\(注：[\\s\\S]*?\\)",      // (注：...)格式的内容
-            "\\(注:[\\s\\S]*?\\)",       // (注:...)格式的内容
-            "（注：[\\s\\S]*?）",        // （注：...）格式的内容
-            "（注:[\\s\\S]*?）",         // （注:...）格式的内容
-            "\\(补充：[\\s\\S]*?\\)",    // (补充：...)格式的内容
-            "\\(补充:[\\s\\S]*?\\)",     // (补充:...)格式的内容
-            "（补充：[\\s\\S]*?）",      // （补充：...）格式的内容
-            "（补充:[\\s\\S]*?）",       // （补充:...）格式的内容
-            "\\(解释：[\\s\\S]*?\\)",    // (解释：...)格式的内容
-            "\\(解释:[\\s\\S]*?\\)",     // (解释:...)格式的内容
-            "（解释：[\\s\\S]*?）",      // （解释：...）格式的内容
-            "（解释:[\\s\\S]*?）"        // （解释:...）格式的内容
-        ]
-        
-        for pattern in multilineNotePatterns {
-            cleanedContent = cleanedContent.replacingOccurrences(
-                of: pattern,
-                with: "",
-                options: .regularExpression
-            )
-        }
-        
-        // 特别处理图片中显示的那种格式：(注：将相对论的时间弹性...)
-        let specialNotePatterns = [
-            "\\([^\\)]*?注：[^\\)]*\\)",
-            "\\([^\\)]*?注:[^\\)]*\\)",
-            "\\([^\\)]*?补充：[^\\)]*\\)",
-            "\\([^\\)]*?补充:[^\\)]*\\)",
-            "\\([^\\)]*?解释：[^\\)]*\\)",
-            "\\([^\\)]*?解释:[^\\)]*\\)",
-            "\\([^\\)]*?说明：[^\\)]*\\)",
-            "\\([^\\)]*?说明:[^\\)]*\\)",
-            "\\([^\\)]*?PS：[^\\)]*\\)",
-            "\\([^\\)]*?PS:[^\\)]*\\)"
-        ]
-        
-        for pattern in specialNotePatterns {
-            cleanedContent = cleanedContent.replacingOccurrences(
-                of: pattern,
-                with: "",
-                options: .regularExpression
-            )
-        }
-        
-        // 处理中文括号内的注释
-        let chineseSpecialNotePatterns = [
-            "（[^）]*?注：[^）]*）",
-            "（[^）]*?注:[^）]*）",
-            "（[^）]*?补充：[^）]*）",
-            "（[^）]*?补充:[^）]*）",
-            "（[^）]*?解释：[^）]*）",
-            "（[^）]*?解释:[^）]*）",
-            "（[^）]*?说明：[^）]*）",
-            "（[^）]*?说明:[^）]*）",
-            "（[^）]*?PS：[^）]*）",
-            "（[^）]*?PS:[^）]*）"
-        ]
-        
-        for pattern in chineseSpecialNotePatterns {
-            cleanedContent = cleanedContent.replacingOccurrences(
-                of: pattern,
-                with: "",
-                options: .regularExpression
-            )
-        }
-        
-        // 移除引用和参考内容
-        let referencePatterns = [
-            "参考：[^\\n]*",
-            "参考:[^\\n]*",
-            "引用：[^\\n]*",
-            "引用:[^\\n]*",
-            "出处：[^\\n]*",
-            "出处:[^\\n]*",
-            "——[^\\n]*",
-            "--[^\\n]*"
-        ]
-        
-        for pattern in referencePatterns {
             cleanedContent = cleanedContent.replacingOccurrences(
                 of: pattern,
                 with: "",
@@ -1198,6 +1277,123 @@ class CommentManager: ObservableObject {
                 object: nil
             )
         }
+    }
+    
+    /**
+     * 递归查找嵌套回复
+     * 支持多层嵌套回复的查找
+     * @param comment 评论
+     * @param commentId 要查找的评论ID
+     */
+    func findNestedReply(in comment: DetailedCommentModel, commentId: UUID) -> DetailedCommentModel? {
+        // 检查当前评论是否是目标评论
+        if comment.id == commentId {
+            return comment
+        }
+        
+        // 递归查找评论的回复
+        for reply in comment.replies {
+            if reply.id == commentId {
+                return reply
+            }
+            
+            // 递归查找回复的嵌套回复
+            if let found = findNestedReply(in: reply, commentId: commentId) {
+                return found
+            }
+        }
+        
+        return nil
+    }
+    
+    /**
+     * 确保展开特定回复的所有父级回复
+     * 用于确保UI中显示嵌套回复
+     * @param commentId 要展示的回复ID
+     */
+    func ensureReplyVisible(commentId: UUID) {
+        // 首先在顶级评论中查找
+        for comment in topLevelComments {
+            if comment.id == commentId {
+                // 目标是顶级评论，不需要特殊处理
+                return
+            }
+            
+            // 递归检查是否在嵌套回复中
+            if checkAndExpandNestedReply(in: comment, targetId: commentId) {
+                // 找到并已展开，退出循环
+                break
+            }
+        }
+    }
+    
+    /**
+     * 递归检查并展开包含目标回复的嵌套回复链
+     * @param comment 当前检查的评论
+     * @param targetId 目标回复ID
+     * @return 是否找到并展开
+     */
+    private func checkAndExpandNestedReply(in comment: DetailedCommentModel, targetId: UUID) -> Bool {
+        // 直接检查一级回复
+        for reply in comment.replies {
+            if reply.id == targetId {
+                // 找到目标回复，发送通知展开父评论
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("ExpandComment"),
+                        object: nil,
+                        userInfo: ["commentId": comment.id.uuidString]
+                    )
+                }
+                return true
+            }
+            
+            // 递归检查嵌套回复
+            if containsNestedReply(reply, targetId: targetId) {
+                // 目标在这个回复的嵌套回复中，发送通知展开当前回复和父评论
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("ExpandComment"),
+                        object: nil,
+                        userInfo: ["commentId": comment.id.uuidString]
+                    )
+                    
+                    // 延迟一点时间再展开嵌套回复，确保UI已更新
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("ExpandComment"),
+                            object: nil,
+                            userInfo: ["commentId": reply.id.uuidString]
+                        )
+                    }
+                }
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    /**
+     * 检查评论是否包含指定ID的嵌套回复
+     * @param comment 要检查的评论
+     * @param targetId 目标回复ID
+     * @return 是否包含目标回复
+     */
+    private func containsNestedReply(_ comment: DetailedCommentModel, targetId: UUID) -> Bool {
+        // 直接检查
+        if comment.id == targetId {
+            return true
+        }
+        
+        // 递归检查
+        for nestedReply in comment.replies {
+            if nestedReply.id == targetId || containsNestedReply(nestedReply, targetId: targetId) {
+                return true
+            }
+        }
+        
+        return false
     }
     
     /**
