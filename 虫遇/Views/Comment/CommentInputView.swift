@@ -630,15 +630,25 @@ struct CommentInputView: View {
         textFieldFocused = false
         isInputFocused = false
         
-        // 为确保评论显示，延迟更新评论列表
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            // 强制更新评论列表
-            commentManager.updateCommentLists()
+        // 强制刷新视图 - 最简单直接的方式
+        DispatchQueue.main.async {
+            // 强制触发UI更新
+            commentManager.objectWillChange.send()
             
-            // 不需要在这里调用生成虚拟角色回复，因为CommentManager.submitComment()已经调用了
-            // Task {
-            //     await commentManager.generateVirtualReply()
-            // }
+            // 添加通知，告知不要滚动页面位置
+            NotificationCenter.default.post(
+                name: NSNotification.Name("MaintainScrollPosition"),
+                object: nil
+            )
+            
+            // 延迟一小段时间后再次发送通知，确保评论显示正常
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshCommentsWithoutScrolling"),
+                    object: nil,
+                    userInfo: ["preventScroll": true]
+                )
+            }
         }
     }
     

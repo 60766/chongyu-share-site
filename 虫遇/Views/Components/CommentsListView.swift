@@ -84,13 +84,24 @@ struct CommentsListView: View {
     
     // 状态变量
     @State private var likedComments = Set<UUID>()
+    
+    // 使用AppStorage持久化存储展开状态，确保在视图刷新时保持状态
     @State private var expandedComments = Set<UUID>() // 跟踪已展开的评论
     
-    // 添加强制刷新状态
-    @State private var refreshTrigger = false
+    // 添加一个状态变量用于控制视图刷新
+    @State private var refreshID = UUID()
     
-    // 添加计数器来追踪刷新次数
-    @State private var refreshCounter = 0
+    // 添加一个状态变量，用于跟踪是否正在刷新
+    @State private var isRefreshing = false
+    
+    // 使用一个稳定的标识符，基于评论列表的第一个评论ID或者固定字符串
+    var storageKey: String {
+        if let firstComment = comments.first {
+            return "expandedComments_\(firstComment.id.uuidString)"
+        } else {
+            return "expandedComments_global"
+        }
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -106,9 +117,18 @@ struct CommentsListView: View {
                     ForEach(comments) { comment in
                         CommentThreadView(
                             comment: comment,
+                            expandedComments: $expandedComments, // 传递绑定，保持展开状态
                             replyAction: { commentId in
                                 // 找到对应的评论并调用回调
                                 if let comment = findComment(id: commentId, in: comments) {
+                                    // 在回复评论前，确保当前评论已经展开
+                                    expandedComments.insert(comment.id)
+                                    
+                                    // 如果是回复子评论，确保其父评论也展开
+                                    if let parentId = comment.parentCommentId {
+                                        expandedComments.insert(parentId)
+                                    }
+                                    
                                     onReply?(comment)
                                 }
                             },
@@ -119,6 +139,8 @@ struct CommentsListView: View {
                                 }
                             }
                         )
+                        .id("comment_thread_\(comment.id)") // 为每个评论线程添加固定ID
+                        .transition(.opacity) // 添加过渡动画
                         
                         if comment.id != comments.last?.id {
                             Divider()
@@ -126,19 +148,61 @@ struct CommentsListView: View {
                                 .padding(.vertical, 4) // 增加分隔线周围的间距
                         }
                     }
+                    .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
                 }
             }
-            // 使用id强制刷新视图，添加refreshCounter来确保每次都刷新
-            .id("comments-list-\(comments.count)-\(refreshTrigger)-\(refreshCounter)")
         }
         .background(Color(.systemBackground).opacity(0.98)) // 添加轻微的背景色
         .onAppear {
             // 添加通知监听
             setupNotifications()
+            
+            // 从UserDefaults加载展开状态
+            loadExpandedCommentsState()
         }
         .onDisappear {
+            // 保存展开状态到UserDefaults
+            saveExpandedCommentsState()
+            
             // 移除通知监听
             NotificationCenter.default.removeObserver(self)
+        }
+        // 修复iOS 17中已弃用的onChange方法
+        #if swift(>=5.9)
+        .onChange(of: expandedComments) { oldValue, newValue in
+            // 当展开状态变化时保存
+            saveExpandedCommentsState()
+        }
+        #else
+        .onChange(of: expandedComments) { _ in
+            // 当展开状态变化时保存
+            saveExpandedCommentsState()
+        }
+        #endif
+        // 使用refreshID作为视图标识符，只在需要时刷新
+        .id("comments_list_view_\(storageKey)_\(refreshID)")
+    }
+    
+    // 保存展开状态到UserDefaults
+    private func saveExpandedCommentsState() {
+        do {
+            let uuidStrings = expandedComments.map { $0.uuidString }
+            let data = try JSONEncoder().encode(uuidStrings)
+            UserDefaults.standard.set(data, forKey: storageKey)
+        } catch {
+            print("❌ 保存展开状态失败: \(error)")
+        }
+    }
+    
+    // 从UserDefaults加载展开状态
+    private func loadExpandedCommentsState() {
+        if let data = UserDefaults.standard.data(forKey: storageKey) {
+            do {
+                let uuidStrings = try JSONDecoder().decode([String].self, from: data)
+                expandedComments = Set(uuidStrings.compactMap { UUID(uuidString: $0) })
+            } catch {
+                print("❌ 加载展开状态失败: \(error)")
+            }
         }
     }
     
@@ -156,106 +220,247 @@ struct CommentsListView: View {
         return nil
     }
     
+    // 强制刷新方法 - 修改为只更新refreshID，而不重置展开状态
+    private func forceRefresh() {
+        // 避免频繁刷新导致的性能问题
+        guard !isRefreshing else { return }
+        
+        // 标记为正在刷新
+        isRefreshing = true
+        
+        // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
+        DispatchQueue.main.async {
+            self.refreshID = UUID()
+            
+            // 设置短暂延迟后重置刷新状态，避免频繁刷新
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.isRefreshing = false
+            }
+        }
+    }
+    
     // 设置通知监听
     private func setupNotifications() {
-        // 监听评论更新通知
+        // 监听ForceRefreshComments通知
         NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("PostCommentsUpdated"),
+            forName: NSNotification.Name("ForceRefreshComments"),
             object: nil,
             queue: .main
         ) { notification in
-            print("📢 CommentsListView收到PostCommentsUpdated通知")
+            // 检查是否需要保持展开状态
+            let shouldKeepState = notification.userInfo?["keepExpandState"] as? Bool ?? true
+            let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
             
-            // 检查是否有批次ID
-            if let userInfo = notification.userInfo,
-               let batchId = userInfo["batchId"] as? String {
-                
-                // 检查是否已经处理过这个批次
-                let processedKey = "comments_list_processed_\(batchId)"
-                if UserDefaults.standard.bool(forKey: processedKey) {
-                    print("⚠️ CommentsListView已处理过批次ID: \(batchId)，跳过重复刷新")
-                    return
+            // 使用延迟执行，避免多个通知同时触发导致的UI更新冲突
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                if shouldKeepState {
+                    // 只刷新视图，不修改展开状态
+                    if preventScroll {
+                        self.refreshWithoutScrolling()
+                    } else {
+                        self.forceRefresh()
+                    }
+                } else {
+                    // 清除展开状态并刷新
+                    self.expandedComments.removeAll()
+                    if preventScroll {
+                        self.refreshWithoutScrolling()
+                    } else {
+                        self.forceRefresh()
+                    }
                 }
-                
-                // 标记此批次已处理
-                UserDefaults.standard.set(true, forKey: processedKey)
-                print("✅ CommentsListView处理批次ID: \(batchId)")
             }
-            
-            // 触发视图刷新
-            refreshTrigger.toggle()
-            refreshCounter += 1
         }
         
-        // 监听刷新评论通知
+        // 监听所有可能触发刷新的通知，使用字典存储延迟时间，避免频繁刷新
+        let notificationDelays: [String: Double] = [
+            "PostCommentsUpdated": 0.05,
+            "RefreshPostComments": 0.1,
+            "CommentAdded": 0.15,
+            "RefreshCommentsList": 0.2
+        ]
+        
+        // 监听所有可能触发刷新的通知
+        notificationDelays.forEach { notificationName, delay in
         NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("RefreshPostComments"),
-            object: nil,
-            queue: .main
-        ) { notification in
-            print("📢 CommentsListView收到RefreshPostComments通知")
-            
-            // 检查是否有批次ID
-            if let userInfo = notification.userInfo,
-               let batchId = userInfo["batchId"] as? String {
+                forName: NSNotification.Name(notificationName),
+                object: nil,
+                queue: .main
+            ) { notification in
+                // 检查是否需要保持展开状态
+                let shouldKeepState = notification.userInfo?["keepExpandState"] as? Bool ?? true
+                let preserveExpandState = notification.userInfo?["preserveExpandState"] as? Bool ?? true
+                let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
                 
-                // 检查是否已经处理过这个批次
-                let processedKey = "comments_list_refresh_\(batchId)"
-                if UserDefaults.standard.bool(forKey: processedKey) {
-                    print("⚠️ CommentsListView已处理过刷新批次ID: \(batchId)，跳过重复刷新")
-                    return
+                // 使用延迟执行，避免多个通知同时触发导致的UI更新冲突
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    if shouldKeepState && preserveExpandState {
+                        // 只刷新视图，不修改展开状态
+                        if preventScroll {
+                            self.refreshWithoutScrolling()
+                        } else {
+                            self.forceRefresh()
+                        }
+                    } else {
+                        // 清除展开状态并刷新
+                        self.expandedComments.removeAll()
+                        if preventScroll {
+                            self.refreshWithoutScrolling()
+                        } else {
+                            self.forceRefresh()
+                        }
+                    }
+                    
+                    // 如果有新评论ID和父评论ID，确保它们是展开的
+                    if let newCommentId = notification.userInfo?["newCommentId"] as? String,
+                       let _ = UUID(uuidString: newCommentId),
+                       let parentCommentId = notification.userInfo?["parentCommentId"] as? String,
+                       let parentCommentUUID = UUID(uuidString: parentCommentId) {
+                        // 确保父评论是展开的
+                        self.expandedComments.insert(parentCommentUUID)
+                    }
+                    
+                    // 如果有forceExpand参数，展开指定评论
+                    if let forceExpand = notification.userInfo?["forceExpand"] as? Bool,
+                       forceExpand,
+                       let parentCommentID = notification.userInfo?["parentCommentID"] as? String,
+                       let parentCommentUUID = UUID(uuidString: parentCommentID) {
+                        // 确保父评论是展开的
+                        self.expandedComments.insert(parentCommentUUID)
+                    }
                 }
-                
-                // 标记此批次已处理
-                UserDefaults.standard.set(true, forKey: processedKey)
-                print("✅ CommentsListView处理刷新批次ID: \(batchId)")
             }
-            
-            // 触发视图刷新
-            refreshTrigger.toggle()
-            refreshCounter += 1
         }
         
-        // 监听评论添加通知
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("CommentAdded"),
-            object: nil,
-            queue: .main
-        ) { notification in
-            print("📢 CommentsListView收到CommentAdded通知")
-            
-            // 检查是否有批次ID
-            if let userInfo = notification.userInfo,
-               let batchId = userInfo["batchId"] as? String {
-                
-                // 检查是否已经处理过这个批次
-                let processedKey = "comments_list_added_\(batchId)"
-                if UserDefaults.standard.bool(forKey: processedKey) {
-                    print("⚠️ CommentsListView已处理过添加批次ID: \(batchId)，跳过重复刷新")
-                    return
-                }
-                
-                // 标记此批次已处理
-                UserDefaults.standard.set(true, forKey: processedKey)
-                print("✅ CommentsListView处理添加批次ID: \(batchId)")
-            }
-            
-            // 触发视图刷新
-            refreshTrigger.toggle()
-            refreshCounter += 1
-        }
-        
-        // 监听虚拟角色回复添加通知
+        // 保留虚拟角色回复添加通知的监听
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("VirtualCharacterReplyAdded"),
             object: nil,
             queue: .main
         ) { notification in
-            print("📢 CommentsListView收到VirtualCharacterReplyAdded通知")
+            // 检查是否需要保持展开状态
+            let _ = notification.userInfo?["keepExpandState"] as? Bool ?? true
+            let _ = notification.userInfo?["preserveExpandState"] as? Bool ?? true
+            let _ = notification.userInfo?["preventCollapse"] as? Bool ?? false
+            let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
             
-            // 触发视图刷新
-            refreshTrigger.toggle()
-            refreshCounter += 1
+            // 使用延迟执行，避免多个通知同时触发导致的UI更新冲突
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                // 如果有parentCommentID，确保它是展开的
+                if let parentCommentID = notification.userInfo?["parentCommentID"] as? String,
+                   let parentCommentUUID = UUID(uuidString: parentCommentID),
+                   (notification.userInfo?["forceExpand"] as? Bool ?? false) {
+                    // 确保父评论是展开的
+                    self.expandedComments.insert(parentCommentUUID)
+                }
+                
+                // 刷新视图
+                if preventScroll {
+                    self.refreshWithoutScrolling()
+                } else {
+                    self.forceRefresh()
+                }
+            }
+        }
+        
+        // 监听ExpandComment通知，用于展开特定评论
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ExpandComment"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let userInfo = notification.userInfo,
+                  let commentIdString = userInfo["commentId"] as? String,
+                  let commentId = UUID(uuidString: commentIdString) else {
+                return
+            }
+            
+            let preventScroll = userInfo["preventScroll"] as? Bool ?? true
+            
+            // 使用延迟执行，避免多个通知同时触发导致的UI更新冲突
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                self.expandedComments.insert(commentId)
+                if preventScroll {
+                    self.refreshWithoutScrolling()
+                } else {
+                    self.forceRefresh()
+                }
+            }
+        }
+        
+        // 添加对MaintainScrollPosition通知的监听
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("MaintainScrollPosition"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            // 不执行任何刷新操作，只保存当前展开状态
+            self.saveExpandedCommentsState()
+        }
+        
+        // 添加对RefreshCommentsWithoutScrolling通知的监听
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("RefreshCommentsWithoutScrolling"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            // 使用延迟执行，避免与其他通知冲突
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                // 先加载保存的展开状态
+                self.loadExpandedCommentsState()
+                
+                // 使用特殊的刷新方法，避免导致滚动
+                self.refreshWithoutScrolling()
+            }
+        }
+    }
+    
+    // 添加一个特殊的刷新方法，避免导致滚动
+    private func refreshWithoutScrolling() {
+        // 避免频繁刷新导致的性能问题
+        guard !isRefreshing else { return }
+        
+        // 标记为正在刷新
+        isRefreshing = true
+        
+        // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
+        DispatchQueue.main.async {
+            // 使用一个特殊的ID，确保视图更新但不会导致滚动位置变化
+            self.refreshID = UUID()
+            
+            // 设置短暂延迟后重置刷新状态，避免频繁刷新
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.isRefreshing = false
+            }
+        }
+    }
+    
+    // 辅助函数：递归查找评论
+    private func containsComment(with id: UUID, in comments: [DetailedCommentModel]) -> Bool {
+        for comment in comments {
+            if comment.id == id {
+                return true
+            }
+            if containsComment(with: id, in: comment.replies) {
+                return true
+            }
+        }
+        return false
+    }
+    
+    // 辅助函数：递归展开嵌套评论
+    private func expandNestedComments(in comments: [DetailedCommentModel], targetId: UUID) {
+        for comment in comments {
+            if comment.id == targetId {
+                expandedComments.insert(comment.id)
+                return
+            }
+            
+            if containsComment(with: targetId, in: comment.replies) {
+                expandedComments.insert(comment.id)
+                expandNestedComments(in: comment.replies, targetId: targetId)
+                return
+            }
         }
     }
 }
@@ -317,14 +522,17 @@ struct CommentHeaderView: View {
  */
 struct CommentThreadView: View {
     let comment: DetailedCommentModel
+    @Binding var expandedComments: Set<UUID> // 接收绑定的展开状态
     let replyAction: (UUID) -> Void
-    let onLike: (UUID) -> Void  // 添加点赞回调
+    let onLike: (UUID) -> Void
     
-    // 状态变量
-    @State private var refreshTrigger: Bool = false
-    @State private var refreshCounter: Int = 0
     @State private var likedComments = Set<UUID>()
-    @State private var expandedComments = Set<UUID>()
+    
+    // 添加一个状态变量用于控制视图刷新
+    @State private var refreshID = UUID()
+    
+    // 添加一个状态变量，用于跟踪是否正在刷新
+    @State private var isRefreshing = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) { // 增加垂直间距
@@ -350,78 +558,31 @@ struct CommentThreadView: View {
                     // 收集所有回复，包括嵌套回复，展平为一层
                     let allReplies = collectAllReplies(comment: comment)
                     
-                    // 对所有回复进行排序
-                    let sortedReplies = allReplies.sorted { reply1, reply2 in
-                        // 构建回复链，确保对话连贯性
-                        
-                        // 规则1：直接回复关系优先 - 如果reply2是对reply1的直接回复，reply2应该紧跟在reply1后面
-                        if reply2.parentCommentId == reply1.id {
-                            return true
-                        }
-                        
-                        // 规则2：直接回复关系优先 - 如果reply1是对reply2的直接回复，reply1应该紧跟在reply2后面
-                        if reply1.parentCommentId == reply2.id {
-                            return false
-                        }
-                        
-                        // 规则3：用户名匹配 - 如果reply2回复的是reply1的用户，reply2应该排在reply1后面
-                        if reply2.replyToUsername == reply1.username {
-                            return true
-                        }
-                        
-                        // 规则4：用户名匹配 - 如果reply1回复的是reply2的用户，reply1应该排在reply2后面
-                        if reply1.replyToUsername == reply2.username {
-                            return false
-                        }
-                        
-                        // 规则5：处理同一对话链 - 如果两条回复都回复了同一个人，按时间排序
-                        if let replyTo1 = reply1.replyToUsername, 
-                           let replyTo2 = reply2.replyToUsername,
-                           replyTo1 == replyTo2 {
-                            // 如果都是回复同一个人，按时间倒序排列（新的在上方）
-                            return reply1.datePosted > reply2.datePosted
-                        }
-                        
-                        // 规则6：同一发送者的多条消息 - 按时间排序
-                        if reply1.username == reply2.username {
-                            // 同一用户的多条消息，按时间倒序排列（新的在上方）
-                            return reply1.datePosted > reply2.datePosted
-                        }
-                        
-                        // 规则7：虚拟角色回复优先显示
-                        if reply1.isVirtualCharacter && !reply2.isVirtualCharacter {
-                            return true
-                        }
-                        
-                        if !reply1.isVirtualCharacter && reply2.isVirtualCharacter {
-                            return false
-                        }
-                        
-                        // 默认规则：按时间倒序排列（新的在上方）
-                        return reply1.datePosted > reply2.datePosted
-                    }
-                    
-                    ForEach(sortedReplies) { reply in
-                        if reply.id != sortedReplies.first?.id {
+                    // 直接使用收集到的回复，不做额外排序
+                    // 因为CommentManager.updateCommentLists已经确保了正确的排序顺序
+                    ForEach(allReplies) { reply in
+                        if reply.id != allReplies.first?.id {
                             Divider()
                                 .padding(.leading, 48) // 增加左侧间距
                                 .padding(.trailing, 16)
                                 .padding(.vertical, 2) // 添加垂直间距
                         }
-                        
+                                    
                         // 回复内容 - 不再显示展开按钮，因为所有回复都在同一层
-                        CommentItemView(
+                                    CommentItemView(
                             comment: reply,
-                            replyAction: replyAction,
+                                        replyAction: replyAction,
                             isLiked: likedComments.contains(reply.id),
                             showExpandButton: false, // 不再显示展开按钮
                             replyCount: 0,
                             isExpanded: false,
                             onToggleExpand: nil,
-                            onLike: {
+                                        onLike: {
                                 toggleLike(for: reply.id)
                             }
                         )
+                        .transition(.opacity) // 添加过渡动画
+                        .id("reply_\(reply.id)") // 为每个回复添加固定ID
                     }
                 }
                 .padding(.vertical, 6) // 增加垂直间距
@@ -436,11 +597,8 @@ struct CommentThreadView: View {
                 )
                 .padding(.horizontal, 20) // 增加水平间距
                 .padding(.bottom, 6) // 增加底部间距
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .scale(scale: 0.98, anchor: .top)).animation(.spring(response: 0.35, dampingFraction: 0.7)),
-                    removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top)).animation(.easeOut(duration: 0.25))
-                ))
-                .id("replies-\(comment.id)-\(comment.replies.count)-\(refreshCounter)")
+                .transition(.opacity) // 添加过渡动画
+                .id("replies_container_\(comment.id)") // 为回复容器添加固定ID
             }
         }
         .padding(.vertical, 4) // 增加垂直间距
@@ -452,28 +610,39 @@ struct CommentThreadView: View {
             // 移除通知监听
             NotificationCenter.default.removeObserver(self)
         }
+        .id("comment_\(comment.id)_\(refreshID)") // 使用refreshID确保视图在需要时更新
+    }
+    
+    // 强制刷新方法
+    private func forceRefresh() {
+        // 避免频繁刷新导致的性能问题
+        guard !isRefreshing else { return }
+        
+        // 标记为正在刷新
+        isRefreshing = true
+        
+        // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
+        DispatchQueue.main.async {
+            self.refreshID = UUID()
+            
+            // 设置短暂延迟后重置刷新状态，避免频繁刷新
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.isRefreshing = false
+            }
+        }
     }
     
     // 递归收集所有回复，并将它们展平为一层
     private func collectAllReplies(comment: DetailedCommentModel) -> [DetailedCommentModel] {
         var allReplies: [DetailedCommentModel] = []
         
-        // 添加直接回复
-        allReplies.append(contentsOf: comment.replies)
+        // 添加直接回复，按时间正序排序（旧的在上方）
+        let sortedDirectReplies = comment.replies.sorted { $0.datePosted < $1.datePosted }
         
-        // 递归收集所有嵌套回复并展平
-        for reply in comment.replies {
+        // 对每个直接回复，递归获取其所有子回复
+        for reply in sortedDirectReplies {
+            allReplies.append(reply)
             allReplies.append(contentsOf: collectNestedReplies(reply))
-        }
-        
-        // 打印收集到的回复数量，帮助调试
-        print("📊 收集到 \(allReplies.count) 条回复，评论ID: \(comment.id)")
-        
-        // 打印每条回复的父评论ID，帮助调试
-        for reply in allReplies {
-            if let parentId = reply.parentCommentId {
-                print("🔗 回复ID: \(reply.id), 父评论ID: \(parentId), 回复给: \(reply.replyToUsername ?? "无")")
-            }
         }
         
         return allReplies
@@ -483,31 +652,55 @@ struct CommentThreadView: View {
     private func collectNestedReplies(_ comment: DetailedCommentModel) -> [DetailedCommentModel] {
         var result: [DetailedCommentModel] = []
         
-        // 添加直接回复
-        result.append(contentsOf: comment.replies)
+        // 添加直接回复，按时间正序排序（旧的在上方）
+        let sortedReplies = comment.replies.sorted { $0.datePosted < $1.datePosted }
         
         // 递归收集更深层的嵌套回复
-        for reply in comment.replies {
+        for reply in sortedReplies {
+            result.append(reply)
             result.append(contentsOf: collectNestedReplies(reply))
         }
         
         return result
     }
     
+    // 辅助函数：获取回复所属的对话链ID
+    private func getReplyChain(_ reply: DetailedCommentModel, in allReplies: [DetailedCommentModel]) -> String {
+        // 如果有父评论ID，尝试找到根评论
+        if let parentId = reply.parentCommentId {
+            // 查找父评论
+            if let parent = allReplies.first(where: { $0.id == parentId }) {
+                // 递归查找根评论
+                return getReplyChain(parent, in: allReplies)
+            }
+        }
+        
+        // 如果没有父评论或找不到父评论，使用自己的ID作为对话链ID
+        return reply.id.uuidString
+    }
+    
+    // 辅助函数：获取对话链的起始时间
+    private func getChainStartTime(_ chainId: String, in allReplies: [DetailedCommentModel]) -> Date {
+        // 找到属于该对话链的所有回复
+        let chainReplies = allReplies.filter { getReplyChain($0, in: allReplies) == chainId }
+        
+        // 返回最早的回复时间
+        return chainReplies.min(by: { $0.datePosted < $1.datePosted })?.datePosted ?? Date()
+    }
+    
     // 切换展开状态
     private func toggleExpand(for commentId: UUID) {
-        withAnimation {
+        // 不使用动画，直接更新状态
             if expandedComments.contains(commentId) {
                 expandedComments.remove(commentId)
             } else {
                 expandedComments.insert(commentId)
-            }
         }
     }
     
     // 切换点赞状态
     private func toggleLike(for commentId: UUID) {
-        withAnimation {
+        // 不使用动画，直接更新状态
             if likedComments.contains(commentId) {
                 likedComments.remove(commentId)
             } else {
@@ -516,69 +709,46 @@ struct CommentThreadView: View {
                 let generator = UIImpactFeedbackGenerator(style: .light)
                 generator.impactOccurred()
             }
-            
-            // 调用回调函数，更新模型数据
-            onLike(commentId)
-        }
+        
+        // 调用回调函数，更新模型数据
+        onLike(commentId)
     }
     
     // 设置通知监听
     private func setupNotifications() {
-        // 监听评论更新通知
+        // 监听ForceRefreshComments通知
         NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("RefreshComments"),
+            forName: NSNotification.Name("ForceRefreshComments"),
             object: nil,
             queue: .main
         ) { notification in
-            print("收到刷新评论通知")
+            let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
             
-            // 检查是否有批次ID
-            if let userInfo = notification.userInfo,
-               let batchId = userInfo["batchId"] as? String {
-                
-                // 检查是否已经处理过这个批次
-                let processedKey = "thread_processed_\(batchId)_\(comment.id.uuidString)"
-                if UserDefaults.standard.bool(forKey: processedKey) {
-                    print("⚠️ CommentThreadView已处理过批次ID: \(batchId)，跳过重复刷新")
-                    return
-                }
-                
-                // 标记此批次已处理
-                UserDefaults.standard.set(true, forKey: processedKey)
-                print("✅ CommentThreadView处理批次ID: \(batchId)")
+            if preventScroll {
+                self.forceRefresh() // 使用forceRefresh替代refreshWithoutScrolling
+            } else {
+                self.forceRefresh()
             }
-            
-            refreshCounter += 1
         }
         
-        // 监听评论添加通知
+        // 监听所有可能触发刷新的通知
+        ["PostCommentsUpdated", "RefreshPostComments", "CommentAdded"].forEach { notificationName in
         NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("CommentAdded"),
+                forName: NSNotification.Name(notificationName),
             object: nil,
             queue: .main
-        ) { notification in
-            print("收到评论添加通知")
-            
-            // 检查是否有批次ID
-            if let userInfo = notification.userInfo,
-               let batchId = userInfo["batchId"] as? String {
+            ) { notification in
+                let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
                 
-                // 检查是否已经处理过这个批次
-                let processedKey = "thread_added_\(batchId)_\(comment.id.uuidString)"
-                if UserDefaults.standard.bool(forKey: processedKey) {
-                    print("⚠️ CommentThreadView已处理过添加批次ID: \(batchId)，跳过重复刷新")
-                    return
+                if preventScroll {
+                    self.forceRefresh() // 使用forceRefresh替代refreshWithoutScrolling
+                } else {
+                    self.forceRefresh()
                 }
-                
-                // 标记此批次已处理
-                UserDefaults.standard.set(true, forKey: processedKey)
-                print("✅ CommentThreadView处理添加批次ID: \(batchId)")
             }
-            
-            refreshCounter += 1
         }
         
-        // 监听虚拟角色回复添加通知，自动展开包含新回复的评论
+        // 保留虚拟角色回复添加通知的监听
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("VirtualCharacterReplyAdded"),
             object: nil,
@@ -589,17 +759,16 @@ struct CommentThreadView: View {
                 return
             }
             
+            let preventScroll = userInfo["preventScroll"] as? Bool ?? true
+            
             // 检查是否是当前评论或其回复收到了新回复
             if comment.id.uuidString == parentCommentID {
-                print("📢 CommentThreadView收到针对当前评论的虚拟角色回复通知")
-                
-                // 自动展开当前评论的回复
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                    expandedComments.insert(comment.id)
+                // 强制刷新视图，不使用动画
+                if preventScroll {
+                    self.forceRefresh() // 使用forceRefresh替代refreshWithoutScrolling
+                } else {
+                    self.forceRefresh()
                 }
-                
-                // 增加刷新计数器，强制视图更新
-                refreshCounter += 1
                 
                 // 添加轻微振动反馈
                 let generator = UIImpactFeedbackGenerator(style: .light)
@@ -609,63 +778,16 @@ struct CommentThreadView: View {
             // 检查是否是当前评论的回复收到了新回复
             for reply in comment.replies {
                 if reply.id.uuidString == parentCommentID {
-                    print("📢 CommentThreadView收到针对回复的虚拟角色回复通知")
-                    
-                    // 自动展开当前评论及其回复
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                        expandedComments.insert(comment.id)
-                        expandedComments.insert(reply.id)
+                    // 强制刷新视图，不使用动画
+                    if preventScroll {
+                        self.forceRefresh() // 使用forceRefresh替代refreshWithoutScrolling
+                    } else {
+                        self.forceRefresh()
                     }
-                    
-                    // 增加刷新计数器，强制视图更新
-                    refreshCounter += 1
                     
                     // 添加轻微振动反馈
                     let generator = UIImpactFeedbackGenerator(style: .light)
                     generator.impactOccurred()
-                    
-                    break
-                }
-            }
-        }
-        
-        // 监听展开评论通知
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("ExpandComment"),
-            object: nil,
-            queue: .main
-        ) { notification in
-            guard let userInfo = notification.userInfo,
-                  let commentId = userInfo["commentId"] as? String else {
-                return
-            }
-            
-            // 检查是否需要展开当前评论
-            if comment.id.uuidString == commentId {
-                print("📢 CommentThreadView收到展开评论通知 - 当前评论")
-                
-                // 展开评论
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                    expandedComments.insert(comment.id)
-                }
-                
-                // 增加刷新计数器，强制视图更新
-                refreshCounter += 1
-            }
-            
-            // 检查是否需要展开当前评论中的某个回复
-            for reply in comment.replies {
-                if reply.id.uuidString == commentId {
-                    print("📢 CommentThreadView收到展开评论通知 - 嵌套回复")
-                    
-                    // 确保当前评论和目标回复都被展开
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                        expandedComments.insert(comment.id)
-                        expandedComments.insert(reply.id)
-                    }
-                    
-                    // 增加刷新计数器，强制视图更新
-                    refreshCounter += 1
                     
                     break
                 }
@@ -796,25 +918,25 @@ struct CommentItemView: View {
                         
                         // 回复按钮 - 当不是当前用户的评论时才显示
                         if !isCurrentUserComment {
-                            Button(action: {
-                                replyAction(comment.id)
-                                
-                                // 发送通知，让CommentInputView获取焦点并弹出键盘
-                                NotificationCenter.default.post(
-                                    name: NSNotification.Name("FocusCommentInput"),
-                                    object: nil
-                                )
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "arrowshape.turn.up.left")
-                                        .font(.system(size: 13))
-                                    Text("回复")
-                                        .font(.system(size: 13))
-                                }
-                                .foregroundColor(.gray.opacity(0.8))
+                        Button(action: {
+                            replyAction(comment.id)
+                            
+                            // 发送通知，让CommentInputView获取焦点并弹出键盘
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("FocusCommentInput"),
+                                object: nil
+                            )
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrowshape.turn.up.left")
+                                    .font(.system(size: 13))
+                                Text("回复")
+                                    .font(.system(size: 13))
                             }
-                            .buttonStyle(PlainButtonStyle())
-                            .padding(.vertical, 4) // 从6减小到4
+                            .foregroundColor(.gray.opacity(0.8))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.vertical, 4) // 从6减小到4
                         }
                         
                         // 点赞按钮
@@ -964,6 +1086,30 @@ struct CommentsListView_Previews: PreviewProvider {
         return CommentsListView(
             comments: [commentWithReplies],
             onReply: { _ in },
+            onLike: { _ in }
+        )
+        .padding()
+        .previewLayout(.sizeThatFits)
+    }
+} 
+
+// 添加CommentThreadView的预览
+struct CommentThreadView_Previews: PreviewProvider {
+    static var previews: some View {
+        let comment = DetailedCommentModel(
+            username: "爱因斯坦",
+            userAvatar: "einstein", 
+            content: "想象力比知识更重要。知识是有限的，而想象力概括着世界上的一切。",
+            datePosted: Date().addingTimeInterval(-7200),
+            isVirtualCharacter: true,
+            characterID: "einstein",
+            likes: 42
+        )
+        
+        return CommentThreadView(
+            comment: comment,
+            expandedComments: .constant(Set<UUID>()),  // 添加展开状态绑定
+            replyAction: { _ in },
             onLike: { _ in }
         )
         .padding()

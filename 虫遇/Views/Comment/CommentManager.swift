@@ -90,7 +90,7 @@ class CommentManager: ObservableObject {
         // 初始化评论列表
         updateCommentLists()
         
-        // 加载所有已保存的草稿到内存
+        // 加载所有已保存的草稿到内存字典
         loadAllDraftsFromUserDefaults()
         
         // 恢复当前帖子的草稿内容
@@ -318,26 +318,43 @@ class CommentManager: ObservableObject {
             print("id=\(c.id), parentCommentId=\(String(describing: c.parentCommentId)), user=\(c.username), content=\(c.content)")
         }
         print("==== END ====")
+        
+        // 首先获取所有顶级评论并按时间倒序排序（新的在上方）
+        let topLevelComments = allCommentsArray
+            .filter { $0.parentCommentId == nil }
+            .sorted { $0.datePosted > $1.datePosted }
+        
         // 递归平铺：每个评论后紧跟所有直接回复它的评论（同级按时间正序）
-        func flatten(parentId: UUID?) -> [DetailedCommentModel] {
-            let children = allCommentsArray
-                .filter { $0.parentCommentId == parentId }
+        func flatten(comment: DetailedCommentModel) -> [DetailedCommentModel] {
+            // 获取直接回复该评论的所有评论，并按时间正序排列
+            let directReplies = allCommentsArray
+                .filter { $0.parentCommentId == comment.id }
                 .sorted { $0.datePosted < $1.datePosted }
-            var result: [DetailedCommentModel] = []
-            for child in children {
-                result.append(child)
-                result.append(contentsOf: flatten(parentId: child.id))
+            
+            var result: [DetailedCommentModel] = [comment]
+            
+            // 对每个直接回复，递归获取其所有子回复
+            for reply in directReplies {
+                result.append(contentsOf: flatten(comment: reply))
             }
+            
             return result
         }
-        let flat = flatten(parentId: nil)
+        
+        // 平铺所有顶级评论及其回复
+        var flat: [DetailedCommentModel] = []
+        for topComment in topLevelComments {
+            flat.append(contentsOf: flatten(comment: topComment))
+        }
+        
         print("==== DEBUG: allComments (平铺后) ====")
         for c in flat {
             print("id=\(c.id), parentCommentId=\(String(describing: c.parentCommentId)), user=\(c.username), content=\(c.content)")
         }
         print("==== END ====")
+        
         self.allComments = flat
-        self.topLevelComments = allCommentsArray.filter { $0.parentCommentId == nil }
+        self.topLevelComments = topLevelComments
     }
     
     /**
@@ -406,12 +423,11 @@ class CommentManager: ObservableObject {
         // 记录评论ID以便后续跟踪
         var newCommentId: UUID = UUID()
         
-        // 生成一个唯一的批次ID，用于跟踪通知
-        let batchId = UUID().uuidString
+        // 记录当前展开状态，确保评论提交后保持展开状态
+        var parentCommentId: UUID? = nil
         
         print("🔄 开始提交评论 - 内容: \"\(processedContent.prefix(30))...\"")
         print("🔄 是否为回复: \(replyingToComment != nil)")
-        print("🔄 批次ID: \(batchId)")
         
         if let replyTo = replyingToComment {
             // 添加回复 - 如果有回复对象，直接使用replyToUsername参数，不需要在内容中添加@
@@ -425,6 +441,9 @@ class CommentManager: ObservableObject {
                 userId: UserDefaults.standard.string(forKey: "current_user_id") ?? UIDevice.current.identifierForVendor?.uuidString,
                 isCurrentUser: true
             )
+            
+            // 记录父评论ID，确保保持展开状态
+            parentCommentId = replyTo.id
             
             print("✅ 已添加回复评论 - ID: \(newCommentId), 回复给: \(replyTo.username), 内容: \"\(processedContent.prefix(30))...\"")
             print("✅ 父评论ID: \(replyTo.id)")
@@ -477,6 +496,10 @@ class CommentManager: ObservableObject {
         // 重置状态
         isRestoringDraft = true // 标记为恢复草稿状态，避免触发保存
         commentText = ""
+        
+        // 保存当前回复对象的引用，确保在清除replyingToComment前保存其信息
+        let savedReplyingToComment = replyingToComment
+        
         isRestoringDraft = false // 重置标记
         replyingToComment = nil
         
@@ -490,67 +513,133 @@ class CommentManager: ObservableObject {
         print("📊 提交后顶级评论数量: \(topLevelComments.count)")
         print("📊 提交后总评论数量: \(allComments.count)")
         
-        // 强制发送通知刷新UI - 确保使用主线程
-        DispatchQueue.main.async {
-            // 发送多种通知以确保UI更新
-            print("📣 发送PostCommentsUpdated通知 - postID: \(self.currentPost.id.uuidString), batchId: \(batchId)")
+        // 在闭包外部准备所有需要的数据，避免在闭包中引用self
+        let parentCommentIdString: String? = savedReplyingToComment?.parentCommentId?.uuidString ?? savedReplyingToComment?.id.uuidString
+        let topParentId: UUID? = savedReplyingToComment?.parentCommentId ?? savedReplyingToComment?.id
+        
+        // 立即发送展开评论通知，确保评论区域不会折叠
+        if let topParentId = topParentId {
+            // 立即发送展开评论通知，不等待异步操作
             NotificationCenter.default.post(
-                name: NSNotification.Name("PostCommentsUpdated"),
+                name: NSNotification.Name("ExpandComment"),
                 object: nil,
                 userInfo: [
-                    "postID": self.currentPost.id.uuidString, 
-                    "commentID": newCommentId.uuidString,
-                    "batchId": batchId
+                    "commentId": topParentId.uuidString,
+                    "forceExpand": true,
+                    "preventCollapse": true
                 ]
             )
             
-            print("📣 发送RefreshPostComments通知 - batchId: \(batchId)")
+            print("📣 立即发送ExpandComment通知，确保父评论ID: \(topParentId) 保持展开状态")
+        }
+        
+        // 如果是回复评论，还需要确保新评论也被展开
+        if parentCommentId != nil {
             NotificationCenter.default.post(
-                name: NSNotification.Name("RefreshPostComments"),
+                name: NSNotification.Name("ExpandComment"),
                 object: nil,
                 userInfo: [
-                    "commentID": newCommentId.uuidString,
-                    "batchId": batchId
+                    "commentId": newCommentId.uuidString,
+                    "forceExpand": true,
+                    "preventCollapse": true
                 ]
             )
             
-            // 添加额外的通知
-            print("📣 发送CommentAdded通知 - commentID: \(newCommentId.uuidString), batchId: \(batchId)")
-            NotificationCenter.default.post(
-                name: NSNotification.Name("CommentAdded"),
-                object: nil,
-                userInfo: [
-                    "commentID": newCommentId.uuidString,
-                    "batchId": batchId
-                ]
-            )
+            print("📣 立即发送ExpandComment通知，确保新评论ID: \(newCommentId) 保持展开状态")
+        }
+        
+        // 发送通知，告知不要滚动页面位置
+        NotificationCenter.default.post(
+            name: NSNotification.Name("MaintainScrollPosition"),
+            object: nil
+        )
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
             
-            // 强制发送对象变更通知
+            // 发送对象变更通知
             self.objectWillChange.send()
-            print("📣 已发送objectWillChange通知")
             
-            // 延迟再次发送通知，确保UI已经更新
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                print("📣 延迟0.5秒后再次发送刷新通知 - batchId: \(batchId)")
+            // 发送刷新评论列表通知，添加preventScroll参数
+            print("📣 发送RefreshCommentsList通知")
+            NotificationCenter.default.post(
+                name: NSNotification.Name("RefreshCommentsList"),
+                object: nil,
+                userInfo: [
+                    "keepExpandState": true,
+                    "preventCollapse": true,
+                    "newCommentId": newCommentId.uuidString,
+                    "parentCommentId": parentCommentIdString as Any,
+                    "preventScroll": true
+                ]
+            )
+            
+            // 如果是回复评论，发送一个特定的通知来确保父评论保持展开状态
+            if let topParentId = topParentId {
+                // 发送展开评论通知
                 NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshPostComments"),
+                    name: NSNotification.Name("ExpandComment"),
                     object: nil,
                     userInfo: [
-                        "batchId": batchId
+                        "commentId": topParentId.uuidString,
+                        "preventCollapse": true,
+                        "preventScroll": true
                     ]
                 )
+                
+                print("📣 发送ExpandComment通知，确保父评论ID: \(topParentId) 保持展开状态")
+            }
+            
+            // 延迟一小段时间后再次发送通知，确保评论显示正常但不滚动
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshCommentsWithoutScrolling"),
+                    object: nil,
+                    userInfo: ["preventScroll": true]
+                )
+            }
+            
+            // 延迟一小段时间后再次发送对象变更通知，确保UI完全更新
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                guard let self = self else { return }
                 self.objectWillChange.send()
+                
+                // 再次发送展开评论通知，确保评论区域不会折叠
+                if let topParentId = topParentId {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("ExpandComment"),
+                        object: nil,
+                        userInfo: [
+                            "commentId": topParentId.uuidString,
+                            "preventCollapse": true,
+                            "preventScroll": true
+                        ]
+                    )
+                }
             }
         }
     }
     
     /**
-     * 设置回复目标
-     * @param comment 要回复的评论
+     * 设置回复对象
      */
     func replyTo(comment: DetailedCommentModel) {
-        self.replyingToComment = comment
-        self.commentText = ""
+        replyingToComment = comment
+        
+        // 发送通知，告知不要滚动页面位置
+        NotificationCenter.default.post(
+            name: NSNotification.Name("MaintainScrollPosition"),
+            object: nil
+        )
+        
+        // 延迟一小段时间后再次发送通知，确保评论显示正常
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("RefreshCommentsWithoutScrolling"),
+                object: nil,
+                userInfo: ["preventScroll": true]
+            )
+        }
     }
     
     /**
@@ -816,7 +905,26 @@ class CommentManager: ObservableObject {
                                         object: nil,
                                         userInfo: [
                                             "parentCommentID": targetCommentID.uuidString,
-                                            "replyCommentID": virtualReply.id.uuidString
+                                            "replyCommentID": virtualReply.id.uuidString,
+                                            "characterID": characterID,
+                                            "forceExpand": true,
+                                            "preventCollapse": true,
+                                            "immediateDisplay": true,
+                                            "preserveExpandState": true
+                                        ]
+                                    )
+                                    
+                                    // 发送刷新评论列表通知，确保评论立即显示
+                                    NotificationCenter.default.post(
+                                        name: NSNotification.Name("RefreshCommentsList"),
+                                        object: nil,
+                                        userInfo: [
+                                            "keepExpandState": true,
+                                            "preventCollapse": true,
+                                            "newCommentId": virtualReply.id.uuidString,
+                                            "parentCommentId": targetCommentID.uuidString,
+                                            "immediateDisplay": true,
+                                            "preserveExpandState": true
                                         ]
                                     )
                                 }
@@ -957,7 +1065,9 @@ class CommentManager: ObservableObject {
                                 object: nil,
                                 userInfo: [
                                     "postID": self.currentPost.id.uuidString,
-                                    "batchId": batchId
+                                    "batchId": batchId, 
+                                    "forceRefresh": true,
+                                    "keepExpandState": true
                                 ]
                             )
                             
@@ -965,7 +1075,9 @@ class CommentManager: ObservableObject {
                                 name: NSNotification.Name("RefreshPostComments"),
                                 object: nil,
                                 userInfo: [
-                                    "batchId": batchId
+                                    "batchId": batchId, 
+                                    "forceRefresh": true,
+                                    "keepExpandState": true
                                 ]
                             )
                             
@@ -976,7 +1088,26 @@ class CommentManager: ObservableObject {
                                 userInfo: [
                                     "parentCommentID": parentCommentID.uuidString,
                                     "replyCommentID": virtualReply.id.uuidString,
-                                    "characterID": characterID
+                                    "characterID": characterID,
+                                    "keepExpandState": true,
+                                    "forceExpand": true,
+                                    "preventCollapse": true,
+                                    "immediateDisplay": true,
+                                    "preserveExpandState": true
+                                ]
+                            )
+                            
+                            // 发送刷新评论列表通知，确保评论立即显示
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("RefreshCommentsList"),
+                                object: nil,
+                                userInfo: [
+                                    "keepExpandState": true,
+                                    "preventCollapse": true,
+                                    "newCommentId": virtualReply.id.uuidString,
+                                    "parentCommentId": parentCommentID.uuidString,
+                                    "immediateDisplay": true,
+                                    "preserveExpandState": true
                                 ]
                             )
                             

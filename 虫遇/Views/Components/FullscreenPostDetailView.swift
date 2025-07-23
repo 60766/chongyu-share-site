@@ -2478,11 +2478,31 @@ struct FullscreenPostDetailView: View {
                 comments: viewModel.post.getTopLevelComments(),
                 onReply: { comment in
                     viewModel.commentManager.replyTo(comment: comment)
+                    
+                    // 发送通知，让CommentInputView获取焦点并弹出键盘
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("FocusCommentInput"),
+                        object: nil
+                    )
+                    
+                    // 添加通知，防止页面滚动
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("MaintainScrollPosition"),
+                        object: nil
+                    )
                 },
                 onLike: { comment in
+                    // 处理点赞逻辑
                     viewModel.post.likeComment(commentId: comment.id)
+                    
+                    // 添加通知，防止页面滚动
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("MaintainScrollPosition"),
+                        object: nil
+                    )
                 }
             )
+            .id("comments-list-\(viewModel.commentsRefreshTrigger)")
             .padding(.top, 4)
             
             // 底部提示文字
@@ -2496,6 +2516,30 @@ struct FullscreenPostDetailView: View {
         }
         .background(Color(.systemBackground))
         .padding(.bottom, 45)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshCommentsList"))) { notification in
+            print("📣 收到刷新评论列表通知，立即刷新")
+            
+            // 检查通知中是否包含保持展开状态的标志
+            let keepExpandState = (notification.userInfo?["keepExpandState"] as? Bool) ?? true
+            
+            // 如果需要保持展开状态，使用特殊的刷新方法
+            if keepExpandState {
+                // 只刷新评论内容，不改变展开状态
+                viewModel.refreshComments()
+                
+                // 如果有新评论ID，自动展开该评论
+                if let newCommentId = notification.userInfo?["newCommentId"] as? String {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("ExpandComment"),
+                        object: nil,
+                        userInfo: ["commentId": newCommentId]
+                    )
+                }
+            } else {
+                // 普通刷新
+                viewModel.refreshComments()
+            }
+        }
     }
     
     // 在文件适当位置添加辅助函数，使页面过渡更流畅
@@ -3084,6 +3128,7 @@ struct FullscreenPostDetailView: View {
 class FullscreenPostDetailViewModel: ObservableObject {
     @Published var post: UserPostModel
     @Published var commentManager: CommentManager
+    @Published var commentsRefreshTrigger = UUID()
     
     // 添加缓存属性来支持预加载
     private var nextPostCache: UserPostModel?
@@ -3092,6 +3137,14 @@ class FullscreenPostDetailViewModel: ObservableObject {
     init(post: UserPostModel) {
         self.post = post
         self.commentManager = CommentManager(post: post)
+    }
+    
+    // 刷新评论列表
+    func refreshComments() {
+        DispatchQueue.main.async {
+            self.commentsRefreshTrigger = UUID()
+            self.objectWillChange.send()
+        }
     }
     
     // 添加点赞功能
@@ -3130,6 +3183,15 @@ class FullscreenPostDetailViewModel: ObservableObject {
         // 更新现有 CommentManager 实例的 currentPost 属性，而不是创建新实例
         // 这样可以保留草稿状态和其他用户交互状态
         self.commentManager.currentPost = newPost
+        
+        // 确保评论列表也被更新
+        self.commentManager.updateCommentLists()
+        
+        // 强制发送对象变更通知，确保UI更新
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+            self.commentManager.objectWillChange.send()
+        }
         
         // 清除缓存
         nextPostCache = nil

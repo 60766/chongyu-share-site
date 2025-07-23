@@ -296,7 +296,6 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             replyToUsername: replyToUsername
         )
         
-        // 如果是回复，添加到父评论的replies中
         if let parentId = parentCommentId {
             print("🔵 添加为回复 - 父评论ID: \(parentId)")
             
@@ -330,23 +329,10 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             comments.insert(newComment, at: 0)
         }
         
-        // 通知刷新
+        // 简化通知机制 - 只发送对象变更通知
         DispatchQueue.main.async {
-            NotificationCenter.default.post(
-                name: NSNotification.Name("PostCommentsUpdated"),
-                object: nil,
-                userInfo: ["postID": self.id.uuidString, "commentID": commentId.uuidString]
-            )
-            NotificationCenter.default.post(
-                name: NSNotification.Name("RefreshPostComments"),
-                object: nil,
-                userInfo: ["commentID": commentId.uuidString]
-            )
-            NotificationCenter.default.post(
-                name: NSNotification.Name("CommentAdded"),
-                object: nil,
-                userInfo: ["commentID": commentId.uuidString]
-            )
+            // 直接发送对象变更通知，让SwiftUI自动刷新
+            self.objectWillChange.send()
         }
     }
 
@@ -386,25 +372,10 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             print("📊 该父评论现在有 \(comments[index].replies.count) 条回复")
             print("📊 回复内容: \"\(reply.content.prefix(30))...\"")
             
-            // 发送通知刷新UI - 确保在主线程发送
+            // 简化通知机制 - 只发送对象变更通知
             DispatchQueue.main.async {
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("PostCommentsUpdated"),
-                    object: nil,
-                    userInfo: ["postID": self.id.uuidString, "commentID": reply.id.uuidString]
-                )
-                
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshPostComments"),
-                    object: nil,
-                    userInfo: ["commentID": reply.id.uuidString]
-                )
-                
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("CommentAdded"),
-                    object: nil,
-                    userInfo: ["commentID": reply.id.uuidString]
-                )
+                // 直接发送对象变更通知，让SwiftUI自动刷新
+                self.objectWillChange.send()
             }
             return
         }
@@ -418,25 +389,10 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                 found = true
                 print("✅ 在嵌套回复中找到父评论并添加回复")
                 
-                // 发送通知刷新UI
+                // 简化通知机制 - 只发送对象变更通知
                 DispatchQueue.main.async {
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("PostCommentsUpdated"),
-                        object: nil,
-                        userInfo: ["postID": self.id.uuidString, "commentID": reply.id.uuidString]
-                    )
-                    
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("RefreshPostComments"),
-                        object: nil,
-                        userInfo: ["commentID": reply.id.uuidString]
-                    )
-                    
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("CommentAdded"),
-                        object: nil,
-                        userInfo: ["commentID": reply.id.uuidString]
-                    )
+                    // 直接发送对象变更通知，让SwiftUI自动刷新
+                    self.objectWillChange.send()
                 }
                 break
             }
@@ -449,25 +405,10 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             newTopLevelComment.parentCommentId = nil // 清除父评论ID，因为找不到父评论
             comments.append(newTopLevelComment) // 改为append，保持时间顺序
             
-            // 发送通知刷新UI
+            // 简化通知机制 - 只发送对象变更通知
             DispatchQueue.main.async {
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("PostCommentsUpdated"),
-                    object: nil,
-                    userInfo: ["postID": self.id.uuidString, "commentID": reply.id.uuidString]
-                )
-                
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshPostComments"),
-                    object: nil,
-                    userInfo: ["commentID": reply.id.uuidString]
-                )
-                
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("CommentAdded"),
-                    object: nil,
-                    userInfo: ["commentID": reply.id.uuidString]
-                )
+                // 直接发送对象变更通知，让SwiftUI自动刷新
+                self.objectWillChange.send()
             }
         }
     }
@@ -798,25 +739,10 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             // 打印当前评论数量
             print("📊 添加后顶级评论数量: \(comments.count)")
             
-            // 发送通知刷新UI - 确保在主线程发送
+            // 简化通知机制 - 只发送对象变更通知
             DispatchQueue.main.async {
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("PostCommentsUpdated"),
-                    object: nil,
-                    userInfo: ["postID": self.id.uuidString, "commentID": comment.id.uuidString]
-                )
-                
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshPostComments"),
-                    object: nil,
-                    userInfo: ["commentID": comment.id.uuidString]
-                )
-                
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("CommentAdded"),
-                    object: nil,
-                    userInfo: ["commentID": comment.id.uuidString]
-                )
+                // 直接发送对象变更通知，让SwiftUI自动刷新
+                self.objectWillChange.send()
             }
         }
     }
