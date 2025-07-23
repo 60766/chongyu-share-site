@@ -28,9 +28,6 @@ struct CommentInputView: View {
     @State private var showMentionPicker = false
     @State private var mentionSearchText = ""
     
-    // 添加提交状态标记
-    @State private var isSubmitting = false
-    
     var body: some View {
         // 使用ZStack替代Group，并将内容限制在底部
         ZStack(alignment: .bottom) {
@@ -618,15 +615,6 @@ struct CommentInputView: View {
     
     // 提交评论并重置状态
     private func submitComment() {
-        // 防止重复提交
-        guard !isSubmitting else {
-            print("⚠️ 评论正在提交中，忽略重复点击")
-            return
-        }
-        
-        // 设置提交状态
-        isSubmitting = true
-        
         // 先提交评论数据
         commentManager.submitComment()
         
@@ -660,9 +648,6 @@ struct CommentInputView: View {
                     object: nil,
                     userInfo: ["preventScroll": true]
                 )
-                
-                // 重置提交状态，允许再次提交
-                self.isSubmitting = false
             }
         }
     }
