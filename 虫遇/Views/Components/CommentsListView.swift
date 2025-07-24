@@ -154,8 +154,11 @@ struct CommentsListView: View {
                 }
                 .onChange(of: refreshID) { _ in
                     // 当refreshID变化时，保持滚动位置不变
-                    withAnimation(.none) {
-                        scrollView.scrollTo("comments_list_\(storageKey)", anchor: .center)
+                    // 使用异步操作确保视图已更新
+                    DispatchQueue.main.async {
+                        withAnimation(.none) {
+                            scrollView.scrollTo("comments_list_\(storageKey)", anchor: .center)
+                        }
                     }
                 }
             }
@@ -167,17 +170,11 @@ struct CommentsListView: View {
             
             // 初始加载时强制刷新一次，确保内容显示
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.none) {
-                    self.refreshID = UUID()
-                }
-                
-                // 再次延迟刷新，确保内容完全显示
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    withAnimation(.none) {
-                        self.refreshID = UUID()
-                    }
-                }
+                self.forceRefresh()
             }
+            
+            // 添加通知监听
+            setupNotifications()
         }
         .onDisappear {
             // 保存展开状态到UserDefaults
@@ -282,13 +279,6 @@ struct CommentsListView: View {
                 self.refreshID = UUID()
             }
             
-            // 额外添加一次延迟刷新，确保内容显示
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.none) {
-                    self.refreshID = UUID()
-                }
-            }
-            
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 self.isRefreshing = false
@@ -308,6 +298,105 @@ struct CommentsListView: View {
         
         // 使用特殊的刷新方法，避免导致滚动
         refreshWithoutScrolling()
+    }
+    
+    // 设置通知监听
+    private func setupNotifications() {
+        // 移除之前可能存在的通知监听，避免重复
+        NotificationCenter.default.removeObserver(self)
+        
+        // 监听ForceRefreshComments通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ForceRefreshComments"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            
+            // 检查是否需要保持展开状态
+            let shouldKeepState = notification.userInfo?["keepExpandState"] as? Bool ?? true
+            let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
+            
+            // 先加载保存的展开状态
+            self.loadExpandedCommentsState()
+            
+            // 直接刷新，不使用延迟
+            if preventScroll {
+                self.refreshWithoutScrolling()
+            } else {
+                self.forceRefresh()
+            }
+        }
+        
+        // 监听RefreshCommentsList通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("RefreshCommentsList"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            
+            // 先加载保存的展开状态
+            self.loadExpandedCommentsState()
+            
+            // 处理新评论ID和父评论ID
+            if let newCommentId = notification.userInfo?["newCommentId"] as? String,
+               let newCommentUUID = UUID(uuidString: newCommentId) {
+                
+                // 如果有父评论ID，可能需要展开
+                if let parentCommentId = notification.userInfo?["parentCommentId"] as? String,
+                   let parentCommentUUID = UUID(uuidString: parentCommentId) {
+                    
+                    // 检查是否应该自动展开
+                    let noAutoExpand = notification.userInfo?["noAutoExpand"] as? Bool ?? false
+                    
+                    // 只有在不禁止自动展开时才展开父评论
+                    if !noAutoExpand {
+                        // 确保父评论是展开的
+                        self.expandedComments.insert(parentCommentUUID)
+                    }
+                }
+                
+                // 保存展开状态
+                self.saveExpandedCommentsState()
+                
+                // 立即刷新，确保新评论显示
+                if notification.userInfo?["immediateDisplay"] as? Bool ?? false {
+                    // 使用特殊的刷新方法，避免导致滚动
+                    self.refreshWithoutScrolling()
+                }
+            }
+        }
+        
+        // 监听ExpandComment通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ExpandComment"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self,
+                  let userInfo = notification.userInfo,
+                  let commentIdString = userInfo["commentId"] as? String,
+                  let commentId = UUID(uuidString: commentIdString) else {
+                return
+            }
+            
+            // 立即展开评论
+            self.expandedComments.insert(commentId)
+            
+            // 保存展开状态
+            self.saveExpandedCommentsState()
+            
+            // 检查是否需要保持滚动位置
+            let preventScroll = userInfo["preventScroll"] as? Bool ?? true
+            
+            // 刷新视图
+            if preventScroll {
+                self.refreshWithoutScrolling()
+            } else {
+                self.forceRefresh()
+            }
+        }
     }
     
     // 辅助函数：递归查找评论
@@ -433,10 +522,9 @@ struct CommentThreadView: View {
                     // 收集所有回复，包括嵌套回复，展平为一层
                     let allReplies = collectAllReplies(comment: comment)
                     
-                    // 确保有回复可显示
+                    // 直接使用收集到的回复，不做额外排序
+                    // 因为CommentManager.updateCommentLists已经确保了正确的排序顺序
                     if !allReplies.isEmpty {
-                        // 直接使用收集到的回复，不做额外排序
-                        // 因为CommentManager.updateCommentLists已经确保了正确的排序顺序
                         ForEach(allReplies) { reply in
                             if reply.id != allReplies.first?.id {
                                 Divider()
@@ -459,15 +547,21 @@ struct CommentThreadView: View {
                                 }
                             )
                             .transition(.opacity) // 添加过渡动画
-                            .id("reply_\(reply.id)_\(refreshID)") // 为每个回复添加固定ID，包含refreshID确保刷新
+                            .id("reply_\(reply.id)") // 为每个回复添加固定ID
                         }
                     } else {
-                        // 如果没有回复可显示，显示一条提示信息
-                        Text("加载回复中...")
+                        // 如果没有回复，显示一个占位符
+                        Text("加载中...")
                             .font(.system(size: 14))
                             .foregroundColor(.gray)
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 10)
+                            .padding(.leading, 48)
+                            .onAppear {
+                                // 强制刷新
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    self.forceRefresh()
+                                }
+                            }
                     }
                 }
                 .padding(.vertical, 6) // 增加垂直间距
@@ -524,13 +618,6 @@ struct CommentThreadView: View {
                 self.refreshID = UUID()
             }
             
-            // 额外添加一次延迟刷新，确保内容显示
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.none) {
-                    self.refreshID = UUID()
-                }
-            }
-            
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 self.isRefreshing = false
@@ -551,12 +638,8 @@ struct CommentThreadView: View {
             allReplies.append(contentsOf: collectNestedReplies(reply))
         }
         
-        // 确保返回的数组不为空
-        if allReplies.isEmpty && !comment.replies.isEmpty {
-            print("警告: collectAllReplies返回空数组，但comment.replies不为空: \(comment.replies.count)")
-            // 直接使用原始回复列表作为备选
-            return comment.replies
-        }
+        // 打印调试信息
+        print("收集到\(allReplies.count)条回复，评论ID: \(comment.id)")
         
         return allReplies
     }
