@@ -162,9 +162,6 @@ struct CommentsListView: View {
         }
         .background(Color(.systemBackground).opacity(0.98)) // 添加轻微的背景色
         .onAppear {
-            // 添加通知监听
-            setupNotifications()
-            
             // 从UserDefaults加载展开状态
             loadExpandedCommentsState()
             
@@ -464,14 +461,6 @@ struct CommentThreadView: View {
             }
         }
         .padding(.vertical, 4) // 增加垂直间距
-        .onAppear {
-            // 设置通知监听
-            setupNotifications()
-        }
-        .onDisappear {
-            // 移除通知监听
-            NotificationCenter.default.removeObserver(self)
-        }
         .id("comment_\(comment.id)_\(refreshID)") // 使用refreshID确保视图在需要时更新
     }
     
@@ -486,6 +475,28 @@ struct CommentThreadView: View {
         // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
         DispatchQueue.main.async {
             self.refreshID = UUID()
+            
+            // 设置短暂延迟后重置刷新状态，避免频繁刷新
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.isRefreshing = false
+            }
+        }
+    }
+    
+    // 添加一个特殊的刷新方法，避免导致滚动
+    private func refreshWithoutScrolling() {
+        // 避免频繁刷新导致的性能问题
+        guard !isRefreshing else { return }
+        
+        // 标记为正在刷新
+        isRefreshing = true
+        
+        // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
+        DispatchQueue.main.async {
+            // 使用一个特殊的ID，确保视图更新但不会导致滚动位置变化
+            withAnimation(.none) {
+                self.refreshID = UUID()
+            }
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -574,204 +585,6 @@ struct CommentThreadView: View {
         
         // 调用回调函数，更新模型数据
         onLike(commentId)
-    }
-    
-    // 设置通知监听
-    private func setupNotifications() {
-        // 监听ForceRefreshComments通知
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("ForceRefreshComments"),
-            object: nil,
-            queue: .main
-        ) { notification in
-            // 检查是否需要保持展开状态
-            let shouldKeepState = notification.userInfo?["keepExpandState"] as? Bool ?? true
-            let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
-            
-            // 先加载保存的展开状态
-            self.loadExpandedCommentsState()
-            
-            // 直接刷新，不使用延迟
-            if shouldKeepState {
-                // 只刷新视图，不修改展开状态
-                if preventScroll {
-                    self.refreshWithoutScrolling()
-                } else {
-                    self.forceRefresh()
-                }
-            } else {
-                // 清除展开状态并刷新
-                self.expandedComments.removeAll()
-                if preventScroll {
-                    self.refreshWithoutScrolling()
-                } else {
-                    self.forceRefresh()
-                }
-            }
-        }
-        
-        // 监听所有可能触发刷新的通知
-        ["PostCommentsUpdated", "RefreshPostComments", "CommentAdded", "RefreshCommentsList"].forEach { notificationName in
-            NotificationCenter.default.addObserver(
-                forName: NSNotification.Name(notificationName),
-                object: nil,
-                queue: .main
-            ) { notification in
-                // 检查是否需要保持展开状态
-                let shouldKeepState = notification.userInfo?["keepExpandState"] as? Bool ?? true
-                let preserveExpandState = notification.userInfo?["preserveExpandState"] as? Bool ?? true
-                let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
-                
-                // 先加载保存的展开状态
-                self.loadExpandedCommentsState()
-                
-                // 处理新评论ID和父评论ID
-                if let newCommentId = notification.userInfo?["newCommentId"] as? String,
-                   let _ = UUID(uuidString: newCommentId) {
-                    
-                    // 如果有父评论ID，可能需要展开
-                    if let parentCommentId = notification.userInfo?["parentCommentId"] as? String,
-                       let parentCommentUUID = UUID(uuidString: parentCommentId) {
-                        
-                        // 检查是否应该自动展开
-                        let noAutoExpand = notification.userInfo?["noAutoExpand"] as? Bool ?? false
-                        
-                        // 只有在不禁止自动展开时才展开父评论
-                        if !noAutoExpand {
-                            // 确保父评论是展开的
-                            self.expandedComments.insert(parentCommentUUID)
-                        }
-                    }
-                    
-                    // 立即刷新，确保新评论显示
-                    if notification.userInfo?["immediateDisplay"] as? Bool ?? false {
-                        // 保存展开状态
-                        self.saveExpandedCommentsState()
-                        
-                        // 使用特殊的刷新方法，避免导致滚动
-                        self.refreshWithoutScrolling()
-                    }
-                }
-                
-                // 如果有forceExpand参数，展开指定评论
-                if let forceExpand = notification.userInfo?["forceExpand"] as? Bool,
-                   forceExpand,
-                   let parentCommentID = notification.userInfo?["parentCommentID"] as? String,
-                   let parentCommentUUID = UUID(uuidString: parentCommentID) {
-                    // 确保父评论是展开的
-                    self.expandedComments.insert(parentCommentUUID)
-                    self.saveExpandedCommentsState()
-                }
-                
-                // 刷新视图
-                if shouldKeepState && preserveExpandState {
-                    // 只刷新视图，不修改展开状态
-                    if preventScroll {
-                        self.refreshWithoutScrolling()
-                    } else {
-                        self.forceRefresh()
-                    }
-                } else {
-                    // 清除展开状态并刷新
-                    self.expandedComments.removeAll()
-                    if preventScroll {
-                        self.refreshWithoutScrolling()
-                    } else {
-                        self.forceRefresh()
-                    }
-                }
-            }
-        }
-        
-        // 监听VirtualCharacterReplyAdded通知
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("VirtualCharacterReplyAdded"),
-            object: nil,
-            queue: .main
-        ) { notification in
-            // 检查是否需要保持展开状态
-            let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
-            let noAutoExpand = notification.userInfo?["noAutoExpand"] as? Bool ?? false
-            
-            // 先加载保存的展开状态
-            self.loadExpandedCommentsState()
-            
-            // 如果有parentCommentID，可能需要展开
-            if let parentCommentID = notification.userInfo?["parentCommentID"] as? String,
-               let parentCommentUUID = UUID(uuidString: parentCommentID) {
-                
-                // 检查是否应该展开
-                let shouldExpand = (notification.userInfo?["forceExpand"] as? Bool ?? false) || 
-                                  (notification.userInfo?["preventCollapse"] as? Bool ?? false && !noAutoExpand)
-                
-                // 只有在应该展开且不禁止自动展开时才展开父评论
-                if shouldExpand && !noAutoExpand {
-                    // 确保父评论是展开的
-                    self.expandedComments.insert(parentCommentUUID)
-                    self.saveExpandedCommentsState()
-                }
-            }
-            
-            // 刷新视图
-            if preventScroll {
-                self.refreshWithoutScrolling()
-            } else {
-                self.forceRefresh()
-            }
-        }
-        
-        // 监听ExpandComment通知
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("ExpandComment"),
-            object: nil,
-            queue: .main
-        ) { notification in
-            guard let userInfo = notification.userInfo,
-                  let commentIdString = userInfo["commentId"] as? String,
-                  let commentId = UUID(uuidString: commentIdString) else {
-                return
-            }
-            
-            // 先加载保存的展开状态
-            self.loadExpandedCommentsState()
-            
-            // 立即展开评论
-            self.expandedComments.insert(commentId)
-            self.saveExpandedCommentsState()
-            
-            // 检查是否需要保持滚动位置
-            let preventScroll = userInfo["preventScroll"] as? Bool ?? true
-            
-            // 刷新视图
-            if preventScroll {
-                self.refreshWithoutScrolling()
-            } else {
-                self.forceRefresh()
-            }
-        }
-        
-        // 监听MaintainScrollPosition通知
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("MaintainScrollPosition"),
-            object: nil,
-            queue: .main
-        ) { _ in
-            // 不执行任何刷新操作，只保存当前展开状态
-            self.saveExpandedCommentsState()
-        }
-        
-        // 监听RefreshCommentsWithoutScrolling通知
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("RefreshCommentsWithoutScrolling"),
-            object: nil,
-            queue: .main
-        ) { _ in
-            // 先加载保存的展开状态
-            self.loadExpandedCommentsState()
-            
-            // 使用特殊的刷新方法，避免导致滚动
-            self.refreshWithoutScrolling()
-        }
     }
 }
 
