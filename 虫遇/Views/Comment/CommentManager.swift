@@ -1034,37 +1034,12 @@ class CommentManager: ObservableObject {
                                     "postID": self.currentPost.id.uuidString,
                                     "batchId": batchId, 
                                     "forceRefresh": true,
-                                    "keepExpandState": true
-                                ]
-                            )
-                            
-                            NotificationCenter.default.post(
-                                name: NSNotification.Name("RefreshPostComments"),
-                                object: nil,
-                                userInfo: [
-                                    "batchId": batchId, 
-                                    "forceRefresh": true,
-                                    "keepExpandState": true
-                                ]
-                            )
-                            
-                            // 发送特定通知，告知UI虚拟角色回复已添加到特定评论下
-                            NotificationCenter.default.post(
-                                name: NSNotification.Name("VirtualCharacterReplyAdded"),
-                                object: nil,
-                                userInfo: [
-                                    "parentCommentID": parentCommentID.uuidString,
-                                    "replyCommentID": virtualReply.id.uuidString,
-                                    "characterID": characterID,
                                     "keepExpandState": true,
-                                    "forceExpand": false,
-                                    "preventCollapse": true,
-                                    "immediateDisplay": true,
-                                    "preserveExpandState": true
+                                    "preventScroll": true  // 添加preventScroll参数，防止页面滚动
                                 ]
                             )
                             
-                            // 发送刷新评论列表通知，确保评论立即显示
+                            // 使用单一通知替代多个通知，减少UI刷新次数
                             NotificationCenter.default.post(
                                 name: NSNotification.Name("RefreshCommentsList"),
                                 object: nil,
@@ -1075,9 +1050,37 @@ class CommentManager: ObservableObject {
                                     "parentCommentId": parentCommentID.uuidString,
                                     "immediateDisplay": true,
                                     "preserveExpandState": true,
+                                    "preventScroll": true,
                                     "noAutoExpand": true
                                 ]
                             )
+                            
+                            // 移除多余的通知，减少UI刷新次数
+                            // NotificationCenter.default.post(
+                            //     name: NSNotification.Name("RefreshPostComments"),
+                            //     object: nil,
+                            //     userInfo: [
+                            //         "batchId": batchId, 
+                            //         "forceRefresh": true,
+                            //         "keepExpandState": true
+                            //     ]
+                            // )
+                            
+                            // 移除多余的通知，减少UI刷新次数
+                            // NotificationCenter.default.post(
+                            //     name: NSNotification.Name("VirtualCharacterReplyAdded"),
+                            //     object: nil,
+                            //     userInfo: [
+                            //         "parentCommentID": parentCommentID.uuidString,
+                            //         "replyCommentID": virtualReply.id.uuidString,
+                            //         "characterID": characterID,
+                            //         "keepExpandState": true,
+                            //         "forceExpand": false,
+                            //         "preventCollapse": true,
+                            //         "immediateDisplay": true,
+                            //         "preserveExpandState": true
+                            //     ]
+                            // )
                             
                             print("✅ 虚拟角色回复已添加 - 角色: \(characterName), 回复给: \(replyToUsername)")
                         }
