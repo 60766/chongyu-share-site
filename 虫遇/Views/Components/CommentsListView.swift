@@ -329,6 +329,19 @@ struct CommentsListView: View {
                                 self.refreshID = UUID()
                             }
                         }
+                    } else if let newCommentId = notification.userInfo?["newCommentId"] as? String,
+                              let newCommentUUID = UUID(uuidString: newCommentId),
+                              notification.userInfo?["immediateDisplay"] as? Bool ?? false {
+                        // 处理单独评论的情况（没有parentCommentId）
+                        // 不需要展开任何评论，只需要刷新视图
+                        
+                        // 保存展开状态
+                        self.saveExpandedCommentsState()
+                        
+                        // 强制刷新视图，确保新评论立即显示
+                        DispatchQueue.main.async {
+                            self.refreshID = UUID()
+                        }
                     }
                     
                     // 如果有forceExpand参数，展开指定评论

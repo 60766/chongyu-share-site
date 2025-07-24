@@ -562,11 +562,23 @@ class CommentManager: ObservableObject {
                     object: nil
                 )
                 
-                // 发送刷新评论列表通知，添加preventScroll参数
+                // 发送刷新评论列表通知，确保新评论立即显示但不展开折叠
                 NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshCommentsWithoutScrolling"),
+                    name: NSNotification.Name("RefreshCommentsList"),
                     object: nil,
-                    userInfo: ["preventScroll": true]
+                    userInfo: [
+                        "keepExpandState": true,
+                        "preventCollapse": true,
+                        "newCommentId": newCommentId.uuidString,
+                        "immediateDisplay": true,
+                        "preventScroll": true
+                    ]
+                )
+                
+                // 强制刷新评论列表
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ForceRefreshComments"),
+                    object: nil
                 )
                 
                 // 生成虚拟角色回复
