@@ -813,7 +813,7 @@ class CommentManager: ObservableObject {
                             UserDefaults.standard.set(true, forKey: commentRepliedKey)
                             
                             // 为每个角色添加回复，移除延迟
-                            for (index, (characterID, content)) in commentsMap.enumerated() {
+                            for (_, (characterID, content)) in commentsMap.enumerated() {
                                 // 作者优先回复，其他角色依次回复
                                 // 移除延迟
                                 

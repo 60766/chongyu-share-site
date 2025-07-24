@@ -74,10 +74,7 @@ func getCharacterTag(for characterID: String?) -> String {
  * 评论列表视图 - 小红书风格
  * 只有一层嵌套，默认折叠子评论，通过@用户名标记回复关系
  */
-struct CommentsListView: View, ObservableObject {
-    // 添加ObservableObject所需的发布者
-    var objectWillChange = ObservableObjectPublisher()
-    
+struct CommentsListView: View {
     // 评论数据 - 只接收顶级评论
     let comments: [DetailedCommentModel]
     
@@ -165,7 +162,7 @@ struct CommentsListView: View, ObservableObject {
             
             // 初始加载时强制刷新一次，确保内容显示
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.objectWillChange.send()
+                // self.objectWillChange.send() // 移除此行，因为CommentsListView不再继承ObservableObject
             }
         }
         .onDisappear {
@@ -243,7 +240,7 @@ struct CommentsListView: View, ObservableObject {
             // 强制立即更新UI
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 // 再次触发刷新，确保内容显示
-                self.objectWillChange.send()
+                // self.objectWillChange.send() // 移除此行，因为CommentsListView不再继承ObservableObject
             }
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
@@ -327,18 +324,16 @@ struct CommentsListView: View, ObservableObject {
                     
                     // 如果有新评论ID和父评论ID，确保它们是展开的
                     if let newCommentId = notification.userInfo?["newCommentId"] as? String,
-                       let newCommentUUID = UUID(uuidString: newCommentId) {
+                       let _ = UUID(uuidString: newCommentId),
+                       let parentCommentId = notification.userInfo?["parentCommentId"] as? String,
+                       let parentCommentUUID = UUID(uuidString: parentCommentId) {
                         // 检查是否应该自动展开
                         let noAutoExpand = notification.userInfo?["noAutoExpand"] as? Bool ?? false
                         
-                        // 检查是否有父评论ID
-                        if let parentCommentId = notification.userInfo?["parentCommentId"] as? String,
-                           let parentCommentUUID = UUID(uuidString: parentCommentId) {
-                            // 只有在不禁止自动展开时才展开父评论
-                            if !noAutoExpand {
-                                // 确保父评论是展开的
-                                self.expandedComments.insert(parentCommentUUID)
-                            }
+                        // 只有在不禁止自动展开时才展开父评论
+                        if !noAutoExpand {
+                            // 确保父评论是展开的
+                            self.expandedComments.insert(parentCommentUUID)
                         }
                         
                         // 立即强制刷新，确保新评论显示，但不影响滚动位置
@@ -350,7 +345,7 @@ struct CommentsListView: View, ObservableObject {
                             self.refreshWithoutScrolling()
                         }
                     } else if let newCommentId = notification.userInfo?["newCommentId"] as? String,
-                              let newCommentUUID = UUID(uuidString: newCommentId),
+                              let _ = UUID(uuidString: newCommentId),
                               notification.userInfo?["immediateDisplay"] as? Bool ?? false {
                         // 处理单独评论的情况（没有parentCommentId）
                         // 不需要展开任何评论，只需要刷新视图
@@ -381,8 +376,8 @@ struct CommentsListView: View, ObservableObject {
             queue: .main
         ) { notification in
             // 检查是否需要保持展开状态
-            let keepExpandState = notification.userInfo?["keepExpandState"] as? Bool ?? true
-            let preserveExpandState = notification.userInfo?["preserveExpandState"] as? Bool ?? true
+            let _ = notification.userInfo?["keepExpandState"] as? Bool ?? true
+            let _ = notification.userInfo?["preserveExpandState"] as? Bool ?? true
             let preventCollapse = notification.userInfo?["preventCollapse"] as? Bool ?? false
             let immediateDisplay = notification.userInfo?["immediateDisplay"] as? Bool ?? false
             let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
@@ -501,7 +496,7 @@ struct CommentsListView: View, ObservableObject {
             // 强制立即更新UI
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 // 再次触发刷新，确保内容显示
-                self.objectWillChange.send()
+                // self.objectWillChange.send() // 移除此行，因为CommentsListView不再继承ObservableObject
             }
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
@@ -1179,7 +1174,7 @@ struct CommentsListView_Previews: PreviewProvider {
             onLike: { _ in }
         )
         .padding()
-        .previewLayout(.sizeThatFits)
+        .previewLayout(.fixed(width: 375, height: 600))
     }
 } 
 
@@ -1203,6 +1198,6 @@ struct CommentThreadView_Previews: PreviewProvider {
             onLike: { _ in }
         )
         .padding()
-        .previewLayout(.sizeThatFits)
+        .previewLayout(.fixed(width: 375, height: 200))
     }
 } 
