@@ -167,7 +167,16 @@ struct CommentsListView: View {
             
             // 初始加载时强制刷新一次，确保内容显示
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                // self.objectWillChange.send() // 移除此行，因为CommentsListView不再继承ObservableObject
+                withAnimation(.none) {
+                    self.refreshID = UUID()
+                }
+                
+                // 再次延迟刷新，确保内容完全显示
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.none) {
+                        self.refreshID = UUID()
+                    }
+                }
             }
         }
         .onDisappear {
@@ -271,6 +280,13 @@ struct CommentsListView: View {
             // 使用一个特殊的ID，确保视图更新但不会导致滚动位置变化
             withAnimation(.none) {
                 self.refreshID = UUID()
+            }
+            
+            // 额外添加一次延迟刷新，确保内容显示
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.none) {
+                    self.refreshID = UUID()
+                }
             }
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
@@ -417,31 +433,41 @@ struct CommentThreadView: View {
                     // 收集所有回复，包括嵌套回复，展平为一层
                     let allReplies = collectAllReplies(comment: comment)
                     
-                    // 直接使用收集到的回复，不做额外排序
-                    // 因为CommentManager.updateCommentLists已经确保了正确的排序顺序
-                    ForEach(allReplies) { reply in
-                        if reply.id != allReplies.first?.id {
-                            Divider()
-                                .padding(.leading, 48) // 增加左侧间距
-                                .padding(.trailing, 16)
-                                .padding(.vertical, 2) // 添加垂直间距
-                        }
-                        
-                        // 回复内容 - 不再显示展开按钮，因为所有回复都在同一层
-                        CommentItemView(
-                            comment: reply,
-                            replyAction: replyAction,
-                            isLiked: likedComments.contains(reply.id),
-                            showExpandButton: false, // 不再显示展开按钮
-                            replyCount: 0,
-                            isExpanded: false,
-                            onToggleExpand: nil,
-                            onLike: {
-                                toggleLike(for: reply.id)
+                    // 确保有回复可显示
+                    if !allReplies.isEmpty {
+                        // 直接使用收集到的回复，不做额外排序
+                        // 因为CommentManager.updateCommentLists已经确保了正确的排序顺序
+                        ForEach(allReplies) { reply in
+                            if reply.id != allReplies.first?.id {
+                                Divider()
+                                    .padding(.leading, 48) // 增加左侧间距
+                                    .padding(.trailing, 16)
+                                    .padding(.vertical, 2) // 添加垂直间距
                             }
-                        )
-                        .transition(.opacity) // 添加过渡动画
-                        .id("reply_\(reply.id)") // 为每个回复添加固定ID
+                            
+                            // 回复内容 - 不再显示展开按钮，因为所有回复都在同一层
+                            CommentItemView(
+                                comment: reply,
+                                replyAction: replyAction,
+                                isLiked: likedComments.contains(reply.id),
+                                showExpandButton: false, // 不再显示展开按钮
+                                replyCount: 0,
+                                isExpanded: false,
+                                onToggleExpand: nil,
+                                onLike: {
+                                    toggleLike(for: reply.id)
+                                }
+                            )
+                            .transition(.opacity) // 添加过渡动画
+                            .id("reply_\(reply.id)_\(refreshID)") // 为每个回复添加固定ID，包含refreshID确保刷新
+                        }
+                    } else {
+                        // 如果没有回复可显示，显示一条提示信息
+                        Text("加载回复中...")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
                 .padding(.vertical, 6) // 增加垂直间距
@@ -498,6 +524,13 @@ struct CommentThreadView: View {
                 self.refreshID = UUID()
             }
             
+            // 额外添加一次延迟刷新，确保内容显示
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.none) {
+                    self.refreshID = UUID()
+                }
+            }
+            
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 self.isRefreshing = false
@@ -516,6 +549,13 @@ struct CommentThreadView: View {
         for reply in sortedDirectReplies {
             allReplies.append(reply)
             allReplies.append(contentsOf: collectNestedReplies(reply))
+        }
+        
+        // 确保返回的数组不为空
+        if allReplies.isEmpty && !comment.replies.isEmpty {
+            print("警告: collectAllReplies返回空数组，但comment.replies不为空: \(comment.replies.count)")
+            // 直接使用原始回复列表作为备选
+            return comment.replies
         }
         
         return allReplies
