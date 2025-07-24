@@ -74,7 +74,10 @@ func getCharacterTag(for characterID: String?) -> String {
  * 评论列表视图 - 小红书风格
  * 只有一层嵌套，默认折叠子评论，通过@用户名标记回复关系
  */
-struct CommentsListView: View {
+struct CommentsListView: View, ObservableObject {
+    // 添加ObservableObject所需的发布者
+    var objectWillChange = ObservableObjectPublisher()
+    
     // 评论数据 - 只接收顶级评论
     let comments: [DetailedCommentModel]
     
@@ -93,9 +96,6 @@ struct CommentsListView: View {
     
     // 添加一个状态变量，用于跟踪是否正在刷新
     @State private var isRefreshing = false
-    
-    // 添加一个环境对象用于强制刷新
-    @Environment(\.self) private var environment
     
     // 使用一个稳定的标识符，基于评论列表的第一个评论ID或者固定字符串
     var storageKey: String {
@@ -142,7 +142,7 @@ struct CommentsListView: View {
                                 }
                             }
                         )
-                        .id("comment_thread_\(comment.id)_\(refreshID)") // 使用refreshID确保视图正确刷新
+                        .id("comment_thread_\(comment.id)") // 为每个评论线程添加固定ID
                         .transition(.opacity) // 添加过渡动画
                         
                         if comment.id != comments.last?.id {
@@ -151,7 +151,7 @@ struct CommentsListView: View {
                                 .padding(.vertical, 4) // 增加分隔线周围的间距
                         }
                     }
-                    .id("comments_list_\(storageKey)_\(refreshID)") // 使用refreshID确保视图正确刷新
+                    .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
                 }
             }
         }
@@ -162,6 +162,11 @@ struct CommentsListView: View {
             
             // 从UserDefaults加载展开状态
             loadExpandedCommentsState()
+            
+            // 初始加载时强制刷新一次，确保内容显示
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.objectWillChange.send()
+            }
         }
         .onDisappear {
             // 保存展开状态到UserDefaults
@@ -234,6 +239,12 @@ struct CommentsListView: View {
         // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
         DispatchQueue.main.async {
             self.refreshID = UUID()
+            
+            // 强制立即更新UI
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                // 再次触发刷新，确保内容显示
+                self.objectWillChange.send()
+            }
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -487,8 +498,11 @@ struct CommentsListView: View {
             // 使用一个特殊的ID，确保视图更新但不会导致滚动位置变化
             self.refreshID = UUID()
             
-            // 强制立即重绘视图
-            self.environment.refresh()
+            // 强制立即更新UI
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                // 再次触发刷新，确保内容显示
+                self.objectWillChange.send()
+            }
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
