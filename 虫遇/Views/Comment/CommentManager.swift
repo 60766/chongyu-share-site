@@ -424,14 +424,14 @@ class CommentManager: ObservableObject {
         var newCommentId: UUID = UUID()
         
         // 记录当前展开状态，确保评论提交后保持展开状态
-        var parentCommentId: UUID? = nil
+        // 移除未使用的变量
         
         print("🔄 开始提交评论 - 内容: \"\(processedContent.prefix(30))...\"")
         print("🔄 是否为回复: \(replyingToComment != nil)")
         
         // 先重置状态，避免UI卡住
         isRestoringDraft = true // 标记为恢复草稿状态，避免触发保存
-        let savedText = commentText
+        // 移除未使用的变量
         commentText = ""
         
         // 保存当前回复对象的引用，确保在清除replyingToComment前保存其信息
@@ -458,9 +458,6 @@ class CommentManager: ObservableObject {
                     isCurrentUser: true
                 )
                 
-                // 记录父评论ID，确保保持展开状态
-                parentCommentId = replyTo.id
-                
                 print("✅ 已添加回复评论 - ID: \(newCommentId), 回复给: \(replyTo.username), 内容: \"\(processedContent.prefix(30))...\"")
                 print("✅ 父评论ID: \(replyTo.id)")
                 
@@ -471,19 +468,18 @@ class CommentManager: ObservableObject {
                 self.objectWillChange.send()
                 
                 // 立即发送展开评论通知，确保评论区域不会折叠
-                if let topParentId = replyTo.parentCommentId ?? replyTo.id {
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("ExpandComment"),
-                        object: nil,
-                        userInfo: [
-                            "commentId": topParentId.uuidString,
-                            "forceExpand": true,
-                            "preventCollapse": true
-                        ]
-                    )
-                    
-                    print("📣 立即发送ExpandComment通知，确保父评论ID: \(topParentId) 保持展开状态")
-                }
+                let topParentId = replyTo.parentCommentId ?? replyTo.id
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ExpandComment"),
+                    object: nil,
+                    userInfo: [
+                        "commentId": topParentId.uuidString,
+                        "forceExpand": true,
+                        "preventCollapse": true
+                    ]
+                )
+                
+                print("📣 立即发送ExpandComment通知，确保父评论ID: \(topParentId) 保持展开状态")
                 
                 // 发送通知，告知不要滚动页面位置
                 NotificationCenter.default.post(
@@ -650,7 +646,8 @@ class CommentManager: ObservableObject {
         }
         
         // 记录已回复过此用户的角色，避免重复
-        let userRepliedCharactersKey = "replied_characters_to_\(targetUsername)"
+        // 移除未使用的变量
+        // let userRepliedCharactersKey = "replied_characters_to_\(targetUsername)"
         
         // 分开处理帖子作者和其他角色
         var authorCharacter: String? = nil
