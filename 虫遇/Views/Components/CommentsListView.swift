@@ -94,6 +94,9 @@ struct CommentsListView: View {
     // 添加一个状态变量，用于跟踪是否正在刷新
     @State private var isRefreshing = false
     
+    // 添加一个环境对象用于强制刷新
+    @Environment(\.self) private var environment
+    
     // 使用一个稳定的标识符，基于评论列表的第一个评论ID或者固定字符串
     var storageKey: String {
         if let firstComment = comments.first {
@@ -139,7 +142,7 @@ struct CommentsListView: View {
                                 }
                             }
                         )
-                        .id("comment_thread_\(comment.id)") // 为每个评论线程添加固定ID
+                        .id("comment_thread_\(comment.id)_\(refreshID)") // 使用refreshID确保视图正确刷新
                         .transition(.opacity) // 添加过渡动画
                         
                         if comment.id != comments.last?.id {
@@ -148,7 +151,7 @@ struct CommentsListView: View {
                                 .padding(.vertical, 4) // 增加分隔线周围的间距
                         }
                     }
-                    .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
+                    .id("comments_list_\(storageKey)_\(refreshID)") // 使用refreshID确保视图正确刷新
                 }
             }
         }
@@ -483,6 +486,9 @@ struct CommentsListView: View {
         DispatchQueue.main.async {
             // 使用一个特殊的ID，确保视图更新但不会导致滚动位置变化
             self.refreshID = UUID()
+            
+            // 强制立即重绘视图
+            self.environment.refresh()
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
