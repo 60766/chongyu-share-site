@@ -167,11 +167,6 @@ struct CommentsListView: View {
             
             // 从UserDefaults加载展开状态
             loadExpandedCommentsState()
-            
-            // 初始加载时强制刷新一次，确保内容显示
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                // self.objectWillChange.send() // 移除此行，因为CommentsListView不再继承ObservableObject
-            }
         }
         .onDisappear {
             // 保存展开状态到UserDefaults
@@ -180,18 +175,6 @@ struct CommentsListView: View {
             // 移除通知监听
             NotificationCenter.default.removeObserver(self)
         }
-        // 修复iOS 17中已弃用的onChange方法
-        #if swift(>=5.9)
-        .onChange(of: expandedComments) { oldValue, newValue in
-            // 当展开状态变化时保存
-            saveExpandedCommentsState()
-        }
-        #else
-        .onChange(of: expandedComments) { _ in
-            // 当展开状态变化时保存
-            saveExpandedCommentsState()
-        }
-        #endif
         // 使用refreshID作为视图标识符，只在需要时刷新
         .id("comments_list_view_\(storageKey)_\(refreshID)")
     }

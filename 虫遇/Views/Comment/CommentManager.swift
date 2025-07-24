@@ -423,15 +423,11 @@ class CommentManager: ObservableObject {
         // 记录评论ID以便后续跟踪
         var newCommentId: UUID = UUID()
         
-        // 记录当前展开状态，确保评论提交后保持展开状态
-        // 移除未使用的变量
-        
         print("🔄 开始提交评论 - 内容: \"\(processedContent.prefix(30))...\"")
         print("🔄 是否为回复: \(replyingToComment != nil)")
         
         // 先重置状态，避免UI卡住
         isRestoringDraft = true // 标记为恢复草稿状态，避免触发保存
-        // 移除未使用的变量
         commentText = ""
         
         // 保存当前回复对象的引用，确保在清除replyingToComment前保存其信息
@@ -445,15 +441,21 @@ class CommentManager: ObservableObject {
         
         // 使用Task异步处理评论提交和虚拟角色回复生成
         Task { @MainActor in
+            // 先发送通知，告知不要滚动页面位置
+            NotificationCenter.default.post(
+                name: NSNotification.Name("MaintainScrollPosition"),
+                object: nil
+            )
+            
             if let replyTo = savedReplyingToComment {
-                // 添加回复 - 如果有回复对象，直接使用replyToUsername参数，不需要在内容中添加@
+                // 添加回复评论
                 newCommentId = UUID()
                 currentPost.addComment(
                     username: currentUsername,
                     userAvatar: currentUserAvatar,
-                    content: processedContent, // 不需要显式添加@前缀
+                    content: processedContent,
                     parentCommentId: replyTo.id,
-                    replyToUsername: replyTo.username, // 使用回复对象的用户名
+                    replyToUsername: replyTo.username,
                     userId: UserDefaults.standard.string(forKey: "current_user_id") ?? UIDevice.current.identifierForVendor?.uuidString,
                     isCurrentUser: true
                 )
@@ -475,30 +477,12 @@ class CommentManager: ObservableObject {
                     userInfo: [
                         "commentId": topParentId.uuidString,
                         "forceExpand": true,
-                        "preventCollapse": true
+                        "preventCollapse": true,
+                        "preventScroll": true
                     ]
                 )
                 
-                // 确保新评论也被展开
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("ExpandComment"),
-                    object: nil,
-                    userInfo: [
-                        "commentId": newCommentId.uuidString,
-                        "forceExpand": true,
-                        "preventCollapse": true
-                    ]
-                )
-                
-                print("📣 立即发送ExpandComment通知，确保父评论ID: \(topParentId) 保持展开状态")
-                
-                // 发送通知，告知不要滚动页面位置
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("MaintainScrollPosition"),
-                    object: nil
-                )
-                
-                // 发送刷新评论列表通知，添加preventScroll参数
+                // 发送刷新评论列表通知，确保评论立即显示
                 NotificationCenter.default.post(
                     name: NSNotification.Name("RefreshCommentsList"),
                     object: nil,
@@ -508,16 +492,7 @@ class CommentManager: ObservableObject {
                         "newCommentId": newCommentId.uuidString,
                         "parentCommentId": topParentId.uuidString,
                         "immediateDisplay": true,
-                        "preventScroll": true  // 添加preventScroll参数，防止滚动
-                    ]
-                )
-                
-                // 强制刷新评论列表，但不影响滚动位置
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("ForceRefreshComments"),
-                    object: nil,
-                    userInfo: [
-                        "preventScroll": true  // 添加preventScroll参数，防止滚动
+                        "preventScroll": true
                     ]
                 )
                 
@@ -542,7 +517,7 @@ class CommentManager: ObservableObject {
                     await generateVirtualReply()
                 }
             } else {
-                // 添加顶级评论 - 无需特殊处理
+                // 添加顶级评论
                 newCommentId = UUID()
                 currentPost.addComment(
                     username: currentUsername,
@@ -560,13 +535,7 @@ class CommentManager: ObservableObject {
                 // 立即发送对象变更通知
                 self.objectWillChange.send()
                 
-                // 发送通知，告知不要滚动页面位置
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("MaintainScrollPosition"),
-                    object: nil
-                )
-                
-                // 发送刷新评论列表通知，确保新评论立即显示但不展开折叠
+                // 发送刷新评论列表通知，确保评论立即显示
                 NotificationCenter.default.post(
                     name: NSNotification.Name("RefreshCommentsList"),
                     object: nil,
@@ -577,12 +546,6 @@ class CommentManager: ObservableObject {
                         "immediateDisplay": true,
                         "preventScroll": true
                     ]
-                )
-                
-                // 强制刷新评论列表
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("ForceRefreshComments"),
-                    object: nil
                 )
                 
                 // 生成虚拟角色回复
