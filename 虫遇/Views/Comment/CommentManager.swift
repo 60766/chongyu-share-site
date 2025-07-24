@@ -876,7 +876,7 @@ class CommentManager: ObservableObject {
                                             "parentCommentID": targetCommentID.uuidString,
                                             "replyCommentID": virtualReply.id.uuidString,
                                             "characterID": characterID,
-                                            "forceExpand": true,
+                                            "forceExpand": false, // 修改为false，不强制展开
                                             "preventCollapse": true,
                                             "immediateDisplay": true,
                                             "preserveExpandState": true
@@ -1407,22 +1407,26 @@ class CommentManager: ObservableObject {
     }
     
     /**
-     * 确保展开特定回复的所有父级回复
-     * 用于确保UI中显示嵌套回复
-     * @param commentId 要展示的回复ID
+     * 确保回复可见（展开评论链）
+     * 用于确保虚拟角色回复能够显示
      */
-    func ensureReplyVisible(commentId: UUID) {
-        // 首先在顶级评论中查找
-        for comment in topLevelComments {
-            if comment.id == commentId {
-                // 目标是顶级评论，不需要特殊处理
-                return
-            }
-            
-            // 递归检查是否在嵌套回复中
-            if checkAndExpandNestedReply(in: comment, targetId: commentId) {
-                // 找到并已展开，退出循环
-                break
+    private func ensureReplyVisible(commentId: UUID) {
+        // 查找评论的根评论
+        if let rootComment = findRootComment(for: DetailedCommentModel(id: commentId), in: currentPost.comments) {
+            // 如果是回复评论，发送展开通知
+            if rootComment.id != commentId {
+                // 只有在回复嵌套评论时才自动展开
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ExpandComment"),
+                    object: nil,
+                    userInfo: [
+                        "commentId": rootComment.id.uuidString,
+                        "forceExpand": true,
+                        "preventCollapse": true
+                    ]
+                )
+                
+                print("📣 发送ExpandComment通知，确保根评论ID: \(rootComment.id) 保持展开状态")
             }
         }
     }

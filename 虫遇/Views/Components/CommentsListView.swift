@@ -616,17 +616,17 @@ struct CommentThreadView: View {
                                 .padding(.trailing, 16)
                                 .padding(.vertical, 2) // 添加垂直间距
                         }
-                                    
+                        
                         // 回复内容 - 不再显示展开按钮，因为所有回复都在同一层
-                                    CommentItemView(
+                        CommentItemView(
                             comment: reply,
-                                        replyAction: replyAction,
+                            replyAction: replyAction,
                             isLiked: likedComments.contains(reply.id),
                             showExpandButton: false, // 不再显示展开按钮
                             replyCount: 0,
                             isExpanded: false,
                             onToggleExpand: nil,
-                                        onLike: {
+                            onLike: {
                                 toggleLike(for: reply.id)
                             }
                         )
