@@ -770,13 +770,12 @@ class CommentManager: ObservableObject {
             UserDefaults.standard.set(latestComment.content, forKey: userCommentKey)
         }
         
-        // 添加模拟打字延迟
-        // 延迟0.5-2秒之间的随机时间，模拟思考和打字时间
-        do {
-            try await Task.sleep(nanoseconds: UInt64(Double.random(in: 0.5...2.0) * 1_000_000_000))
-        } catch {
-            print("⚠️ 延迟模拟被中断")
-        }
+        // 移除模拟打字延迟
+        // do {
+        //     try await Task.sleep(nanoseconds: UInt64(Double.random(in: 0.5...2.0) * 1_000_000_000))
+        // } catch {
+        //     print("⚠️ 延迟模拟被中断")
+        // }
         
         // 使用批量API生成回复
         print("🚀 开始批量生成\(allSelectedCharacters.count)个角色的回复")
@@ -809,17 +808,10 @@ class CommentManager: ObservableObject {
                             // 标记此评论已被回复
                             UserDefaults.standard.set(true, forKey: commentRepliedKey)
                             
-                            // 为每个角色添加回复，添加一定的延迟使回复看起来更自然
+                            // 为每个角色添加回复，移除延迟
                             for (index, (characterID, content)) in commentsMap.enumerated() {
                                 // 作者优先回复，其他角色依次回复
-                                let delay: Double
-                                if characterID == authorCharacter {
-                                    // 作者最先回复
-                                    delay = Double.random(in: 1.0...2.0)
-                                } else {
-                                    // 其他角色依次回复，延迟递增
-                                    delay = Double.random(in: 2.5...4.0) + Double(index) * 1.5
-                                }
+                                // 移除延迟
                                 
                                 // 记录角色回复，用于避免相似回复
                                 let characterReplyKey = "\(characterID)_latest_replies"
@@ -832,8 +824,8 @@ class CommentManager: ObservableObject {
                                 }
                                 UserDefaults.standard.set(previousReplies, forKey: characterReplyKey)
                                 
-                                // 在主线程上添加延迟执行
-                                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                                // 在主线程上立即执行
+                                DispatchQueue.main.async {
                                     // 添加虚拟角色回复
                                     let characterAvatar = self.getCharacterAvatar(for: characterID)
                                     let characterDisplayName = CharacterDataManager.shared.getName(for: characterID) ?? characterID // 使用中文名称，如果找不到则使用ID
@@ -843,7 +835,7 @@ class CommentManager: ObservableObject {
                                         username: characterDisplayName, // 使用中文名称
                                         userAvatar: characterAvatar,
                                         content: content,
-                                        datePosted: Date().addingTimeInterval(Double.random(in: 15...60)),
+                                        datePosted: Date(), // 使用当前时间，不添加随机延迟
                                         isVirtualCharacter: true,
                                         characterID: characterID,
                                         parentCommentId: targetCommentID,
@@ -972,12 +964,12 @@ class CommentManager: ObservableObject {
         直接输出\(characterName)的回复内容。
         """
         
-        // 添加模拟打字延迟
-        do {
-            try await Task.sleep(nanoseconds: UInt64(Double.random(in: 1.5...3.0) * 1_000_000_000))
-        } catch {
-            print("⚠️ 延迟模拟被中断")
-        }
+        // 移除模拟打字延迟
+        // do {
+        //     try await Task.sleep(nanoseconds: UInt64(Double.random(in: 1.5...3.0) * 1_000_000_000))
+        // } catch {
+        //     print("⚠️ 延迟模拟被中断")
+        // }
         
         // 使用Combine方式调用API
         return await withCheckedContinuation { continuation in
@@ -1002,14 +994,14 @@ class CommentManager: ObservableObject {
                         // 标记此评论已被回复
                         UserDefaults.standard.set(true, forKey: commentRepliedKey)
                         
-                        // 在主线程上添加回复，添加延迟使回复看起来更自然
-                        DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1.0...2.0)) {
+                        // 在主线程上添加回复，移除延迟
+                        DispatchQueue.main.async {
                             // 创建虚拟角色回复
                             let virtualReply = DetailedCommentModel(
                                 username: characterName,
                                 userAvatar: characterAvatar,
                                 content: cleanedResponse,
-                                datePosted: Date().addingTimeInterval(Double.random(in: 15...30)),
+                                datePosted: Date(), // 使用当前时间，不添加随机延迟
                                 isVirtualCharacter: true,
                                 characterID: characterID,
                                 parentCommentId: parentCommentID,
