@@ -316,8 +316,14 @@ struct CommentsListView: View {
                        let newCommentUUID = UUID(uuidString: newCommentId),
                        let parentCommentId = notification.userInfo?["parentCommentId"] as? String,
                        let parentCommentUUID = UUID(uuidString: parentCommentId) {
-                        // 确保父评论是展开的
-                        self.expandedComments.insert(parentCommentUUID)
+                        // 检查是否应该自动展开
+                        let noAutoExpand = notification.userInfo?["noAutoExpand"] as? Bool ?? false
+                        
+                        // 只有在不禁止自动展开时才展开父评论
+                        if !noAutoExpand {
+                            // 确保父评论是展开的
+                            self.expandedComments.insert(parentCommentUUID)
+                        }
                         
                         // 立即强制刷新，确保新评论显示
                         if notification.userInfo?["immediateDisplay"] as? Bool ?? false {
@@ -368,17 +374,20 @@ struct CommentsListView: View {
             let preventCollapse = notification.userInfo?["preventCollapse"] as? Bool ?? false
             let immediateDisplay = notification.userInfo?["immediateDisplay"] as? Bool ?? false
             let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
+            let noAutoExpand = notification.userInfo?["noAutoExpand"] as? Bool ?? false
             
             // 立即处理，确保虚拟角色回复立即显示
             // 如果有parentCommentID，确保它是展开的
             if let parentCommentID = notification.userInfo?["parentCommentID"] as? String,
                let parentCommentUUID = UUID(uuidString: parentCommentID),
-               (notification.userInfo?["forceExpand"] as? Bool ?? false) || preventCollapse {
-                // 确保父评论是展开的
-                self.expandedComments.insert(parentCommentUUID)
-                
-                // 保存展开状态
-                self.saveExpandedCommentsState()
+               (notification.userInfo?["forceExpand"] as? Bool ?? false) || (preventCollapse && !noAutoExpand) {
+                // 确保父评论是展开的，除非明确指定不自动展开
+                if !noAutoExpand {
+                    self.expandedComments.insert(parentCommentUUID)
+                    
+                    // 保存展开状态
+                    self.saveExpandedCommentsState()
+                }
                 
                 // 立即刷新视图
                 if immediateDisplay {
