@@ -875,7 +875,8 @@ class CommentManager: ObservableObject {
                                             "forceExpand": true,
                                             "preventCollapse": true,
                                             "immediateDisplay": true,
-                                            "preserveExpandState": true
+                                            "preserveExpandState": true,
+                                            "preventScroll": true  // 添加preventScroll参数，防止页面滚动
                                         ]
                                     )
                                     
@@ -889,7 +890,8 @@ class CommentManager: ObservableObject {
                                             "newCommentId": virtualReply.id.uuidString,
                                             "parentCommentId": targetCommentID.uuidString,
                                             "immediateDisplay": true,
-                                            "preserveExpandState": true
+                                            "preserveExpandState": true,
+                                            "preventScroll": true  // 添加preventScroll参数，防止页面滚动
                                         ]
                                     )
                                 }
