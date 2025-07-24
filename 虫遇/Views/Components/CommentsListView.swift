@@ -313,11 +313,22 @@ struct CommentsListView: View {
                     
                     // 如果有新评论ID和父评论ID，确保它们是展开的
                     if let newCommentId = notification.userInfo?["newCommentId"] as? String,
-                       let _ = UUID(uuidString: newCommentId),
+                       let newCommentUUID = UUID(uuidString: newCommentId),
                        let parentCommentId = notification.userInfo?["parentCommentId"] as? String,
                        let parentCommentUUID = UUID(uuidString: parentCommentId) {
                         // 确保父评论是展开的
                         self.expandedComments.insert(parentCommentUUID)
+                        
+                        // 立即强制刷新，确保新评论显示
+                        if notification.userInfo?["immediateDisplay"] as? Bool ?? false {
+                            // 保存展开状态
+                            self.saveExpandedCommentsState()
+                            
+                            // 强制刷新视图
+                            DispatchQueue.main.async {
+                                self.refreshID = UUID()
+                            }
+                        }
                     }
                     
                     // 如果有forceExpand参数，展开指定评论
@@ -339,26 +350,38 @@ struct CommentsListView: View {
             queue: .main
         ) { notification in
             // 检查是否需要保持展开状态
-            let _ = notification.userInfo?["keepExpandState"] as? Bool ?? true
-            let _ = notification.userInfo?["preserveExpandState"] as? Bool ?? true
-            let _ = notification.userInfo?["preventCollapse"] as? Bool ?? false
+            let keepExpandState = notification.userInfo?["keepExpandState"] as? Bool ?? true
+            let preserveExpandState = notification.userInfo?["preserveExpandState"] as? Bool ?? true
+            let preventCollapse = notification.userInfo?["preventCollapse"] as? Bool ?? false
+            let immediateDisplay = notification.userInfo?["immediateDisplay"] as? Bool ?? false
             let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
             
-            // 使用延迟执行，避免多个通知同时触发导致的UI更新冲突
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                // 如果有parentCommentID，确保它是展开的
-                if let parentCommentID = notification.userInfo?["parentCommentID"] as? String,
-                   let parentCommentUUID = UUID(uuidString: parentCommentID),
-                   (notification.userInfo?["forceExpand"] as? Bool ?? false) {
-                    // 确保父评论是展开的
-                    self.expandedComments.insert(parentCommentUUID)
-                }
+            // 立即处理，确保虚拟角色回复立即显示
+            // 如果有parentCommentID，确保它是展开的
+            if let parentCommentID = notification.userInfo?["parentCommentID"] as? String,
+               let parentCommentUUID = UUID(uuidString: parentCommentID),
+               (notification.userInfo?["forceExpand"] as? Bool ?? false) || preventCollapse {
+                // 确保父评论是展开的
+                self.expandedComments.insert(parentCommentUUID)
                 
-                // 刷新视图
-                if preventScroll {
-                    self.refreshWithoutScrolling()
+                // 保存展开状态
+                self.saveExpandedCommentsState()
+                
+                // 立即刷新视图
+                if immediateDisplay {
+                    DispatchQueue.main.async {
+                        self.refreshID = UUID()
+                    }
                 } else {
-                    self.forceRefresh()
+                    // 使用延迟执行，避免多个通知同时触发导致的UI更新冲突
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        // 刷新视图
+                        if preventScroll {
+                            self.refreshWithoutScrolling()
+                        } else {
+                            self.forceRefresh()
+                        }
+                    }
                 }
             }
         }
@@ -376,14 +399,27 @@ struct CommentsListView: View {
             }
             
             let preventScroll = userInfo["preventScroll"] as? Bool ?? true
+            let forceExpand = userInfo["forceExpand"] as? Bool ?? false
             
-            // 使用延迟执行，避免多个通知同时触发导致的UI更新冲突
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                self.expandedComments.insert(commentId)
-                if preventScroll {
-                    self.refreshWithoutScrolling()
-                } else {
-                    self.forceRefresh()
+            // 立即展开评论
+            self.expandedComments.insert(commentId)
+            
+            // 保存展开状态
+            self.saveExpandedCommentsState()
+            
+            // 如果是强制展开，立即刷新视图
+            if forceExpand {
+                DispatchQueue.main.async {
+                    self.refreshID = UUID()
+                }
+            } else {
+                // 使用延迟执行，避免多个通知同时触发导致的UI更新冲突
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    if preventScroll {
+                        self.refreshWithoutScrolling()
+                    } else {
+                        self.forceRefresh()
+                    }
                 }
             }
         }

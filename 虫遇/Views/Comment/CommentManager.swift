@@ -479,6 +479,17 @@ class CommentManager: ObservableObject {
                     ]
                 )
                 
+                // 确保新评论也被展开
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ExpandComment"),
+                    object: nil,
+                    userInfo: [
+                        "commentId": newCommentId.uuidString,
+                        "forceExpand": true,
+                        "preventCollapse": true
+                    ]
+                )
+                
                 print("📣 立即发送ExpandComment通知，确保父评论ID: \(topParentId) 保持展开状态")
                 
                 // 发送通知，告知不要滚动页面位置
@@ -489,9 +500,21 @@ class CommentManager: ObservableObject {
                 
                 // 发送刷新评论列表通知，添加preventScroll参数
                 NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshCommentsWithoutScrolling"),
+                    name: NSNotification.Name("RefreshCommentsList"),
                     object: nil,
-                    userInfo: ["preventScroll": true]
+                    userInfo: [
+                        "keepExpandState": true,
+                        "preventCollapse": true,
+                        "newCommentId": newCommentId.uuidString,
+                        "parentCommentId": topParentId.uuidString,
+                        "immediateDisplay": true
+                    ]
+                )
+                
+                // 强制刷新评论列表
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ForceRefreshComments"),
+                    object: nil
                 )
                 
                 // 检查是否回复的是虚拟角色的评论
