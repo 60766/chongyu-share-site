@@ -313,27 +313,27 @@ struct CommentsListView: View {
                     
                     // 如果有新评论ID和父评论ID，确保它们是展开的
                     if let newCommentId = notification.userInfo?["newCommentId"] as? String,
-                       let newCommentUUID = UUID(uuidString: newCommentId),
-                       let parentCommentId = notification.userInfo?["parentCommentId"] as? String,
-                       let parentCommentUUID = UUID(uuidString: parentCommentId) {
+                       let newCommentUUID = UUID(uuidString: newCommentId) {
                         // 检查是否应该自动展开
                         let noAutoExpand = notification.userInfo?["noAutoExpand"] as? Bool ?? false
                         
-                        // 只有在不禁止自动展开时才展开父评论
-                        if !noAutoExpand {
-                            // 确保父评论是展开的
-                            self.expandedComments.insert(parentCommentUUID)
+                        // 检查是否有父评论ID
+                        if let parentCommentId = notification.userInfo?["parentCommentId"] as? String,
+                           let parentCommentUUID = UUID(uuidString: parentCommentId) {
+                            // 只有在不禁止自动展开时才展开父评论
+                            if !noAutoExpand {
+                                // 确保父评论是展开的
+                                self.expandedComments.insert(parentCommentUUID)
+                            }
                         }
                         
-                        // 立即强制刷新，确保新评论显示
+                        // 立即强制刷新，确保新评论显示，但不影响滚动位置
                         if notification.userInfo?["immediateDisplay"] as? Bool ?? false {
                             // 保存展开状态
                             self.saveExpandedCommentsState()
                             
-                            // 强制刷新视图
-                            DispatchQueue.main.async {
-                                self.refreshID = UUID()
-                            }
+                            // 使用特殊的刷新方法，避免导致滚动
+                            self.refreshWithoutScrolling()
                         }
                     } else if let newCommentId = notification.userInfo?["newCommentId"] as? String,
                               let newCommentUUID = UUID(uuidString: newCommentId),
@@ -344,10 +344,8 @@ struct CommentsListView: View {
                         // 保存展开状态
                         self.saveExpandedCommentsState()
                         
-                        // 强制刷新视图，确保新评论立即显示
-                        DispatchQueue.main.async {
-                            self.refreshID = UUID()
-                        }
+                        // 使用特殊的刷新方法，避免导致滚动
+                        self.refreshWithoutScrolling()
                     }
                     
                     // 如果有forceExpand参数，展开指定评论
@@ -491,6 +489,20 @@ struct CommentsListView: View {
                 self.isRefreshing = false
             }
         }
+    }
+    
+    // 添加一个方法来处理新评论的显示，但不滚动页面
+    private func showNewComment(commentId: UUID, parentCommentId: UUID?) {
+        // 如果有父评论ID，确保父评论已展开
+        if let parentId = parentCommentId {
+            expandedComments.insert(parentId)
+        }
+        
+        // 保存展开状态
+        saveExpandedCommentsState()
+        
+        // 使用特殊的刷新方法，避免导致滚动
+        refreshWithoutScrolling()
     }
     
     // 辅助函数：递归查找评论

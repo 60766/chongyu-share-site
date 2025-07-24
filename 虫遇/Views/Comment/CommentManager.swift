@@ -507,14 +507,18 @@ class CommentManager: ObservableObject {
                         "preventCollapse": true,
                         "newCommentId": newCommentId.uuidString,
                         "parentCommentId": topParentId.uuidString,
-                        "immediateDisplay": true
+                        "immediateDisplay": true,
+                        "preventScroll": true  // 添加preventScroll参数，防止滚动
                     ]
                 )
                 
-                // 强制刷新评论列表
+                // 强制刷新评论列表，但不影响滚动位置
                 NotificationCenter.default.post(
                     name: NSNotification.Name("ForceRefreshComments"),
-                    object: nil
+                    object: nil,
+                    userInfo: [
+                        "preventScroll": true  // 添加preventScroll参数，防止滚动
+                    ]
                 )
                 
                 // 检查是否回复的是虚拟角色的评论
