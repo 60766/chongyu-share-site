@@ -226,22 +226,25 @@ struct CommentsListView: View {
                     )
                 }
                 // 添加监听PreventScrollAfterSubmit通知，用于保存和恢复滚动位置
-                NotificationCenter.default.addObserver(
+                let _ = NotificationCenter.default.addObserver(
                     forName: NSNotification.Name("PreventScrollAfterSubmit"),
                     object: nil,
                     queue: .main
                 ) { _ in
+                    // 使用本地变量捕获scrollView，避免Sendable错误
+                    let proxy = scrollView
+                    
                     // 保存当前滚动位置
                     DispatchQueue.main.async {
                         // 先滚动到锚点以记录位置
                         withAnimation(.none) {
-                            scrollView.scrollTo("scroll_position_anchor", anchor: .top)
+                            proxy.scrollTo("scroll_position_anchor", anchor: .top)
                         }
                         
                         // 在数据更新后恢复位置
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             withAnimation(.none) {
-                                scrollView.scrollTo("scroll_position_anchor", anchor: .top)
+                                proxy.scrollTo("scroll_position_anchor", anchor: .top)
                             }
                         }
                     }
