@@ -847,7 +847,13 @@ class CommentManager: ObservableObject {
                                     // 确保评论可见（展开评论链）
                                     self.ensureReplyVisible(commentId: targetCommentID)
                                     
-                                    // 发送通知，告知UI虚拟角色回复已添加，需要更新显示
+                                    // 发送PreventScrollAfterSubmit通知，确保页面不会滚动
+                                    NotificationCenter.default.post(
+                                        name: NSNotification.Name("PreventScrollAfterSubmit"),
+                                        object: nil
+                                    )
+                                    
+                                    // 发送通知更新UI
                                     NotificationCenter.default.post(
                                         name: NSNotification.Name("VirtualCharacterReplyAdded"),
                                         object: nil,
@@ -1010,6 +1016,12 @@ class CommentManager: ObservableObject {
                             
                             // 确保评论可见（展开评论链）
                             self.ensureReplyVisible(commentId: rootCommentId)
+                            
+                            // 发送PreventScrollAfterSubmit通知，确保页面不会滚动
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("PreventScrollAfterSubmit"),
+                                object: nil
+                            )
                             
                             // 发送通知更新UI
                             NotificationCenter.default.post(
