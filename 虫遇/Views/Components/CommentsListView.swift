@@ -728,10 +728,12 @@ struct CommentThreadView: View {
                 .padding(.bottom, 6) // 增加底部间距
                 .transition(.opacity) // 添加过渡动画
                 .id("replies_container_\(comment.id)") // 为回复容器添加固定ID
+                .frame(maxWidth: .infinity) // 确保回复容器占满宽度
             }
         }
         .padding(.vertical, 4) // 增加垂直间距
         .id("comment_\(comment.id)_\(refreshID)") // 使用refreshID确保视图在需要时更新
+        .frame(maxWidth: .infinity) // 确保整个评论线程占满宽度
     }
     
     // 强制刷新方法
@@ -955,6 +957,7 @@ struct CommentItemView: View {
                         .lineSpacing(5)
                         .padding(.top, 8)
                         .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading) // 确保文本正确布局
                     
                     // 交互按钮
                     HStack(spacing: 24) {
@@ -1028,12 +1031,15 @@ struct CommentItemView: View {
                     }
                     .padding(.top, 6) // 从10减小到6
                 }
+                .frame(maxWidth: .infinity, alignment: .leading) // 确保内容区域正确布局
             }
             .padding(.horizontal, 20) // 增加水平间距
             .padding(.vertical, 12) // 增加垂直间距
+            .frame(maxWidth: .infinity) // 确保整个HStack占满宽度
         }
         .background(Color(.systemBackground).opacity(0.5))
         .contentShape(Rectangle())
+        .frame(maxWidth: .infinity) // 确保整个评论视图占满宽度
     }
 }
 
