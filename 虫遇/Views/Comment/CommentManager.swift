@@ -451,48 +451,51 @@ class CommentManager: ObservableObject {
                 // 添加回复评论
                 newCommentId = UUID()
                 
-                // 打印详细的回复信息，用于调试
-                print("📝 回复详情:")
-                print("  - 回复对象ID: \(replyTo.id)")
-                print("  - 回复对象用户名: \(replyTo.username)")
-                print("  - 回复对象是否为虚拟角色: \(replyTo.isVirtualCharacter)")
+                // 查找被回复评论的根评论ID
+                let rootCommentId: UUID
                 if let parentId = replyTo.parentCommentId {
-                    print("  - 回复对象的父评论ID: \(parentId)")
+                    // 如果回复的是子评论，找到其根评论
+                    if let rootComment = findRootComment(for: replyTo, in: currentPost.comments) {
+                        rootCommentId = rootComment.id
+                        print("🔍 找到根评论ID: \(rootCommentId) (回复的是子评论)")
+                    } else {
+                        // 如果找不到根评论，使用被回复评论的父评论ID
+                        rootCommentId = parentId
+                        print("🔍 使用父评论ID作为根评论: \(rootCommentId)")
+                    }
                 } else {
-                    print("  - 回复对象是顶级评论")
+                    // 如果回复的是顶级评论，直接使用其ID
+                    rootCommentId = replyTo.id
+                    print("🔍 回复的是顶级评论，根评论ID: \(rootCommentId)")
                 }
                 
-                // 确保始终使用正确的父评论ID
-                let parentCommentId = replyTo.id
-                
+                // 添加评论，确保正确设置parentCommentId
                 currentPost.addComment(
                     username: currentUsername,
                     userAvatar: currentUserAvatar,
                     content: processedContent,
-                    parentCommentId: parentCommentId, // 使用正确的父评论ID
+                    parentCommentId: replyTo.id,  // 使用被回复评论的ID作为父评论ID
                     replyToUsername: replyTo.username,
                     userId: UserDefaults.standard.string(forKey: "current_user_id") ?? UIDevice.current.identifierForVendor?.uuidString,
                     isCurrentUser: true
                 )
                 
                 print("✅ 已添加回复评论 - ID: \(newCommentId), 回复给: \(replyTo.username), 内容: \"\(processedContent.prefix(30))...\"")
-                print("✅ 父评论ID: \(parentCommentId)")
+                print("✅ 父评论ID: \(replyTo.id)")
+                print("✅ 根评论ID: \(rootCommentId)")
                 
                 // 更新评论列表
-                self.updateCommentLists()
+                updateCommentLists()
                 
-                // 发送对象变更通知
+                // 立即发送对象变更通知
                 self.objectWillChange.send()
                 
-                // 找到顶级父评论ID，用于确保展开状态
-                let topParentId = findTopParentComment(for: replyTo.id) ?? replyTo.id
-                
-                // 确保父评论展开
+                // 立即发送展开评论通知，确保评论区域不会折叠
                 NotificationCenter.default.post(
                     name: NSNotification.Name("ExpandComment"),
                     object: nil,
                     userInfo: [
-                        "commentId": topParentId.uuidString,
+                        "commentId": rootCommentId.uuidString,
                         "forceExpand": true,
                         "preventCollapse": true,
                         "preventScroll": true
@@ -504,19 +507,35 @@ class CommentManager: ObservableObject {
                     name: NSNotification.Name("RefreshCommentsList"),
                     object: nil,
                     userInfo: [
+                        "keepExpandState": true,
+                        "preventCollapse": true,
                         "newCommentId": newCommentId.uuidString,
-                        "parentCommentId": topParentId.uuidString,
+                        "parentCommentId": rootCommentId.uuidString,
                         "immediateDisplay": true,
                         "preventScroll": true
                     ]
                 )
                 
-                // 生成虚拟角色回复
-                await generateVirtualCharacterReplyToUser(
-                    userComment: processedContent,
-                    replyToComment: replyTo,
-                    newCommentId: newCommentId
-                )
+                // 检查是否回复的是虚拟角色的评论
+                if replyTo.isVirtualCharacter {
+                    print("🤖 检测到回复的是虚拟角色评论，将触发针对性回复")
+                    
+                    // 获取虚拟角色ID
+                    if let characterID = replyTo.characterID {
+                        // 异步生成虚拟角色的回复
+                        await generateVirtualCharacterReplyToUser(
+                            characterID: characterID,
+                            userComment: processedContent,
+                            parentCommentID: replyTo.id,
+                            replyToUsername: currentUsername,
+                            originalComment: replyTo.content
+                        )
+                    }
+                } else {
+                    // 如果回复的不是虚拟角色，走普通的虚拟角色回复生成逻辑
+                    print("🤖 开始生成虚拟角色回复")
+                    await generateVirtualReply()
+                }
             } else {
                 // 添加顶级评论
                 newCommentId = UUID()
@@ -531,9 +550,9 @@ class CommentManager: ObservableObject {
                 print("✅ 已添加顶级评论 - ID: \(newCommentId), 内容: \"\(processedContent.prefix(30))...\"")
                 
                 // 更新评论列表
-                self.updateCommentLists()
+                updateCommentLists()
                 
-                // 发送对象变更通知
+                // 立即发送对象变更通知
                 self.objectWillChange.send()
                 
                 // 发送刷新评论列表通知，确保评论立即显示
@@ -541,35 +560,19 @@ class CommentManager: ObservableObject {
                     name: NSNotification.Name("RefreshCommentsList"),
                     object: nil,
                     userInfo: [
+                        "keepExpandState": true,
+                        "preventCollapse": true,
                         "newCommentId": newCommentId.uuidString,
                         "immediateDisplay": true,
-                        "preventScroll": true,
-                        "noAutoExpand": true
+                        "preventScroll": true
                     ]
                 )
                 
                 // 生成虚拟角色回复
+                print("🤖 开始生成虚拟角色回复")
                 await generateVirtualReply()
             }
         }
-    }
-    
-    /**
-     * 查找评论的顶级父评论
-     * 递归查找，直到找到没有父评论的评论
-     */
-    private func findTopParentComment(for commentId: UUID) -> UUID? {
-        // 在所有评论中查找当前评论
-        if let comment = allComments.first(where: { $0.id == commentId }) {
-            // 如果有父评论ID，递归查找
-            if let parentId = comment.parentCommentId {
-                return findTopParentComment(for: parentId)
-            } else {
-                // 如果没有父评论ID，说明当前评论就是顶级评论
-                return comment.id
-            }
-        }
-        return nil
     }
     
     /**
@@ -891,106 +894,155 @@ class CommentManager: ObservableObject {
     }
     
     /**
-     * 生成虚拟角色对特定用户评论的回复
-     * 针对性回复，而不是随机生成
+     * 生成虚拟角色对用户评论的回复
+     * 专门处理用户回复虚拟角色评论的情况
+     * 只有被回复的虚拟角色会回复用户
      */
     @MainActor
     func generateVirtualCharacterReplyToUser(
+        characterID: String,
         userComment: String,
-        replyToComment: DetailedCommentModel,
-        newCommentId: UUID
+        parentCommentID: UUID,
+        replyToUsername: String,
+        originalComment: String
     ) async {
-        print("🤖 开始生成虚拟角色针对性回复")
+        print("🤖 开始生成虚拟角色(\(characterID))对用户回复的回应")
         
-        // 检查是否回复的是虚拟角色的评论
-        if replyToComment.isVirtualCharacter, let characterID = replyToComment.characterID {
-            print("🤖 检测到回复的是虚拟角色评论，将触发针对性回复")
-            
-            // 构建提示词
-            let prompt = """
-            请以\(getCharacterName(for: characterID))的身份，回复以下用户评论：
-            
-            用户评论："\(userComment)"
-            
-            你之前说过："\(replyToComment.content)"
-            
-            请直接给出回复，不要添加任何角色扮演的描述。回复应该简短有力，控制在30字以内。
-            """
-            
-            // 使用AINetworkService获取回复内容
-            var replyContent: String? = nil
-            
-            do {
-                replyContent = try await withCheckedThrowingContinuation { continuation in
-                    AINetworkService.shared.sendRequest(prompt: prompt)
-                        .sink(
-                            receiveCompletion: { completion in
-                                switch completion {
-                                case .finished:
-                                    break
-                                case .failure(let error):
-                                    continuation.resume(throwing: error)
-                                }
-                            },
-                            receiveValue: { response in
-                                continuation.resume(returning: self.cleanResponseContent(response))
+        // 检查是否已经对此评论生成过回复
+        let commentRepliedKey = "replied_to_user_comment_\(parentCommentID.uuidString)_\(userComment.hash)"
+        if UserDefaults.standard.bool(forKey: commentRepliedKey) {
+            print("🤖 已经对用户回复生成过回应，跳过")
+            return
+        }
+        
+        // 获取角色名称
+        let characterName = getCharacterName(for: characterID)
+        let characterAvatar = getCharacterAvatar(for: characterID)
+        
+        // 获取角色特性 - 修复类型不匹配问题
+        let characterTraits = personalityManager.getPersonality(for: characterID) ?? 
+            CharacterPersonality(
+                tone: "有智慧的",
+                knowledgeAreas: ["历史", "文化"],
+                speechPatterns: []
+            )
+        
+        // 构建专门的提示词，用于生成对用户回复的回应
+        let prompt = """
+        请先判断用户的回复内容是否与帖子主题或上下文有关联：
+        - 如果有关联，请结合帖子内容和上下文，按照下方要求生成回复。
+        - 如果没有关联（用户只是单纯和你闲聊或提问），请直接根据你的个性、知识和风格自由回复用户，不必强行拉回帖子主题。
+
+        你是\(characterName)，一个\(characterTraits.tone)的历史人物，专长领域是\(characterTraits.knowledgeAreas.joined(separator: "、"))。
+
+        帖子主题："\(currentPost.content)"
+
+        对话历史：
+        - 你之前说："\(originalComment)"
+        - 用户"\(replyToUsername)"回复你："\(userComment)"
+
+        请以\(characterName)的身份回复，注意：
+        1. 直接针对用户的回复内容做出个性化回应，表现出你对用户的关注
+        2. 保持你的独特风格、语气和专业视角
+        3. 考虑帖子主题和之前的对话，保持连贯性
+        4. 回复长度控制在15-30字之间，简短有力
+        5. 如果用户提问，给予简明的回答；如果用户表达观点，给予简短的回应
+        6. 表现出适当的情感反应，增强对话的真实感
+        7. 不要使用"作为[角色]"的开头，不要添加元分析或角色扮演描述
+
+        直接输出\(characterName)的回复内容。
+        """
+        
+        // 使用Combine方式调用API
+        return await withCheckedContinuation { continuation in
+            AINetworkService.shared.sendRequest(prompt: prompt)
+                .sink(
+                    receiveCompletion: { completion in
+                        switch completion {
+                        case .finished:
+                            break
+                        case .failure(let error):
+                            print("❌ 生成虚拟角色回复失败: \(error.localizedDescription)")
+                        }
+                        continuation.resume()
+                    },
+                    receiveValue: { [weak self] response in
+                        guard let self = self else { return }
+                        
+                        // 清理API返回的内容
+                        let cleanedResponse = self.cleanResponseContent(response)
+                        print("✅ 生成虚拟角色回复成功: \"\(cleanedResponse.prefix(30))...\"")
+                        
+                        // 标记此评论已被回复
+                        UserDefaults.standard.set(true, forKey: commentRepliedKey)
+                        
+                        // 在主线程上添加回复
+                        DispatchQueue.main.async {
+                            // 创建虚拟角色回复
+                            let virtualReply = DetailedCommentModel(
+                                username: characterName,
+                                userAvatar: characterAvatar,
+                                content: cleanedResponse,
+                                datePosted: Date(), // 使用当前时间
+                                isVirtualCharacter: true,
+                                characterID: characterID,
+                                parentCommentId: parentCommentID,
+                                replyToUsername: replyToUsername
+                            )
+                            
+                            // 添加到帖子
+                            self.currentPost.addComment(virtualReply)
+                            
+                            // 更新评论列表
+                            self.updateCommentLists()
+                            
+                            // 查找根评论ID，确保评论在正确的嵌套层级显示
+                            let rootCommentId: UUID
+                            if let rootComment = self.findRootComment(for: virtualReply, in: self.currentPost.comments) {
+                                rootCommentId = rootComment.id
+                                print("🔍 虚拟角色回复 - 找到根评论ID: \(rootCommentId)")
+                            } else {
+                                // 如果找不到根评论，使用父评论ID
+                                rootCommentId = parentCommentID
+                                print("🔍 虚拟角色回复 - 使用父评论ID作为根评论: \(parentCommentID)")
                             }
-                        )
-                        .store(in: &self.cancellables)
-                }
-            } catch {
-                print("❌ 获取虚拟角色回复失败: \(error.localizedDescription)")
-            }
-            
-            // 如果成功获取回复内容
-            if let content = replyContent {
-                print("✅ 获取到虚拟角色回复: \"\(content.prefix(30))...\"")
-                
-                // 确保使用正确的父评论ID - 应该是用户评论的ID
-                let parentCommentId = newCommentId
-                
-                // 添加虚拟角色回复
-                let virtualReplyId = UUID()
-                currentPost.addComment(
-                    username: CharacterDataManager.shared.getName(for: characterID) ?? characterID,
-                    userAvatar: characterID,
-                    content: content,
-                    parentCommentId: parentCommentId, // 使用用户评论的ID作为父评论ID
-                    replyToUsername: currentUsername,
-                    isVirtualCharacter: true,
-                    characterID: characterID
+                            
+                            // 确保评论可见（展开评论链）
+                            self.ensureReplyVisible(commentId: rootCommentId)
+                            
+                            // 发送通知更新UI
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ExpandComment"),
+                                object: nil,
+                                userInfo: [
+                                    "commentId": rootCommentId.uuidString,
+                                    "forceExpand": true,
+                                    "preventCollapse": true,
+                                    "preventScroll": true
+                                ]
+                            )
+                            
+                            // 使用单一通知替代多个通知，减少UI刷新次数
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("RefreshCommentsList"),
+                                object: nil,
+                                userInfo: [
+                                    "keepExpandState": true,
+                                    "preventCollapse": true,
+                                    "newCommentId": virtualReply.id.uuidString,
+                                    "parentCommentId": rootCommentId.uuidString,
+                                    "immediateDisplay": true,
+                                    "preserveExpandState": true,
+                                    "preventScroll": true,
+                                    "noAutoExpand": true
+                                ]
+                            )
+                            
+                            print("✅ 虚拟角色回复已添加 - 角色: \(characterName), 回复给: \(replyToUsername)")
+                        }
+                    }
                 )
-                
-                print("✅ 已添加虚拟角色回复 - ID: \(virtualReplyId), 角色: \(characterID), 回复给: \(currentUsername)")
-                print("✅ 父评论ID: \(parentCommentId)")
-                
-                // 更新评论列表
-                self.updateCommentLists()
-                
-                // 发送对象变更通知
-                self.objectWillChange.send()
-                
-                // 找到顶级父评论ID
-                let topParentId = findTopParentComment(for: replyToComment.id) ?? replyToComment.id
-                
-                // 发送通知，确保评论区域保持展开状态
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshCommentsList"),
-                    object: nil,
-                    userInfo: [
-                        "newCommentId": virtualReplyId.uuidString,
-                        "parentCommentId": topParentId.uuidString,
-                        "immediateDisplay": true,
-                        "preventScroll": true
-                    ]
-                )
-            } else {
-                print("⚠️ 未能获取虚拟角色回复")
-            }
-        } else {
-            // 如果回复的不是虚拟角色，走普通的虚拟角色回复生成逻辑
-            print("🤖 开始生成普通虚拟角色回复")
-            await generateVirtualReply()
+                .store(in: &self.cancellables)
         }
     }
     
