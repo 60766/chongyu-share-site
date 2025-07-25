@@ -94,10 +94,6 @@ struct CommentsListView: View {
     // 添加一个状态变量，用于跟踪是否正在刷新
     @State private var isRefreshing = false
     
-    // 添加滚动位置记忆
-    @State private var scrollPosition: CGFloat = 0
-    @State private var scrollViewProxy: ScrollViewProxy? = nil
-    
     // 使用一个稳定的标识符，基于评论列表的第一个评论ID或者固定字符串
     var storageKey: String {
         if let firstComment = comments.first {
@@ -111,78 +107,64 @@ struct CommentsListView: View {
         VStack(spacing: 0) {
             // 评论列表
             ScrollViewReader { scrollView in
-                // 保存ScrollViewProxy的引用
-                VStack {
-                    GeometryReader { geometry in
-                        Color.clear.preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scrollView")).minY)
-                    }
-                    .frame(height: 0)
-                    
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        if comments.isEmpty {
-                            // 无评论时使用统一的EmptyCommentsView组件
-                            EmptyCommentsView()
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 20) // 增加垂直间距
-                        } else {
-                            // 显示所有顶级评论
-                            ForEach(comments) { comment in
-                                CommentThreadView(
-                                    comment: comment,
-                                    expandedComments: $expandedComments, // 传递绑定，保持展开状态
-                                    replyAction: { commentId in
-                                        // 找到对应的评论并调用回调
-                                        if let comment = findComment(id: commentId, in: comments) {
-                                            // 在回复评论前，确保当前评论已经展开
-                                            expandedComments.insert(comment.id)
-                                            
-                                            // 如果是回复子评论，确保其父评论也展开
-                                            if let parentId = comment.parentCommentId {
-                                                expandedComments.insert(parentId)
-                                            }
-                                            
-                                            onReply?(comment)
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    if comments.isEmpty {
+                        // 无评论时使用统一的EmptyCommentsView组件
+                        EmptyCommentsView()
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 20) // 增加垂直间距
+                    } else {
+                        // 添加一个隐藏的锚点视图，用于保持滚动位置
+                        Color.clear
+                            .frame(height: 1)
+                            .id("scroll_position_anchor")
+                        
+                        // 显示所有顶级评论
+                        ForEach(comments) { comment in
+                            CommentThreadView(
+                                comment: comment,
+                                expandedComments: $expandedComments, // 传递绑定，保持展开状态
+                                replyAction: { commentId in
+                                    // 找到对应的评论并调用回调
+                                    if let comment = findComment(id: commentId, in: comments) {
+                                        // 在回复评论前，确保当前评论已经展开
+                                        expandedComments.insert(comment.id)
+                                        
+                                        // 如果是回复子评论，确保其父评论也展开
+                                        if let parentId = comment.parentCommentId {
+                                            expandedComments.insert(parentId)
                                         }
-                                    },
-                                    onLike: { commentId in
-                                        // 找到对应的评论并调用回调
-                                        if let comment = findComment(id: commentId, in: comments) {
-                                            onLike?(comment)
-                                        }
+                                        
+                                        onReply?(comment)
                                     }
-                                )
-                                .id("comment_thread_\(comment.id)") // 为每个评论线程添加固定ID
-                                .transition(.opacity.animation(.easeInOut(duration: 0.2))) // 添加平滑过渡动画
-                                
-                                if comment.id != comments.last?.id {
-                                    Divider()
-                                        .padding(.horizontal, 20) // 增加水平间距
-                                        .padding(.vertical, 4) // 增加分隔线周围的间距
+                                },
+                                onLike: { commentId in
+                                    // 找到对应的评论并调用回调
+                                    if let comment = findComment(id: commentId, in: comments) {
+                                        onLike?(comment)
+                                    }
                                 }
+                            )
+                            .id("comment_thread_\(comment.id)") // 为每个评论线程添加固定ID
+                            .transition(.opacity.animation(.easeInOut(duration: 0.2))) // 添加平滑过渡动画
+                            
+                            if comment.id != comments.last?.id {
+                                Divider()
+                                    .padding(.horizontal, 20) // 增加水平间距
+                                    .padding(.vertical, 4) // 增加分隔线周围的间距
                             }
-                            .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
                         }
+                        .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
                     }
                 }
-                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-                    scrollPosition = value
-                }
+                // 移除这个onChange，它可能导致页面滚动到顶部
+                // .onChange(of: refreshID) { _, _ in
+                //     // 当refreshID变化时，保持滚动位置不变
+                //     withAnimation(.none) {
+                //         scrollView.scrollTo("comments_list_\(storageKey)", anchor: .center)
+                //     }
+                // }
                 .onAppear {
-                    // 保存ScrollViewProxy的引用
-                    scrollViewProxy = scrollView
-                    
-                    // 在视图出现时恢复滚动位置
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        withAnimation(.none) {
-                            // 使用保存的滚动位置
-                            if scrollPosition != 0 {
-                                // 创建一个带有偏移量的锚点
-                                let anchor = UnitPoint(x: 0, y: -scrollPosition / UIScreen.main.bounds.height)
-                                scrollView.scrollTo("comments_list_\(storageKey)", anchor: anchor)
-                            }
-                        }
-                    }
-                    
                     // 添加监听ScrollToComment通知
                     NotificationCenter.default.addObserver(
                         forName: NSNotification.Name("ScrollToComment"),
@@ -235,9 +217,36 @@ struct CommentsListView: View {
                         name: NSNotification.Name("ScrollToComment"),
                         object: nil
                     )
+                    
+                    // 移除PreventScrollAfterSubmit通知监听
+                    NotificationCenter.default.removeObserver(
+                        self,
+                        name: NSNotification.Name("PreventScrollAfterSubmit"),
+                        object: nil
+                    )
+                }
+                // 添加监听PreventScrollAfterSubmit通知，用于保存和恢复滚动位置
+                NotificationCenter.default.addObserver(
+                    forName: NSNotification.Name("PreventScrollAfterSubmit"),
+                    object: nil,
+                    queue: .main
+                ) { _ in
+                    // 保存当前滚动位置
+                    DispatchQueue.main.async {
+                        // 先滚动到锚点以记录位置
+                        withAnimation(.none) {
+                            scrollView.scrollTo("scroll_position_anchor", anchor: .top)
+                        }
+                        
+                        // 在数据更新后恢复位置
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            withAnimation(.none) {
+                                scrollView.scrollTo("scroll_position_anchor", anchor: .top)
+                            }
+                        }
+                    }
                 }
             }
-            .coordinateSpace(name: "scrollView")
         }
         .background(Color(.systemBackground).opacity(0.98)) // 添加轻微的背景色
         .onAppear {
@@ -1206,13 +1215,5 @@ struct CommentThreadView_Previews: PreviewProvider {
         )
         .padding()
         .previewLayout(.fixed(width: 375, height: 200))
-    }
-} 
-
-// 定义滚动偏移量的PreferenceKey
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 } 
