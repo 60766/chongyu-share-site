@@ -906,12 +906,41 @@ class CommentManager: ObservableObject {
         if replyToComment.isVirtualCharacter, let characterID = replyToComment.characterID {
             print("🤖 检测到回复的是虚拟角色评论，将触发针对性回复")
             
-            // 获取回复内容
-            let replyContent = await MultiCharacterCommentService.shared.getCharacterReply(
-                characterID: characterID,
-                userMessage: userComment,
-                originalComment: replyToComment.content
-            )
+            // 构建提示词
+            let prompt = """
+            请以\(getCharacterName(for: characterID))的身份，回复以下用户评论：
+            
+            用户评论："\(userComment)"
+            
+            你之前说过："\(replyToComment.content)"
+            
+            请直接给出回复，不要添加任何角色扮演的描述。回复应该简短有力，控制在30字以内。
+            """
+            
+            // 使用AINetworkService获取回复内容
+            var replyContent: String? = nil
+            
+            do {
+                replyContent = try await withCheckedThrowingContinuation { continuation in
+                    AINetworkService.shared.sendRequest(prompt: prompt)
+                        .sink(
+                            receiveCompletion: { completion in
+                                switch completion {
+                                case .finished:
+                                    break
+                                case .failure(let error):
+                                    continuation.resume(throwing: error)
+                                }
+                            },
+                            receiveValue: { response in
+                                continuation.resume(returning: self.cleanResponseContent(response))
+                            }
+                        )
+                        .store(in: &self.cancellables)
+                }
+            } catch {
+                print("❌ 获取虚拟角色回复失败: \(error.localizedDescription)")
+            }
             
             // 如果成功获取回复内容
             if let content = replyContent {
