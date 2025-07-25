@@ -159,9 +159,8 @@ struct CommentsListView: View {
                         forName: NSNotification.Name("ScrollToComment"),
                         object: nil,
                         queue: .main
-                    ) { [weak scrollView] notification in
-                        guard let scrollView = scrollView,
-                              let userInfo = notification.userInfo,
+                    ) { [scrollView] notification in
+                        guard let userInfo = notification.userInfo,
                               let commentIdString = userInfo["commentId"] as? String,
                               let commentId = UUID(uuidString: commentIdString) else {
                             return
