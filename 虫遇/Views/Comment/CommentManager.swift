@@ -995,7 +995,7 @@ class CommentManager: ObservableObject {
                             
                             // 更新评论列表
                             self.updateCommentLists()
-                            
+                             
                             // 查找根评论ID，确保评论在正确的嵌套层级显示
                             let rootCommentId: UUID
                             if let rootComment = self.findRootComment(for: virtualReply, in: self.currentPost.comments) {
@@ -1018,7 +1018,7 @@ class CommentManager: ObservableObject {
                                     "commentId": rootCommentId.uuidString,
                                     "forceExpand": true,
                                     "preventCollapse": true,
-                                    "preventScroll": true
+                                    "preventScroll": false  // 允许滚动到评论位置
                                 ]
                             )
                             
@@ -1033,8 +1033,9 @@ class CommentManager: ObservableObject {
                                     "parentCommentId": rootCommentId.uuidString,
                                     "immediateDisplay": true,
                                     "preserveExpandState": true,
-                                    "preventScroll": true,
-                                    "noAutoExpand": true
+                                    "preventScroll": false,  // 允许滚动到评论位置
+                                    "noAutoExpand": true,
+                                    "scrollToComment": virtualReply.id.uuidString  // 添加要滚动到的评论ID
                                 ]
                             )
                             

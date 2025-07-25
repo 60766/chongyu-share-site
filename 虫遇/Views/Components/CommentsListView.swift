@@ -158,6 +158,60 @@ struct CommentsListView: View {
                         scrollView.scrollTo("comments_list_\(storageKey)", anchor: .center)
                     }
                 }
+                .onAppear {
+                    // 添加监听ScrollToComment通知
+                    NotificationCenter.default.addObserver(
+                        forName: NSNotification.Name("ScrollToComment"),
+                        object: nil,
+                        queue: .main
+                    ) { notification in
+                        guard let userInfo = notification.userInfo,
+                              let commentIdString = userInfo["commentId"] as? String,
+                              let commentId = UUID(uuidString: commentIdString) else {
+                            return
+                        }
+                        
+                        // 查找评论所在的CommentThreadView的ID
+                        var targetId = ""
+                        
+                        // 先检查是否是顶级评论
+                        for comment in self.comments {
+                            if comment.id == commentId {
+                                targetId = "comment_thread_\(comment.id)"
+                                break
+                            }
+                            
+                            // 检查是否在回复中
+                            if self.containsComment(with: commentId, in: comment.replies) {
+                                // 如果在回复中，先滚动到父评论线程
+                                targetId = "comment_thread_\(comment.id)"
+                                
+                                // 然后尝试滚动到具体的回复
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        scrollView.scrollTo("reply_\(commentId)", anchor: .center)
+                                    }
+                                }
+                                break
+                            }
+                        }
+                        
+                        // 如果找到目标ID，滚动到该位置
+                        if !targetId.isEmpty {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                scrollView.scrollTo(targetId, anchor: .top)
+                            }
+                        }
+                    }
+                }
+                .onDisappear {
+                    // 移除ScrollToComment通知监听
+                    NotificationCenter.default.removeObserver(
+                        self,
+                        name: NSNotification.Name("ScrollToComment"),
+                        object: nil
+                    )
+                }
             }
         }
         .background(Color(.systemBackground).opacity(0.98)) // 添加轻微的背景色
@@ -317,6 +371,57 @@ struct CommentsListView: View {
         }
     }
     
+    // 滚动到指定评论
+    private func scrollToComment(_ commentId: UUID) {
+        // 避免频繁刷新导致的性能问题
+        guard !isRefreshing else { return }
+        
+        // 标记为正在刷新
+        isRefreshing = true
+        
+        // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
+        DispatchQueue.main.async {
+            // 先保存展开状态
+            self.saveExpandedCommentsState()
+            
+            // 确保评论所在的线程是展开的
+            for comment in self.comments {
+                // 检查是否是顶级评论
+                if comment.id == commentId {
+                    // 如果是顶级评论，不需要展开
+                    break
+                }
+                
+                // 检查是否在回复中
+                if self.containsComment(with: commentId, in: comment.replies) {
+                    // 如果在回复中，展开父评论
+                    self.expandedComments.insert(comment.id)
+                    break
+                }
+            }
+            
+            // 更新刷新ID，触发视图更新
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.refreshID = UUID()
+            }
+            
+            // 使用短延迟确保视图已更新
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // 发送通知，让ScrollView滚动到指定评论
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ScrollToComment"),
+                    object: nil,
+                    userInfo: ["commentId": commentId.uuidString]
+                )
+                
+                // 设置短暂延迟后重置刷新状态，避免频繁刷新
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    self.isRefreshing = false
+                }
+            }
+        }
+    }
+    
     // 设置通知监听
     private func setupNotifications() {
         // 移除之前的监听器，避免重复添加
@@ -377,14 +482,27 @@ struct CommentsListView: View {
                 let immediateDisplay = notification.userInfo?["immediateDisplay"] as? Bool ?? false
                 let noAutoExpand = notification.userInfo?["noAutoExpand"] as? Bool ?? false
                 
+                // 检查是否需要滚动到特定评论
+                var scrollToCommentId: UUID? = nil
+                if let scrollToCommentIdString = notification.userInfo?["scrollToComment"] as? String,
+                   let commentId = UUID(uuidString: scrollToCommentIdString) {
+                    scrollToCommentId = commentId
+                }
+                
                 // 检查是否有新评论ID，如果有则确保其父评论展开
-                if let _ = notification.userInfo?["newCommentId"] as? String,
+                if let newCommentIdString = notification.userInfo?["newCommentId"] as? String,
+                   let newCommentId = UUID(uuidString: newCommentIdString),
                    let parentCommentIdString = notification.userInfo?["parentCommentId"] as? String,
                    let parentCommentId = UUID(uuidString: parentCommentIdString),
                    !noAutoExpand {
                     // 确保父评论展开
                     self.expandedComments.insert(parentCommentId)
                     self.saveExpandedCommentsState()
+                    
+                    // 如果没有指定滚动到的评论ID，则默认滚动到新评论
+                    if scrollToCommentId == nil && !preventScroll {
+                        scrollToCommentId = newCommentId
+                    }
                 }
                 
                 // 立即执行，不使用延迟
@@ -400,6 +518,9 @@ struct CommentsListView: View {
                                 self.refreshWithoutScrolling()
                             }
                         }
+                    } else if let commentId = scrollToCommentId {
+                        // 需要滚动到特定评论
+                        self.scrollToComment(commentId)
                     } else {
                         self.forceRefresh()
                     }
@@ -412,6 +533,9 @@ struct CommentsListView: View {
                     
                     if preventScroll {
                         self.refreshWithoutScrolling()
+                    } else if let commentId = scrollToCommentId {
+                        // 需要滚动到特定评论
+                        self.scrollToComment(commentId)
                     } else {
                         self.forceRefresh()
                     }
