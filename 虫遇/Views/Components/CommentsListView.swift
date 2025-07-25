@@ -159,8 +159,9 @@ struct CommentsListView: View {
                         forName: NSNotification.Name("ScrollToComment"),
                         object: nil,
                         queue: .main
-                    ) { notification in
-                        guard let userInfo = notification.userInfo,
+                    ) { [weak scrollView] notification in
+                        guard let scrollView = scrollView,
+                              let userInfo = notification.userInfo,
                               let commentIdString = userInfo["commentId"] as? String,
                               let commentId = UUID(uuidString: commentIdString) else {
                             return
@@ -304,9 +305,6 @@ struct CommentsListView: View {
         
         // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
         DispatchQueue.main.async {
-            // 先保存展开状态
-            self.saveExpandedCommentsState()
-            
             // 不使用动画，静默更新refreshID - 不触发视图重建
             // 只触发内部状态更新，不影响滚动位置
             self.refreshID = UUID()
@@ -824,9 +822,6 @@ struct CommentThreadView: View {
         
         // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
         DispatchQueue.main.async {
-            // 先保存展开状态
-            self.saveExpandedCommentsState()
-            
             // 不使用动画，静默更新refreshID - 不触发视图重建
             // 只触发内部状态更新，不影响滚动位置
             self.refreshID = UUID()
