@@ -498,7 +498,7 @@ class CommentManager: ObservableObject {
                         "commentId": rootCommentId.uuidString,
                         "forceExpand": true,
                         "preventCollapse": true,
-                        "preventScroll": true
+                        "preventScroll": true // 确保不会滚动页面
                     ]
                 )
                 
@@ -512,7 +512,7 @@ class CommentManager: ObservableObject {
                         "newCommentId": newCommentId.uuidString,
                         "parentCommentId": rootCommentId.uuidString,
                         "immediateDisplay": true,
-                        "preventScroll": true
+                        "preventScroll": true // 确保不会滚动页面
                     ]
                 )
                 
@@ -564,7 +564,7 @@ class CommentManager: ObservableObject {
                         "preventCollapse": true,
                         "newCommentId": newCommentId.uuidString,
                         "immediateDisplay": true,
-                        "preventScroll": true
+                        "preventScroll": true // 确保不会滚动页面
                     ]
                 )
                 
@@ -859,7 +859,7 @@ class CommentManager: ObservableObject {
                                             "preventCollapse": true,
                                             "immediateDisplay": true,
                                             "preserveExpandState": true,
-                                            "preventScroll": true  // 添加preventScroll参数，防止页面滚动
+                                            "preventScroll": true  // 确保不会滚动页面
                                         ]
                                     )
                                     
@@ -874,7 +874,8 @@ class CommentManager: ObservableObject {
                                             "parentCommentId": targetCommentID.uuidString,
                                             "immediateDisplay": true,
                                             "preserveExpandState": true,
-                                            "preventScroll": true  // 添加preventScroll参数，防止页面滚动
+                                            "preventScroll": true,  // 确保不会滚动页面
+                                            "noAutoExpand": true    // 防止自动展开
                                         ]
                                     )
                                 }
@@ -1018,7 +1019,7 @@ class CommentManager: ObservableObject {
                                     "commentId": rootCommentId.uuidString,
                                     "forceExpand": true,
                                     "preventCollapse": true,
-                                    "preventScroll": false  // 允许滚动到评论位置
+                                    "preventScroll": true  // 确保不会滚动页面
                                 ]
                             )
                             
@@ -1033,9 +1034,9 @@ class CommentManager: ObservableObject {
                                     "parentCommentId": rootCommentId.uuidString,
                                     "immediateDisplay": true,
                                     "preserveExpandState": true,
-                                    "preventScroll": false,  // 允许滚动到评论位置
-                                    "noAutoExpand": true,
-                                    "scrollToComment": virtualReply.id.uuidString  // 添加要滚动到的评论ID
+                                    "preventScroll": true,  // 确保不会滚动页面
+                                    "noAutoExpand": true
+                                    // 移除scrollToComment参数，避免页面滚动
                                 ]
                             )
                             

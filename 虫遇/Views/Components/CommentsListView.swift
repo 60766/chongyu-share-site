@@ -152,12 +152,13 @@ struct CommentsListView: View {
                         .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
                     }
                 }
-                .onChange(of: refreshID) { _, _ in
-                    // 当refreshID变化时，保持滚动位置不变
-                    withAnimation(.none) {
-                        scrollView.scrollTo("comments_list_\(storageKey)", anchor: .center)
-                    }
-                }
+                // 移除这个onChange，它可能导致页面滚动到顶部
+                // .onChange(of: refreshID) { _, _ in
+                //     // 当refreshID变化时，保持滚动位置不变
+                //     withAnimation(.none) {
+                //         scrollView.scrollTo("comments_list_\(storageKey)", anchor: .center)
+                //     }
+                // }
                 .onAppear {
                     // 添加监听ScrollToComment通知
                     NotificationCenter.default.addObserver(
@@ -316,10 +317,8 @@ struct CommentsListView: View {
             // 先保存展开状态
             self.saveExpandedCommentsState()
             
-            // 使用一个特殊的ID，确保视图更新但不会导致滚动位置变化
-            withAnimation(.none) {
-                self.refreshID = UUID()
-            }
+            // 不使用动画，静默更新refreshID
+            self.refreshID = UUID()
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
