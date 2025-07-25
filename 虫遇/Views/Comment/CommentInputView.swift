@@ -624,14 +624,22 @@ struct CommentInputView: View {
         // 提交评论
         commentManager.submitComment()
         
-        // 重置输入框状态
+        // 重置输入框状态，但不触发页面滚动
         withAnimation(.easeInOut(duration: 0.2)) {
             textFieldFocused = false
             isExpanded = false
         }
         
-        // 隐藏键盘
+        // 隐藏键盘，但不触发滚动
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        
+        // 再次发送通知，确保在评论提交完成后也不会滚动
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("PreventScrollAfterSubmit"),
+                object: nil
+            )
+        }
     }
     
     // 重置键盘和视图偏移（不使用动画）

@@ -475,6 +475,11 @@ struct CommentsListView: View {
         ) { _ in
             // 确保不会滚动，只刷新视图
             self.refreshWithoutScrolling()
+            
+            // 延迟一小段时间后再次刷新，确保评论显示正常且不滚动
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                self.refreshWithoutScrolling()
+            }
         }
         
         // 监听所有可能触发刷新的通知
