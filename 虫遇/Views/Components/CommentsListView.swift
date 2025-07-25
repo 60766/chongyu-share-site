@@ -152,15 +152,9 @@ struct CommentsListView: View {
                         .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
                     }
                 }
-                // 移除这个onChange，它可能导致页面滚动到顶部
-                // .onChange(of: refreshID) { _, _ in
-                //     // 当refreshID变化时，保持滚动位置不变
-                //     withAnimation(.none) {
-                //         scrollView.scrollTo("comments_list_\(storageKey)", anchor: .center)
-                //     }
-                // }
+                // 完全移除onChange监听器，避免任何自动滚动
                 .onAppear {
-                    // 添加监听ScrollToComment通知
+                    // 添加监听ScrollToComment通知，只在明确请求滚动时执行
                     NotificationCenter.default.addObserver(
                         forName: NSNotification.Name("ScrollToComment"),
                         object: nil,
@@ -238,8 +232,6 @@ struct CommentsListView: View {
             // 当展开状态变化时保存
             saveExpandedCommentsState()
         }
-        // 使用refreshID作为视图标识符，只在需要时刷新
-        .id("comments_list_view_\(storageKey)_\(refreshID)")
     }
     
     // 保存展开状态到UserDefaults
@@ -292,10 +284,8 @@ struct CommentsListView: View {
             // 先保存展开状态
             self.saveExpandedCommentsState()
             
-            // 更新刷新ID，触发视图更新
-            withAnimation(.none) {
-                self.refreshID = UUID()
-            }
+            // 静默更新刷新ID，避免触发视图重建和滚动位置重置
+            self.refreshID = UUID()
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -317,7 +307,8 @@ struct CommentsListView: View {
             // 先保存展开状态
             self.saveExpandedCommentsState()
             
-            // 不使用动画，静默更新refreshID
+            // 不使用动画，静默更新refreshID - 不触发视图重建
+            // 只触发内部状态更新，不影响滚动位置
             self.refreshID = UUID()
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
@@ -399,10 +390,8 @@ struct CommentsListView: View {
                 }
             }
             
-            // 更新刷新ID，触发视图更新
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.refreshID = UUID()
-            }
+            // 更新刷新ID，触发视图更新，但不使用动画
+            self.refreshID = UUID()
             
             // 使用短延迟确保视图已更新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -835,10 +824,12 @@ struct CommentThreadView: View {
         
         // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
         DispatchQueue.main.async {
-            // 使用一个特殊的ID，确保视图更新但不会导致滚动位置变化
-            withAnimation(.none) {
-                self.refreshID = UUID()
-            }
+            // 先保存展开状态
+            self.saveExpandedCommentsState()
+            
+            // 不使用动画，静默更新refreshID - 不触发视图重建
+            // 只触发内部状态更新，不影响滚动位置
+            self.refreshID = UUID()
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
