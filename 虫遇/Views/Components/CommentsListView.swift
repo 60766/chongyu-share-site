@@ -231,22 +231,10 @@ struct CommentsListView: View {
                     object: nil,
                     queue: .main
                 ) { _ in
-                    // 使用本地变量捕获scrollView，避免Sendable错误
-                    let proxy = scrollView
-                    
-                    // 保存当前滚动位置
+                    // 不再尝试滚动到锚点，只更新视图内容
                     DispatchQueue.main.async {
-                        // 先滚动到锚点以记录位置
-                        withAnimation(.none) {
-                            proxy.scrollTo("scroll_position_anchor", anchor: .top)
-                        }
-                        
-                        // 在数据更新后恢复位置
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation(.none) {
-                                proxy.scrollTo("scroll_position_anchor", anchor: .top)
-                            }
-                        }
+                        // 只更新refreshID，不进行任何滚动操作
+                        self.refreshID = UUID()
                     }
                 }
             }
