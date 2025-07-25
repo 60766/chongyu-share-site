@@ -238,8 +238,8 @@ struct CommentsListView: View {
             // 当展开状态变化时保存
             saveExpandedCommentsState()
         }
-        // 移除这一行，避免视图重建
-        // .id("comments_list_view_\(storageKey)_\(refreshID)")
+        // 恢复视图ID，但不使用refreshID，避免不必要的视图重建
+        .id("comments_list_view_\(storageKey)")
     }
     
     // 保存展开状态到UserDefaults
@@ -317,7 +317,7 @@ struct CommentsListView: View {
             // 先保存展开状态
             self.saveExpandedCommentsState()
             
-            // 不使用动画，静默更新refreshID
+            // 更新refreshID，触发视图内部更新
             self.refreshID = UUID()
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
