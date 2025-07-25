@@ -152,7 +152,7 @@ struct CommentsListView: View {
                         .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
                     }
                 }
-                .onChange(of: refreshID) { _ in
+                .onChange(of: refreshID) { _, _ in
                     // 当refreshID变化时，保持滚动位置不变
                     withAnimation(.none) {
                         scrollView.scrollTo("comments_list_\(storageKey)", anchor: .center)
@@ -179,17 +179,10 @@ struct CommentsListView: View {
             NotificationCenter.default.removeObserver(self)
         }
         // 修复iOS 17中已弃用的onChange方法
-        #if swift(>=5.9)
-        .onChange(of: expandedComments) { oldValue, newValue in
+        .onChange(of: expandedComments) { _, _ in
             // 当展开状态变化时保存
             saveExpandedCommentsState()
         }
-        #else
-        .onChange(of: expandedComments) { _ in
-            // 当展开状态变化时保存
-            saveExpandedCommentsState()
-        }
-        #endif
         // 使用refreshID作为视图标识符，只在需要时刷新
         .id("comments_list_view_\(storageKey)_\(refreshID)")
     }
@@ -334,9 +327,7 @@ struct CommentsListView: View {
             forName: NSNotification.Name("ForceRefreshComments"),
             object: nil,
             queue: .main
-        ) { [weak self] notification in
-            guard let self = self else { return }
-            
+        ) { notification in
             // 检查是否需要保持展开状态
             let shouldKeepState = notification.userInfo?["keepExpandState"] as? Bool ?? true
             let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
@@ -367,9 +358,7 @@ struct CommentsListView: View {
             forName: NSNotification.Name("MaintainScrollPosition"),
             object: nil,
             queue: .main
-        ) { [weak self] _ in
-            guard let self = self else { return }
-            
+        ) { _ in
             // 保存当前展开状态
             self.saveExpandedCommentsState()
         }
@@ -380,9 +369,7 @@ struct CommentsListView: View {
                 forName: NSNotification.Name(notificationName),
                 object: nil,
                 queue: .main
-            ) { [weak self] notification in
-                guard let self = self else { return }
-                
+            ) { notification in
                 // 检查是否需要保持展开状态
                 let shouldKeepState = notification.userInfo?["keepExpandState"] as? Bool ?? true
                 let preserveExpandState = notification.userInfo?["preserveExpandState"] as? Bool ?? true
@@ -391,8 +378,7 @@ struct CommentsListView: View {
                 let noAutoExpand = notification.userInfo?["noAutoExpand"] as? Bool ?? false
                 
                 // 检查是否有新评论ID，如果有则确保其父评论展开
-                if let newCommentIdString = notification.userInfo?["newCommentId"] as? String,
-                   let newCommentId = UUID(uuidString: newCommentIdString),
+                if let _ = notification.userInfo?["newCommentId"] as? String,
                    let parentCommentIdString = notification.userInfo?["parentCommentId"] as? String,
                    let parentCommentId = UUID(uuidString: parentCommentIdString),
                    !noAutoExpand {
@@ -438,9 +424,8 @@ struct CommentsListView: View {
             forName: NSNotification.Name("ExpandComment"),
             object: nil,
             queue: .main
-        ) { [weak self] notification in
-            guard let self = self,
-                  let userInfo = notification.userInfo,
+        ) { notification in
+            guard let userInfo = notification.userInfo,
                   let commentIdString = userInfo["commentId"] as? String,
                   let commentId = UUID(uuidString: commentIdString) else {
                 return
@@ -448,7 +433,7 @@ struct CommentsListView: View {
             
             let preventScroll = userInfo["preventScroll"] as? Bool ?? true
             let forceExpand = userInfo["forceExpand"] as? Bool ?? false
-            let preventCollapse = userInfo["preventCollapse"] as? Bool ?? false
+            let _ = userInfo["preventCollapse"] as? Bool ?? false
             
             // 立即展开评论
             if forceExpand || !self.expandedComments.contains(commentId) {
@@ -469,9 +454,7 @@ struct CommentsListView: View {
             forName: NSNotification.Name("RefreshCommentsWithoutScrolling"),
             object: nil,
             queue: .main
-        ) { [weak self] _ in
-            guard let self = self else { return }
-            
+        ) { _ in
             // 立即刷新，但不滚动
             self.refreshWithoutScrolling()
         }
