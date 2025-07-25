@@ -907,7 +907,7 @@ class CommentManager: ObservableObject {
             print("🤖 检测到回复的是虚拟角色评论，将触发针对性回复")
             
             // 获取回复内容
-            let replyContent = await multiCharacterService.getCharacterReply(
+            let replyContent = await MultiCharacterCommentService.shared.getCharacterReply(
                 characterID: characterID,
                 userMessage: userComment,
                 originalComment: replyToComment.content
@@ -923,7 +923,7 @@ class CommentManager: ObservableObject {
                 // 添加虚拟角色回复
                 let virtualReplyId = UUID()
                 currentPost.addComment(
-                    username: multiCharacterService.getCharacterName(characterID: characterID),
+                    username: CharacterDataManager.shared.getName(for: characterID) ?? characterID,
                     userAvatar: characterID,
                     content: content,
                     parentCommentId: parentCommentId, // 使用用户评论的ID作为父评论ID
