@@ -613,43 +613,25 @@ struct CommentInputView: View {
         }
     }
     
-    // 提交评论并重置状态
+    // 提交评论
     private func submitComment() {
-        // 先提交评论数据
+        // 发送通知，确保不会滚动页面
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PreventScrollAfterSubmit"),
+            object: nil
+        )
+        
+        // 提交评论
         commentManager.submitComment()
         
-        // 只重置文本和输入框高度
-        textViewHeight = 36
-        
-        // 收起输入框
-        withAnimation(.easeInOut(duration: 0.25)) {
+        // 重置输入框状态
+        withAnimation(.easeInOut(duration: 0.2)) {
+            textFieldFocused = false
             isExpanded = false
         }
         
-        // 收起键盘
-        textFieldFocused = false
-        isInputFocused = false
-        
-        // 强制刷新视图 - 最简单直接的方式
-        DispatchQueue.main.async {
-            // 强制触发UI更新
-            commentManager.objectWillChange.send()
-            
-            // 添加通知，告知不要滚动页面位置
-            NotificationCenter.default.post(
-                name: NSNotification.Name("MaintainScrollPosition"),
-                object: nil
-            )
-            
-            // 延迟一小段时间后再次发送通知，确保评论显示正常
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshCommentsWithoutScrolling"),
-                    object: nil,
-                    userInfo: ["preventScroll": true]
-                )
-            }
-        }
+        // 隐藏键盘
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
     
     // 重置键盘和视图偏移（不使用动画）
