@@ -449,7 +449,7 @@ class CommentManager: ObservableObject {
             
             if let replyTo = savedReplyingToComment {
                 // 添加回复评论
-                newCommentId = UUID()
+            newCommentId = UUID()
                 
                 // 查找被回复评论的根评论ID
                 let rootCommentId: UUID
@@ -470,30 +470,30 @@ class CommentManager: ObservableObject {
                 }
                 
                 // 添加评论，确保正确设置parentCommentId
-                currentPost.addComment(
-                    username: currentUsername,
-                    userAvatar: currentUserAvatar,
+            currentPost.addComment(
+                username: currentUsername,
+                userAvatar: currentUserAvatar,
                     content: processedContent,
                     parentCommentId: replyTo.id,  // 使用被回复评论的ID作为父评论ID
                     replyToUsername: replyTo.username,
                     userId: UserDefaults.standard.string(forKey: "current_user_id") ?? UIDevice.current.identifierForVendor?.uuidString,
                     isCurrentUser: true
-                )
-                
-                print("✅ 已添加回复评论 - ID: \(newCommentId), 回复给: \(replyTo.username), 内容: \"\(processedContent.prefix(30))...\"")
-                print("✅ 父评论ID: \(replyTo.id)")
+            )
+            
+            print("✅ 已添加回复评论 - ID: \(newCommentId), 回复给: \(replyTo.username), 内容: \"\(processedContent.prefix(30))...\"")
+            print("✅ 父评论ID: \(replyTo.id)")
                 print("✅ 根评论ID: \(rootCommentId)")
-                
-                // 更新评论列表
-                updateCommentLists()
-                
+        
+        // 更新评论列表
+        updateCommentLists()
+        
                 // 立即发送对象变更通知
                 self.objectWillChange.send()
-                
+        
                 // 立即发送展开评论通知，确保评论区域不会折叠
-                NotificationCenter.default.post(
+            NotificationCenter.default.post(
                     name: NSNotification.Name("ExpandComment"),
-                    object: nil,
+                object: nil,
                     userInfo: [
                         "commentId": rootCommentId.uuidString,
                         "forceExpand": true,
@@ -503,9 +503,9 @@ class CommentManager: ObservableObject {
                 )
                 
                 // 发送刷新评论列表通知，确保评论立即显示
-                NotificationCenter.default.post(
+            NotificationCenter.default.post(
                     name: NSNotification.Name("RefreshCommentsList"),
-                    object: nil,
+                object: nil,
                     userInfo: [
                         "keepExpandState": true,
                         "preventCollapse": true,
@@ -553,8 +553,8 @@ class CommentManager: ObservableObject {
                 updateCommentLists()
                 
                 // 立即发送对象变更通知
-                self.objectWillChange.send()
-                
+            self.objectWillChange.send()
+            
                 // 发送刷新评论列表通知，确保评论立即显示
                 NotificationCenter.default.post(
                     name: NSNotification.Name("RefreshCommentsList"),
@@ -567,10 +567,10 @@ class CommentManager: ObservableObject {
                         "preventScroll": true // 确保不会滚动页面
                     ]
                 )
-                
-                // 生成虚拟角色回复
-                print("🤖 开始生成虚拟角色回复")
-                await generateVirtualReply()
+        
+        // 生成虚拟角色回复
+            print("🤖 开始生成虚拟角色回复")
+            await generateVirtualReply()
             }
         }
     }
@@ -736,7 +736,7 @@ class CommentManager: ObservableObject {
                 allSelectedCharacters = finalList
             } else {
                 // 如果没有作者，直接取前4个
-                allSelectedCharacters = Array(allSelectedCharacters.prefix(4))
+            allSelectedCharacters = Array(allSelectedCharacters.prefix(4))
             }
         }
         

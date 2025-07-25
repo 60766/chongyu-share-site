@@ -94,6 +94,10 @@ struct CommentsListView: View {
     // 添加一个状态变量，用于跟踪是否正在刷新
     @State private var isRefreshing = false
     
+    // 添加滚动位置记忆
+    @State private var scrollPosition: CGFloat = 0
+    @State private var scrollViewProxy: ScrollViewProxy? = nil
+    
     // 使用一个稳定的标识符，基于评论列表的第一个评论ID或者固定字符串
     var storageKey: String {
         if let firstComment = comments.first {
@@ -107,6 +111,16 @@ struct CommentsListView: View {
         VStack(spacing: 0) {
             // 评论列表
             ScrollViewReader { scrollView in
+                // 保存ScrollViewProxy的引用
+                .onAppear {
+                    scrollViewProxy = scrollView
+                }
+                
+                GeometryReader { geometry in
+                    Color.clear.preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scrollView")).minY)
+                }
+                .frame(height: 0)
+                
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if comments.isEmpty {
                         // 无评论时使用统一的EmptyCommentsView组件
@@ -152,55 +166,18 @@ struct CommentsListView: View {
                         .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
                     }
                 }
-                // 移除这个onChange，它可能导致页面滚动到顶部
-                // .onChange(of: refreshID) { _, _ in
-                //     // 当refreshID变化时，保持滚动位置不变
-                //     withAnimation(.none) {
-                //         scrollView.scrollTo("comments_list_\(storageKey)", anchor: .center)
-                //     }
-                // }
+                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                    scrollPosition = value
+                }
                 .onAppear {
-                    // 添加监听ScrollToComment通知
-                    NotificationCenter.default.addObserver(
-                        forName: NSNotification.Name("ScrollToComment"),
-                        object: nil,
-                        queue: .main
-                    ) { notification in
-                        guard let userInfo = notification.userInfo,
-                              let commentIdString = userInfo["commentId"] as? String,
-                              let commentId = UUID(uuidString: commentIdString) else {
-                            return
-                        }
-                        
-                        // 查找评论所在的CommentThreadView的ID
-                        var targetId = ""
-                        
-                        // 先检查是否是顶级评论
-                        for comment in self.comments {
-                            if comment.id == commentId {
-                                targetId = "comment_thread_\(comment.id)"
-                                break
-                            }
-                            
-                            // 检查是否在回复中
-                            if self.containsComment(with: commentId, in: comment.replies) {
-                                // 如果在回复中，先滚动到父评论线程
-                                targetId = "comment_thread_\(comment.id)"
-                                
-                                // 然后尝试滚动到具体的回复
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        scrollView.scrollTo("reply_\(commentId)", anchor: .center)
-                                    }
-                                }
-                                break
-                            }
-                        }
-                        
-                        // 如果找到目标ID，滚动到该位置
-                        if !targetId.isEmpty {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                scrollView.scrollTo(targetId, anchor: .top)
+                    // 在视图出现时恢复滚动位置
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation(.none) {
+                            // 使用保存的滚动位置
+                            if scrollPosition != 0 {
+                                // 创建一个带有偏移量的锚点
+                                let anchor = UnitPoint(x: 0, y: -scrollPosition / UIScreen.main.bounds.height)
+                                scrollView.scrollTo("comments_list_\(storageKey)", anchor: anchor)
                             }
                         }
                     }
@@ -214,6 +191,7 @@ struct CommentsListView: View {
                     )
                 }
             }
+            .coordinateSpace(name: "scrollView")
         }
         .background(Color(.systemBackground).opacity(0.98)) // 添加轻微的背景色
         .onAppear {
@@ -475,11 +453,6 @@ struct CommentsListView: View {
         ) { _ in
             // 确保不会滚动，只刷新视图
             self.refreshWithoutScrolling()
-            
-            // 延迟一小段时间后再次刷新，确保评论显示正常且不滚动
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                self.refreshWithoutScrolling()
-            }
         }
         
         // 监听所有可能触发刷新的通知
@@ -1187,5 +1160,13 @@ struct CommentThreadView_Previews: PreviewProvider {
         )
         .padding()
         .previewLayout(.fixed(width: 375, height: 200))
+    }
+} 
+
+// 定义滚动偏移量的PreferenceKey
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 } 
