@@ -722,18 +722,20 @@ struct CommentThreadView: View {
                         }
                         
                         // 回复内容 - 不再显示展开按钮，因为所有回复都在同一层
-                        CommentItemView(
-                            comment: reply,
-                            replyAction: replyAction,
-                            isLiked: likedComments.contains(reply.id),
-                            showExpandButton: false, // 不再显示展开按钮
-                            replyCount: 0,
-                            isExpanded: false,
-                            onToggleExpand: nil,
-                            onLike: {
-                                toggleLike(for: reply.id)
-                            }
-                        )
+                        EquatableView(content: {
+                            CommentItemView(
+                                comment: reply,
+                                replyAction: replyAction,
+                                isLiked: likedComments.contains(reply.id),
+                                showExpandButton: false, // 不再显示展开按钮
+                                replyCount: 0,
+                                isExpanded: false,
+                                onToggleExpand: nil,
+                                onLike: {
+                                    toggleLike(for: reply.id)
+                                }
+                            )
+                        })
                         .transition(.opacity) // 添加过渡动画
                         .id("reply_\(reply.id)") // 为每个回复添加固定ID
                     }
