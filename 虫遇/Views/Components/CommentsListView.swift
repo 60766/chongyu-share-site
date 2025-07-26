@@ -497,8 +497,12 @@ struct CommentsListView: View {
             object: nil,
             queue: .main
         ) { _ in
-            // 确保不会滚动，只刷新视图
-            self.refreshWithoutScrolling()
+            DispatchQueue.main.async {
+                // 延迟键盘收起，避免自动滚动
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.refreshID = UUID()
+                }
+            }
         }
         
         // 监听所有可能触发刷新的通知
