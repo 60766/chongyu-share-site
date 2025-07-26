@@ -94,6 +94,9 @@ struct CommentsListView: View {
     // 添加一个状态变量，用于跟踪是否正在刷新
     @State private var isRefreshing = false
     
+    // 添加一个状态变量，用于保存当前锚点
+    @State private var currentAnchorId: UUID? = nil
+    
     // 使用一个稳定的标识符，基于评论列表的第一个评论ID或者固定字符串
     var storageKey: String {
         if let firstComment = comments.first {
@@ -104,9 +107,8 @@ struct CommentsListView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // 评论列表
-            ScrollViewReader { scrollView in
+        ScrollViewReader { proxy in
+            ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if comments.isEmpty {
                         // 无评论时使用统一的EmptyCommentsView组件
@@ -145,7 +147,7 @@ struct CommentsListView: View {
                                     }
                                 }
                             )
-                            .id("comment_thread_\(comment.id)") // 为每个评论线程添加固定ID
+                            .id(comment.id) // 用评论ID作为锚点
                             .transition(.opacity.animation(.easeInOut(duration: 0.2))) // 添加平滑过渡动画
                             
                             if comment.id != comments.last?.id {
@@ -157,55 +159,16 @@ struct CommentsListView: View {
                         .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
                     }
                 }
-                // 移除这个onChange，它可能导致页面滚动到顶部
-                // .onChange(of: refreshID) { _, _ in
-                //     // 当refreshID变化时，保持滚动位置不变
-                //     withAnimation(.none) {
-                //         scrollView.scrollTo("comments_list_\(storageKey)", anchor: .center)
-                //     }
-                // }
-                .onAppear {
-                    // 添加监听ScrollToComment通知
-                    NotificationCenter.default.addObserver(
-                        forName: NSNotification.Name("ScrollToComment"),
-                        object: nil,
-                        queue: .main
-                    ) { notification in
-                        guard let userInfo = notification.userInfo,
-                              let commentIdString = userInfo["commentId"] as? String,
-                              let commentId = UUID(uuidString: commentIdString) else {
-                            return
-                        }
-                        
-                        // 查找评论所在的CommentThreadView的ID
-                        var targetId = ""
-                        
-                        // 先检查是否是顶级评论
-                        for comment in self.comments {
-                            if comment.id == commentId {
-                                targetId = "comment_thread_\(comment.id)"
-                                break
-                            }
-                            
-                            // 检查是否在回复中
-                            if self.containsComment(with: commentId, in: comment.replies) {
-                                // 如果在回复中，先滚动到父评论线程
-                                targetId = "comment_thread_\(comment.id)"
-                                
-                                // 然后尝试滚动到具体的回复
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        scrollView.scrollTo("reply_\(commentId)", anchor: .center)
-                                    }
-                                }
-                                break
-                            }
-                        }
-                        
-                        // 如果找到目标ID，滚动到该位置
-                        if !targetId.isEmpty {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                scrollView.scrollTo(targetId, anchor: .top)
+                .onChange(of: comments) { oldComments, newComments in
+                    // 1. 记录当前锚点（第一个可见评论ID）
+                    if let firstVisible = oldComments.first {
+                        currentAnchorId = firstVisible.id
+                    }
+                    // 2. 数据变化后，滚动回锚点
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        if let anchorId = currentAnchorId {
+                            withAnimation(.none) {
+                                proxy.scrollTo(anchorId, anchor: .top)
                             }
                         }
                     }
@@ -231,9 +194,8 @@ struct CommentsListView: View {
                     object: nil,
                     queue: .main
                 ) { _ in
-                    // 不再尝试滚动到锚点，只更新视图内容
+                    // 只更新refreshID，不做任何滚动操作
                     DispatchQueue.main.async {
-                        // 只更新refreshID，不进行任何滚动操作
                         self.refreshID = UUID()
                     }
                 }
@@ -722,20 +684,18 @@ struct CommentThreadView: View {
                         }
                         
                         // 回复内容 - 不再显示展开按钮，因为所有回复都在同一层
-                        EquatableView(content: {
-                            CommentItemView(
-                                comment: reply,
-                                replyAction: replyAction,
-                                isLiked: likedComments.contains(reply.id),
-                                showExpandButton: false, // 不再显示展开按钮
-                                replyCount: 0,
-                                isExpanded: false,
-                                onToggleExpand: nil,
-                                onLike: {
-                                    toggleLike(for: reply.id)
-                                }
-                            )
-                        })
+                        CommentItemView(
+                            comment: reply,
+                            replyAction: replyAction,
+                            isLiked: likedComments.contains(reply.id),
+                            showExpandButton: false, // 不再显示展开按钮
+                            replyCount: 0,
+                            isExpanded: false,
+                            onToggleExpand: nil,
+                            onLike: {
+                                toggleLike(for: reply.id)
+                            }
+                        )
                         .transition(.opacity) // 添加过渡动画
                         .id("reply_\(reply.id)") // 为每个回复添加固定ID
                     }
@@ -984,6 +944,7 @@ struct CommentItemView: View {
                         .padding(.top, 8)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading) // 确保文本正确布局
+                        .id("comment_content_\(comment.id)") // 只用 comment.id，避免 refreshID 作用域错误
                     
                     // 交互按钮
                     HStack(spacing: 24) {
