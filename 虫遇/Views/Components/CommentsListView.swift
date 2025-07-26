@@ -497,12 +497,8 @@ struct CommentsListView: View {
             object: nil,
             queue: .main
         ) { _ in
-            DispatchQueue.main.async {
-                // 延迟键盘收起，避免自动滚动
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.refreshID = UUID()
-                }
-            }
+            // 完全不做任何操作，避免任何视图刷新导致的滚动
+            // 新评论的显示完全依赖数据层的更新，不需要手动刷新视图
         }
         
         // 监听所有可能触发刷新的通知
@@ -760,7 +756,7 @@ struct CommentThreadView: View {
             }
         }
         .padding(.vertical, 4) // 增加垂直间距
-        .id("comment_\(comment.id)_\(refreshID)") // 使用refreshID确保视图在需要时更新
+        .id("comment_\(comment.id)") // 只用评论ID，避免刷新导致滚动
         .frame(maxWidth: .infinity) // 确保整个评论线程占满宽度
     }
     
