@@ -956,6 +956,62 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
             object: nil,
             userInfo: ["postId": postId, "figures": selectedFigures]
         )
+        
+        // 添加额外的通知，确保帖子详情页面立即刷新评论列表
+        let finalPostId = postId // 捕获局部变量，避免在闭包中使用self
+        
+        // 立即触发一次刷新，确保UI准备好
+        DispatchQueue.main.async {
+            // 尝试直接触发帖子的 objectWillChange
+            let viewModel = PostViewModel.shared
+            if let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == finalPostId }) {
+                // 强制触发 objectWillChange 通知
+                viewModel.posts[postIndex].objectWillChange.send()
+                
+                // 发送预备通知
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PrepareForNewComments"),
+                    object: nil,
+                    userInfo: ["postID": finalPostId]
+                )
+            }
+        }
+        
+        // 延迟一段时间后再次刷新，确保评论已经生成
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // 发送刷新通知
+            NotificationCenter.default.post(
+                name: NSNotification.Name("RefreshPostComments"),
+                object: nil,
+                userInfo: [
+                    "postID": finalPostId,
+                    "immediateDisplay": true,
+                    "preventScroll": true
+                ]
+            )
+            
+            // 确保详情页面的评论列表立即刷新
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ForceRefreshComments"),
+                object: nil,
+                userInfo: [
+                    "keepExpandState": true,
+                    "preventScroll": true,
+                    "immediateDisplay": true
+                ]
+            )
+            
+            // 再次尝试触发帖子的 objectWillChange
+            let viewModel = PostViewModel.shared
+            if let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == finalPostId }) {
+                // 强制触发 objectWillChange 通知
+                viewModel.posts[postIndex].objectWillChange.send()
+                
+                // 创建一个临时副本并重新赋值，强制 SwiftUI 刷新
+                let tempPost = viewModel.posts[postIndex]
+                viewModel.posts[postIndex] = tempPost
+            }
+        }
     }
     
     /**

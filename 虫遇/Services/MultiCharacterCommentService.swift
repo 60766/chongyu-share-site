@@ -656,6 +656,18 @@ class MultiCharacterCommentService {
                 ]
             )
             
+            // 直接触发 PostViewModel 中的帖子刷新
+            let viewModel = PostViewModel.shared
+            if let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) {
+                // 强制触发 objectWillChange 通知
+                viewModel.posts[postIndex].objectWillChange.send()
+                
+                // 额外的强制刷新，确保 SwiftUI 视图更新
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // 创建一个临时副本并重新赋值，强制 SwiftUI 刷新
+                    let tempPost = viewModel.posts[postIndex]
+                    viewModel.posts[postIndex] = tempPost
+                    
             // 发送评论更新通知
             NotificationCenter.default.post(
                 name: NSNotification.Name("PostCommentsUpdated"),
@@ -666,9 +678,58 @@ class MultiCharacterCommentService {
             // 确保UI刷新
             NotificationCenter.default.post(
                 name: NSNotification.Name("RefreshPostComments"),
+                        object: nil,
+                        userInfo: [
+                            "postID": postId, 
+                            "batchId": batchId,
+                            "immediateDisplay": true,
+                            "preventScroll": true
+                        ]
+                    )
+                    
+                    // 添加额外的强制刷新通知，确保评论立即显示
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("ForceRefreshComments"),
+                        object: nil,
+                        userInfo: [
+                            "keepExpandState": true,
+                            "preventScroll": true,
+                            "immediateDisplay": true
+                        ]
+                    )
+                }
+            } else {
+                // 如果找不到帖子，仍然发送常规通知
+                // 发送评论更新通知
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PostCommentsUpdated"),
                 object: nil,
                 userInfo: ["postID": postId, "batchId": batchId]
             )
+                
+                // 确保UI刷新
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshPostComments"),
+                    object: nil,
+                    userInfo: [
+                        "postID": postId, 
+                        "batchId": batchId,
+                        "immediateDisplay": true,
+                        "preventScroll": true
+                    ]
+                )
+                
+                // 添加额外的强制刷新通知，确保评论立即显示
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ForceRefreshComments"),
+                    object: nil,
+                    userInfo: [
+                        "keepExpandState": true,
+                        "preventScroll": true,
+                        "immediateDisplay": true
+                    ]
+                )
+            }
             
             print("📣 已发送所有通知，批量评论内容已生成，批次ID: \(batchId)")
         }

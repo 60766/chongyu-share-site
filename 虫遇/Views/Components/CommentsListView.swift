@@ -100,6 +100,9 @@ struct CommentsListView: View {
     // 添加一个状态集合，用于跟踪哪些评论需要显示点点动画
     @State private var commentsWithWaveAnimation = Set<UUID>()
     
+    // 添加一个状态变量，用于显示邀请虚拟角色后的顶部加载动画
+    @State private var showTopLoadingAnimation = false
+    
     // 使用一个稳定的标识符，基于评论列表的第一个评论ID或者固定字符串
     var storageKey: String {
         if let firstComment = comments.first {
@@ -148,6 +151,16 @@ struct CommentsListView: View {
                             .frame(height: 1)
                             .id("scroll_position_anchor")
                         
+                        // 显示顶部加载动画（当邀请虚拟角色后） - 已被新的图标动画取代
+                        /*
+                        if showTopLoadingAnimation {
+                            TopLoadingWaveView()
+                                .padding(.bottom, 10) // 调整此值以控制垂直位置
+                            .id("top_loading_animation")
+                            .transition(.opacity)
+                        }
+                        */
+                        
                         // 显示所有顶级评论
                         ForEach(comments) { comment in
                             CommentThreadView(
@@ -179,6 +192,14 @@ struct CommentsListView: View {
                     
                     // 2. 处理评论变化，更新动画状态
                     handleCommentsChange(oldComments: oldComments, newComments: newComments)
+                    
+                    // 如果增加的评论中有虚拟角色的评论，则隐藏顶部加载动画
+                    let addedComments = newComments.filter { newComment in !oldComments.contains { $0.id == newComment.id } }
+                    if addedComments.contains(where: { $0.isVirtualCharacter }) {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            showTopLoadingAnimation = false
+                        }
+                    }
                     
                     // 3. 数据变化后，滚动回锚点
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
@@ -219,8 +240,6 @@ struct CommentsListView: View {
         }
         .background(Color(.systemBackground).opacity(0.98)) // 添加轻微的背景色
         .onAppear {
-            print("🚀 CommentsListView 出现")
-            
             // 添加通知监听
             setupNotifications()
             
@@ -232,8 +251,6 @@ struct CommentsListView: View {
             
             // 确保动画状态正确
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                print("🔍 再次检查动画状态")
-                
                 // 重新初始化动画状态
                 self.initializeWaveAnimationState()
                 
@@ -252,10 +269,10 @@ struct CommentsListView: View {
             NotificationCenter.default.removeObserver(self)
         }
         // 修复iOS 17中已弃用的onChange方法
-                        .onChange(of: expandedComments) { _, _ in
-                    // 当展开状态变化时保存
-                    saveExpandedCommentsState()
-                }
+        .onChange(of: expandedComments) { _, _ in
+            // 当展开状态变化时保存
+            saveExpandedCommentsState()
+        }
         // 恢复视图ID，但不使用refreshID，避免不必要的视图重建
         .id("comments_list_view_\(storageKey)")
     }
@@ -285,8 +302,6 @@ struct CommentsListView: View {
     
     // 初始化点点动画状态 - 回归第一性原理：动画只显示在当前用户没有收到回复的评论上
     private func initializeWaveAnimationState() {
-        print("🔄 初始化动画状态")
-        
         // 获取当前用户名列表（可能的用户标识）
         let currentUserNames = ["当前用户", "科学爱好者"]
         let currentUserId = UserDefaults.standard.string(forKey: "current_user_id") ?? ""
@@ -355,12 +370,7 @@ struct CommentsListView: View {
         for commentId in currentUserCommentIds {
             // 确保不是虚拟角色的评论
             if !virtualCharacterCommentIds.contains(commentId) && !commentIdsWithReplies.contains(commentId) {
-                print("✅ 添加评论到动画集合: \(commentId)")
                 commentsWithWaveAnimation.insert(commentId)
-            } else if virtualCharacterCommentIds.contains(commentId) {
-                print("❌ 虚拟角色评论，不添加到动画集合: \(commentId)")
-            } else if commentIdsWithReplies.contains(commentId) {
-                print("❌ 评论已有回复，不添加到动画集合: \(commentId)")
             }
         }
         
@@ -393,14 +403,11 @@ struct CommentsListView: View {
             // 确保不是虚拟角色的评论
             if !virtualCharacterCommentIds.contains(comment.id) && !commentIdsWithReplies.contains(comment.id) {
                 commentsWithWaveAnimation.insert(comment.id)
-                print("✅ 添加最新评论到动画集合: \(comment.id)")
             }
         }
         
         // 最后一步：确保虚拟角色的评论永远不会显示动画
         commentsWithWaveAnimation = commentsWithWaveAnimation.filter { !virtualCharacterCommentIds.contains($0) }
-        
-        print("🔄 动画状态初始化完成，共\(commentsWithWaveAnimation.count)个评论需要显示动画")
     }
     
     // 检查新增的虚拟角色回复
@@ -408,12 +415,9 @@ struct CommentsListView: View {
     
     // 处理回复通知 - 增强版本
     private func handleReplyNotification(isVirtualCharacterReply: Bool, replyToUsername: String?, parentCommentId: UUID?) {
-        print("🔄 收到回复通知")
-        
         // 无论是什么类型的回复，都应该移除被回复评论的动画
         if let commentId = parentCommentId {
             commentsWithWaveAnimation.remove(commentId)
-            print("✅ 移除被回复评论ID=\(commentId)的动画")
         }
         
         // 如果有回复目标用户名，移除该用户的所有评论动画
@@ -425,7 +429,6 @@ struct CommentsListView: View {
                         // 确保不是虚拟角色的评论
                         if !comment.isVirtualCharacter {
                             commentsWithWaveAnimation.remove(comment.id)
-                            print("✅ 移除用户\(username)的评论动画: \(comment.id)")
                         }
                     }
                     
@@ -443,19 +446,14 @@ struct CommentsListView: View {
     
     // 处理评论数据变化
     private func handleCommentsChange(oldComments: [DetailedCommentModel], newComments: [DetailedCommentModel]) {
-        print("🔄 评论数据变化")
-        
         // 检查是否有新的回复
         for newComment in newComments {
             // 找到对应的旧评论
             if let oldComment = oldComments.first(where: { $0.id == newComment.id }) {
                 // 如果回复数量增加了，说明有新回复
                 if newComment.replies.count > oldComment.replies.count {
-                    print("📝 检测到评论ID=\(newComment.id)有新回复")
-                    
                     // 立即移除该评论的动画
                     commentsWithWaveAnimation.remove(newComment.id)
-                    print("✅ 移除评论ID=\(newComment.id)的动画")
                     
                     // 找出新增的回复
                     let newReplies = newComment.replies.filter { newReply in
@@ -467,7 +465,6 @@ struct CommentsListView: View {
                         // 如果有回复目标评论ID，移除该评论的动画
                         if let parentId = newReply.parentCommentId {
                             commentsWithWaveAnimation.remove(parentId)
-                            print("✅ 移除被回复评论ID=\(parentId)的动画")
                         }
                         
                         // 如果有回复目标用户名，移除该用户的所有评论动画
@@ -476,12 +473,10 @@ struct CommentsListView: View {
                             for comment in comments {
                                 if comment.username == replyToUsername {
                                     commentsWithWaveAnimation.remove(comment.id)
-                                    print("✅ 移除用户\(replyToUsername)的评论动画: \(comment.id)")
                                 }
                                 
                                 for reply in comment.replies where reply.username == replyToUsername {
                                     commentsWithWaveAnimation.remove(reply.id)
-                                    print("✅ 移除用户\(replyToUsername)的回复动画: \(reply.id)")
                                 }
                             }
                         }
@@ -496,36 +491,22 @@ struct CommentsListView: View {
     
     // 更新点点动画状态 - 当有新回复时调用
     private func updateWaveAnimationState(forCommentWithReply commentId: UUID) {
-        print("🔍 尝试更新评论ID: \(commentId) 的动画状态")
-        print("🔍 更新前动画集合: \(commentsWithWaveAnimation)")
-        
         // 如果评论在动画集合中，将其移除
         if commentsWithWaveAnimation.contains(commentId) {
             commentsWithWaveAnimation.remove(commentId)
-            print("✅ 已从动画集合中移除评论ID: \(commentId)")
         } else {
-            print("⚠️ 评论ID: \(commentId) 不在动画集合中")
-            
             // 尝试查找评论
             if let comment = findComment(id: commentId, in: self.comments) {
-                print("🔍 找到评论: \(comment.username)")
-                
                 // 判断是否是当前用户评论
                 let currentUserId = UserDefaults.standard.string(forKey: "current_user_id") ?? ""
                 let isCurrentUser = comment.userId == currentUserId || comment.isCurrentUser
-                print("🔍 是当前用户评论: \(isCurrentUser)")
                 
                 // 如果是当前用户的评论，强制移除动画
                 if isCurrentUser {
                     commentsWithWaveAnimation.remove(commentId)
-                    print("✅ 强制移除当前用户评论的动画")
                 }
-            } else {
-                print("❌ 未找到评论ID: \(commentId)")
             }
         }
-        
-        print("🔍 更新后动画集合: \(commentsWithWaveAnimation)")
     }
     
     // 递归查找评论
@@ -619,9 +600,6 @@ struct CommentsListView: View {
         // 如果能找到评论，且不是虚拟角色的评论，则添加动画
         if let comment = findComment(id: commentId, in: comments), !comment.isVirtualCharacter {
             commentsWithWaveAnimation.insert(commentId)
-            print("✅ 为新发送的评论添加动画: \(commentId)")
-        } else {
-            print("❌ 未找到评论或是虚拟角色评论，不添加动画: \(commentId)")
         }
         
         // 使用特殊的刷新方法，避免导致滚动
@@ -722,6 +700,26 @@ struct CommentsListView: View {
             // 检查是否需要保持展开状态
             let shouldKeepState = notification.userInfo?["keepExpandState"] as? Bool ?? true
             let preventScroll = notification.userInfo?["preventScroll"] as? Bool ?? true
+            let immediateDisplay = notification.userInfo?["immediateDisplay"] as? Bool ?? false
+            
+            // 如果是立即显示，强制刷新评论状态
+            if immediateDisplay {
+                // 重新初始化动画状态
+                self.initializeWaveAnimationState()
+                
+                // 强制刷新视图
+                DispatchQueue.main.async {
+                    // 更新刷新ID，触发视图更新
+                    self.refreshID = UUID()
+                    
+                    // 发送额外通知确保评论列表刷新
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("RefreshCommentsWithoutScrolling"),
+                        object: nil
+                    )
+                }
+                return
+            }
             
             // 立即执行，不使用延迟
             if shouldKeepState {
@@ -778,6 +776,15 @@ struct CommentsListView: View {
                 let immediateDisplay = notification.userInfo?["immediateDisplay"] as? Bool ?? false
                 let noAutoExpand = notification.userInfo?["noAutoExpand"] as? Bool ?? false
                 
+                // 如果是 PostCommentsUpdated 通知，可能是新评论已经生成，隐藏加载动画
+                if notificationName == "PostCommentsUpdated" {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            self.showTopLoadingAnimation = false
+                        }
+                    }
+                }
+                
                 // 检查是否需要滚动到特定评论
                 var scrollToCommentId: UUID? = nil
                 if let scrollToCommentIdString = notification.userInfo?["scrollToComment"] as? String,
@@ -796,22 +803,17 @@ struct CommentsListView: View {
                     // 如果是当前用户的评论，且不是虚拟角色，添加到动画集合
                     if isCurrentUserComment && !isVirtualCharacter {
                         self.commentsWithWaveAnimation.insert(newCommentId)
-                        print("✅ 为当前用户的新评论添加动画: \(newCommentId)")
-                    } else if isVirtualCharacter {
-                        print("❌ 虚拟角色评论，不添加动画: \(newCommentId)")
                     }
                     
                     // 如果有父评论ID，确保父评论展开
                     if let parentCommentIdString = notification.userInfo?["parentCommentId"] as? String,
-                       let parentCommentId = UUID(uuidString: parentCommentIdString),
-                       !noAutoExpand {
-                        // 确保父评论展开
-                        self.expandedComments.insert(parentCommentId)
-                        self.saveExpandedCommentsState()
+                   let parentCommentId = UUID(uuidString: parentCommentIdString),
+                   !noAutoExpand {
+                    // 确保父评论展开
+                    self.expandedComments.insert(parentCommentId)
+                    self.saveExpandedCommentsState()
                         
-                        // 打印调试信息
-                        print("🔄 收到新评论通知 - 父评论ID: \(parentCommentId), 新评论ID: \(newCommentId)")
-                        print("🔄 当前动画状态集合: \(self.commentsWithWaveAnimation)")
+                        // 父评论展开和动画处理
                         
                         // 检查新评论是否是虚拟角色的回复
                         let isVirtualCharacterReply = notification.userInfo?["isVirtualCharacter"] as? Bool ?? false
@@ -837,8 +839,6 @@ struct CommentsListView: View {
                 if shouldKeepState && preserveExpandState {
                     // 重新初始化动画状态
                     self.initializeWaveAnimationState()
-                    print("🔄 通知触发 - 重新初始化动画状态")
-                    print("🔄 初始化后动画集合: \(self.commentsWithWaveAnimation)")
                     
                     // 只刷新视图，不修改展开状态
                     if preventScroll {
@@ -914,6 +914,59 @@ struct CommentsListView: View {
         ) { _ in
             // 立即刷新，但不滚动
             self.refreshWithoutScrolling()
+        }
+        
+        // 监听PrepareForNewComments通知 - 为即将到来的新评论做准备
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("PrepareForNewComments"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            // 重新初始化动画状态
+            self.initializeWaveAnimationState()
+            
+            // 显示顶部加载动画
+            withAnimation(.easeIn(duration: 0.2)) {
+                self.showTopLoadingAnimation = true
+            }
+            
+            // 强制刷新视图，确保准备好接收新评论
+            DispatchQueue.main.async {
+                self.refreshWithoutScrolling()
+            }
+        }
+        
+        // 监听HistoricalFiguresInvited通知 - 当邀请历史人物时显示加载动画
+        NotificationCenter.default.addObserver(
+            forName: Notification.Name("HistoricalFiguresInvited"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            // 显示顶部加载动画
+            withAnimation(.easeIn(duration: 0.2)) {
+                self.showTopLoadingAnimation = true
+            }
+            
+            // 强制刷新视图，确保动画显示
+            DispatchQueue.main.async {
+                self.refreshWithoutScrolling()
+                
+                // 确保其他动画状态被清理，避免多个动画同时显示
+                self.commentsWithWaveAnimation.removeAll()
+            }
+        }
+        
+        // 监听CommentsGenerated通知 - 当评论生成完成时隐藏加载动画
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("CommentsGenerated"),
+            object: nil,
+            queue: .main
+        ) { notification in
+                // 刷新视图
+                self.refreshWithoutScrolling()
+
+            // 重新初始化动画状态，确保新评论的动画状态正确
+            self.initializeWaveAnimationState()
         }
     }
 }
@@ -1015,11 +1068,8 @@ struct CommentThreadView: View {
                     id: comment.id,
                     isNestedReply: false
                 )
-                .padding(.top, 4)
+                .padding(.bottom, 4)    // 添加少量底部间距
                 .id("main_wave_\(comment.id)")
-                .onAppear {
-                    print("🎬 显示评论ID=\(comment.id)的动画")
-                }
             }
             
             // 显示回复 - 只保留一层嵌套
@@ -1061,10 +1111,8 @@ struct CommentThreadView: View {
                                 id: reply.id,
                                 isNestedReply: true
                             )
-                            .transition(.opacity)
-                            .onAppear {
-                                print("🎬 显示回复ID=\(reply.id)的动画")
-                            }
+                            .padding(.bottom, 4)    // 添加少量底部间距
+                                .transition(.opacity)
                         }
                     }
                 }
@@ -1487,7 +1535,6 @@ struct WormholeWaveView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.top, 4)
         .padding(.horizontal, isNestedReply ? 0 : -20) // 嵌套回复不需要负边距
         .frame(maxWidth: isNestedReply ? .infinity : UIScreen.main.bounds.width, alignment: .center) // 嵌套回复不需要强制宽度
         .onAppear { isAnimating = true }

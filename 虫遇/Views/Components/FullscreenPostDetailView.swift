@@ -210,6 +210,9 @@ struct FullscreenPostDetailView: View {
     @State private var explorationKeyword: String = ""
     @State private var isDirecctedMode: Bool = false
     
+    // 新增状态，用于控制"三颗星星"图标的动画
+    @State private var isGeneratingAIMedia: Bool = false
+    
     // 初始化方法
     init(
         post: UserPostModel, 
@@ -1771,6 +1774,18 @@ struct FullscreenPostDetailView: View {
             // 无需额外动画，跟随拖动实时更新
             .opacity(isTransitioning ? 0 : 1)
         )
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("HistoricalFiguresInvited"))) { _ in
+            print("⭐️ 收到HistoricalFiguresInvited通知，设置isGeneratingAIMedia = true")
+            withAnimation {
+                isGeneratingAIMedia = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CommentsGenerated"))) { _ in
+            print("⭐️ 收到CommentsGenerated通知，设置isGeneratingAIMedia = false")
+            withAnimation {
+                isGeneratingAIMedia = false
+            }
+        }
     }
     
     // MARK: - 子视图组件
@@ -2380,9 +2395,8 @@ struct FullscreenPostDetailView: View {
                                 .fill(Color.clear)
                                 .frame(width: 22, height: 22)
                             
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 17, weight: .medium))
-                                .foregroundColor(.secondary)
+                            // 使用SparkleIconView替代静态图标，实现动画效果
+                            SparkleIconView(isAnimating: isGeneratingAIMedia)
                         }
                         .padding(.vertical, 8)
                     }
@@ -4187,4 +4201,64 @@ extension UIResponder {
     @objc private func findFirstResponder(_ sender: Any) {
         UIResponder._currentFirstResponder = self
     }
+}
+
+/**
+ * 闪烁图标视图 - 用于显示生成中的加载动画
+ * 遵循苹果设计理念，简洁而有目的性
+ */
+private struct SparkleIconView: View {
+    var isAnimating: Bool
+    @State private var scale: CGFloat = 1.0
+    @State private var opacity: Double = 1.0
+    @State private var rotationAngle: Double = 0
+    
+    // 使用系统黄色而不是自定义颜色，保持一致性
+    private let activeColor = Color.yellow
+    private let inactiveColor = Color.secondary
+
+    var body: some View {
+        Image(systemName: "sparkles")
+            .font(.system(size: 17, weight: .medium))
+            .foregroundStyle(isAnimating ? activeColor : inactiveColor)
+            .scaleEffect(scale)
+            .rotationEffect(.degrees(rotationAngle))
+            .opacity(opacity)
+            .onAppear {
+                updateAnimation(shouldAnimate: isAnimating)
+                print("⭐️ SparkleIconView出现，初始isAnimating状态：\(isAnimating)")
+            }
+            .onChange(of: isAnimating) { _, shouldAnimate in
+                print("⭐️ SparkleIconView状态变化：isAnimating = \(shouldAnimate)")
+                updateAnimation(shouldAnimate: shouldAnimate)
+                
+                // 当动画从激活状态变为非激活状态时，直接应用动画
+                // 不再需要特殊的完成效果
+            }
+    }
+    
+    // 将动画逻辑提取到一个方法中，以便在onAppear和onChange中复用
+    private func updateAnimation(shouldAnimate: Bool) {
+        if shouldAnimate {
+            // 清晰简洁的脉冲效果
+            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                scale = 1.15
+                opacity = 0.8
+            }
+            
+            // 轻微旋转，增加活跃感但不分散注意力
+            withAnimation(.linear(duration: 2.5).repeatForever(autoreverses: true)) {
+                rotationAngle = 8
+            }
+        } else {
+            // 当动画停止时，平滑地恢复到初始状态
+            withAnimation(.easeInOut(duration: 0.2)) {
+                scale = 1.0
+                opacity = 1.0
+                rotationAngle = 0
+            }
+        }
+    }
+    
+
 }

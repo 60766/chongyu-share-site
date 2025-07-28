@@ -715,6 +715,19 @@ class VirtualCharacterService {
         let finalPostAuthor = postAuthor ?? post.username
         print("👤 最终使用的帖子作者: \(finalPostAuthor)")
         
+        // 在生成评论之前，先发送一个通知，确保UI准备好接收新评论
+        DispatchQueue.main.async {
+            // 强制触发 objectWillChange 通知，确保 SwiftUI 视图准备好更新
+            viewModel.posts[postIndex].objectWillChange.send()
+            
+            // 发送预备通知
+            NotificationCenter.default.post(
+                name: NSNotification.Name("PrepareForNewComments"),
+                object: nil,
+                userInfo: ["postID": postId]
+            )
+        }
+        
         // 统一使用MultiCharacterCommentService处理所有角色评论生成，无论是单个还是多个角色
         print("🔄 使用批量评论生成服务处理\(validCharacterIDs.count)个角色")
         MultiCharacterCommentService.shared.generateMultiCharacterComments(
@@ -723,13 +736,39 @@ class VirtualCharacterService {
             postContent: post.content,
             postAuthor: finalPostAuthor,
             isInvited: true,  // 标记为邀请的角色评论
-            completion: { result in
+            completion: { [weak self] result in
+            guard let self = self else { return }
             switch result {
             case .success(let commentsMap):
                 print("✅ 批量生成成功，共生成\(commentsMap.count)条评论")
                 
                 // 批量评论已经在MultiCharacterCommentService中添加到帖子
                 // 通过CommentsGenerated通知处理，不需要再发送CharacterReplyGenerated通知
+                
+                // 额外的刷新机制，确保UI立即更新
+                DispatchQueue.main.async {
+                    if let viewModel = self.getPostViewModel(),
+                       let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) {
+                        // 强制触发 objectWillChange 通知
+                        viewModel.posts[postIndex].objectWillChange.send()
+                        
+                        // 创建一个临时副本并重新赋值，强制 SwiftUI 刷新
+                        let tempPost = viewModel.posts[postIndex]
+                        viewModel.posts[postIndex] = tempPost
+                        
+                        // 发送额外的刷新通知
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("ForceRefreshComments"),
+                            object: nil,
+                            userInfo: [
+                                "keepExpandState": true,
+                                "preventScroll": true,
+                                "immediateDisplay": true,
+                                "postID": postId
+                            ]
+                        )
+                    }
+                }
                 
             case .failure(let error):
                 print("❌ 批量生成角色评论失败 - \(error.localizedDescription)")
