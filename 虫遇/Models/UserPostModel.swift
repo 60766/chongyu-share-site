@@ -732,13 +732,13 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         if let parentId = comment.parentCommentId {
             print("🔵 添加为回复 - 父评论ID: \(parentId)")
             addReplyToParent(parentId: parentId, reply: comment)
+            // 关键：强制刷新 comments 数组，确保 UI 刷新
+            self.comments = self.comments.map { $0 } // 触发 SwiftUI 刷新
         } else {
             print("🔵 添加为顶级评论")
             comments.insert(comment, at: 0)
-            
             // 打印当前评论数量
             print("📊 添加后顶级评论数量: \(comments.count)")
-            
             // 简化通知机制 - 只发送对象变更通知
             DispatchQueue.main.async {
                 // 直接发送对象变更通知，让SwiftUI自动刷新

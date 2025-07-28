@@ -27,6 +27,10 @@ class PostViewModel: ObservableObject {
         didSet {
             // 当帖子数据变化时，保存持久化的存根数据，确保可以恢复
             savePersistentPostsStub()
+            // 同步 comments 为当前 post 的完整树结构
+            if let currentPost = posts.first {
+                self.comments = currentPost.getTopLevelComments()
+            }
         }
     }
     
@@ -48,6 +52,9 @@ class PostViewModel: ObservableObject {
     // 持久化数据的键
     private let postsStubKey = "persistedPostsStub"
     
+    // 评论数据
+    @Published var comments: [DetailedCommentModel] = []
+    
     /**
      * 初始化视图模型
      * 加载示例帖子数据
@@ -56,7 +63,20 @@ class PostViewModel: ObservableObject {
         // 首先尝试从持久化存储恢复帖子
         if !tryRestorePersistedPosts() {
             // 如果没有持久化的帖子，加载示例帖子
-        loadSamplePosts()
+            loadSamplePosts()
+        }
+        
+        // 监听 PostCommentsUpdated 通知，强制刷新 comments
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("PostCommentsUpdated"), object: nil, queue: .main) { [weak self] notification in
+            guard let self = self else { return }
+            // 自动推断当前展示的 postId（假设只有一个帖子或第一个帖子为当前）
+            if let currentPostId = self.posts.first?.id,
+               let _ = self.posts.firstIndex(where: { $0.id == currentPostId }) {
+                // 触发UI刷新
+                self.objectWillChange.send()
+                // 如果你有 @Published var comments: [DetailedCommentModel]，请同步刷新
+                // self.comments = self.posts[currentPostIndex].comments
+            }
         }
     }
     
@@ -2375,6 +2395,13 @@ class PostViewModel: ObservableObject {
         } catch {
             print("❌ 生成历史对话帖子时出错: \(error)")
             return createBackupPosts(for: .resonance) // 使用虫洞共鸣备用帖子
+        }
+    }
+    
+    // 在添加新评论、回复、点赞等操作后，务必同步刷新comments
+    func refreshComments() {
+        if let currentPost = posts.first {
+            self.comments = currentPost.getTopLevelComments()
         }
     }
 }

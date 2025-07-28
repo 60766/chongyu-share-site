@@ -97,12 +97,39 @@ struct CommentsListView: View {
     // 添加一个状态变量，用于保存当前锚点
     @State private var currentAnchorId: UUID? = nil
     
+    // 添加一个状态集合，用于跟踪哪些评论需要显示点点动画
+    @State private var commentsWithWaveAnimation = Set<UUID>()
+    
     // 使用一个稳定的标识符，基于评论列表的第一个评论ID或者固定字符串
     var storageKey: String {
         if let firstComment = comments.first {
             return "expandedComments_\(firstComment.id.uuidString)"
         } else {
             return "expandedComments_global"
+        }
+    }
+    
+    // 处理回复操作的辅助方法
+    private func handleReply(commentId: UUID) {
+        // 找到对应的评论并调用回调
+        if let comment = findComment(id: commentId, in: comments) {
+            // 在回复评论前，确保当前评论已经展开
+            expandedComments.insert(comment.id)
+            
+            // 如果是回复子评论，确保其父评论也展开
+            if let parentId = comment.parentCommentId {
+                expandedComments.insert(parentId)
+            }
+            
+            onReply?(comment)
+        }
+    }
+    
+    // 处理点赞操作的辅助方法
+    private func handleLike(commentId: UUID) {
+        // 找到对应的评论并调用回调
+        if let comment = findComment(id: commentId, in: comments) {
+            onLike?(comment)
         }
     }
     
@@ -125,30 +152,13 @@ struct CommentsListView: View {
                         ForEach(comments) { comment in
                             CommentThreadView(
                                 comment: comment,
-                                expandedComments: $expandedComments, // 传递绑定，保持展开状态
-                                replyAction: { commentId in
-                                    // 找到对应的评论并调用回调
-                                    if let comment = findComment(id: commentId, in: comments) {
-                                        // 在回复评论前，确保当前评论已经展开
-                                        expandedComments.insert(comment.id)
-                                        
-                                        // 如果是回复子评论，确保其父评论也展开
-                                        if let parentId = comment.parentCommentId {
-                                            expandedComments.insert(parentId)
-                                        }
-                                        
-                                        onReply?(comment)
-                                    }
-                                },
-                                onLike: { commentId in
-                                    // 找到对应的评论并调用回调
-                                    if let comment = findComment(id: commentId, in: comments) {
-                                        onLike?(comment)
-                                    }
-                                }
+                                expandedComments: $expandedComments,
+                                replyAction: handleReply,
+                                onLike: handleLike,
+                                commentsWithWaveAnimation: $commentsWithWaveAnimation
                             )
-                            .id(comment.id) // 用评论ID作为锚点
-                            .transition(.opacity.animation(.easeInOut(duration: 0.2))) // 添加平滑过渡动画
+                            .id(comment.id)
+                            .transition(.opacity.animation(.easeInOut(duration: 0.2)))
                             
                             if comment.id != comments.last?.id {
                                 Divider()
@@ -160,11 +170,17 @@ struct CommentsListView: View {
                     }
                 }
                 .onChange(of: comments) { oldComments, newComments in
-                    // 1. 记录当前锚点（第一个可见评论ID）
+                    print("🔄 评论数据变化: 旧评论数=\(oldComments.count), 新评论数=\(newComments.count)")
+                    
+                    // 1. 记录当前锚点
                     if let firstVisible = oldComments.first {
                         currentAnchorId = firstVisible.id
                     }
-                    // 2. 数据变化后，滚动回锚点
+                    
+                    // 2. 处理评论变化，更新动画状态
+                    handleCommentsChange(oldComments: oldComments, newComments: newComments)
+                    
+                    // 3. 数据变化后，滚动回锚点
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                         if let anchorId = currentAnchorId {
                             withAnimation(.none) {
@@ -203,11 +219,27 @@ struct CommentsListView: View {
         }
         .background(Color(.systemBackground).opacity(0.98)) // 添加轻微的背景色
         .onAppear {
+            print("🚀 CommentsListView 出现")
+            
             // 添加通知监听
             setupNotifications()
             
             // 从UserDefaults加载展开状态
             loadExpandedCommentsState()
+            
+            // 初始化点点动画状态
+            initializeWaveAnimationState()
+            
+            // 确保动画状态正确
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                print("🔍 再次检查动画状态")
+                
+                // 重新初始化动画状态
+                self.initializeWaveAnimationState()
+                
+                // 强制刷新视图
+                self.refreshID = UUID()
+            }
             
             // 初始刷新一次，确保视图正确显示
             refreshWithoutScrolling()
@@ -220,10 +252,10 @@ struct CommentsListView: View {
             NotificationCenter.default.removeObserver(self)
         }
         // 修复iOS 17中已弃用的onChange方法
-        .onChange(of: expandedComments) { _, _ in
-            // 当展开状态变化时保存
-            saveExpandedCommentsState()
-        }
+                        .onChange(of: expandedComments) { _, _ in
+                    // 当展开状态变化时保存
+                    saveExpandedCommentsState()
+                }
         // 恢复视图ID，但不使用refreshID，避免不必要的视图重建
         .id("comments_list_view_\(storageKey)")
     }
@@ -249,6 +281,251 @@ struct CommentsListView: View {
                 print("❌ 加载展开状态失败: \(error)")
             }
         }
+    }
+    
+    // 初始化点点动画状态 - 回归第一性原理：动画只显示在当前用户没有收到回复的评论上
+    private func initializeWaveAnimationState() {
+        print("🔄 初始化动画状态")
+        
+        // 获取当前用户名列表（可能的用户标识）
+        let currentUserNames = ["当前用户", "科学爱好者"]
+        let currentUserId = UserDefaults.standard.string(forKey: "current_user_id") ?? ""
+        
+        // 创建一个映射，记录所有已收到回复的评论ID
+        var commentIdsWithReplies = Set<UUID>()
+        
+        // 创建一个集合，记录所有当前用户的评论ID
+        var currentUserCommentIds = Set<UUID>()
+        
+        // 创建一个集合，记录所有虚拟角色的评论ID
+        var virtualCharacterCommentIds = Set<UUID>()
+        
+        // 第一步：递归找出所有已收到回复的评论ID、当前用户的评论ID和虚拟角色的评论ID
+        func processComments(comments: [DetailedCommentModel]) {
+            for comment in comments {
+                // 记录虚拟角色的评论
+                if comment.isVirtualCharacter {
+                    virtualCharacterCommentIds.insert(comment.id)
+                }
+                
+                // 记录当前用户的评论（确保不是虚拟角色）
+                if !comment.isVirtualCharacter && 
+                   (comment.isCurrentUser || 
+                    currentUserNames.contains(comment.username) || 
+                    comment.userId == currentUserId) {
+                    currentUserCommentIds.insert(comment.id)
+                }
+                
+                // 如果评论有回复，记录评论ID
+                if !comment.replies.isEmpty {
+                    commentIdsWithReplies.insert(comment.id)
+                    
+                    // 递归处理回复
+                    processComments(comments: comment.replies)
+                }
+                
+                // 记录所有被回复的评论ID
+                for reply in comment.replies {
+                    if let parentId = reply.parentCommentId {
+                        commentIdsWithReplies.insert(parentId)
+                    }
+                    
+                    // 检查是否有人回复了这个回复
+                    let hasReplies = comment.replies.contains { otherReply in
+                        otherReply.parentCommentId == reply.id || 
+                        (otherReply.replyToUsername == reply.username && 
+                         otherReply.datePosted > reply.datePosted)
+                    }
+                    
+                    if hasReplies {
+                        commentIdsWithReplies.insert(reply.id)
+                    }
+                }
+            }
+        }
+        
+        // 处理所有评论
+        processComments(comments: comments)
+        
+        // 第二步：确定哪些评论需要显示动画
+        // 先清空之前的状态
+        commentsWithWaveAnimation.removeAll()
+        
+        // 对于每个当前用户的评论，如果没有收到回复且不是虚拟角色，则添加到动画集合
+        for commentId in currentUserCommentIds {
+            // 确保不是虚拟角色的评论
+            if !virtualCharacterCommentIds.contains(commentId) && !commentIdsWithReplies.contains(commentId) {
+                print("✅ 添加评论到动画集合: \(commentId)")
+                commentsWithWaveAnimation.insert(commentId)
+            } else if virtualCharacterCommentIds.contains(commentId) {
+                print("❌ 虚拟角色评论，不添加到动画集合: \(commentId)")
+            } else if commentIdsWithReplies.contains(commentId) {
+                print("❌ 评论已有回复，不添加到动画集合: \(commentId)")
+            }
+        }
+        
+        // 第三步：确保最新发送的评论总是显示动画，直到收到回复
+        // 找出最新发送的当前用户评论
+        var latestUserComments: [DetailedCommentModel] = []
+        
+        func findLatestUserComments(in commentsList: [DetailedCommentModel]) {
+            for comment in commentsList {
+                // 只添加非虚拟角色的当前用户评论
+                if !comment.isVirtualCharacter && 
+                   (comment.isCurrentUser || 
+                    currentUserNames.contains(comment.username) || 
+                    comment.userId == currentUserId) {
+                    latestUserComments.append(comment)
+                }
+                
+                // 递归查找回复中的用户评论
+                findLatestUserComments(in: comment.replies)
+            }
+        }
+        
+        findLatestUserComments(in: comments)
+        
+        // 按时间排序，最新的在前面
+        latestUserComments.sort { $0.datePosted > $1.datePosted }
+        
+        // 确保最新的几条评论都显示动画，除非已经有回复
+        for comment in latestUserComments.prefix(5) { // 最多显示最近5条评论的动画
+            // 确保不是虚拟角色的评论
+            if !virtualCharacterCommentIds.contains(comment.id) && !commentIdsWithReplies.contains(comment.id) {
+                commentsWithWaveAnimation.insert(comment.id)
+                print("✅ 添加最新评论到动画集合: \(comment.id)")
+            }
+        }
+        
+        // 最后一步：确保虚拟角色的评论永远不会显示动画
+        commentsWithWaveAnimation = commentsWithWaveAnimation.filter { !virtualCharacterCommentIds.contains($0) }
+        
+        print("🔄 动画状态初始化完成，共\(commentsWithWaveAnimation.count)个评论需要显示动画")
+    }
+    
+    // 检查新增的虚拟角色回复
+
+    
+    // 处理回复通知 - 增强版本
+    private func handleReplyNotification(isVirtualCharacterReply: Bool, replyToUsername: String?, parentCommentId: UUID?) {
+        print("🔄 收到回复通知")
+        
+        // 无论是什么类型的回复，都应该移除被回复评论的动画
+        if let commentId = parentCommentId {
+            commentsWithWaveAnimation.remove(commentId)
+            print("✅ 移除被回复评论ID=\(commentId)的动画")
+        }
+        
+        // 如果有回复目标用户名，移除该用户的所有评论动画
+        if let username = replyToUsername {
+            // 递归查找并移除该用户名的所有评论动画
+            func removeAnimationForUsername(in commentsList: [DetailedCommentModel]) {
+                for comment in commentsList {
+                    if comment.username == username {
+                        // 确保不是虚拟角色的评论
+                        if !comment.isVirtualCharacter {
+                            commentsWithWaveAnimation.remove(comment.id)
+                            print("✅ 移除用户\(username)的评论动画: \(comment.id)")
+                        }
+                    }
+                    
+                    // 递归处理回复
+                    removeAnimationForUsername(in: comment.replies)
+                }
+            }
+            
+            removeAnimationForUsername(in: comments)
+        }
+        
+        // 重新初始化动画状态，确保一致性
+        initializeWaveAnimationState()
+    }
+    
+    // 处理评论数据变化
+    private func handleCommentsChange(oldComments: [DetailedCommentModel], newComments: [DetailedCommentModel]) {
+        print("🔄 评论数据变化")
+        
+        // 检查是否有新的回复
+        for newComment in newComments {
+            // 找到对应的旧评论
+            if let oldComment = oldComments.first(where: { $0.id == newComment.id }) {
+                // 如果回复数量增加了，说明有新回复
+                if newComment.replies.count > oldComment.replies.count {
+                    print("📝 检测到评论ID=\(newComment.id)有新回复")
+                    
+                    // 立即移除该评论的动画
+                    commentsWithWaveAnimation.remove(newComment.id)
+                    print("✅ 移除评论ID=\(newComment.id)的动画")
+                    
+                    // 找出新增的回复
+                    let newReplies = newComment.replies.filter { newReply in
+                        !oldComment.replies.contains { $0.id == newReply.id }
+                    }
+                    
+                    // 处理新回复，特别是虚拟角色回复
+                    for newReply in newReplies {
+                        // 如果有回复目标评论ID，移除该评论的动画
+                        if let parentId = newReply.parentCommentId {
+                            commentsWithWaveAnimation.remove(parentId)
+                            print("✅ 移除被回复评论ID=\(parentId)的动画")
+                        }
+                        
+                        // 如果有回复目标用户名，移除该用户的所有评论动画
+                        if let replyToUsername = newReply.replyToUsername {
+                            // 移除所有该用户名的评论动画
+                            for comment in comments {
+                                if comment.username == replyToUsername {
+                                    commentsWithWaveAnimation.remove(comment.id)
+                                    print("✅ 移除用户\(replyToUsername)的评论动画: \(comment.id)")
+                                }
+                                
+                                for reply in comment.replies where reply.username == replyToUsername {
+                                    commentsWithWaveAnimation.remove(reply.id)
+                                    print("✅ 移除用户\(replyToUsername)的回复动画: \(reply.id)")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 重新初始化动画状态
+        initializeWaveAnimationState()
+    }
+    
+    // 更新点点动画状态 - 当有新回复时调用
+    private func updateWaveAnimationState(forCommentWithReply commentId: UUID) {
+        print("🔍 尝试更新评论ID: \(commentId) 的动画状态")
+        print("🔍 更新前动画集合: \(commentsWithWaveAnimation)")
+        
+        // 如果评论在动画集合中，将其移除
+        if commentsWithWaveAnimation.contains(commentId) {
+            commentsWithWaveAnimation.remove(commentId)
+            print("✅ 已从动画集合中移除评论ID: \(commentId)")
+        } else {
+            print("⚠️ 评论ID: \(commentId) 不在动画集合中")
+            
+            // 尝试查找评论
+            if let comment = findComment(id: commentId, in: self.comments) {
+                print("🔍 找到评论: \(comment.username)")
+                
+                // 判断是否是当前用户评论
+                let currentUserId = UserDefaults.standard.string(forKey: "current_user_id") ?? ""
+                let isCurrentUser = comment.userId == currentUserId || comment.isCurrentUser
+                print("🔍 是当前用户评论: \(isCurrentUser)")
+                
+                // 如果是当前用户的评论，强制移除动画
+                if isCurrentUser {
+                    commentsWithWaveAnimation.remove(commentId)
+                    print("✅ 强制移除当前用户评论的动画")
+                }
+            } else {
+                print("❌ 未找到评论ID: \(commentId)")
+            }
+        }
+        
+        print("🔍 更新后动画集合: \(commentsWithWaveAnimation)")
     }
     
     // 递归查找评论
@@ -303,6 +580,9 @@ struct CommentsListView: View {
             // 先保存展开状态
             self.saveExpandedCommentsState()
             
+            // 强制刷新动画状态
+            self.initializeWaveAnimationState()
+            
             // 更新refreshID，触发视图内部更新
             self.refreshID = UUID()
             
@@ -322,6 +602,27 @@ struct CommentsListView: View {
         
         // 保存展开状态
         saveExpandedCommentsState()
+        
+        // 查找评论对象
+        func findComment(id: UUID, in comments: [DetailedCommentModel]) -> DetailedCommentModel? {
+            for comment in comments {
+                if comment.id == id {
+                    return comment
+                }
+                if let found = findComment(id: id, in: comment.replies) {
+                    return found
+                }
+            }
+            return nil
+        }
+        
+        // 如果能找到评论，且不是虚拟角色的评论，则添加动画
+        if let comment = findComment(id: commentId, in: comments), !comment.isVirtualCharacter {
+            commentsWithWaveAnimation.insert(commentId)
+            print("✅ 为新发送的评论添加动画: \(commentId)")
+        } else {
+            print("❌ 未找到评论或是虚拟角色评论，不添加动画: \(commentId)")
+        }
         
         // 使用特殊的刷新方法，避免导致滚动
         refreshWithoutScrolling()
@@ -486,13 +787,45 @@ struct CommentsListView: View {
                 
                 // 检查是否有新评论ID，如果有则确保其父评论展开
                 if let newCommentIdString = notification.userInfo?["newCommentId"] as? String,
-                   let newCommentId = UUID(uuidString: newCommentIdString),
-                   let parentCommentIdString = notification.userInfo?["parentCommentId"] as? String,
-                   let parentCommentId = UUID(uuidString: parentCommentIdString),
-                   !noAutoExpand {
-                    // 确保父评论展开
-                    self.expandedComments.insert(parentCommentId)
-                    self.saveExpandedCommentsState()
+                   let newCommentId = UUID(uuidString: newCommentIdString) {
+                    
+                    // 检查新评论是否是当前用户的评论，以及是否是虚拟角色
+                    let isCurrentUserComment = notification.userInfo?["isCurrentUserComment"] as? Bool ?? false
+                    let isVirtualCharacter = notification.userInfo?["isVirtualCharacter"] as? Bool ?? false
+                    
+                    // 如果是当前用户的评论，且不是虚拟角色，添加到动画集合
+                    if isCurrentUserComment && !isVirtualCharacter {
+                        self.commentsWithWaveAnimation.insert(newCommentId)
+                        print("✅ 为当前用户的新评论添加动画: \(newCommentId)")
+                    } else if isVirtualCharacter {
+                        print("❌ 虚拟角色评论，不添加动画: \(newCommentId)")
+                    }
+                    
+                    // 如果有父评论ID，确保父评论展开
+                    if let parentCommentIdString = notification.userInfo?["parentCommentId"] as? String,
+                       let parentCommentId = UUID(uuidString: parentCommentIdString),
+                       !noAutoExpand {
+                        // 确保父评论展开
+                        self.expandedComments.insert(parentCommentId)
+                        self.saveExpandedCommentsState()
+                        
+                        // 打印调试信息
+                        print("🔄 收到新评论通知 - 父评论ID: \(parentCommentId), 新评论ID: \(newCommentId)")
+                        print("🔄 当前动画状态集合: \(self.commentsWithWaveAnimation)")
+                        
+                        // 检查新评论是否是虚拟角色的回复
+                        let isVirtualCharacterReply = notification.userInfo?["isVirtualCharacter"] as? Bool ?? false
+                        
+                        // 处理回复通知
+                        self.handleReplyNotification(
+                            isVirtualCharacterReply: isVirtualCharacterReply,
+                            replyToUsername: notification.userInfo?["replyToUsername"] as? String,
+                            parentCommentId: parentCommentId
+                        )
+                    } else {
+                        // 如果是顶级评论，重新初始化动画状态
+                        self.initializeWaveAnimationState()
+                    }
                     
                     // 如果没有指定滚动到的评论ID，则默认滚动到新评论
                     if scrollToCommentId == nil && !preventScroll {
@@ -502,6 +835,11 @@ struct CommentsListView: View {
                 
                 // 立即执行，不使用延迟
                 if shouldKeepState && preserveExpandState {
+                    // 重新初始化动画状态
+                    self.initializeWaveAnimationState()
+                    print("🔄 通知触发 - 重新初始化动画状态")
+                    print("🔄 初始化后动画集合: \(self.commentsWithWaveAnimation)")
+                    
                     // 只刷新视图，不修改展开状态
                     if preventScroll {
                         if immediateDisplay {
@@ -641,6 +979,9 @@ struct CommentThreadView: View {
     let replyAction: (UUID) -> Void
     let onLike: (UUID) -> Void
     
+    // 添加对动画状态的绑定
+    @Binding var commentsWithWaveAnimation: Set<UUID>
+    
     @State private var likedComments = Set<UUID>()
     
     // 添加一个状态变量用于控制视图刷新
@@ -666,6 +1007,20 @@ struct CommentThreadView: View {
                     toggleLike(for: comment.id)
                 }
             )
+            
+            // 虫洞波浪动画：移出CommentItemView，直接作为CommentThreadView的子视图
+            // 只有当评论ID在动画状态集合中时才显示动画
+            if self.commentsWithWaveAnimation.contains(comment.id) && !comment.isVirtualCharacter {
+                WormholeWaveView(
+                    id: comment.id,
+                    isNestedReply: false
+                )
+                .padding(.top, 4)
+                .id("main_wave_\(comment.id)")
+                .onAppear {
+                    print("🎬 显示评论ID=\(comment.id)的动画")
+                }
+            }
             
             // 显示回复 - 只保留一层嵌套
             if expandedComments.contains(comment.id) && !comment.replies.isEmpty {
@@ -698,6 +1053,19 @@ struct CommentThreadView: View {
                         )
                         .transition(.opacity) // 添加过渡动画
                         .id("reply_\(reply.id)") // 为每个回复添加固定ID
+                        
+                        // 为嵌套回复添加虫洞波浪动画
+                        // 只有当评论ID在动画状态集合中时才显示动画，且不是虚拟角色
+                        if self.commentsWithWaveAnimation.contains(reply.id) && !reply.isVirtualCharacter {
+                            WormholeWaveView(
+                                id: reply.id,
+                                isNestedReply: true
+                            )
+                            .transition(.opacity)
+                            .onAppear {
+                                print("🎬 显示回复ID=\(reply.id)的动画")
+                            }
+                        }
                     }
                 }
                 .padding(.vertical, 6) // 增加垂直间距
@@ -1017,12 +1385,17 @@ struct CommentItemView: View {
                         .padding(.vertical, 4) // 从6减小到4
                     }
                     .padding(.top, 6) // 从10减小到6
+                    
+                    // 点点动画：只在当前用户评论且没有虚拟角色回复时显示，放在交互按钮下方
+                    // 移除这里的动画，避免重复显示
                 }
                 .frame(maxWidth: .infinity, alignment: .leading) // 确保内容区域正确布局
             }
             .padding(.horizontal, 20) // 增加水平间距
             .padding(.vertical, 12) // 增加垂直间距
             .frame(maxWidth: .infinity) // 确保整个HStack占满宽度
+            
+            // 删除重复的动画，避免多个点点同时显示
         }
         .background(Color(.systemBackground).opacity(0.5))
         .contentShape(Rectangle())
@@ -1082,6 +1455,43 @@ struct CategoryBadge: View {
             .background(color.opacity(0.12))
             .foregroundColor(color)
             .cornerRadius(4)
+    }
+}
+
+/**
+ * 虫洞波浪动画组件
+ */
+struct WormholeWaveView: View {
+    @State private var isAnimating = false
+    
+    // 添加一个ID属性，确保每个动画实例都是唯一的
+    var id = UUID()
+    
+    // 添加是否是嵌套回复的参数
+    var isNestedReply: Bool = false
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<3) { index in
+                Circle()
+                    .fill(Color(.systemGray3))
+                    .frame(width: 5, height: 5)
+                    .scaleEffect(isAnimating ? 1.4 : 1.0)
+                    .opacity(isAnimating ? 1.0 : 0.6)
+                    .animation(
+                        Animation.easeInOut(duration: 1.0)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(index) * 0.15),
+                        value: isAnimating
+                    )
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.top, 4)
+        .padding(.horizontal, isNestedReply ? 0 : -20) // 嵌套回复不需要负边距
+        .frame(maxWidth: isNestedReply ? .infinity : UIScreen.main.bounds.width, alignment: .center) // 嵌套回复不需要强制宽度
+        .onAppear { isAnimating = true }
+        .id("wave_\(id)") // 确保每个动画实例都有唯一ID
     }
 }
 
@@ -1165,7 +1575,8 @@ struct CommentThreadView_Previews: PreviewProvider {
             comment: comment,
             expandedComments: .constant(Set<UUID>()),  // 添加展开状态绑定
             replyAction: { _ in },
-            onLike: { _ in }
+            onLike: { _ in },
+            commentsWithWaveAnimation: .constant(Set<UUID>())  // 添加动画状态绑定
         )
         .padding()
         .previewLayout(.fixed(width: 375, height: 200))
