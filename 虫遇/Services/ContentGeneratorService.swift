@@ -551,7 +551,7 @@ class ContentGeneratorService {
                                             id: commentId.uuidString,
                                             characterId: commenter?.id ?? "unknown",
                                             characterName: commenter?.name ?? commentData.character,
-                                            characterAvatar: commenter?.avatarName ?? "default_avatar",
+                                            characterAvatar: commenter?.avatarName ?? "person.circle.fill",
                                             characterRole: commenter?.primaryField ?? "unknown",
                                             content: commentData.comment,
                                             timestamp: timestamp,
@@ -843,7 +843,7 @@ public struct CommentItem {
         self.id = id.uuidString
         self.characterId = characterId
         self.characterName = characterName
-        self.characterAvatar = characterAvatar
+        self.characterAvatar = characterAvatar ?? "person.circle.fill"
         self.characterRole = characterRole
         self.content = content
         self.timestamp = timestamp
@@ -855,7 +855,7 @@ public struct CommentItem {
         self.id = id
         self.characterId = characterId
         self.characterName = characterName
-        self.characterAvatar = characterAvatar
+        self.characterAvatar = characterAvatar ?? "person.circle.fill"
         self.characterRole = characterRole
         self.content = content
         self.timestamp = timestamp

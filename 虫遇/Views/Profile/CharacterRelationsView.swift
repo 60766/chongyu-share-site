@@ -182,6 +182,66 @@ struct RelationNetworkView: View {
         )
     }
     
+    // 计算关系连线
+    private func relationLines() -> some View {
+        ForEach(relations.indices, id: \.self) { index in
+            if !relations.isEmpty {
+                let angle = Double(index) * (2 * .pi / Double(relations.count))
+                let nextAngle = Double((index + 1) % relations.count) * (2 * .pi / Double(relations.count))
+                
+                Path { path in
+                    let start = calculatePoint(angle: angle)
+                    let end = calculatePoint(angle: nextAngle)
+                    
+                    path.move(to: start)
+                    path.addLine(to: end)
+                }
+                .stroke(
+                    relations[index].relationColor.opacity(0.3),
+                    lineWidth: 2
+                )
+            }
+        }
+    }
+    
+    // 计算角色头像
+    private func characterAvatars() -> some View {
+        ForEach(relations.indices, id: \.self) { index in
+            if !relations.isEmpty {
+                let angle = Double(index) * (2 * .pi / Double(relations.count))
+                let offset = calculatePoint(angle: angle)
+                
+                Avatar(
+                    url: relations[index].character.avatar,
+                    name: relations[index].character.name,
+                    size: 40
+                )
+                .offset(x: offset.x - centerPoint.x, y: offset.y - centerPoint.y)
+                .scaleEffect(isAnimating ? 1.0 : 0.8)
+                .animation(
+                    Animation.spring(response: 0.5, dampingFraction: 0.6)
+                        .delay(Double(index) * 0.1),
+                    value: isAnimating
+                )
+            }
+        }
+    }
+    
+    // 中心用户头像
+    private func centerAvatar() -> some View {
+        Circle()
+            .fill(Color.white)
+            .frame(width: 60, height: 60)
+            .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(Color(hex: "4371E5"))
+            )
+            .scaleEffect(isAnimating ? 1.0 : 0.5)
+            .animation(.spring(response: 0.6, dampingFraction: 0.6), value: isAnimating)
+    }
+    
     var body: some View {
         ZStack {
             // 背景
@@ -190,54 +250,13 @@ struct RelationNetworkView: View {
                 .frame(width: 180, height: 180)
             
             // 关系连线
-            ForEach(relations.indices, id: \.self) { index in
-                if !relations.isEmpty {
-                    let angle = Double(index) * (2 * .pi / Double(relations.count))
-                    let nextAngle = Double((index + 1) % relations.count) * (2 * .pi / Double(relations.count))
-                    
-                    Path { path in
-                        let start = calculatePoint(angle: angle)
-                        let end = calculatePoint(angle: nextAngle)
-                        
-                        path.move(to: start)
-                        path.addLine(to: end)
-                    }
-                    .stroke(
-                        relations[index].relationColor.opacity(0.3),
-                        lineWidth: 2
-                    )
-                }
-            }
+            relationLines()
             
             // 角色头像
-            ForEach(relations.indices, id: \.self) { index in
-                if !relations.isEmpty {
-                    let angle = Double(index) * (2 * .pi / Double(relations.count))
-                    let offset = calculatePoint(angle: angle)
-                    
-                    AvatarView(imageName: relations[index].character.avatar)
-                        .offset(x: offset.x - centerPoint.x, y: offset.y - centerPoint.y)
-                        .scaleEffect(isAnimating ? 1.0 : 0.8)
-                        .animation(
-                            Animation.spring(response: 0.5, dampingFraction: 0.6)
-                                .delay(Double(index) * 0.1),
-                            value: isAnimating
-                        )
-                }
-            }
+            characterAvatars()
             
             // 中心用户头像
-            Circle()
-                .fill(Color.white)
-                .frame(width: 60, height: 60)
-                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-                .overlay(
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(Color(hex: "4371E5"))
-                )
-                .scaleEffect(isAnimating ? 1.0 : 0.5)
-                .animation(.spring(response: 0.6, dampingFraction: 0.6), value: isAnimating)
+            centerAvatar()
         }
         .onAppear {
             // 延迟一点开始动画，让它看起来更像是一个反应
@@ -263,8 +282,12 @@ struct RelationCardView: View {
     
     var body: some View {
         VStack(spacing: 8) {
-            // 角色头像
-            AvatarView(imageName: relation.character.avatar, size: 64)
+            // 角色头像 - 使用统一的Avatar组件
+            Avatar(
+                url: relation.character.avatar,
+                name: relation.character.name,
+                size: 64
+            )
             
             // 角色名称
             Text(relation.character.name)
@@ -355,7 +378,12 @@ struct RelationDetailView: View {
                     VStack(spacing: 20) {
                         // 角色信息
                         VStack(spacing: 16) {
-                            AvatarView(imageName: relation.character.avatar, size: 100)
+                            // 使用统一的Avatar组件
+                            Avatar(
+                                url: relation.character.avatar,
+                                name: relation.character.name,
+                                size: 100
+                            )
                             
                             Text(relation.character.name)
                                 .font(.system(size: 24, weight: .bold))

@@ -796,7 +796,7 @@ struct CommentInputView: View {
         CommentCharacter(id: "einstein", name: "爱因斯坦", category: .scientist),
         CommentCharacter(id: "shakespeare", name: "莎士比亚", category: .writer),
         CommentCharacter(id: "davinci", name: "达芬奇", category: .artist),
-        CommentCharacter(id: "confucius", name: "孔子", category: .philosopher),
+        CommentCharacter(id: "kongzi", name: "孔子", category: .philosopher),
         CommentCharacter(id: "curie", name: "居里夫人", category: .scientist),
         CommentCharacter(id: "newton", name: "牛顿", category: .scientist),
         CommentCharacter(id: "socrates", name: "苏格拉底", category: .philosopher),

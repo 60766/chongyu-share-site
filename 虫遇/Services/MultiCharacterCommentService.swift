@@ -734,4 +734,40 @@ class MultiCharacterCommentService {
             print("📣 已发送所有通知，批量评论内容已生成，批次ID: \(batchId)")
         }
     }
+
+    /**
+     * 创建评论
+     * @param content 评论内容
+     * @param id 角色ID
+     * @param name 角色名称
+     * @param parentCommentId 父评论ID
+     * @param replyToUsername 回复给谁
+     * @return 评论模型
+     */
+    private func createComment(content: String, id: String, name: String, parentCommentId: UUID? = nil, replyToUsername: String? = nil) -> DetailedCommentModel {
+        print("🔍 MultiCharacterCommentService.createComment - 创建评论 for id: \(id), name: \(name)")
+
+        // **核心修复**: 统一使用CharacterAvatarService获取头像路径
+        // 移除所有本地、硬编码的头像路径查找逻辑。
+        // 这是解决问题的关键，确保所有角色的头像都通过唯一的、正确的服务获取。
+        let avatarPath = CharacterAvatarService.shared.getAvatarName(for: id)
+        print("✅ 使用 CharacterAvatarService 获取头像路径: ID '\(id)' -> Path '\(avatarPath)'")
+        
+        let now = Date()
+        let newComment = DetailedCommentModel(
+            username: name,
+            userAvatar: avatarPath, // 使用从服务获取的正确路径
+            content: content,
+            datePosted: now,
+            isVirtualCharacter: true,
+            characterID: id, // 使用原始ID
+            parentCommentId: parentCommentId,
+            replyToUsername: replyToUsername,
+            likes: Int.random(in: 1...5)
+        )
+        
+        print("✅ 成功创建评论: \(name), 头像路径: \(avatarPath)")
+        
+        return newComment
+    }
 } 

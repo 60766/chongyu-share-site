@@ -287,11 +287,7 @@ struct FullscreenPostDetailView: View {
                                 // 用户信息区域
                                 HStack(spacing: 12) {
                                     // 头像
-                                    Image(nextPost.userAvatar)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 40, height: 40)
-                                        .clipShape(Circle())
+                                    CharacterAvatarSimple(nextPost.userAvatar, size: 40)
                                         .overlay(
                                             Circle()
                                                 .stroke(Color.gray.opacity(0.1), lineWidth: 1)
@@ -1990,18 +1986,10 @@ struct FullscreenPostDetailView: View {
     // 用户头像和信息区域
     private func makeUserInfoSection() -> some View {
         HStack(spacing: 12) {
-            // 用户头像
-            AsyncImage(url: URL(string: viewModel.post.userAvatar)) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Color.gray.opacity(0.2)
-            }
-            .frame(width: 42, height: 42)
-            .clipShape(Circle())
+            // 头像 - 使用我们统一的Avatar组件
+            Avatar(url: viewModel.post.userAvatar, size: 40)
             
-            // 用户名和发布时间
+            // 用户名和时间
             VStack(alignment: .leading, spacing: 4) {
                 Text(viewModel.post.username)
                     .font(.system(size: 15, weight: .medium))

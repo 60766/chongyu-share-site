@@ -5,6 +5,7 @@ import UIKit
 /**
  * 角色数据管理器
  * 负责加载、缓存和提供角色数据
+ * 遵循第一性原理：直接使用角色ID，不使用别名映射
  */
 class CharacterDataManager {
     // 单例实例
@@ -12,14 +13,6 @@ class CharacterDataManager {
     
     // 缓存的角色数据
     private var characterData: [String: [String: Any]] = [:]
-    
-    // ID别名映射 - 将别名映射到标准ID
-    private var idAliases: [String: String] = [
-        "goku": "sunwukong",    // 孙悟空的别名
-        "wukong": "sunwukong",  // 孙悟空的另一别名
-        "kongzi": "confucius",  // 孔子的别名
-        "leonardo": "davinci"   // 达芬奇的别名
-    ]
     
     // 初始化方法
     private init() {
@@ -58,21 +51,12 @@ class CharacterDataManager {
                 print("✅ 成功加载角色数据，共 \(characterData.count) 个角色")
                 
                 // 检查常用ID是否存在
-                let importantIds = ["einstein", "shakespeare", "sunwukong", "confucius", "davinci"]
+                let importantIds = ["einstein", "shakespeare", "sunwukong", "kongzi", "davinci"]
                 for id in importantIds {
                     if characterData[id] != nil {
                         print("✓ 角色存在: \(id)")
                     } else {
                         print("⚠️ 角色不存在: \(id)")
-                    }
-                }
-                
-                // 检查别名是否能正确映射
-                for (alias, standardId) in idAliases {
-                    if characterData[standardId] != nil {
-                        print("✓ 别名映射有效: \(alias) -> \(standardId)")
-                    } else {
-                        print("⚠️ 别名映射无效: \(alias) -> \(standardId)，找不到标准ID")
                     }
                 }
             }
@@ -100,12 +84,6 @@ class CharacterDataManager {
         
         // 直接查找
         character = characterData[lowercaseId]
-        
-        // 如果直接查找失败，尝试通过别名映射查找
-        if character == nil, let standardId = idAliases[lowercaseId] {
-            character = characterData[standardId]
-            print("🔄 通过别名映射查找角色: \(lowercaseId) -> \(standardId)")
-        }
         
         // 获取属性值
         if let value = character?[attribute] as? String {
@@ -158,15 +136,6 @@ class CharacterDataManager {
         
         return result
     }
-    
-    /**
-     * 添加ID别名映射
-     * @param alias 别名
-     * @param standardId 标准ID
-     */
-    func addIdAlias(alias: String, standardId: String) {
-        idAliases[alias.lowercased()] = standardId.lowercased()
-    }
 }
 
 /**
@@ -183,7 +152,70 @@ class VirtualCharacterService {
     }
     
     // MARK: - 私有属性
-    private init() {}
+    private init() {
+        print("✅ VirtualCharacterService: 初始化")
+        // 初始化时检查孔子角色
+        checkKongziCharacter()
+        // 在服务初始化时进行一些健康检查
+        performInitialHealthChecks()
+    }
+    
+    /**
+     * 检查孔子角色的配置
+     * 用于诊断孔子头像问题
+     */
+    private func checkKongziCharacter() {
+        print("🔍 检查孔子角色配置:")
+        
+        // 检查角色ID映射
+        let kongziName = getCharacterName(for: "kongzi")
+        print("✅ 孔子名称映射: kongzi -> \(kongziName)")
+        
+        // 检查头像路径
+        let avatarPath = "HistoricalFigures/kongzi"
+        if let _ = UIImage(named: avatarPath) {
+            print("✅ 孔子头像可用: \(avatarPath)")
+        } else {
+            print("❌ 孔子头像不可用: \(avatarPath)")
+            
+            // 检查直接路径
+            if let _ = UIImage(named: "kongzi") {
+                print("✅ 直接路径可用: kongzi")
+            } else {
+                print("❌ 直接路径不可用: kongzi")
+            }
+        }
+        
+        // 检查资源目录
+        if let resourcePath = Bundle.main.resourcePath {
+            print("📁 资源路径: \(resourcePath)")
+            
+            // 检查是否存在HistoricalFigures目录
+            let historicalPath = resourcePath + "/HistoricalFigures"
+            let fileManager = FileManager.default
+            if fileManager.fileExists(atPath: historicalPath) {
+                print("✅ HistoricalFigures目录存在")
+                
+                // 检查孔子图片是否存在
+                let kongziPath = historicalPath + "/kongzi.png"
+                if fileManager.fileExists(atPath: kongziPath) {
+                    print("✅ 孔子图片存在于: \(kongziPath)")
+                } else {
+                    print("❌ 孔子图片不存在于: \(kongziPath)")
+                }
+                
+                // 尝试列出目录内容
+                do {
+                    let files = try fileManager.contentsOfDirectory(atPath: historicalPath)
+                    print("📋 HistoricalFigures目录内容: \(files)")
+                } catch {
+                    print("❌ 无法列出HistoricalFigures目录内容: \(error)")
+                }
+            } else {
+                print("❌ HistoricalFigures目录不存在")
+            }
+        }
+    }
     
     // 核心组件
     private let semanticProcessor = SemanticProcessor()
@@ -568,7 +600,7 @@ class VirtualCharacterService {
                     5. 使用日常语言，不要故意表现得很科学
                     6. 像普通人一样自然回复简短评论
                     """
-                case "confucius":
+                case "kongzi":
                     characterGuidance = """
                     
                     你是孔子，但请注意：
@@ -693,7 +725,8 @@ class VirtualCharacterService {
         // 验证角色ID
         for characterID in validCharacterIDs {
             let characterName = getCharacterName(for: characterID)
-            let characterAvatar = getCharacterAvatar(for: characterID)
+            // 使用我们修复过的CharacterAvatarService
+            let characterAvatar = CharacterAvatarService.shared.getAvatarName(for: characterID)
             print("👤 邀请角色: ID=\(characterID), 名称=\(characterName), 头像=\(characterAvatar)")
         }
         
@@ -827,9 +860,10 @@ class VirtualCharacterService {
         
         // 获取角色信息
         let characterName = getCharacterName(for: finalCharacterID)
-        let characterAvatar = getCharacterAvatar(for: finalCharacterID)
+        // 使用我们修复过的CharacterAvatarService
+        let characterAvatar = CharacterAvatarService.shared.getAvatarName(for: finalCharacterID)
         
-        print("\n📝 API测试: 生成虚拟角色评论")
+        print("\n�� API测试: 生成虚拟角色评论")
         print("🔹 使用角色ID: \(finalCharacterID)")
         print("🔹 角色名称: \(characterName)")
         print("🔹 角色头像: \(characterAvatar)")
@@ -873,7 +907,8 @@ class VirtualCharacterService {
                                     let replyComment = DetailedCommentModel(
                                         id: UUID(),
                                         username: self.getCharacterName(for: finalCharacterID),
-                                        userAvatar: self.getCharacterAvatar(for: finalCharacterID),
+                                        // 使用我们修复过的CharacterAvatarService
+                                        userAvatar: CharacterAvatarService.shared.getAvatarName(for: finalCharacterID),
                                         content: commentContent,
                                         datePosted: Date(),
                                         isVirtualCharacter: true,
@@ -910,7 +945,8 @@ class VirtualCharacterService {
                                     let newComment = DetailedCommentModel(
                                         id: UUID(),
                                         username: self.getCharacterName(for: finalCharacterID),
-                                        userAvatar: self.getCharacterAvatar(for: finalCharacterID),
+                                        // 使用我们修复过的CharacterAvatarService
+                                        userAvatar: CharacterAvatarService.shared.getAvatarName(for: finalCharacterID),
                                         content: commentContent,
                                         datePosted: Date(),
                                         isVirtualCharacter: true,
@@ -961,15 +997,8 @@ class VirtualCharacterService {
      * @return 角色头像系统图标名称
      */
     private func getCharacterAvatar(for characterID: String) -> String {
-        // 首先尝试从角色数据管理器中获取
-        if let avatar = characterDataManager.getAvatarName(for: characterID) {
-            print("✅ 从CharacterDataManager获取头像: \(characterID) -> \(avatar)")
-            return avatar
-        }
-        
-        // 如果找不到角色数据，返回默认头像
-        print("⚠️ 未找到角色ID \(characterID) 对应的头像，返回默认头像")
-        return "person.circle.fill"
+        // 这个方法现在已经过时，可以直接调用CharacterAvatarService.shared.getAvatarName
+        return CharacterAvatarService.shared.getAvatarName(for: characterID)
     }
     
     /**
@@ -983,7 +1012,7 @@ class VirtualCharacterService {
             "einstein": "爱因斯坦",
             "shakespeare": "莎士比亚", 
             "davinci": "达芬奇",
-            "confucius": "孔子",
+            "kongzi": "孔子",
             "curie": "居里夫人",
             "libai": "李白",
             "newton": "牛顿",
@@ -1046,6 +1075,12 @@ class VirtualCharacterService {
         // 先检查是否有中文名称映射
         if let chineseName = characterNames[characterID.lowercased()] {
             print("✅ 使用中文名称映射: \(characterID) -> \(chineseName)")
+            
+            // 特殊处理孔子
+            if characterID.lowercased() == "kongzi" {
+                print("🔍 特殊处理孔子名称 - 返回中文名称: 孔子")
+            }
+            
             return chineseName
         }
         
@@ -1231,6 +1266,18 @@ class VirtualCharacterService {
         
         print("📋 构建批量提示词，包含\(characterIDs.count)个角色")
         return prompt
+    }
+    
+    // 在服务初始化时进行一些健康检查
+    private func performInitialHealthChecks() {
+        // 检查一些重要的角色数据是否能正确加载
+        let importantIds = ["einstein", "shakespeare", "sunwukong", "davinci"]
+        for id in importantIds {
+            let name = getCharacterName(for: id)
+            if name == id {
+                print("⚠️ 健康检查警告: 角色 \(id) 可能缺少中文名称映射。")
+            }
+        }
     }
 }
 

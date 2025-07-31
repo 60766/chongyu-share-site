@@ -28,7 +28,7 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         "莎士比亚": ["克里斯托弗·马洛", "本·琼森", "约翰·弥尔顿", "狄更斯", "奥斯卡·王尔德", "托尔斯泰", "陀思妥耶夫斯基", "马尔克斯", "鲁迅"],
         "大仲马": ["小仲马", "雨果", "巴尔扎克"],
         "鲁迅": ["莎士比亚", "果戈里", "陀思妥耶夫斯基", "托尔斯泰", "莫泊桑", "王小波"],
-        "刘慈欣": ["阿西莫夫", "克拉克", "特德·姜", "王小波", "道格拉斯·亚当斯"],
+
         "博尔赫斯": ["马尔克斯", "卡尔维诺", "科塔萨尔", "略萨", "莎士比亚"],
         "夏洛克·福尔摩斯": ["华生", "莫里亚蒂", "艾琳·艾德勒", "柯南·道尔", "博尔赫斯"],
         "三毛": ["张爱玲", "琼瑶", "席慕蓉", "余光中", "林清玄", "簡媜"],
@@ -36,7 +36,7 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         "马尔克斯": ["博尔赫斯", "略萨", "聂鲁达", "卡夫卡", "福克纳", "海明威", "莎士比亚"],
         "卡夫卡": ["陀思妥耶夫斯基", "托马斯·曼", "马尔克斯", "加缪", "博尔赫斯", "米兰·昆德拉"],
         "海明威": ["菲茨杰拉德", "福克纳", "马尔克斯", "村上春树", "托尔斯泰", "王小波"],
-        "王小波": ["鲁迅", "卡夫卡", "加缪", "博尔赫斯", "海明威", "刘慈欣"],
+        "王小波": ["鲁迅", "卡夫卡", "加缪", "博尔赫斯", "海明威"],
         "伍尔夫": ["乔伊斯", "福克纳", "普鲁斯特", "伍迪·艾伦", "波伏娃", "张爱玲", "陀思妥耶夫斯基"],
         
         // 科学家关系 - 同领域或有合作/影响的科学家
@@ -1138,7 +1138,7 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
             "爱因斯坦": "einstein",
             "莎士比亚": "shakespeare",
             "达芬奇": "davinci",
-            "孔子": "confucius",
+            "孔子": "kongzi",
             "居里夫人": "curie",
             "李白": "libai",
             "牛顿": "newton",
@@ -1172,6 +1172,45 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
             .replacingOccurrences(of: " ", with: "_")
         
         return pinyin
+    }
+    
+    /**
+     * 根据角色名称获取角色ID
+     * @param name 角色名称
+     * @return 角色ID
+     */
+    func getCharacterIdByName(_ name: String) -> String? {
+        print("🔍 HistoricalFigureSelectionViewModel.getCharacterIdByName - 名称: \(name)")
+        
+        // 中文名称到ID的映射
+        let nameToId: [String: String] = [
+            "爱因斯坦": "einstein",
+            "莎士比亚": "shakespeare",
+            "达芬奇": "davinci",
+            "孔子": "kongzi",  // 确保使用kongzi而不是confucius
+            "居里夫人": "curie",
+            "李白": "libai",
+            "牛顿": "newton",
+            "福尔摩斯": "holmes",
+            "孙悟空": "sunwukong"
+        ]
+        
+        // 检查是否有直接映射
+        if let id = nameToId[name] {
+            print("✅ 找到名称映射: \(name) -> \(id)")
+            return id
+        }
+        
+        // 如果没有直接映射，尝试在角色列表中查找
+        for character in allCharacters {
+            if character.name == name {
+                print("✅ 在角色列表中找到: \(name) -> \(character.id)")
+                return character.id
+            }
+        }
+        
+        print("⚠️ 未找到名称映射: \(name)")
+        return nil
     }
 }
 

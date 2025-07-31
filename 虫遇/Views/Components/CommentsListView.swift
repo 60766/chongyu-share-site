@@ -1,5 +1,8 @@
 import SwiftUI
 
+// 使用内部自定义Avatar组件
+// import Avatar 不需要导入，因为是同一个模块内的组件
+
 /**
  * 获取角色对应的颜色 - 工具函数
  */
@@ -10,7 +13,7 @@ func getCharacterColor(for id: String) -> Color {
     case "davinci": return .green
     case "goku", "sunwukong", "naruto": return .orange
     case "holmes": return .indigo
-    case "confucius": return .green
+    case "kongzi": return .green
     case "libai": return .orange
     case "newton": return .teal
     default: return .teal
@@ -25,7 +28,7 @@ func getCharacterCategory(for id: String) -> String {
     case "einstein": return "科学家"
     case "shakespeare": return "文学家"
     case "davinci": return "艺术家"
-    case "confucius": return "哲学家"
+    case "kongzi": return "哲学家"
     case "libai": return "诗人"
     case "newton": return "科学家"
     case "goku", "sunwukong", "naruto": return "动漫角色"
@@ -46,7 +49,7 @@ func getTagColor(for characterID: String?) -> Color {
     case "davinci": return .green
     case "goku", "sunwukong", "naruto": return .orange
     case "holmes": return .indigo
-    case "confucius": return .green
+    case "kongzi": return .green
     case "libai": return .orange
     case "newton": return .teal
     default: return .teal
@@ -63,7 +66,7 @@ func getCharacterTag(for characterID: String?) -> String {
     case "einstein", "newton": return "科学家"
     case "shakespeare", "libai": return "文学家"
     case "davinci": return "艺术家"
-    case "confucius": return "哲学家"
+    case "kongzi": return "哲学家"
     case "goku", "sunwukong", "naruto": return "动漫角色"
     case "holmes": return "小说人物"
     default: return "历史人物"
@@ -969,6 +972,24 @@ struct CommentsListView: View {
             self.initializeWaveAnimationState()
         }
     }
+    
+    // 根据角色ID获取类别
+    private func getCategoryForCharacter(_ characterID: String) -> String {
+        // 简单分类，可以根据需要扩展
+        if ["kongzi", "laozi", "zhuangzi", "aristotle", "kant", "freud", "jung"].contains(characterID) {
+            return "philosopher"
+        } else if ["shakespeare", "hamlet", "macbeth", "don_quixote", "raskolnikov", "jean_valjean", "anna_karenina", "gatsby"].contains(characterID) {
+            return "literature"
+        } else if ["hermione", "harry_potter", "daenerys", "doctor", "joker", "gollum"].contains(characterID) {
+            return "fiction"
+        } else if ["yuefei", "caocao", "caesar", "genghis", "alexander", "cleopatra", "ayuwang"].contains(characterID) {
+            return "historical"
+        } else if ["einstein", "curie", "hawking", "darwin"].contains(characterID) {
+            return "scientist"
+        } else {
+            return "other"
+        }
+    }
 }
 
 /**
@@ -1295,27 +1316,19 @@ struct CommentItemView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 14) { // 增加水平间距
-                // 用户头像
-                if comment.userAvatar.contains("person") {
-                    // 系统图标
-                    Image(systemName: comment.userAvatar)
-                        .font(.system(size: 22))
-                        .foregroundColor(.blue)
-                        .frame(width: 38, height: 38) // 增加头像尺寸
-                        .background(Color.blue.opacity(0.1))
-                        .clipShape(Circle())
-                } else {
-                    // 自定义图片
-                    Image(comment.userAvatar)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 38, height: 38) // 增加头像尺寸
-                        .clipShape(Circle())
-                        .overlay(
-                            Circle()
-                                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                        )
-                }
+                // 用户头像 - 使用Avatar组件
+                Avatar(url: comment.isVirtualCharacter ? 
+                      (comment.characterID != nil ? "HistoricalFigures/\(comment.characterID!)" : comment.userAvatar) : 
+                      comment.userAvatar, 
+                      name: comment.username,
+                      category: comment.characterID != nil ? getCharacterTag(for: comment.characterID!) : "",
+                      size: 38)
+                    .frame(width: 38, height: 38)
+                    .onAppear {
+                        if comment.isVirtualCharacter {
+                            print("📱 评论头像 - 角色ID: \(comment.characterID ?? "nil"), 头像路径: \(comment.userAvatar)")
+                        }
+                    }
                 
                 VStack(alignment: .leading, spacing: 6) { // 增加垂直间距
                     // 用户信息行
@@ -1461,28 +1474,8 @@ struct UserAvatarView: View {
     let characterID: String?
     
     var body: some View {
-        if !avatar.isEmpty, let avatarImage = UIImage(named: avatar) {
-            Image(uiImage: avatarImage)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 36, height: 36)
-                .clipShape(Circle())
-                .overlay(
-                    Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
-        } else {
-            Circle()
-                .fill(Color.gray.opacity(0.1))
-                .frame(width: 36, height: 36)
-                .overlay(
-                    Text(String(username.prefix(1).uppercased()))
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.gray)
-                )
-                .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
-        }
+        // 使用Avatar组件，根据角色类型传递不同的URL
+        Avatar(url: isVirtualCharacter ? (characterID ?? avatar) : avatar, size: 36)
     }
 }
 

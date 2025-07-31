@@ -824,10 +824,16 @@ class CommentManager: ObservableObject {
                                         content: content,
                                         datePosted: Date(), // 使用当前时间，不添加随机延迟
                                         isVirtualCharacter: true,
-                                        characterID: characterID,
+                                        characterID: characterID, // 确保角色ID正确传递
                                         parentCommentId: targetCommentID,
                                         replyToUsername: targetUsername // 添加回复给谁的信息
                                     )
+                                    
+                                    // 添加调试日志，特别关注孔子的情况
+                                    if characterID.lowercased() == "kongzi" {
+                                        print("🔍 创建孔子评论 - ID: \(characterID), 名称: \(characterDisplayName), 头像: \(characterAvatar)")
+                                        print("�� 孔子评论详情 - isVirtualCharacter: \(virtualReply.isVirtualCharacter), characterID: \(virtualReply.characterID ?? "nil")")
+                                    }
                                     
                                     // 添加到帖子
                                     self.currentPost.addComment(virtualReply)
@@ -1066,15 +1072,10 @@ class CommentManager: ObservableObject {
      * @return 角色头像系统图标名称
      */
     private func getCharacterAvatar(for characterID: String) -> String {
-        // 使用CharacterDataManager获取角色头像
-        if let avatar = CharacterDataManager.shared.getAvatarName(for: characterID) {
-            print("✅ 从CharacterDataManager获取头像: \(characterID) -> \(avatar)")
-            return avatar
-        }
-        
-        // 如果找不到，返回角色ID作为头像名称
-        print("⚠️ 无法从CharacterDataManager获取头像，使用ID作为头像: \(characterID)")
-        return characterID
+        // 使用CharacterAvatarService获取角色头像
+        let avatarName = CharacterAvatarService.shared.getAvatarName(for: characterID)
+        print("✅ 从CharacterAvatarService获取头像: \(characterID) -> \(avatarName)")
+        return avatarName
     }
     
     /**
@@ -1114,7 +1115,7 @@ class CommentManager: ObservableObject {
             "einstein": "爱因斯坦",
             "shakespeare": "莎士比亚",
             "davinci": "达芬奇",
-            "confucius": "孔子",
+            "kongzi": "孔子",
             "curie": "居里夫人",
             "libai": "李白",
             "newton": "牛顿",

@@ -332,7 +332,7 @@ class PostViewModel: ObservableObject {
                 }
                 
                 // 2. 添加1-2个随机角色
-                var availableCharacters = ["einstein", "shakespeare", "davinci", "confucius", "newton", "libai"]
+                var availableCharacters = ["einstein", "shakespeare", "davinci", "kongzi", "newton", "libai"]
                 
                 // 排除作者（如果有）
                 if let authorId = authorCharacterId {
@@ -751,28 +751,8 @@ class PostViewModel: ObservableObject {
      * @return 角色头像系统图标名称
      */
     private func getCharacterAvatar(for characterID: String) -> String {
-        switch characterID {
-        case "einstein":
-            return "atom" // 原子图标适合爱因斯坦
-        case "shakespeare":
-            return "book.fill" // 书籍图标适合莎士比亚
-        case "davinci":
-            return "paintpalette.fill" // 绘画图标适合达芬奇
-        case "goku":
-            return "person.fill.viewfinder" // 人物图标适合孙悟空
-        case "holmes":
-            return "magnifyingglass" // 放大镜适合福尔摩斯
-        case "naruto":
-            return "tornado" // 螺旋适合鸣人
-        case "confucius":
-            return "scroll.fill" // 卷轴适合孔子
-        case "newton":
-            return "arrow.down.circle.fill" // 下降箭头适合牛顿
-        case "libai":
-            return "text.book.closed.fill" // 诗集适合李白
-        default:
-            return "person.circle.fill" // 通用人物图标
-        }
+        // 使用CharacterAvatarService获取头像名称
+        return CharacterAvatarService.shared.getAvatarName(for: characterID)
     }
     
     /**
@@ -794,7 +774,7 @@ class PostViewModel: ObservableObject {
             return "福尔摩斯"
         case "naruto":
             return "漩涡鸣人"
-        case "confucius":
+        case "kongzi":
             return "孔子"
         case "newton":
             return "牛顿"
@@ -966,7 +946,7 @@ class PostViewModel: ObservableObject {
             print("🤖 另一个虚拟角色将加入讨论")
             
             // 获取所有可用角色ID
-            var availableCharacters = ["einstein", "shakespeare", "davinci", "confucius", "libai"]
+            var availableCharacters = ["einstein", "shakespeare", "davinci", "kongzi", "libai"]
             
             // 排除已经回复的角色
             if let originalCharacterID = originalComment.characterID?.lowercased() {
@@ -1135,7 +1115,7 @@ class PostViewModel: ObservableObject {
         case "爱因斯坦": return "einstein"
         case "莎士比亚": return "shakespeare"
         case "达芬奇": return "davinci"
-        case "孔子": return "confucius"
+        case "孔子": return "kongzi"
         case "牛顿": return "newton"
         case "李白": return "libai"
         case "福尔摩斯": return "holmes"
@@ -1847,7 +1827,7 @@ class PostViewModel: ObservableObject {
         
         // 创建一个备用帖子
         var username = "历史人物"
-        var avatar = "person.circle.fill"
+        var avatar = "person.circle.fill" // 使用系统图标作为默认头像
         var content = "思考是人类最伟大的能力，无论在哪个时代。"
         
         switch contentType {
@@ -1868,16 +1848,16 @@ class PostViewModel: ObservableObject {
             avatar = "shakespeare"
             content = "【1601年，伦敦环球剧院】今日《哈姆雷特》首演，观众反应超出预期。扮演主角的伯贝奇出色诠释了王子的内心挣扎，特别是「生存还是毁灭」的独白，让全场屏息。看着观众被戏剧感染的面庞，我意识到：人类渴望在艺术中看见自己的影子，而好的戏剧正是映照灵魂的镜子。这部作品或许会比我想象的更加长久。"
         default:
-            username = "孔子"
-            avatar = "confucius"
-            content = "在人生的旅途中，我们常常需要面对困境和挑战。正如我常对弟子所言，「知之者不如好之者，好之者不如乐之者」。无论遇到何种难题，保持学习的热情与乐趣，才能找到真正的解决之道。困难只是暂时的，而智慧的追求则是永恒的。"
+            username = "历史人物"
+            avatar = "person.circle.fill" // 确保默认头像是系统图标
+            content = "在人生的旅途中，我们常常需要面对困境和挑战。保持学习的热情与乐趣，才能找到真正的解决之道。困难只是暂时的，而智慧的追求则是永恒的。"
         }
         
         // 创建一个评论
         let comment = DetailedCommentModel(
             id: UUID(),
             username: "尤达大师",
-            userAvatar: "yoda",
+            userAvatar: "yoda", // 尤达大师有自己的头像
             content: "有见地，你的想法是。思考更深，我们必须。",
             datePosted: Date().addingTimeInterval(-1800),
             isVirtualCharacter: true,
@@ -1974,7 +1954,7 @@ class PostViewModel: ObservableObject {
                             return DetailedCommentModel(
                                 id: UUID(uuidString: commentItem.id) ?? UUID(),
                                 username: commentItem.characterName,
-                                userAvatar: commentItem.characterAvatar ?? "default_avatar",
+                                userAvatar: commentItem.characterAvatar ?? "person.circle.fill",
                                 content: commentItem.content,
                                 datePosted: commentItem.timestamp,
                                 isVirtualCharacter: true,
@@ -2116,7 +2096,7 @@ class PostViewModel: ObservableObject {
                                 return DetailedCommentModel(
                                     id: UUID(uuidString: commentItem.id) ?? UUID(),
                                     username: commentItem.characterName,
-                                    userAvatar: commentItem.characterAvatar ?? "default_avatar",
+                                    userAvatar: commentItem.characterAvatar ?? "person.circle.fill",
                                     content: commentItem.content,
                                     datePosted: commentItem.timestamp,
                                     isVirtualCharacter: true,
@@ -2261,7 +2241,7 @@ class PostViewModel: ObservableObject {
             let comment = DetailedCommentModel(
                 id: UUID(uuidString: commentItem.id) ?? UUID(),
                 username: commentItem.characterName,
-                userAvatar: commentItem.characterAvatar ?? "default_avatar",
+                userAvatar: commentItem.characterAvatar ?? "person.circle.fill",
                 content: commentItem.content,
                 datePosted: commentItem.timestamp,
                 isVirtualCharacter: true,
@@ -2402,6 +2382,47 @@ class PostViewModel: ObservableObject {
     func refreshComments() {
         if let currentPost = posts.first {
             self.comments = currentPost.getTopLevelComments()
+        }
+    }
+
+    /**
+     * 获取用户关注的角色，并根据互动频率排序
+     * @return 排序后的角色模型数组
+     */
+    func getFollowedCharactersSortedByInteraction() -> [CharacterModel] {
+        // 1. 获取用户关注的角色名称列表
+        let followedUsernames = UserDefaults.standard.stringArray(forKey: "FollowedUsers") ?? []
+        
+        // 2. 获取所有角色的互动分数
+        let interactionScores = UserInterestTracker.shared.interestModel.figureCounts
+        
+        // 3. 获取所有已知的角色模型
+        let allCharacters = CharacterModel.allCharacters // 使用所有角色，包括虚构角色
+        
+        // 4. 根据互动分数对所有角色进行排序
+        let sortedByInteraction = allCharacters.sorted { (charA, charB) -> Bool in
+            let scoreA = interactionScores[charA.name] ?? 0
+            let scoreB = interactionScores[charB.name] ?? 0
+            return scoreA > scoreB
+        }
+        
+        // 5. 如果有关注的角色，优先显示关注的角色
+        if !followedUsernames.isEmpty {
+            let followedCharacters = allCharacters.filter { character in
+                followedUsernames.contains(character.name)
+            }
+            
+            // 根据互动分数排序关注的角色
+            let sortedFollowed = followedCharacters.sorted { (charA, charB) -> Bool in
+                let scoreA = interactionScores[charA.name] ?? 0
+                let scoreB = interactionScores[charB.name] ?? 0
+                return scoreA > scoreB
+            }
+            
+            return sortedFollowed
+        } else {
+            // 如果没有关注的角色，返回基于互动分数排序的角色
+            return Array(sortedByInteraction.prefix(5))
         }
     }
 }

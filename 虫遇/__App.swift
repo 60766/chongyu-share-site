@@ -41,6 +41,43 @@ struct ChongYuApp: App {
         // 初始化API配置
         setupAPIConfig()
         
+        print("🖼️ 初始化历史人物图片资源...")
+        print("📱 应用路径: \(Bundle.main.bundlePath)")
+        if let resourcePath = Bundle.main.resourcePath {
+            print("📂 资源路径: \(resourcePath)")
+            
+            // 检查孔子头像是否存在于资源包中
+            let kongziPaths = [
+                resourcePath + "/kongzi.png",
+                resourcePath + "/HistoricalFigures/kongzi.png",
+                resourcePath + "/Assets.xcassets/HistoricalFigures/kongzi.imageset/kongzi.png"
+            ]
+            
+            print("🔍 检查孔子头像在资源包中的位置:")
+            for path in kongziPaths {
+                if FileManager.default.fileExists(atPath: path) {
+                    print("✅ 孔子头像存在于: \(path)")
+                    if let image = UIImage(contentsOfFile: path) {
+                        print("  - 图片尺寸: \(image.size)")
+                    }
+                } else {
+                    print("❌ 孔子头像不存在于: \(path)")
+                }
+            }
+        }
+        if let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.path {
+            print("📂 文档路径: \(documentsPath)")
+        }
+        
+        // 复制历史人物图片到运行时目录和Documents目录
+        HistoricalFigureImageCopier.shared.copyAllImages()
+        
+        // 手动注册图片到运行时
+        HistoricalFigureImageCopier.shared.registerImagesManually()
+        
+        // 验证图片是否成功复制
+        verifyHistoricalFigureImages()
+        
         // 测试API调用 - 已禁用自动测试以节省API调用费用
         /*
         #if DEBUG
@@ -62,6 +99,46 @@ struct ChongYuApp: App {
         */
         
         print("应用启动完成")
+    }
+    
+    /// 验证历史人物图片是否成功复制到运行时目录
+    private func verifyHistoricalFigureImages() {
+        if let resourcePath = Bundle.main.resourcePath {
+            let historicalDir = resourcePath + "/HistoricalFigures"
+            let fileManager = FileManager.default
+            
+            if fileManager.fileExists(atPath: historicalDir) {
+                print("✅ HistoricalFigures目录存在")
+                
+                // 尝试列出目录内容
+                do {
+                    let files = try fileManager.contentsOfDirectory(atPath: historicalDir)
+                    print("📋 HistoricalFigures目录内容: \(files)")
+                    
+                    // 检查关键角色图片
+                    let keyCharacters = ["kongzi", "einstein", "shakespeare"]
+                    for character in keyCharacters {
+                        let imagePath = historicalDir + "/\(character).png"
+                        if fileManager.fileExists(atPath: imagePath) {
+                            print("✅ \(character)图片存在: \(imagePath)")
+                            
+                            // 尝试加载图片
+                            if let _ = UIImage(contentsOfFile: imagePath) {
+                                print("✅ 可以加载\(character)图片")
+                            } else {
+                                print("❌ 无法加载\(character)图片，虽然文件存在")
+                            }
+                        } else {
+                            print("❌ \(character)图片不存在: \(imagePath)")
+                        }
+                    }
+                } catch {
+                    print("❌ 无法列出HistoricalFigures目录内容: \(error)")
+                }
+            } else {
+                print("❌ HistoricalFigures目录不存在，图片复制可能失败")
+            }
+        }
     }
 
     var body: some Scene {

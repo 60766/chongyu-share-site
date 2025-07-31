@@ -18,7 +18,13 @@
         "虫洞共鸣": 0.95,
         "时空记事": 0.8
       },
-      "relatedCharacterIds": ["tesla", "newton", "hawking", "plank", "bohr"]
+      "relatedCharacterIds": [
+        "tesla",
+        "newton",
+        "hawking",
+        "plank",
+        "bohr"
+      ]
     },
     {
       "id": "shakespeare",
@@ -37,7 +43,13 @@
         "虫洞共鸣": 0.75,
         "时空记事": 0.8
       },
-      "relatedCharacterIds": ["dante", "goethe", "dickens", "hugo", "keats"]
+      "relatedCharacterIds": [
+        "dante",
+        "goethe",
+        "dickens",
+        "hugo",
+        "keats"
+      ]
     },
     {
       "id": "holmes",
@@ -92,7 +104,13 @@
         "虫洞共鸣": 0.7,
         "时空记事": 0.7
       },
-      "relatedCharacterIds": ["sasuke", "kakashi", "sakura", "jiraiya", "goku"]
+      "relatedCharacterIds": [
+        "sasuke",
+        "kakashi",
+        "sakura",
+        "jiraiya",
+        "goku"
+      ]
     },
     {
       "id": "sunwukong",
@@ -129,7 +147,13 @@
         "虫洞共鸣": 0.9,
         "时空记事": 0.8
       },
-      "relatedCharacterIds": ["mengzi", "xunzi", "laozi", "zhuangzi", "mozi"]
+      "relatedCharacterIds": [
+        "mengzi",
+        "xunzi",
+        "laozi",
+        "zhuangzi",
+        "mozi"
+      ]
     },
     {
       "id": "tesla",
@@ -327,24 +351,6 @@
         "日常心情": 0.8,
         "虫洞共鸣": 0.75,
         "时空记事": 0.85
-      }
-    },
-    {
-      "id": "ghibli",
-      "name": "千寻",
-      "type": "anime",
-      "subtype": "ghibli",
-      "era": "现代与奇幻",
-      "primaryField": "普通少女",
-      "briefDescription": "宫崎骏动画《千与千寻》主角，在神灵世界经历奇幻冒险的少女",
-      "avatarName": "chihiro",
-      "region": "日本",
-      "contentAffinities": {
-        "古潮新语": 0.75,
-        "穿越吐槽": 0.8,
-        "日常心情": 0.9,
-        "虫洞共鸣": 0.85,
-        "时空记事": 0.7
       }
     },
     {
@@ -546,24 +552,6 @@
       }
     },
     {
-      "id": "lisiming",
-      "name": "李世民",
-      "type": "historical",
-      "subtype": "emperor",
-      "era": "唐朝",
-      "primaryField": "皇帝",
-      "briefDescription": "唐太宗，开创贞观之治的杰出帝王，中国历史上最伟大的皇帝之一",
-      "avatarName": "lisiming",
-      "region": "中国",
-      "contentAffinities": {
-        "古潮新语": 0.9,
-        "穿越吐槽": 0.8,
-        "日常心情": 0.7,
-        "虫洞共鸣": 0.85,
-        "时空记事": 0.95
-      }
-    },
-    {
       "id": "yanggufei",
       "name": "杨贵妃",
       "type": "historical",
@@ -744,24 +732,6 @@
       }
     },
     {
-      "id": "zhouxingchi",
-      "name": "周星星",
-      "type": "movie",
-      "subtype": "comedy",
-      "era": "现代",
-      "primaryField": "演员",
-      "briefDescription": "《大话西游》中的至尊宝/孙悟空扮演者，用无厘头喜剧传递人生智慧",
-      "avatarName": "zhouxingchi",
-      "region": "香港",
-      "contentAffinities": {
-        "古潮新语": 0.8,
-        "穿越吐槽": 0.95,
-        "日常心情": 0.9,
-        "虫洞共鸣": 0.85,
-        "时空记事": 0.75
-      }
-    },
-    {
       "id": "lixiaoyao",
       "name": "李逍遥",
       "type": "game",
@@ -798,24 +768,6 @@
       }
     },
     {
-      "id": "huluwa",
-      "name": "葫芦娃",
-      "type": "anime",
-      "subtype": "cartoon",
-      "era": "神话",
-      "primaryField": "神童",
-      "briefDescription": "经典动画《葫芦兄弟》主角，七个性格迥异、能力各异的兄弟联合降妖除魔",
-      "avatarName": "huluwa",
-      "region": "中国",
-      "contentAffinities": {
-        "古潮新语": 0.7,
-        "穿越吐槽": 0.9,
-        "日常心情": 0.85,
-        "虫洞共鸣": 0.8,
-        "时空记事": 0.65
-      }
-    },
-    {
       "id": "deadpool",
       "name": "死侍",
       "type": "movie",
@@ -831,24 +783,6 @@
         "日常心情": 0.85,
         "虫洞共鸣": 0.8,
         "时空记事": 0.75
-      }
-    },
-    {
-      "id": "jojo",
-      "name": "乔纳森·乔斯达",
-      "type": "anime",
-      "subtype": "shounen",
-      "era": "19世纪",
-      "primaryField": "贵族、波纹使者",
-      "briefDescription": "《JOJO的奇妙冒险》第一部主角，绅士精神的化身，与宿敌迪奥展开跨越世代的对决",
-      "avatarName": "jojo",
-      "region": "英国",
-      "contentAffinities": {
-        "古潮新语": 0.8,
-        "穿越吐槽": 0.85,
-        "日常心情": 0.7,
-        "虫洞共鸣": 0.8,
-        "时空记事": 0.85
       }
     },
     {
@@ -1009,24 +943,6 @@
         "古潮新语": 0.8,
         "穿越吐槽": 0.85,
         "日常心情": 0.75,
-        "虫洞共鸣": 0.95,
-        "时空记事": 0.85
-      }
-    },
-    {
-      "id": "liucixin",
-      "name": "刘慈欣",
-      "type": "historical",
-      "subtype": "writer",
-      "era": "现代",
-      "primaryField": "科幻作家",
-      "briefDescription": "中国著名科幻作家，《三体》系列作者，获得雨果奖的亚洲第一人",
-      "avatarName": "liucixin",
-      "region": "中国",
-      "contentAffinities": {
-        "古潮新语": 0.8,
-        "穿越吐槽": 0.85,
-        "日常心情": 0.7,
         "虫洞共鸣": 0.95,
         "时空记事": 0.85
       }
@@ -1446,24 +1362,6 @@
       }
     },
     {
-      "id": "nieying",
-      "name": "聂隐娘",
-      "type": "historical",
-      "subtype": "assassin",
-      "era": "唐朝",
-      "primaryField": "女刺客",
-      "briefDescription": "唐传奇中的女刺客，幼时被尼姑抚养，学得神奇武功，后被指派暗杀恶吏",
-      "avatarName": "nieying",
-      "region": "中国",
-      "contentAffinities": {
-        "古潮新语": 0.85,
-        "穿越吐槽": 0.8,
-        "日常心情": 0.85,
-        "虫洞共鸣": 0.85,
-        "时空记事": 0.85
-      }
-    },
-    {
       "id": "wangzhaojun",
       "name": "王昭君",
       "type": "historical",
@@ -1572,24 +1470,6 @@
       }
     },
     {
-      "id": "female_ninja",
-      "name": "女忍者",
-      "type": "historical",
-      "subtype": "assassin",
-      "era": "日本战国",
-      "primaryField": "忍者",
-      "briefDescription": "日本战国时代的女性忍者(くノ一)，精通间谍、暗杀、医疗等技能，常被用于收集情报",
-      "avatarName": "female_ninja",
-      "region": "日本",
-      "contentAffinities": {
-        "古潮新语": 0.75,
-        "穿越吐槽": 0.85,
-        "日常心情": 0.8,
-        "虫洞共鸣": 0.75,
-        "时空记事": 0.85
-      }
-    },
-    {
       "id": "cixi",
       "name": "慈禧太后",
       "type": "historical",
@@ -1642,7 +1522,13 @@
         "虫洞共鸣": 0.8,
         "时空记事": 0.7
       },
-      "relatedCharacterIds": ["zoro", "sanji", "nami", "naruto", "goku"]
+      "relatedCharacterIds": [
+        "zoro",
+        "sanji",
+        "nami",
+        "naruto",
+        "goku"
+      ]
     },
     {
       "id": "conan",
@@ -1661,7 +1547,12 @@
         "虫洞共鸣": 0.9,
         "时空记事": 0.85
       },
-      "relatedCharacterIds": ["haibara", "mouri_ran", "kudo_shinichi", "holmes"]
+      "relatedCharacterIds": [
+        "haibara",
+        "mouri_ran",
+        "kudo_shinichi",
+        "holmes"
+      ]
     },
     {
       "id": "saber",
@@ -1680,7 +1571,11 @@
         "虫洞共鸣": 0.85,
         "时空记事": 0.9
       },
-      "relatedCharacterIds": ["gilgamesh", "archer", "rin"]
+      "relatedCharacterIds": [
+        "gilgamesh",
+        "archer",
+        "rin"
+      ]
     },
     {
       "id": "genshin_traveler",
@@ -1699,7 +1594,11 @@
         "虫洞共鸣": 0.9,
         "时空记事": 0.85
       },
-      "relatedCharacterIds": ["paimon", "zhongli", "raiden_shogun"]
+      "relatedCharacterIds": [
+        "paimon",
+        "zhongli",
+        "raiden_shogun"
+      ]
     },
     {
       "id": "nezuko",
@@ -1718,7 +1617,11 @@
         "虫洞共鸣": 0.8,
         "时空记事": 0.7
       },
-      "relatedCharacterIds": ["tanjiro", "zenitsu", "inosuke"]
+      "relatedCharacterIds": [
+        "tanjiro",
+        "zenitsu",
+        "inosuke"
+      ]
     },
     {
       "id": "levi",
@@ -1737,7 +1640,11 @@
         "虫洞共鸣": 0.85,
         "时空记事": 0.8
       },
-      "relatedCharacterIds": ["eren", "mikasa", "armin"]
+      "relatedCharacterIds": [
+        "eren",
+        "mikasa",
+        "armin"
+      ]
     },
     {
       "id": "jinx",
@@ -1756,7 +1663,11 @@
         "虫洞共鸣": 0.8,
         "时空记事": 0.7
       },
-      "relatedCharacterIds": ["vi", "caitlyn", "ekko"]
+      "relatedCharacterIds": [
+        "vi",
+        "caitlyn",
+        "ekko"
+      ]
     },
     {
       "id": "kirby",
@@ -1775,7 +1686,11 @@
         "虫洞共鸣": 0.7,
         "时空记事": 0.6
       },
-      "relatedCharacterIds": ["meta_knight", "king_dedede", "waddle_dee"]
+      "relatedCharacterIds": [
+        "meta_knight",
+        "king_dedede",
+        "waddle_dee"
+      ]
     },
     {
       "id": "pikachu",
@@ -1794,7 +1709,11 @@
         "虫洞共鸣": 0.7,
         "时空记事": 0.7
       },
-      "relatedCharacterIds": ["ash", "mewtwo", "charizard"]
+      "relatedCharacterIds": [
+        "ash",
+        "mewtwo",
+        "charizard"
+      ]
     },
     {
       "id": "zhongli",
@@ -1813,7 +1732,11 @@
         "虫洞共鸣": 0.85,
         "时空记事": 0.9
       },
-      "relatedCharacterIds": ["genshin_traveler", "raiden_shogun", "venti"]
+      "relatedCharacterIds": [
+        "genshin_traveler",
+        "raiden_shogun",
+        "venti"
+      ]
     },
     {
       "id": "eren",
@@ -1832,7 +1755,11 @@
         "虫洞共鸣": 0.9,
         "时空记事": 0.85
       },
-      "relatedCharacterIds": ["mikasa", "armin", "levi"]
+      "relatedCharacterIds": [
+        "mikasa",
+        "armin",
+        "levi"
+      ]
     },
     {
       "id": "tanjiro",
@@ -1851,7 +1778,11 @@
         "虫洞共鸣": 0.8,
         "时空记事": 0.7
       },
-      "relatedCharacterIds": ["nezuko", "zenitsu", "inosuke"]
+      "relatedCharacterIds": [
+        "nezuko",
+        "zenitsu",
+        "inosuke"
+      ]
     },
     {
       "id": "marie_curie",
@@ -2808,24 +2739,6 @@
       }
     },
     {
-      "id": "amaterasu",
-      "name": "天照大神",
-      "type": "mythological",
-      "subtype": "japanese",
-      "era": "日本神话",
-      "primaryField": "太阳女神",
-      "briefDescription": "日本神话中的太阳女神，天皇皇室的祖先，曾躲入天岩户使世界陷入黑暗",
-      "avatarName": "amaterasu",
-      "region": "日本",
-      "contentAffinities": {
-        "古潮新语": 0.9,
-        "穿越吐槽": 0.8,
-        "日常心情": 0.85,
-        "虫洞共鸣": 0.85,
-        "时空记事": 0.9
-      }
-    },
-    {
       "id": "osiris",
       "name": "奥西里斯",
       "type": "mythological",
@@ -3111,6 +3024,132 @@
         "日常心情": 0.85,
         "虫洞共鸣": 0.8,
         "时空记事": 0.8
+      }
+    },
+    {
+      "id": "aristotle",
+      "name": "亚里士多德",
+      "type": "historical",
+      "subtype": "philosopher",
+      "era": "古希腊",
+      "primaryField": "哲学家",
+      "briefDescription": "古希腊哲学家、科学家，柏拉图的学生，亚历山大大帝的老师",
+      "avatarName": "aristotle",
+      "region": "希腊",
+      "contentAffinities": {
+        "古潮新语": 0.9,
+        "穿越吐槽": 0.7,
+        "日常心情": 0.6,
+        "虫洞共鸣": 0.8,
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "curie",
+      "name": "居里夫人",
+      "type": "historical",
+      "subtype": "scientist",
+      "era": "近代",
+      "primaryField": "物理学家、化学家",
+      "briefDescription": "放射性研究先驱，首位获得两次诺贝尔奖的科学家",
+      "avatarName": "curie",
+      "region": "波兰/法国",
+      "contentAffinities": {
+        "古潮新语": 0.7,
+        "穿越吐槽": 0.8,
+        "日常心情": 0.6,
+        "虫洞共鸣": 0.9,
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "hawking",
+      "name": "霍金",
+      "type": "historical",
+      "subtype": "scientist",
+      "era": "现代",
+      "primaryField": "物理学家",
+      "briefDescription": "理论物理学家，黑洞辐射理论提出者，《时间简史》作者",
+      "avatarName": "hawking",
+      "region": "英国",
+      "contentAffinities": {
+        "古潮新语": 0.8,
+        "穿越吐槽": 0.9,
+        "日常心情": 0.7,
+        "虫洞共鸣": 0.95,
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "libai",
+      "name": "李白",
+      "type": "historical",
+      "subtype": "poet",
+      "era": "唐代",
+      "primaryField": "诗人",
+      "briefDescription": "唐代伟大的浪漫主义诗人，被称为'诗仙'",
+      "avatarName": "libai",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.95,
+        "穿越吐槽": 0.8,
+        "日常心情": 0.9,
+        "虫洞共鸣": 0.7,
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "mozart",
+      "name": "莫扎特",
+      "type": "historical",
+      "subtype": "musician",
+      "era": "古典时期",
+      "primaryField": "作曲家",
+      "briefDescription": "古典主义音乐代表人物，音乐神童",
+      "avatarName": "mozart",
+      "region": "奥地利",
+      "contentAffinities": {
+        "古潮新语": 0.8,
+        "穿越吐槽": 0.7,
+        "日常心情": 0.9,
+        "虫洞共鸣": 0.75,
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "newton",
+      "name": "牛顿",
+      "type": "historical",
+      "subtype": "scientist",
+      "era": "近代",
+      "primaryField": "物理学家、数学家",
+      "briefDescription": "经典力学奠基人，发现万有引力定律",
+      "avatarName": "newton",
+      "region": "英国",
+      "contentAffinities": {
+        "古潮新语": 0.85,
+        "穿越吐槽": 0.8,
+        "日常心情": 0.6,
+        "虫洞共鸣": 0.9,
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "spike",
+      "name": "斯派克",
+      "type": "fictional",
+      "subtype": "anime",
+      "era": "未来",
+      "primaryField": "赏金猎人",
+      "briefDescription": "《星际牛仔》主角，前辛迪加成员",
+      "avatarName": "spike",
+      "region": "火星",
+      "contentAffinities": {
+        "古潮新语": 0.7,
+        "穿越吐槽": 0.9,
+        "日常心情": 0.8,
+        "虫洞共鸣": 0.75,
+        "时空记事": 0.7
       }
     }
   ]

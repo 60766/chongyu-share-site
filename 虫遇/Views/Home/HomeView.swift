@@ -754,6 +754,9 @@ struct HomeView: View {
     /// 内容动画状态
     @State private var contentAppeared: Bool = false
     
+    // 添加一个新的状态来存储顶部角色
+    @State private var topCharacters: [CharacterModel] = []
+    
     /// 首页标签类型
     enum HomeTab: String, CaseIterable {
         case recommended = "推荐"
@@ -832,16 +835,16 @@ struct HomeView: View {
                             // 历史人物横向滚动区 - 集成到顶部区域
                             ScrollViewReader { scrollProxy in
                                 ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 20) {
-                                        // 角色卡片
-                                        ForEach(characters) { character in
+                                    HStack(spacing: 25) {
+                                        // 角色卡片 - 使用 topCharacters
+                                        ForEach(topCharacters.prefix(5)) { character in
                                             characterCard(for: character)
                                                 .id(character.id)
                                                 .offset(y: contentAppeared ? 0 : 20)
                                                 .opacity(contentAppeared ? 1 : 0)
                                                 .animation(
                                                     .spring(response: 0.5, dampingFraction: 0.7)
-                                                    .delay(Double(characters.firstIndex(where: { $0.id == character.id }) ?? 0) * 0.05),
+                                                    .delay(Double(topCharacters.firstIndex(where: { $0.id == character.id }) ?? 0) * 0.05),
                                                     value: contentAppeared
                                                 )
                                         }
@@ -1012,9 +1015,11 @@ struct HomeView: View {
                 }
             }
             .onAppear {
+                // 更新顶部角色栏
+                updateTopCharacters()
+
                 // 确保数据存在
                 postViewModel.ensureDataExists()
-                loadSampleData()
                 
                 // 在视图重新出现时添加延迟检查，防止切换回来显示空白
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -1214,19 +1219,7 @@ struct HomeView: View {
             
             Spacer()
             
-            // 编辑按钮 - 更加简约
-            Button(action: {
-                // 编辑操作
-            }) {
-                Image(systemName: "square.and.pencil")
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(.white)
-                    .frame(width: 32, height: 32)
-                    .background(Color(red: 130/255, green: 150/255, blue: 220/255))
-                    .clipShape(Circle())
-            }
-            .buttonStyle(HomeScaleButtonStyle(scaleAmount: 0.95))
-            
+            // 已移除编辑按钮
             // 已移除搜索按钮，使界面更加简洁
         }
         .padding(.horizontal, 16)
@@ -1763,57 +1756,6 @@ struct HomeView: View {
     private func loadSampleData() {
         print("📋 HomeView.loadSampleData: 开始加载示例数据")
         
-        // 加载历史人物
-        characters = [
-            // 爱因斯坦
-            CharacterModel(
-                name: "爱因斯坦",
-                avatar: "einstein",
-                era: "1879-1955",
-                profession: "物理学家",
-                bio: "相对论创立者，诺贝尔物理学奖获得者，改变了人类对时间、空间和引力的认识。",
-                category: .scientist
-            ),
-            // 莎士比亚
-            CharacterModel(
-                name: "莎士比亚",
-                avatar: "shakespeare",
-                era: "1564-1616",
-                profession: "剧作家、诗人",
-                bio: "英国文艺复兴时期伟大的戏剧家和诗人，被誉为'人类文学的一座高峰'。",
-                category: .artist
-            ),
-            // 达芬奇
-            CharacterModel(
-                name: "达芬奇",
-                avatar: "davinci",
-                era: "1452-1519",
-                profession: "艺术家、科学家",
-                bio: "文艺复兴时期的天才，在绘画、雕塑、建筑、科学、音乐、数学等多个领域都有卓越成就。",
-                category: .artist
-            ),
-            // 孔子
-            CharacterModel(
-                name: "孔子",
-                avatar: "confucius",
-                era: "前551-前479",
-                profession: "哲学家、教育家",
-                bio: "中国古代思想家、教育家，儒家学派创始人，主张仁义礼智信的思想。",
-                category: .philosopher
-            ),
-            // 居里夫人
-            CharacterModel(
-                name: "居里夫人",
-                avatar: "curie",
-                era: "1867-1934",
-                profession: "物理学家、化学家",
-                bio: "首位获得诺贝尔奖的女性，也是唯一一位在两个不同领域获得诺贝尔奖的女性科学家。",
-                category: .scientist
-            )
-        ]
-        
-        print("📋 HomeView.loadSampleData: 历史人物加载完成，总数: \(characters.count)")
-        
         // 加载用户帖子 - 使用共享的PostViewModel
         // 检查是否已有帖子，如果没有才加载示例帖子
         print("📋 HomeView.loadSampleData: 当前帖子数量: \(postViewModel.posts.count)")
@@ -1829,6 +1771,58 @@ struct HomeView: View {
             }
         } else {
             print("📋 HomeView.loadSampleData: 已有帖子数据，跳过加载，当前数量: \(postViewModel.posts.count)")
+        }
+    }
+
+    // 新增方法：更新顶部角色栏
+    private func updateTopCharacters() {
+        // 确保有一些模拟的互动数据
+        ensureInteractionData()
+        
+        let sortedFollowed = postViewModel.getFollowedCharactersSortedByInteraction()
+        
+        if sortedFollowed.isEmpty {
+            // 如果用户没有关注任何人或没有互动，显示默认推荐的角色
+            self.topCharacters = Array(CharacterModel.sampleCharacters.prefix(5))
+        } else {
+            self.topCharacters = sortedFollowed
+        }
+    }
+    
+    // 确保有一些模拟的互动数据
+    private func ensureInteractionData() {
+        // 获取当前互动数据
+        let interactionScores = UserInterestTracker.shared.interestModel.figureCounts
+        
+        // 如果没有任何互动数据，添加一些模拟数据
+        if interactionScores.values.reduce(0, +) == 0 {
+            print("📊 添加模拟的角色互动数据")
+            
+            // 模拟与几个角色的互动
+            let characters = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "居里夫人", "福尔摩斯", "钢铁侠"]
+            
+            for character in characters {
+                // 模拟不同类型的互动
+                let interactionTypes: [UserInterestTracker.UserInterestModel.InteractionRecord.InteractionType] = [
+                    .view, .like, .comment, .bookmark, .share
+                ]
+                
+                // 为每个角色随机生成1-5次互动
+                let interactionCount = Int.random(in: 1...5)
+                for _ in 0..<interactionCount {
+                    // 随机选择一种互动类型
+                    if let interactionType = interactionTypes.randomElement() {
+                        UserInterestTracker.shared.trackFigureInteraction(
+                            figure: character,
+                            interactionType: interactionType,
+                            situation: "浏览首页",
+                            expectation: "了解观点"
+                        )
+                    }
+                }
+            }
+            
+            print("📊 模拟互动数据添加完成")
         }
     }
     
@@ -1867,15 +1861,14 @@ struct HomeView: View {
             VStack(spacing: 4) {
                 // 头像部分 - 极简设计
                 ZStack {
-                    // 圆形背景，轻微的蓝色调
+                    // 圆形背景，更浅的蓝色调，几乎不可见的边框
                     Circle()
-                        .fill(Color(red: 220/255, green: 230/255, blue: 250/255))
-                        .frame(width: 48, height: 48)
+                        .fill(Color(red: 240/255, green: 245/255, blue: 255/255))
+                        .frame(width: 46, height: 46)
                     
-                    // 图标
-                    Image(systemName: character.category.icon)
-                        .font(.system(size: 18))
-                        .foregroundColor(Color(red: 80/255, green: 120/255, blue: 210/255))
+                    // 使用Avatar组件加载头像，增大尺寸
+                    Avatar(url: character.characterID ?? character.name, size: 42)
+                        .frame(width: 42, height: 42)
                 }
                 
                 // 人物名称

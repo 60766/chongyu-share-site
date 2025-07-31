@@ -3,50 +3,46 @@ import SwiftUI
 /**
  * 头像视图组件
  * 用于显示用户头像，支持图像和占位符
+ * 使用统一的Avatar组件
  */
 struct AvatarView: View {
-    // 头像图像名称或URL
-    var imageName: String
+    // 评论数据
+    let comment: DetailedCommentModel
+    // 头像服务
+    let avatarService: CharacterAvatarService
     // 头像尺寸
-    var size: CGFloat = 48
-    // 是否显示在线状态
-    var isOnline: Bool = false
-    // 在线标记的颜色
-    var onlineColor: Color = .primaryColor
+    var size: CGFloat = 40
     
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            // 头像图像或占位符
-            Group {
-                if UIImage(named: imageName) != nil {
-                    // 如果有图像，显示图像
-                    Image(imageName)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    // 否则显示占位符
-                    ZStack {
-                        Circle()
-                            .fill(Color.gray.opacity(0.2))
-                        
-                        Text(String(imageName.prefix(1).uppercased()))
-                            .font(.system(size: size * 0.4, weight: .semibold))
-                            .foregroundColor(.primary)
-                    }
-                }
-            }
-            .frame(width: size, height: size)
-            .clipShape(Circle())
-            
-            // 在线状态标记
-            if isOnline {
+        // 使用统一的Avatar组件
+        if comment.isVirtualCharacter, let characterID = comment.characterID {
+            // 虚拟角色使用角色ID作为头像
+            Avatar(
+                url: characterID,
+                name: comment.username,
+                category: avatarService.getCharacterCategoryTag(for: characterID),
+                size: size
+            )
+            .overlay(
                 Circle()
-                    .fill(onlineColor)
-                    .frame(width: size * 0.25, height: size * 0.25)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white, lineWidth: 2)
-                    )
+                    .stroke(avatarService.getCharacterTagColor(for: characterID).opacity(0.2), lineWidth: 1)
+            )
+            .onAppear {
+                print("🔍 AvatarView - 显示虚拟角色头像: \(characterID), 用户名: \(comment.username)")
+            }
+        } else {
+            // 普通用户使用userAvatar
+            Avatar(
+                url: comment.userAvatar,
+                name: comment.username,
+                size: size
+            )
+            .overlay(
+                Circle()
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
+            )
+            .onAppear {
+                print("🔍 AvatarView - 显示普通用户头像: \(comment.userAvatar), 用户名: \(comment.username)")
             }
         }
     }
@@ -54,9 +50,43 @@ struct AvatarView: View {
 
 #Preview("头像预览") {
     VStack(spacing: 20) {
-        AvatarView(imageName: "avatar1", isOnline: true)
-        AvatarView(imageName: "noExistingImage", size: 60)
-        AvatarView(imageName: "A", size: 40, isOnline: true, onlineColor: .green)
+        // 普通用户头像
+        AvatarView(
+            comment: DetailedCommentModel(
+                username: "用户123",
+                userAvatar: "person.circle.fill",
+                content: "这是评论内容",
+                datePosted: Date(),
+                isVirtualCharacter: false
+            ),
+            avatarService: CharacterAvatarService.shared
+        )
+        
+        // 历史人物头像
+        AvatarView(
+            comment: DetailedCommentModel(
+                username: "爱因斯坦",
+                userAvatar: "einstein",
+                content: "这是评论内容",
+                datePosted: Date(),
+                isVirtualCharacter: true,
+                characterID: "einstein"
+            ),
+            avatarService: CharacterAvatarService.shared
+        )
+        
+        // 没有头像资源的历史人物
+        AvatarView(
+            comment: DetailedCommentModel(
+                username: "阿育王",
+                userAvatar: "ayuwang",
+                content: "这是评论内容",
+                datePosted: Date(),
+                isVirtualCharacter: true,
+                characterID: "ayuwang"
+            ),
+            avatarService: CharacterAvatarService.shared
+        )
     }
     .padding()
 } 

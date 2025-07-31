@@ -446,7 +446,7 @@ class AIPromptGenerator {
                 description: "全能天才，艺术家和科学家，注重细节，观察力敏锐",
                 speechPatterns: ["比例", "和谐", "观察", "设计", "自然", "艺术"]
             )
-        case "孔子", "confucius":
+        case "孔子", "kongzi":
             return AIPromptCharacterTraits(
                 name: "孔子",
                 description: "儒家思想创始人，注重伦理道德，言简意赅，常用比喻",

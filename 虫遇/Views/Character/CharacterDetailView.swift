@@ -413,28 +413,19 @@ struct CharacterDetailView: View {
             // 头像和基本信息区 - 水平布局以提高空间效率
             HStack(alignment: .center, spacing: 14) {
                 // 头像 - 左侧放置，符合图一设计
-                ZStack {
-                    if UIImage(named: character.avatarUrl) != nil {
-                        Image(character.avatarUrl)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                            .frame(width: 70, height: 70)
-            .clipShape(Circle())
-            .overlay(
-                Circle()
-                                    .stroke(Color.gray.opacity(0.1), lineWidth: 1)
-                            )
-                    } else {
-                        // 默认头像 - 简化为与图一一致的样式
-                        Circle()
-                            .fill(Color(.systemGray5))
-                            .frame(width: 70, height: 70)
-                            .overlay(
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(Color(.systemGray))
-                            )
-                    }
+                // 使用统一的Avatar组件替换原来的直接Image显示
+                Avatar(
+                    url: character.avatarUrl,
+                    name: character.name,
+                    category: character.field,
+                    size: 70
+                )
+                .overlay(
+                    Circle()
+                        .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                )
+                .onAppear {
+                    print("🔍 CharacterDetailView - 显示角色头像: \(character.avatarUrl), 名称: \(character.name)")
                 }
                 
                 // 右侧信息区 - 垂直排列名称、职业和标签

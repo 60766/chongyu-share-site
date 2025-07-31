@@ -32,24 +32,19 @@ struct UserIdentityView: View {
                 // 用户信息卡片
                 VStack(spacing: 2) {
                     HStack(alignment: .top) {
-                        // 头像
+                        // 头像 - 使用统一的Avatar组件
                         ZStack {
                             Circle()
                                 .fill(Color.white)
                                 .frame(width: 84, height: 84)
                                 .shadow(color: Color.black.opacity(0.15), radius: 4, x: 0, y: 2)
                             
-                            if UIImage(named: user.avatar) != nil {
-                                Image(user.avatar)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 78, height: 78)
-                                    .clipShape(Circle())
-                            } else {
-                                Text(String(user.username.prefix(1)))
-                                    .font(.system(size: 45, weight: .bold))
-                                    .foregroundColor(Color(hex: "333333"))
-                            }
+                            // 使用统一的Avatar组件
+                            Avatar(
+                                url: user.avatar,
+                                name: user.username,
+                                size: 78
+                            )
                             
                             // 发光效果
                             Circle()

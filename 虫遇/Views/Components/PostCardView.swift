@@ -110,7 +110,7 @@ class CommentLoader: ObservableObject {
             if let currentID = self.currentPostID, currentID == postID {
                 print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，即将刷新评论")
                 self.refreshComments()
-            } else {
+                    } else {
                 print("ℹ️ CommentLoader: 评论更新通知与当前加载的帖子不匹配")
                 print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
                 print("  通知帖子ID: \(postIDString)")
@@ -893,12 +893,11 @@ struct PostCardView: View {
     // 用户信息区域
     private var userInfoSection: some View {
         HStack(alignment: .center, spacing: 12) {
-            // 用户头像 - 使用 Avatar 组件，支持系统符号
-            Avatar(url: post.userAvatar, size: 46.0)
-                .overlay(
-                    Circle()
-                        .stroke(DesignSystem.Colors.divider, lineWidth: 0.5)
-                )
+            // 用户头像 - 直接使用通用的Avatar组件
+            Avatar(url: post.userAvatar, name: post.username, category: post.username.contains("探索") ? "历史爱好者" : "", size: 46.0)
+                .onAppear {
+                    print("🔍 PostCardView - 用户头像URL: \(post.userAvatar), 用户名: \(post.username)")
+                }
             
             // 用户信息 - 更紧凑的布局
             VStack(alignment: .leading, spacing: 4) {
@@ -1077,7 +1076,7 @@ struct PostCardView: View {
                         )
                         .id("thumbnail_\(imageName)")
                         .clipShape(RoundedRectangle(cornerRadius: 3))
-                        .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
+                                .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
                         .overlay(
                             RoundedRectangle(cornerRadius: 3)
                                 .stroke(Color(.systemGray5), lineWidth: 0.5)
@@ -1087,25 +1086,25 @@ struct PostCardView: View {
                     Image(uiImage: uiImage)
                     .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: geometry.size.width * 0.85)
+                                .frame(maxWidth: geometry.size.width * 0.85)
                             .frame(maxHeight: calculateSingleImageHeight(for: imageName, width: geometry.size.width * 0.85))
                             .id("thumbnail_\(imageName)")
-                            .cornerRadius(3)
+                                .cornerRadius(3)
                             .clipShape(RoundedRectangle(cornerRadius: 3))
-                            .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
+                                .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
                     .overlay(
                                 RoundedRectangle(cornerRadius: 3)
                                 .stroke(Color(.systemGray5), lineWidth: 0.5)
                         )
-                } else {
+                    } else {
                         // 占位图
                     generateMockImage(for: imageName)
-                            .frame(maxWidth: geometry.size.width * 0.85)
+                                .frame(maxWidth: geometry.size.width * 0.85)
                             .frame(height: 200)
                             .id("thumbnail_\(imageName)")
-                            .cornerRadius(3)
+                                .cornerRadius(3)
                             .clipShape(RoundedRectangle(cornerRadius: 3))
-                            .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
+                                .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
                         .overlay(
                                 RoundedRectangle(cornerRadius: 3)
                                 .stroke(Color(.systemGray5), lineWidth: 0.5)
@@ -1179,7 +1178,7 @@ struct PostCardView: View {
                                     wechatStyleImageItem(post.images[index], size: itemWidth)
                                 }
                                 .buttonStyle(PlainButtonStyle())
-                            } else {
+                    } else {
                                 // 占位，保持网格结构完整
                                 Color.clear
                                     .frame(width: itemWidth, height: itemWidth)
@@ -1222,7 +1221,7 @@ struct PostCardView: View {
                         RoundedRectangle(cornerRadius: 3)
                             .stroke(Color(.systemGray5), lineWidth: 0.5)
                     )
-            } else {
+                    } else {
                 // 占位图
                 generateMockImage(for: imageName)
                     .frame(width: size, height: size)
@@ -1475,7 +1474,7 @@ struct PostCardView: View {
                             }
                         }
                     )
-            } else {
+                    } else {
                 // 占位图
                 generateMockImage(for: imageName)
                     .frame(width: width, height: 150) // 从200减小到150
@@ -1655,10 +1654,6 @@ struct PostCardView: View {
                 .frame(width: width, height: height)
                 .clipShape(RoundedRectangle(cornerRadius: 12)) // 确保内容被剪裁为圆角
                 .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3) // 增强阴影效果
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12) // 减小圆角
-                        .stroke(Color(.systemGray5), lineWidth: 0.5)
-                )
             } else if let uiImage = UIImage(named: imageName) {
                 // 内置图片
                 Image(uiImage: uiImage)
@@ -1668,21 +1663,13 @@ struct PostCardView: View {
                     .cornerRadius(12) // 减小圆角
                     .clipShape(RoundedRectangle(cornerRadius: 12)) // 确保内容被剪裁为圆角
                     .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3) // 增强阴影效果
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12) // 减小圆角
-                            .stroke(Color(.systemGray5), lineWidth: 0.5)
-                    )
-            } else {
+                    } else {
                 // 占位图
                 generateMockImage(for: imageName)
                     .frame(width: width, height: height)
                     .cornerRadius(12) // 减小圆角
                     .clipShape(RoundedRectangle(cornerRadius: 12)) // 确保内容被剪裁为圆角
                     .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3) // 增强阴影效果
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12) // 减小圆角
-                            .stroke(Color(.systemGray5), lineWidth: 0.5)
-                    )
             }
         }
     }
@@ -1724,30 +1711,20 @@ struct PostCardView: View {
                     // 获取一条精选评论
                     if let featuredComment = getFeaturedComment() {
                         HStack(alignment: .top, spacing: 8) {
-                            // 用户头像
-                            ZStack {
-                                Circle()
-                                    .fill(featuredComment.isVirtualCharacter 
-                                          ? getCharacterColor(for: featuredComment.characterID ?? "").opacity(0.1)
-                                          : DesignSystem.Colors.secondaryBackground)
-                                    .frame(width: 30, height: 30)
-                                
-                                Text(String(featuredComment.username.prefix(1)))
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(featuredComment.isVirtualCharacter 
-                                                    ? getCharacterColor(for: featuredComment.characterID ?? "")
-                                                    : DesignSystem.Colors.secondary)
-                            }
-                            .overlay(
-                                Circle()
-                                    .stroke(
-                                        featuredComment.isVirtualCharacter 
-                                        ? getCharacterColor(for: featuredComment.characterID ?? "")
-                                        : Color.clear,
-                                        lineWidth: 1.0
-                                    )
+                            // 用户头像 - 使用Avatar组件，并传递干净的角色ID
+                            Avatar(
+                                url: featuredComment.characterID ?? featuredComment.userAvatar,
+                                  name: featuredComment.username,
+                                category: featuredComment.isVirtualCharacter ? CharacterAvatarService.shared.getCharacterCategoryTag(for: featuredComment.characterID ?? "") : "",
+                                size: 30
                             )
-                            
+                                .frame(width: 30, height: 30)
+                                .onAppear {
+                                    if featuredComment.isVirtualCharacter {
+                                        print("📱 精选评论头像 - 角色ID: \(featuredComment.characterID ?? "nil"), 头像路径: \(featuredComment.userAvatar)")
+                                    }
+                                }
+
                             VStack(alignment: .leading, spacing: 2) {
                                 // 用户名和类型
                                 HStack {
@@ -1756,12 +1733,12 @@ struct PostCardView: View {
                                         .foregroundColor(DesignSystem.Colors.primaryText)
                                     
                                     if featuredComment.isVirtualCharacter {
-                                        Text(getCharacterCategory(for: featuredComment.characterID ?? ""))
+                                        Text(CharacterAvatarService.shared.getCharacterCategoryTag(for: featuredComment.characterID ?? ""))
                                             .font(.system(size: 10))
                                             .padding(.horizontal, 4)
                                             .padding(.vertical, 1)
-                                            .background(getCharacterColor(for: featuredComment.characterID ?? "").opacity(0.12))
-                                            .foregroundColor(getCharacterColor(for: featuredComment.characterID ?? ""))
+                                            .background(CharacterAvatarService.shared.getCharacterTagColor(for: featuredComment.characterID ?? "").opacity(0.12))
+                                            .foregroundColor(CharacterAvatarService.shared.getCharacterTagColor(for: featuredComment.characterID ?? ""))
                                             .cornerRadius(4)
                                     }
                                 }
@@ -1808,13 +1785,13 @@ struct PostCardView: View {
                                         HStack(spacing: 4) {
                                             Image(systemName: "sparkles")
                                                 .font(.system(size: 9))
-                                                .foregroundColor(getCharacterColor(for: featuredComment.characterID ?? ""))
+                                                .foregroundColor(CharacterAvatarService.shared.getCharacterTagColor(for: featuredComment.characterID ?? ""))
                                             
                                             Text("历史人物")
                                                 .font(.system(size: 10))
-                                                .foregroundColor(getCharacterColor(for: featuredComment.characterID ?? "").opacity(0.8))
+                                                .foregroundColor(CharacterAvatarService.shared.getCharacterTagColor(for: featuredComment.characterID ?? "").opacity(0.8))
                                         }
-                                    } else {
+                    } else {
                                         Text("点击查看更多")
                                             .font(.system(size: 11))
                                             .foregroundColor(.secondary.opacity(0.7))
@@ -2108,7 +2085,7 @@ struct PostCardView: View {
         Group {
             if comment.isVirtualCharacter {
                 getCharacterColor(for: comment.characterID ?? "").opacity(0.03)
-            } else {
+                    } else {
                 DesignSystem.Colors.secondaryBackground // 使用设计系统定义的嵌套背景色
             }
         }
@@ -2222,7 +2199,7 @@ struct PostCardView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 10) {
                 // 用户头像
-                characterAvatar(for: comment)
+                avatarView(for: comment)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     // 用户名和标签
@@ -2232,12 +2209,12 @@ struct PostCardView: View {
                             .foregroundColor(DesignSystem.Colors.primaryText)
                         
                         if comment.characterID != nil {
-                            Text(getCharacterCategory(for: comment.characterID ?? ""))
+                            Text(CharacterAvatarService.shared.getCharacterCategoryTag(for: comment.characterID ?? ""))
                                 .font(.system(size: 12.0, weight: .regular))
                                 .padding(.horizontal, 6.0)
                                 .padding(.vertical, 2.0)
-                                .background(getCharacterColor(for: comment.characterID ?? "").opacity(0.1))
-                                .foregroundColor(getCharacterColor(for: comment.characterID ?? ""))
+                                .background(CharacterAvatarService.shared.getCharacterTagColor(for: comment.characterID ?? "").opacity(0.1))
+                                .foregroundColor(CharacterAvatarService.shared.getCharacterTagColor(for: comment.characterID ?? ""))
                                 .cornerRadius(6.0)
                         }
                     }
@@ -2265,7 +2242,6 @@ struct PostCardView: View {
         .background(getCommentBackground(for: comment))
         .cornerRadius(12.0)
         .overlay(getCommentLeftBorder(for: comment))
-        .overlay(getCommentBorder(for: comment))
         .onTapGesture {
             onReply()
         }
@@ -2345,46 +2321,30 @@ struct PostCardView: View {
     
     // 用户头像视图
     private func avatarView(for comment: DetailedCommentModel) -> some View {
-        Group {
+        // 使用统一的Avatar组件，确保头像降级处理一致
+        Avatar(
+            url: comment.characterID ?? comment.userAvatar,
+            name: comment.username,
+            category: comment.isVirtualCharacter ? CharacterAvatarService.shared.getCharacterCategoryTag(for: comment.characterID ?? "") : "",
+            size: 40
+        )
+        .onAppear {
             if comment.isVirtualCharacter {
-                // 虚拟角色头像
-                Avatar(url: comment.userAvatar, size: 40)
-                    .overlay(
-                        Circle()
-                            .stroke(getCharacterColor(for: comment.characterID ?? ""), lineWidth: 2)
-                            .shadow(color: getCharacterColor(for: comment.characterID ?? "").opacity(0.3), radius: 2, x: 0, y: 0)
-                    )
-            } else {
-                // 普通用户头像
-                Avatar(url: comment.userAvatar, size: 40)
+                print("📱 PostCardView - 评论头像 - 角色ID: \(comment.characterID ?? "nil"), 头像路径: \(comment.userAvatar), 用户名: \(comment.username)")
+                
+                // 检查图片是否存在
+                if let characterID = comment.characterID {
+                    let avatarService = CharacterAvatarService.shared
+                    let exists = avatarService.checkImageExistence(imageName: characterID)
+                    print("🔍 PostCardView - 角色头像检查 - \(characterID): \(exists ? "存在" : "不存在")")
+                    
+                    // 如果不存在，确认会降级到字母头像
+                    if !exists {
+                        print("⚠️ PostCardView - 角色头像不存在，将使用字母头像 - 角色: \(characterID), 名称: \(comment.username)")
+                    }
+                }
             }
         }
-    }
-    
-    // 角色头像
-    private func characterAvatar(for comment: DetailedCommentModel) -> some View {
-        ZStack {
-            Circle()
-                .fill(comment.isVirtualCharacter 
-                      ? getCharacterColor(for: comment.characterID ?? "").opacity(0.1)
-                      : DesignSystem.Colors.secondaryBackground)
-                .frame(width: 34.0, height: 34.0)
-            
-            Text(String(comment.username.prefix(1)))
-                .font(.system(size: 18.0, weight: .semibold))
-                .foregroundColor(comment.isVirtualCharacter 
-                                 ? getCharacterColor(for: comment.characterID ?? "")
-                                 : DesignSystem.Colors.secondary)
-        }
-        .overlay(
-            Circle()
-                .stroke(
-                    comment.isVirtualCharacter 
-                    ? getCharacterColor(for: comment.characterID ?? "")
-                    : Color.clear,
-                    lineWidth: 1.5
-                )
-        )
     }
     
     // MARK: - 视图组件
@@ -2678,7 +2638,7 @@ struct PostCardView: View {
                 if let updatedPost = viewModel.posts.first(where: { $0.id == post.id }) {
                     commentLoader.initialize(with: updatedPost.comments, postID: updatedPost.id)
                 }
-            } else {
+                    } else {
                 // 如果是新评论
                 let newComment = DetailedCommentModel(
                     username: "当前用户",

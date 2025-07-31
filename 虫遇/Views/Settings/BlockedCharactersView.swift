@@ -165,7 +165,7 @@ struct BlockedCharactersView: View {
             return "book.fill"
         case "davinci":
             return "paintpalette.fill"
-        case "confucius":
+        case "kongzi":
             return "scroll.fill"
         case "libai":
             return "text.book.closed.fill"
@@ -187,7 +187,7 @@ struct BlockedCharactersView: View {
             return "莎士比亚"
         case "davinci":
             return "达芬奇"
-        case "confucius":
+        case "kongzi":
             return "孔子"
         case "libai":
             return "李白"
@@ -209,7 +209,7 @@ struct BlockedCharactersView: View {
             return "英国剧作家、诗人"
         case "davinci":
             return "意大利艺术家、发明家"
-        case "confucius":
+        case "kongzi":
             return "中国思想家、教育家"
         case "libai":
             return "唐代诗人，浪漫主义代表"
@@ -231,7 +231,7 @@ struct BlockedCharactersView: View {
             return Color.purple
         case "davinci":
             return Color.orange
-        case "confucius":
+        case "kongzi":
             return Color(red: 0.2, green: 0.5, blue: 0.3)
         case "libai":
             return Color(red: 0.8, green: 0.4, blue: 0.2)

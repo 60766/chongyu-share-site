@@ -1,6 +1,15 @@
 import SwiftUI
 
 /**
+ * 中文字符集扩展
+ */
+extension CharacterSet {
+    static var chineseCharacters: CharacterSet {
+        return CharacterSet(charactersIn: "\u{4E00}"..."\u{9FFF}")
+    }
+}
+
+/**
  * 评论视图组件
  * 显示单条评论，支持点赞、回复等操作
  * 采用极简设计风格，优化阅读体验
@@ -19,6 +28,9 @@ struct CommentView: View {
     @State private var showOptions: Bool = false
     @State private var isPressed: Bool = false
     
+    // 头像服务
+    private let avatarService = CharacterAvatarService.shared
+    
     // 初始化函数
     init(comment: DetailedCommentModel, onReply: @escaping (DetailedCommentModel) -> Void = { _ in }, onLike: @escaping (DetailedCommentModel) -> Void = { _ in }) {
         self.comment = comment
@@ -28,6 +40,11 @@ struct CommentView: View {
         // 初始化本地状态，默认为未点赞
         _isLiked = State(initialValue: false)
         _likeCount = State(initialValue: comment.likes)
+        
+        // 调试信息
+        if comment.isVirtualCharacter {
+            print("🔍 创建虚拟角色评论视图 - 角色ID: \(comment.characterID ?? "未知"), 用户名: \(comment.username)")
+        }
     }
     
     var body: some View {
@@ -36,93 +53,43 @@ struct CommentView: View {
             VStack(alignment: .leading, spacing: 8) {
                 // 用户信息区
                 HStack(alignment: .center, spacing: 10) {
-                    // 用户头像
-                    if !comment.userAvatar.isEmpty, let avatar = UIImage(named: comment.userAvatar) {
-                        Image(uiImage: avatar)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 36, height: 36)
-                            .clipShape(Circle())
-                            .overlay(
-                                Circle()
-                                    .stroke(
-                                        comment.isVirtualCharacter ? 
-                                            Color.orange.opacity(0.3) : 
-                                            Color.clear, 
-                                        lineWidth: 1.0 // 减少边框宽度
-                                    )
-                            )
-                            .shadow(
-                                color: comment.isVirtualCharacter ? 
-                                    Color.orange.opacity(0.1) : // 减轻阴影
-                                    Color.clear, 
-                                radius: 1, // 减少阴影大小
-                                x: 0, 
-                                y: 0
-                            )
-                    } else {
-                        // 默认头像
-                        ZStack {
-                            Circle()
-                                .fill(comment.isVirtualCharacter ? 
-                                      Color.orange.opacity(0.08) : // 极淡的背景
-                                      Color.gray.opacity(0.08))
-                                .frame(width: 36, height: 36)
-                            
-                            Text(String(comment.username.prefix(1).uppercased()))
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(
-                                    comment.isVirtualCharacter ? 
-                                        .orange.opacity(0.8) : 
-                                        Color(.systemGray)
-                                )
-                        }
-                        .shadow(
-                            color: comment.isVirtualCharacter ? 
-                                Color.orange.opacity(0.1) : // 极淡的阴影
-                                Color.clear, 
-                            radius: 1, // 极小的阴影半径
-                            x: 0, 
-                            y: 0
-                        )
-                    }
+                    // 用户头像 - 优先使用CharacterAvatarService
+                    AvatarView(comment: comment, avatarService: avatarService)
                     
-                    // 用户信息
-                    VStack(alignment: .leading, spacing: 2) {
-                        // 用户名和标识
-                        HStack(alignment: .center, spacing: 6) {
-                            // 用户名
-                            Text(comment.username)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(
-                                    comment.isVirtualCharacter ? 
-                                        .primary : 
-                                        Color(.systemGray)
-                                )
-                            
-                            // 历史人物标识 - 精简设计
+                    // 用户名和标签区域
+                    HStack(alignment: .top, spacing: 4) {
+                        // 用户名 - 使用中文名称而不是ID
+                        Text(getUserDisplayName(comment: comment))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        // 添加调试日志
+                        .onAppear {
                             if comment.isVirtualCharacter {
-                                HStack(spacing: 2) {
-                                    Image(systemName: "sparkles")
-                                        .font(.system(size: 9)) // 更小的图标
-                                    
-                                    Text("历史人物")
-                                        .font(.system(size: 9, weight: .medium)) // 更小的字体
+                                print("🔍 CommentView显示用户名: \(comment.username), 角色ID: \(comment.characterID ?? "未知")")
+                                if let characterID = comment.characterID, characterID.lowercased() == "kongzi" {
+                                    print("⚠️ 检测到孔子评论，显示名称: \(comment.username)")
                                 }
-                                .padding(.horizontal, 4) // 减小内边距
-                                .padding(.vertical, 2)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.orange.opacity(0.08)) // 更淡的背景色
-                                )
-                                .foregroundColor(.orange.opacity(0.8)) // 稍微柔和的橙色
                             }
                         }
                         
-                        // 评论时间
-                        Text(timeAgoString(from: comment.datePosted))
+                        // 虚拟角色标签
+                        if comment.isVirtualCharacter {
+                            Text(getCategoryTag(for: comment.characterID ?? ""))
+                                .font(.system(size: 12))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(getCategoryTagColor(for: comment.characterID ?? "").opacity(0.15))
+                                .foregroundColor(getCategoryTagColor(for: comment.characterID ?? ""))
+                                .cornerRadius(4)
+                        }
+                        
+                        Spacer()
+                        
+                        // 时间标签
+                        Text(comment.getFormattedTimeAgo())
                             .font(.system(size: 12))
-                            .foregroundColor(Color(.systemGray3))
+                            .foregroundColor(.secondary)
                     }
                     
                     Spacer()
@@ -157,77 +124,14 @@ struct CommentView: View {
                     .padding(.bottom, 12)
                 
                 // 底部操作栏 - 极简风格
-                HStack(spacing: 20) {
-                    // 点赞按钮
-                    Button(action: {
-                        toggleLike()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: isLiked ? "heart.fill" : "heart")
-                                .font(.system(size: 13)) // 更小的图标
-                                .foregroundColor(
-                                    isLiked ? 
-                                        .red.opacity(0.9) : // 柔和的红色
-                                        Color(.systemGray3)
-                                )
-                                .scaleEffect(isLiked ? 1.05 : 1.0) // 减小动画幅度
-                            
-                            Text("\(likeCount)")
-                                .font(.system(size: 13))
-                                .foregroundColor(
-                                    isLiked ? 
-                                        .red.opacity(0.8) : 
-                                        Color(.systemGray3)
-                                )
-                        }
-                    }
-                    .buttonStyle(ScaleButtonStyle(scaleAmount: 0.97)) // 减小缩放幅度
-                    
-                    // 回复按钮
-                    Button(action: {
-                        hapticFeedback(style: .light)
-                        onReply(comment)
-                        
-                        // 发送通知，让CommentInputView获取焦点并弹出键盘
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("FocusCommentInput"),
-                            object: nil
-                        )
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrowshape.turn.up.left")
-                                .font(.system(size: 13))
-                                .foregroundColor(Color(.systemGray3))
-                            
-                            Text("回复")
-                                .font(.system(size: 13))
-                                .foregroundColor(Color(.systemGray3))
-                        }
-                    }
-                    .buttonStyle(ScaleButtonStyle(scaleAmount: 0.97)) // 减小缩放幅度
-                    
-                    Spacer()
-                    
-                    // 精华标识 - 简化设计
-                    if comment.likes > 30 {
-                        HStack(spacing: 2) {
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 11)) // 更小的图标
-                            
-                            Text("精华")
-                                .font(.system(size: 11)) // 更小的文本
-                        }
-                        .foregroundColor(Color.orange.opacity(0.8)) // 柔和的橙色
-                        .padding(.horizontal, 7) // 减小内边距
-                        .padding(.vertical, 3)
-                        .background(
-                            Capsule()
-                                .fill(Color.orange.opacity(0.08)) // 更淡的背景色
-                        )
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+                CommentActionsView(
+                    isLiked: $isLiked,
+                    likeCount: $likeCount,
+                    comment: comment,
+                    onReply: onReply,
+                    onLike: onLike,
+                    hapticFeedback: hapticFeedback
+                )
             }
             .background(
                 comment.isVirtualCharacter ? 
@@ -319,6 +223,352 @@ struct CommentView: View {
         if let hour = components.hour, hour >= 1 { return "\(hour)小时前" }
         if let minute = components.minute, minute >= 1 { return "\(minute)分钟前" }
         return "刚刚"
+    }
+
+    /**
+     * 获取用户显示名称
+     * 对于虚拟角色，确保显示中文名称而非ID
+     */
+    private func getUserDisplayName(comment: DetailedCommentModel) -> String {
+        if comment.isVirtualCharacter, let characterID = comment.characterID {
+            // 优先从CharacterAvatarService获取中文名
+            let chineseName = avatarService.getCharacterChineseName(for: characterID)
+            if !chineseName.isEmpty && chineseName != characterID {
+                return chineseName
+            }
+            
+            // 检查用户名是否已经是中文
+            if comment.username.rangeOfCharacter(from: .chineseCharacters) != nil {
+                return comment.username
+            }
+            
+            // 如果以上都不满足，返回原始用户名
+            return comment.username
+        }
+        
+        return comment.username
+    }
+
+    /**
+     * 获取分类标签
+     */
+    private func getCategoryTag(for characterID: String) -> String {
+        // 直接从AvatarService获取，保持统一
+        return avatarService.getCharacterCategoryTag(for: characterID)
+    }
+
+    /**
+     * 获取分类标签颜色
+     */
+    private func getCategoryTagColor(for characterID: String) -> Color {
+        // 直接从AvatarService获取，保持统一
+        return avatarService.getCharacterTagColor(for: characterID)
+    }
+    
+    // MARK: - 辅助视图
+    
+    /**
+     * 头像视图
+     * 根据评论类型显示不同的头像
+     */
+    struct AvatarView: View {
+        let comment: DetailedCommentModel
+        let avatarService: CharacterAvatarService
+        
+        var body: some View {
+            if comment.isVirtualCharacter {
+                // 虚拟角色头像
+                if let characterID = comment.characterID {
+                    // 使用统一的Avatar组件
+                    Avatar(
+                        url: characterID,
+                        name: comment.username,
+                        category: avatarService.getCharacterCategoryTag(for: characterID),
+                        size: 36
+                    )
+                    .onAppear {
+                        print("🔍 CommentView.AvatarView - 显示虚拟角色头像: \(characterID), 用户名: \(comment.username)")
+                        
+                        // 检查图片是否存在
+                        let exists = avatarService.checkImageExistence(imageName: characterID)
+                        print("🔍 CommentView.AvatarView - 角色头像检查 - \(characterID): \(exists ? "存在" : "不存在")")
+                    }
+                } else {
+                    // 没有角色ID的虚拟角色，使用用户名生成字母头像
+                    Avatar(
+                        url: comment.userAvatar,
+                        name: comment.username,
+                        size: 36
+                    )
+                    .onAppear {
+                        print("⚠️ CommentView.AvatarView - 虚拟角色没有characterID，使用userAvatar: \(comment.userAvatar)")
+                    }
+                }
+            } else {
+                // 普通用户头像
+                Avatar(
+                    url: comment.userAvatar,
+                    name: comment.username,
+                    size: 36
+                )
+                .onAppear {
+                    print("🔍 CommentView.AvatarView - 显示普通用户头像: \(comment.userAvatar)")
+                }
+            }
+        }
+    }
+    
+    /// 历史人物头像视图
+    struct HistoricalFigureAvatarView: View {
+        let characterID: String
+        let avatarPath: String // 添加avatarPath参数接收从AvatarView传来的路径
+        
+        var body: some View {
+            Group {
+                // 尝试多种方式加载头像
+                if let image = loadImageFromFileSystem() {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 36, height: 36)
+                        .clipShape(Circle())
+                        .onAppear {
+                            print("✅ 成功加载历史人物头像: \(characterID)")
+                        }
+                } 
+                // 如果文件系统加载失败，显示文字头像
+                else {
+                    ZStack {
+                        Circle()
+                            .fill(Color.orange.opacity(0.1))
+                            .frame(width: 36, height: 36)
+                        
+                        Text(String(characterID.prefix(1).uppercased()))
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.orange)
+                    }
+                    .onAppear {
+                        print("⚠️ 无法加载历史人物头像，显示文字头像: \(characterID)")
+                        print("⚠️ 尝试的头像路径: \(avatarPath)")
+                        debugPrintImagePaths(characterID)
+                    }
+                }
+            }
+        }
+        
+        /// 直接从文件系统加载图片
+        private func loadImageFromFileSystem() -> UIImage? {
+            // 1. 首先尝试使用UIImage(named:)加载，这是最简单的方式
+            // 尝试多种可能的命名格式
+            let possibleNames = [
+                characterID,
+                characterID.lowercased(),
+                "HistoricalFigures/\(characterID)",
+                "HistoricalFigures/\(characterID.lowercased())",
+                avatarPath,
+                avatarPath.lowercased()
+            ]
+            
+            for name in possibleNames {
+                if let image = UIImage(named: name) {
+                    print("✅ 成功使用UIImage(named:)加载头像: \(name)")
+                    return image
+                }
+            }
+            
+            // 2. 如果UIImage(named:)失败，尝试直接从文件系统加载
+            guard let resourcePath = Bundle.main.resourcePath else { 
+                print("❌ 无法获取资源路径")
+                return nil 
+            }
+            
+            // 从avatarPath中提取角色ID，以便正确处理路径
+            let extractedID: String
+            if avatarPath.contains("/") {
+                extractedID = avatarPath.components(separatedBy: "/").last ?? characterID
+            } else {
+                extractedID = avatarPath.isEmpty ? characterID : avatarPath
+            }
+            
+            print("🔍 从avatarPath提取的ID: \(extractedID)")
+            
+            // 尝试多个可能的路径
+            let possiblePaths = [
+                // 1. 使用标准的HistoricalFigures路径
+                resourcePath + "/Assets.xcassets/HistoricalFigures/\(extractedID.lowercased()).imageset/\(extractedID.lowercased()).png",
+                resourcePath + "/Assets.xcassets/HistoricalFigures/\(characterID.lowercased()).imageset/\(characterID.lowercased()).png",
+                
+                // 2. 直接使用avatarPath
+                resourcePath + "/\(avatarPath).png",
+                
+                // 3. 使用标准的HistoricalFigures路径
+                resourcePath + "/HistoricalFigures/\(extractedID).png",
+                resourcePath + "/HistoricalFigures/\(extractedID.lowercased()).png",
+                
+                // 4. 直接在根目录查找
+                resourcePath + "/\(extractedID).png",
+                resourcePath + "/\(extractedID.lowercased()).png",
+                
+                // 5. 在Assets.xcassets中查找
+                resourcePath + "/Assets.xcassets/HistoricalFigures/\(extractedID).imageset/\(extractedID).png",
+                
+                // 6. 在不同的Assets.xcassets路径中查找
+                resourcePath + "/Assets.xcassets/\(extractedID).imageset/\(extractedID).png"
+            ]
+            
+            for path in possiblePaths {
+                if FileManager.default.fileExists(atPath: path) {
+                    print("✅ 文件存在: \(path)")
+                    if let image = UIImage(contentsOfFile: path) {
+                        print("✅ 成功加载头像图片: \(path)")
+                        return image
+                    }
+                }
+            }
+            
+            // 3. 尝试在备份目录中查找
+            let backupPaths = [
+                resourcePath + "/backup_assets_20250730181514/HistoricalFigures/\(extractedID.lowercased()).imageset/\(extractedID.lowercased()).png",
+                resourcePath + "/backup_assets_20250730181514/HistoricalFigures/\(characterID.lowercased()).imageset/\(characterID.lowercased()).png"
+            ]
+            
+            for path in backupPaths {
+                if FileManager.default.fileExists(atPath: path) {
+                    print("✅ 文件存在于备份目录: \(path)")
+                    if let image = UIImage(contentsOfFile: path) {
+                        print("✅ 成功从备份目录加载头像: \(path)")
+                        return image
+                    }
+                }
+            }
+            
+            print("❌ 所有路径尝试失败，无法加载头像: \(characterID)")
+            return nil
+        }
+        
+        /// 打印调试信息，帮助诊断问题
+        private func debugPrintImagePaths(_ characterID: String) {
+            print("🔍 调试图片路径 - 角色ID: \(characterID)")
+            
+            if let resourcePath = Bundle.main.resourcePath {
+                print("📁 资源路径: \(resourcePath)")
+                
+                // 检查Assets.xcassets中的HistoricalFigures目录
+                let assetPath = resourcePath + "/Assets.xcassets/HistoricalFigures"
+                if FileManager.default.fileExists(atPath: assetPath) {
+                    print("✅ HistoricalFigures目录存在: \(assetPath)")
+                } else {
+                    print("❌ HistoricalFigures目录不存在: \(assetPath)")
+                }
+                
+                // 检查备份目录
+                let backupPath = resourcePath + "/backup_assets_20250730181514/HistoricalFigures"
+                if FileManager.default.fileExists(atPath: backupPath) {
+                    print("✅ 备份HistoricalFigures目录存在: \(backupPath)")
+                } else {
+                    print("❌ 备份HistoricalFigures目录不存在: \(backupPath)")
+                }
+            }
+        }
+    }
+    
+    /// 评论操作视图
+    struct CommentActionsView: View {
+        @Binding var isLiked: Bool
+        @Binding var likeCount: Int
+        let comment: DetailedCommentModel
+        let onReply: (DetailedCommentModel) -> Void
+        let onLike: (DetailedCommentModel) -> Void
+        let hapticFeedback: (UIImpactFeedbackGenerator.FeedbackStyle) -> Void
+        
+        var body: some View {
+            HStack(spacing: 20) {
+                // 点赞按钮
+                Button(action: {
+                    toggleLike()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: isLiked ? "heart.fill" : "heart")
+                            .font(.system(size: 13)) // 更小的图标
+                            .foregroundColor(
+                                isLiked ? 
+                                    .red.opacity(0.9) : // 柔和的红色
+                                    Color(.systemGray3)
+                            )
+                            .scaleEffect(isLiked ? 1.05 : 1.0) // 减小动画幅度
+                        
+                        Text("\(likeCount)")
+                            .font(.system(size: 13))
+                            .foregroundColor(
+                                isLiked ? 
+                                    .red.opacity(0.8) : 
+                                    Color(.systemGray3)
+                            )
+                    }
+                }
+                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.97)) // 减小缩放幅度
+                
+                // 回复按钮
+                Button(action: {
+                    hapticFeedback(.light)
+                    onReply(comment)
+                    
+                    // 发送通知，让CommentInputView获取焦点并弹出键盘
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("FocusCommentInput"),
+                        object: nil
+                    )
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrowshape.turn.up.left")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(.systemGray3))
+                        
+                        Text("回复")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(.systemGray3))
+                    }
+                }
+                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.97)) // 减小缩放幅度
+                
+                Spacer()
+                
+                // 精华标识 - 简化设计
+                if comment.likes > 30 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 11)) // 更小的图标
+                        
+                        Text("精华")
+                            .font(.system(size: 11)) // 更小的文本
+                    }
+                    .foregroundColor(Color.orange.opacity(0.8)) // 柔和的橙色
+                    .padding(.horizontal, 7) // 减小内边距
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(Color.orange.opacity(0.08)) // 更淡的背景色
+                    )
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 12)
+        }
+        
+        /// 切换点赞状态
+        private func toggleLike() {
+            // 触感反馈
+            hapticFeedback(.light)
+            
+            // 更新状态 - 使用更快的动画
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                isLiked.toggle()
+                likeCount += isLiked ? 1 : -1
+            }
+            
+            // 调用回调
+            onLike(comment)
+        }
     }
 }
 

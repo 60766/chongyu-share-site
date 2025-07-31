@@ -1,0 +1,37 @@
+import SwiftUI
+
+struct ContentView: View {
+    var body: some View {
+        TabView {
+            // 原有内容
+            // ...
+            
+            // 添加头像测试入口
+            VStack {
+                // 原有内容
+                // ...
+                
+                // 添加测试按钮
+                Button(action: {
+                    // 显示测试视图
+                    // 这里根据您的导航方式进行调整
+                }) {
+                    Text("测试头像")
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .sheet(isPresented: ) {
+                    SimpleAvatarTest()
+                }
+            }
+            .tabItem {
+                Image(systemName: "person")
+                Text("我的")
+            }
+        }
+    }
+    
+    @State private var showTestView = false
+}

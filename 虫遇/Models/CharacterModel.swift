@@ -56,7 +56,8 @@ struct CharacterModel: Identifiable {
             profession: "物理学家",
             bio: "相对论创始人，诺贝尔物理学奖获得者，20世纪最伟大的物理学家之一。",
             category: .scientist,
-            famousQuotes: ["想象力比知识更重要", "我们不能用制造问题的思维方式来解决问题"]
+            famousQuotes: ["想象力比知识更重要", "我们不能用制造问题的思维方式来解决问题"],
+            characterID: "einstein"
         ),
         Self(
             name: "莎士比亚",
@@ -65,7 +66,8 @@ struct CharacterModel: Identifiable {
             profession: "剧作家、诗人",
             bio: "英国文学史上最杰出的作家，被誉为\"人类文学史上的一座高峰\"。",
             category: .writer,
-            famousQuotes: ["生存还是毁灭，这是一个问题", "我们由梦想构成，我们的小生命被睡眠包围"]
+            famousQuotes: ["生存还是毁灭，这是一个问题", "我们由梦想构成，我们的小生命被睡眠包围"],
+            characterID: "shakespeare"
         ),
         Self(
             name: "达芬奇",
@@ -74,7 +76,8 @@ struct CharacterModel: Identifiable {
             profession: "艺术家、科学家",
             bio: "文艺复兴时期的天才，在绘画、雕塑、建筑、科学、音乐、数学等多个领域都有卓越成就。",
             category: .artist,
-            famousQuotes: ["简单是最终的复杂", "艺术永远不会完成，只会被放弃"]
+            famousQuotes: ["简单是最终的复杂", "艺术永远不会完成，只会被放弃"],
+            characterID: "davinci"
         ),
         Self(
             name: "苏格拉底",
@@ -83,7 +86,8 @@ struct CharacterModel: Identifiable {
             profession: "哲学家",
             bio: "古希腊哲学家，西方哲学的奠基人之一，以苏格拉底方法闻名。",
             category: .philosopher,
-            famousQuotes: ["我只知道一件事，那就是我什么都不知道", "未经审视的生活不值得过"]
+            famousQuotes: ["我只知道一件事，那就是我什么都不知道", "未经审视的生活不值得过"],
+            characterID: "socrates"
         ),
         Self(
             name: "居里夫人",
@@ -92,7 +96,8 @@ struct CharacterModel: Identifiable {
             profession: "物理学家、化学家",
             bio: "首位获得诺贝尔奖的女性，也是唯一一位在两个不同领域获得诺贝尔奖的女性科学家。",
             category: .scientist,
-            famousQuotes: ["我们不应该害怕任何事，只应该去理解", "你永远不会意识到自己的强大，直到强大成为唯一的选择"]
+            famousQuotes: ["我们不应该害怕任何事，只应该去理解", "你永远不会意识到自己的强大，直到强大成为唯一的选择"],
+            characterID: "curie"
         )
     ]
     

@@ -1010,24 +1010,6 @@
       }
     },
     {
-      "id": "liucixin",
-      "name": "刘慈欣",
-      "type": "historical",
-      "subtype": "writer",
-      "era": "现代",
-      "primaryField": "科幻作家",
-      "briefDescription": "中国著名科幻作家，《三体》系列作者，获得雨果奖的亚洲第一人",
-      "avatarName": "liucixin",
-      "region": "中国",
-      "contentAffinities": {
-        "古潮新语": 0.8,
-        "穿越吐槽": 0.85,
-        "日常心情": 0.7,
-        "虫洞共鸣": 0.95,
-        "时空记事": 0.85
-      }
-    },
-    {
       "id": "guangtouqiang",
       "name": "光头强",
       "type": "anime",

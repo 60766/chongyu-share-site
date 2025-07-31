@@ -12,12 +12,18 @@ struct EmptyCommentsView: View {
     @State private var showThinking = false
     @State private var pulseEffect = false
     
-    // 角色列表
-    private let characters = ["einstein", "shakespeare", "davinci", "libai", "confucius"]
+    // 角色列表 - 从CharacterAvatarService获取
+    private let characters: [String]
+    private let avatarService = CharacterAvatarService.shared
     
     // 计时器用于切换"思考中"的角色
     @State private var timerPublisher = Timer.publish(every: 5, on: .main, in: .common)
     @State private var timerCancellable: Cancellable? = nil
+    
+    init() {
+        // 明确指定要使用的角色，不再依赖前5个
+        self.characters = ["einstein", "shakespeare", "davinci", "newton", "plato"]
+    }
     
     var body: some View {
         VStack(spacing: 24) {
@@ -100,20 +106,16 @@ struct EmptyCommentsView: View {
             // 历史人物头像区域 - 增强角色个性化
             VStack(spacing: 16) {
                 HStack(spacing: 0) {
-                    ForEach(Array(characters.enumerated()), id: \.element) { index, character in
-                        Image("avatar_\(character)")
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 36, height: 36)
-                            .clipShape(Circle())
+                    ForEach(Array(characters.enumerated()), id: \.element) { index, characterId in
+                        Avatar(url: characterId, name: avatarService.getCharacterChineseName(for: characterId), category: "", size: 36)
                             .overlay(
                                 Circle()
-                                    .stroke(getCharacterThemeColor(for: character), lineWidth: 2)
+                                    .stroke(avatarService.getCharacterTagColor(for: characterId), lineWidth: 2)
                             )
                             .offset(x: CGFloat(-10 * index), y: 0)
                             .scaleEffect(activeCharacterIndex == index ? 1.1 : 1.0)
                             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: activeCharacterIndex)
-                            .shadow(color: getCharacterThemeColor(for: character).opacity(0.3), radius: 3, x: 0, y: 1)
+                            .shadow(color: avatarService.getCharacterTagColor(for: characterId).opacity(0.3), radius: 3, x: 0, y: 1)
                             .zIndex(Double(characters.count - index))
                     }
                 }
@@ -121,7 +123,7 @@ struct EmptyCommentsView: View {
                 
                 // 角色思考状态指示器 - 增强期待感
                 if showThinking {
-                    CharacterThinkingIndicator(character: characters[activeCharacterIndex])
+                    CharacterThinkingIndicator(characterId: characters.map { $0 }[activeCharacterIndex])
                         .transition(.opacity)
                 }
             }
@@ -194,14 +196,7 @@ struct EmptyCommentsView: View {
     
     // 角色主题色获取函数
     private func getCharacterThemeColor(for character: String) -> Color {
-        switch character {
-            case "einstein": return Color(hex: "4A6FFF").opacity(0.7) // 科学蓝
-            case "shakespeare": return Color(hex: "B55A9D").opacity(0.7) // 文学紫
-            case "davinci": return Color(hex: "E78B32").opacity(0.7) // 艺术橙
-            case "confucius": return Color(hex: "568B3E").opacity(0.7) // 哲学绿
-            case "libai": return Color(hex: "3D7D8C").opacity(0.7) // 诗歌青
-            default: return Color.gray.opacity(0.7)
-        }
+        return avatarService.getCharacterTagColor(for: character)
     }
 }
 
@@ -210,7 +205,8 @@ struct EmptyCommentsView: View {
  * 显示虚拟角色正在思考的动态效果
  */
 struct CharacterThinkingIndicator: View {
-    let character: String
+    let characterId: String
+    private let avatarService = CharacterAvatarService.shared
     
     @State private var typingPhase = 0
     @State private var timerPublisher = Timer.publish(every: 0.5, on: .main, in: .common)
@@ -219,11 +215,7 @@ struct CharacterThinkingIndicator: View {
     var body: some View {
         HStack(spacing: 8) {
             // 角色头像
-            Image("avatar_\(character)")
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 24, height: 24)
-                .clipShape(Circle())
+            Avatar(url: characterId, name: getCharacterName(), category: "", size: 24)
             
             // 思考指示动画
             HStack(spacing: 4) {
@@ -255,26 +247,12 @@ struct CharacterThinkingIndicator: View {
     
     // 获取角色颜色
     private func getCharacterColor() -> Color {
-        switch character {
-            case "einstein": return Color(hex: "4A6FFF")
-            case "shakespeare": return Color(hex: "B55A9D")
-            case "davinci": return Color(hex: "E78B32")
-            case "confucius": return Color(hex: "568B3E")
-            case "libai": return Color(hex: "3D7D8C")
-            default: return Color.gray
-        }
+        return avatarService.getCharacterTagColor(for: characterId)
     }
     
     // 获取角色名称
     private func getCharacterName() -> String {
-        switch character {
-            case "einstein": return "爱因斯坦"
-            case "shakespeare": return "莎士比亚"
-            case "davinci": return "达芬奇"
-            case "confucius": return "孔子"
-            case "libai": return "李白"
-            default: return "历史人物"
-        }
+        return avatarService.getCharacterChineseName(for: characterId)
     }
 }
 

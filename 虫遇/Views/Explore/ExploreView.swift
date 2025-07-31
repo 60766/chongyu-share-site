@@ -275,8 +275,10 @@ struct ExploreView: View {
         VStack(alignment: .leading, spacing: 0) {
             // 角色头像区域
             ZStack(alignment: .bottomLeading) {
-                // 角色图像
-                if UIImage(named: character.avatar) != nil {
+                // 使用统一的Avatar组件替换直接的Image显示
+                // 由于这里需要的是矩形图像而不是圆形，我们需要做一些特殊处理
+                if CharacterAvatarService.shared.checkImageExistence(imageName: character.avatar) {
+                    // 如果图片存在，使用原始图片
                     Image(character.avatar)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -284,22 +286,25 @@ struct ExploreView: View {
                         .clipped()
                         .appCornerRadius(16, corners: [.topLeft, .topRight])
                 } else {
-                    // 占位图 - 使用更有设计感的渐变
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            character.category.color.opacity(0.7),
-                            character.category.color.opacity(0.3)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                    // 如果图片不存在，使用渐变背景和字母占位符
+                    ZStack {
+                        // 背景渐变
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                character.category.color.opacity(0.7),
+                                character.category.color.opacity(0.3)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        
+                        // 字母占位符
+                        Text(String(character.name.prefix(1)))
+                            .font(.system(size: 60, weight: .bold))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
                     .frame(height: 180)
                     .appCornerRadius(16, corners: [.topLeft, .topRight])
-                    .overlay(
-                        Image(systemName: character.category.icon)
-                            .font(.system(size: 40))
-                            .foregroundColor(.white.opacity(0.8))
-                    )
                 }
                 
                 // 角色年代标签 - 增强时空感
