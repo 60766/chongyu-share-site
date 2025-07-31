@@ -1837,7 +1837,7 @@ struct HomeView: View {
      */
     private func convertToCharacter(_ model: CharacterModel) -> Character {
         return Character(
-            id: model.id.uuidString,
+            id: model.characterID ?? model.id.uuidString, // 优先使用characterID
             name: model.name,
             introduction: model.bio,
             field: model.profession,

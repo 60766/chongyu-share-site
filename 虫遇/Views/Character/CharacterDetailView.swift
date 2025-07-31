@@ -415,14 +415,10 @@ struct CharacterDetailView: View {
                 // 头像 - 左侧放置，符合图一设计
                 // 使用统一的Avatar组件替换原来的直接Image显示
                 Avatar(
-                    url: character.avatarUrl,
+                    url: character.id.lowercased(), // 使用小写的角色ID，确保与主页面一致
                     name: character.name,
                     category: character.field,
                     size: 70
-                )
-                .overlay(
-                    Circle()
-                        .stroke(Color.gray.opacity(0.1), lineWidth: 1)
                 )
                 .onAppear {
                     print("🔍 CharacterDetailView - 显示角色头像: \(character.avatarUrl), 名称: \(character.name)")
