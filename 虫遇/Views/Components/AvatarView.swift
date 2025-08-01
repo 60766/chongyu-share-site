@@ -24,7 +24,7 @@ struct AvatarView: View {
                 size: size
             )
             .overlay(
-                Circle()
+                        Circle()
                     .stroke(avatarService.getCharacterTagColor(for: characterID).opacity(0.2), lineWidth: 1)
             )
             .onAppear {
@@ -40,7 +40,7 @@ struct AvatarView: View {
             .overlay(
                 Circle()
                     .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
-            )
+                    )
             .onAppear {
                 print("🔍 AvatarView - 显示普通用户头像: \(comment.userAvatar), 用户名: \(comment.username)")
             }

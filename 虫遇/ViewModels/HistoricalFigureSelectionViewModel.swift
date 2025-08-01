@@ -272,21 +272,101 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
      * 加载所有可用角色
      */
     private func loadAllCharacters() {
-        // 从characters.json文件加载角色数据
+        print("开始加载角色数据...")
+        
+        // 首先尝试直接加载characters.json
         if let url = Bundle.main.url(forResource: "characters", withExtension: "json"),
            let data = try? Data(contentsOf: url) {
+            print("characters.json文件大小: \(data.count) 字节")
+            
+            // 尝试使用JSONSerialization先验证JSON格式
             do {
-                // 解析JSON数据
+                let json = try JSONSerialization.jsonObject(with: data, options: [])
+                if let dict = json as? [String: Any],
+                   let characters = dict["characters"] as? [[String: Any]] {
+                    print("characters.json包含\(characters.count)个角色 (JSONSerialization验证)")
+                    
+                    // JSON格式正确，现在尝试解码
                 let decoder = JSONDecoder()
+                    
+                    // 设置解码策略，处理不同的键名格式
+                    decoder.keyDecodingStrategy = .useDefaultKeys
+                    
+                    do {
                 let characterData = try decoder.decode(CharacterLibrary.self, from: data)
                 allCharacters = characterData.characters
+                        print("成功从characters.json加载了\(allCharacters.count)个角色")
+                        
+                        // 打印一些角色名称作为验证
+                        if !allCharacters.isEmpty {
+                            let sampleNames = allCharacters.prefix(5).map { $0.name }.joined(separator: ", ")
+                            print("加载的角色示例: \(sampleNames)")
+                            return
+                        }
+                    } catch let decoderError {
+                        print("使用JSONDecoder解析characters.json失败: \(decoderError)")
+                        
+                        // 尝试逐个解析角色
+                        print("尝试手动解析角色...")
+                        var parsedCharacters: [AppCharacter] = []
+                        
+                        for (index, characterDict) in characters.enumerated() {
+                            do {
+                                let characterData = try JSONSerialization.data(withJSONObject: characterDict)
+                                let character = try decoder.decode(AppCharacter.self, from: characterData)
+                                parsedCharacters.append(character)
             } catch {
-                print("Error decoding characters.json: \(error)")
-                // 加载失败时使用备用数据
-                loadFallbackCharacters()
+                                print("解析第\(index)个角色失败: \(error)")
+                                // 继续解析下一个角色
+                            }
+                        }
+                        
+                        if !parsedCharacters.isEmpty {
+                            print("成功手动解析了\(parsedCharacters.count)个角色")
+                            allCharacters = parsedCharacters
+                            return
+                        }
+                    }
+                }
+            } catch let jsonError {
+                print("使用JSONSerialization验证characters.json失败: \(jsonError)")
+            }
+        }
+        
+        // 如果characters.json加载失败，尝试其他备用文件
+        let backupFileNames = ["characters_fixed2", "characters_clean"]
+        var charactersLoaded = false
+        
+        for fileName in backupFileNames {
+            print("尝试加载备用文件\(fileName).json...")
+            if let url = Bundle.main.url(forResource: fileName, withExtension: "json"),
+               let data = try? Data(contentsOf: url) {
+                print("\(fileName).json文件大小: \(data.count) 字节")
+                
+                do {
+                    // 解析JSON数据
+                    let decoder = JSONDecoder()
+                    let characterData = try decoder.decode(CharacterLibrary.self, from: data)
+                    allCharacters = characterData.characters
+                    print("成功从\(fileName).json加载了\(allCharacters.count)个角色")
+                    
+                    // 打印一些角色名称作为验证
+                    let sampleNames = allCharacters.prefix(5).map { $0.name }.joined(separator: ", ")
+                    print("加载的角色示例: \(sampleNames)")
+                    
+                    charactersLoaded = true
+                    break
+                } catch let error {
+                    print("解析\(fileName).json失败: \(error)")
             }
         } else {
-            // 如果无法加载文件，使用备用数据
+                print("无法找到或读取\(fileName).json文件")
+            }
+        }
+        
+        // 如果所有文件都加载失败，使用硬编码的备用数据
+        if !charactersLoaded {
+            print("所有角色JSON文件加载失败，使用硬编码的备用数据")
             loadFallbackCharacters()
         }
     }
@@ -419,22 +499,34 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
      * 加载历史人物数据
      */
     func loadHistoricalFigures() {
-        print("加载历史人物数据...")
+        print("开始加载历史人物数据...")
+        isLoading = true
+        
+        // 加载所有角色
         loadAllCharacters()
+        
+        // 检查是否成功加载了角色
+        print("从JSON加载的角色数量: \(allCharacters.count)")
+        
+        // 如果角色数量太少，可能是加载失败，尝试使用备用数据
+        if allCharacters.count < 50 {
+            print("警告：从JSON加载的角色数量太少，可能是加载失败，尝试使用备用数据")
+            loadFallbackCharacters()
+            print("使用备用数据后的角色数量: \(allCharacters.count)")
+        }
+        
+        // 加载帖子数据
         loadPostData()
         print("当前帖子作者: \(postAuthor?.name ?? "未设置")")
         
         // 获取所有可用的历史人物
-        let allFigures = allCharacters.map { character in
-            return CommentHistoricalFigure(
-                name: character.name,
-                introduction: character.briefDescription,
-                field: character.primaryField,
-                birthYear: getYearFromEra(character.era),
-                deathYear: "",
-                avatarUrl: character.avatarName,
-                eraTag: character.era
-            )
+        var allFigures: [CommentHistoricalFigure] = []
+        
+        // 遍历allCharacters并创建CommentHistoricalFigure对象
+        for character in allCharacters {
+            // 使用新的初始化方法
+            let figure = CommentHistoricalFigure(from: character)
+            allFigures.append(figure)
         }
         
         // 设置可用的历史人物
@@ -444,10 +536,19 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         buildRelevantFiguresNetwork()
         
         // 添加调试日志
-        print("加载历史人物数据完成 - 总角色数: \(availableFigures.count), 相关角色数: \(relevantFigures.count)")
+        print("历史人物数据加载完成 - 总角色数: \(availableFigures.count), 相关角色数: \(relevantFigures.count)")
+        
+        // 检查是否成功加载了角色
+        if availableFigures.isEmpty {
+            print("警告：没有加载到任何角色！")
+        } else {
+            // 打印一些角色名称作为验证
+            let sampleNames = availableFigures.prefix(10).map { $0.name }.joined(separator: ", ")
+            print("加载的角色示例: \(sampleNames)")
+        }
         
         // 检查特定角色是否在可用列表中
-        for name in ["庄子", "老子", "孟子"] {
+        for name in ["庄子", "老子", "孟子", "爱因斯坦", "莎士比亚"] {
             if let figure = availableFigures.first(where: { $0.name == name }) {
                 let isMarkedAsRelevant = relevantFigures.contains(figure.id)
                 print("角色 \(name) 是否在可用角色列表中: \(true), 是否被标记为相关: \(isMarkedAsRelevant)")
@@ -731,13 +832,23 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
      * 根据搜索文本和分类筛选历史人物
      */
     func filteredFigures(searchText: String, category: String) -> [CommentHistoricalFigure] {
+        // 确保有可用角色
+        if availableFigures.isEmpty {
+            print("警告：availableFigures为空，无法进行筛选")
+            return []
+        }
+        
+        // 打印当前可用角色总数，帮助调试
+        print("当前可用角色总数: \(availableFigures.count)")
+        
         var filtered = availableFigures
         
         // 应用搜索过滤
         if !searchText.isEmpty {
             filtered = filtered.filter { figure in
                 figure.name.localizedCaseInsensitiveContains(searchText) ||
-                figure.field.localizedCaseInsensitiveContains(searchText)
+                figure.field.localizedCaseInsensitiveContains(searchText) ||
+                figure.introduction.localizedCaseInsensitiveContains(searchText)
             }
         }
         
@@ -772,13 +883,23 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
                     }
                 }
             }
+        } else {
+            // "全部"分类 - 确保不进行任何过滤，显示所有角色
+            filtered = availableFigures
+            print("选择了'全部'分类，显示所有\(filtered.count)个角色")
         }
+        
+        // 打印过滤后的角色数量
+        print("过滤后的角色数量: \(filtered.count)，类别: \(category)，搜索文本: \(searchText)")
         
         // 将相关角色排在最前面
         let relevantFigures = filtered.filter { isRelevant($0) }
         let nonRelevantFigures = filtered.filter { !isRelevant($0) }
         
-        return relevantFigures + nonRelevantFigures
+        let result = relevantFigures + nonRelevantFigures
+        print("最终返回角色数量: \(result.count)")
+        
+        return result
     }
     
     /**
@@ -1212,23 +1333,4 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         print("⚠️ 未找到名称映射: \(name)")
         return nil
     }
-}
-
-// 添加CharacterLibrary结构体用于解析JSON
-struct CharacterLibrary: Codable {
-    let version: String
-    let characters: [AppCharacter]
-}
-
-struct AppCharacter: Codable {
-    let id: String
-    let name: String
-    let type: String
-    let subtype: String
-    let era: String
-    let primaryField: String
-    let briefDescription: String
-    let avatarName: String
-    let region: String
-    let contentAffinities: [String: Double]
 } 

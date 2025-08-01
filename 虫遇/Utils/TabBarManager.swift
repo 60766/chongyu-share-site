@@ -161,6 +161,10 @@ class TabBarManager: ObservableObject {
                 // 直接设置TabBar为隐藏状态
                 tabBarController.tabBar.isHidden = true
                 
+                // 明确禁用TabBar的交互，防止点击事件穿透
+                tabBarController.tabBar.isUserInteractionEnabled = false
+                print("TabBar交互已禁用 (pushHideState)")
+                
                 // 移除所有可能影响布局的约束
                 for constraint in tabBarController.tabBar.constraints {
                     if constraint.firstAttribute == .height {
@@ -186,65 +190,42 @@ class TabBarManager: ObservableObject {
         }
     }
     
-    /// 弹出当前隐藏状态 - 优化版
+    /// 弹出一个隐藏状态
     func popHideState() {
-        guard !hideStateStack.isEmpty else { return }
-        
-        // 移除最后一个状态
-        hideStateStack.removeLast()
-        
-        // 根据栈是否为空决定是否显示TabBar
-        if hideStateStack.isEmpty {
-            DispatchQueue.main.async {
-                // 记录当前可见ScrollView的位置
-                var scrollPositions: [UIScrollView: CGPoint] = [:]
-                if let tabBarController = self.findTabBarController() {
-                    self.saveScrollViewPositions(in: tabBarController.view, to: &scrollPositions)
-                }
+        if !hideStateStack.isEmpty {
+            hideStateStack.removeLast()
+            
+            // 如果状态栈为空，立即显示TabBar
+            if hideStateStack.isEmpty {
+                isVisible = true
+                isFullyHidden = false
+                showFloatingButtons = true
+                prefersHomeIndicatorAutoHidden = false
                 
-                if let tabBarController = self.findTabBarController() {
-                    // 移除所有高度约束
-                    for constraint in tabBarController.tabBar.constraints {
-                        if constraint.firstAttribute == .height {
-                            constraint.isActive = false
-                        }
-                    }
+                // 立即获取并设置TabBar
+                if let tabBarController = findTabBarController() {
+                    tabBarController.tabBar.isHidden = false
                     
-                    // 更新观察属性 - 提前设置状态
-                    self.isVisible = true
-                    self.isFullyHidden = false
-                    self.showFloatingButtons = true
+                    // 恢复TabBar交互
+                    tabBarController.tabBar.isUserInteractionEnabled = true
+                    print("TabBar交互已恢复 (popHideState)")
                     
-                    // 立即同步应用透明样式 - 不再使用异步
-                    self.applyTransparentStyle(to: tabBarController.tabBar)
-                    
-                    // 调整内容视图以保持位置
-                    if let contentView = tabBarController.selectedViewController?.view {
-                        // 保持内容视图的布局一致性而不改变其位置
-                        contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-                    }
-                    
-                    // 立即更新布局
-                    UIView.performWithoutAnimation {
-                        tabBarController.view.layoutIfNeeded()
-                    }
-                    
-                    // 恢复ScrollView位置
-                    self.restoreScrollViewPositions(in: tabBarController.view, from: scrollPositions)
-                    
-                    // 延迟应用一致样式，但不影响TabBar显示
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        // 应用一致的样式 - 但确保TabBar保持可见
-                        tabBarController.tabBar.isHidden = false
-                        self.applyConsistentStyle()
-                        
-                        // 再次确保TabBar可见
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            tabBarController.tabBar.isHidden = false
-                        }
-                    }
+                    // 应用一致的样式
+                    applyConsistentStyle()
                 }
             }
+            
+            #if DEBUG
+            if self.debugModeEnabled {
+                print("TabBar状态栈弹出，当前深度: \(hideStateStack.count)")
+            }
+            #endif
+        } else {
+            #if DEBUG
+            if self.debugModeEnabled {
+                print("TabBar状态栈已为空，无法弹出")
+            }
+            #endif
         }
     }
     
@@ -443,75 +424,25 @@ class TabBarManager: ObservableObject {
             showFloatingButtons = false
             prefersHomeIndicatorAutoHidden = true
         }
+        
+        // 获取TabBar并禁用其交互
+        if let tabBarController = findTabBarController() {
+            // 明确禁用TabBar的交互，防止点击事件穿透
+            tabBarController.tabBar.isUserInteractionEnabled = false
+            print("TabBar交互已禁用 (hide)")
+        }
     }
     
     /// 显示底部导航栏和所有浮动按钮 - 无动画直接显示
     func show() {
-        // 先移除所有覆盖层和约束
-        DispatchQueue.main.async {
-            // 记录当前可见ScrollView的位置
-            var scrollPositions: [UIScrollView: CGPoint] = [:]
-            if let tabBarController = self.findTabBarController() {
-                self.saveScrollViewPositions(in: tabBarController.view, to: &scrollPositions)
-            }
-            
-            self.removeAllOverlays()
-            self.restoreTabBarInteraction()
-            self.removeAllBottomLines()
-            
-            // 查找并重置TabBar
-            if let tabBarController = self.findTabBarController() {
-                // 移除所有高度约束
-                for constraint in tabBarController.tabBar.constraints {
-                    if constraint.firstAttribute == .height {
-                        constraint.isActive = false
-                    }
-                }
-                
-                // 立即更新状态
-                self.isVisible = true
-                self.isFullyHidden = false
-                self.showFloatingButtons = true
-                
-                // 立即应用透明样式 - 确保TabBar可见
-                self.applyTransparentStyle(to: tabBarController.tabBar)
-                
-                // 恢复内容视图布局 - 确保不改变其位置
-                if let contentView = tabBarController.selectedViewController?.view {
-                    // 修改：保持内容视图的布局一致性
-                    contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-                }
-                
-                // 立即更新布局
-                tabBarController.view.setNeedsLayout()
-                tabBarController.view.layoutIfNeeded()
-                
-                // 恢复ScrollView位置
-                self.restoreScrollViewPositions(in: tabBarController.view, from: scrollPositions)
-                
-                // 延迟应用其他样式，但不影响TabBar显示
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    // 确保TabBar仍然可见
-                    tabBarController.tabBar.isHidden = false
-                    // 再次应用一致的样式
-                    self.applyConsistentStyle()
-                    
-                    // 再次确保TabBar可见
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        tabBarController.tabBar.isHidden = false
-                    }
-                }
-            }
-        }
-
-        withAnimation(.easeInOut(duration: animationDuration)) {
-            // 状态已在同步部分更新，这里仅确保UI动画
-            
-            // 恢复ScrollView默认设置，但保持位置
-            DispatchQueue.main.asyncAfter(deadline: .now() + animationDuration) {
-                UIScrollView.appearance().contentInsetAdjustmentBehavior = .automatic
-                UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = true
-            }
+        isVisible = true
+        isFullyHidden = false
+        showFloatingButtons = true
+        prefersHomeIndicatorAutoHidden = false
+        
+        // 恢复TabBar交互
+        if let tabBarController = findTabBarController() {
+            tabBarController.tabBar.isUserInteractionEnabled = true
         }
     }
     
@@ -679,30 +610,27 @@ class TabBarManager: ObservableObject {
     
     // 修复底部白色区域
     private func fixBottomWhiteArea() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            guard let self = self else { return }
+        // 立即执行，不使用延迟
+        if #available(iOS 15.0, *) {
+            // 使用新的API - 获取活跃的窗口场景
+            let windowScenes = UIApplication.shared.connectedScenes
+                .filter { $0.activationState == .foregroundActive }
+                .compactMap { $0 as? UIWindowScene }
             
-            if #available(iOS 15.0, *) {
-                // 使用新的API - 获取活跃的窗口场景
-                let windowScenes = UIApplication.shared.connectedScenes
-                    .filter { $0.activationState == .foregroundActive }
-                    .compactMap { $0 as? UIWindowScene }
+            if let windowScene = windowScenes.first,
+               let window = windowScene.windows.first,
+               let rootVC = window.rootViewController {
                 
-                if let windowScene = windowScenes.first,
-                   let window = windowScene.windows.first,
-                   let rootVC = window.rootViewController {
-                    
-                    // 添加完全透明的覆盖视图
-                    self.createTransparentOverlays(for: rootVC, window: window)
-                }
-            } else {
-                // iOS 15以下的处理代码
-                if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }),
-                   let rootVC = window.rootViewController {
-                    
-                    // 添加完全透明的覆盖视图
-                    self.createTransparentOverlays(for: rootVC, window: window)
-                }
+                // 添加完全透明的覆盖视图
+                self.createTransparentOverlays(for: rootVC, window: window)
+            }
+        } else {
+            // iOS 15以下的处理代码
+            if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }),
+               let rootVC = window.rootViewController {
+                
+                // 添加完全透明的覆盖视图
+                self.createTransparentOverlays(for: rootVC, window: window)
             }
         }
     }
@@ -997,74 +925,79 @@ class TabBarManager: ObservableObject {
         }
     }
     
-    /// 强制重置堆栈和显示状态
-    func forceResetAndShow() {
-        // 清空隐藏状态栈
+    /// 立即显示TabBar，没有任何延迟
+    func showImmediately() {
+        // 立即重置状态
         hideStateStack.removeAll()
-        
-        // 立即设置状态
         isVisible = true
         isFullyHidden = false
         showFloatingButtons = true
+        prefersHomeIndicatorAutoHidden = false
         
-        // 查找并重置TabBar
-        DispatchQueue.main.async {
-            // 移除所有之前可能添加的覆盖层和约束
-            self.removeAllOverlays()
-            self.removeAllBottomLines()
+        // 立即获取并设置TabBar
+        if let tabBarController = findTabBarController() {
+            // 立即设置可见
+            tabBarController.tabBar.isHidden = false
+            tabBarController.tabBar.alpha = 1.0
             
-            if let tabBarController = self.findTabBarController() {
-                // 记录所有ScrollView的位置，确保在TabBar显示后不会发生内容跳动
-                var scrollPositions: [UIScrollView: CGPoint] = [:]
-                self.saveScrollViewPositions(in: tabBarController.view, to: &scrollPositions)
-                
-                // 移除所有高度约束
-                for constraint in tabBarController.tabBar.constraints {
-                    if constraint.firstAttribute == .height {
-                        constraint.isActive = false
-                    }
-                }
-                
-                // 立即应用透明样式 - 确保TabBar可见
-                self.applyTransparentStyle(to: tabBarController.tabBar)
-                tabBarController.tabBar.isHidden = false
-                tabBarController.tabBar.alpha = 1
-                
-                // 调整内容视图，保持其位置稳定
-                if let contentView = tabBarController.selectedViewController?.view {
-                    // 设置自动调整遮罩，允许内容视图根据TabBar可见性调整大小
-                    contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-                }
-                
-                // 立即更新布局，使TabBar可见
-                UIView.performWithoutAnimation {
-                    tabBarController.view.layoutIfNeeded()
-                }
-                
-                // 恢复所有ScrollView的位置
-                self.restoreScrollViewPositions(in: tabBarController.view, from: scrollPositions)
-                
-                // 延迟应用样式，确保TabBar保持可见
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    // 再次应用一致样式，但确保TabBar可见
-                    self.applyConsistentStyle()
-                    tabBarController.tabBar.isHidden = false
-                    
-                    // 确保底部导航栏的所有元素都正确显示
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        tabBarController.tabBar.isHidden = false
-                        
-                        // 设置ScrollView默认设置，但延迟执行以确保不影响位置恢复
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            UIScrollView.appearance().contentInsetAdjustmentBehavior = .automatic
-                            UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = true
-                        }
-                    }
-                }
-                
-                print("TabBar强制重置并显示完成")
+            // 恢复TabBar交互
+            tabBarController.tabBar.isUserInteractionEnabled = true
+            print("TabBar交互已恢复 (showImmediately)")
+            
+            // 立即更新布局
+            UIView.performWithoutAnimation {
+                tabBarController.view.setNeedsLayout()
+                tabBarController.view.layoutIfNeeded()
             }
+            
+            // 立即应用样式
+            applyConsistentStyle()
         }
+        
+        // 立即设置ScrollView
+        UIScrollView.appearance().contentInsetAdjustmentBehavior = .automatic
+        UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = true
+        
+        print("TabBar立即显示完成")
+    }
+    
+    /// 强制重置堆栈和显示状态
+    func forceResetAndShow() {
+        // 立即重置状态栈
+        hideStateStack.removeAll()
+        
+        // 立即更新状态
+        isVisible = true
+        isFullyHidden = false
+        showFloatingButtons = true
+        prefersHomeIndicatorAutoHidden = false
+        
+        // 立即获取TabBar控制器
+        guard let tabBarController = findTabBarController() else {
+            print("TabBarManager: 无法获取TabBar控制器")
+            return
+        }
+        
+        // 立即设置TabBar可见
+        tabBarController.tabBar.isHidden = false
+        tabBarController.tabBar.alpha = 1.0
+        
+        // 立即应用样式
+        applyConsistentStyle()
+        
+        // 立即更新布局
+        tabBarController.view.setNeedsLayout()
+        tabBarController.view.layoutIfNeeded()
+        
+        // 立即设置ScrollView默认设置
+        UIScrollView.appearance().contentInsetAdjustmentBehavior = .automatic
+        UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = true
+        
+        #if DEBUG
+        if self.debugModeEnabled {
+            print("TabBar强制重置并立即显示完成")
+        }
+        #endif
     }
     
     /**
@@ -1083,6 +1016,23 @@ class TabBarManager: ObservableObject {
             
             // 应用一致的样式
             applyConsistentStyle()
+            
+            // 立即更新状态
+            isVisible = true
+            isFullyHidden = false
+            showFloatingButtons = true
+            
+            // 立即确保TabBar可见，不使用延迟
+            tabBarController.tabBar.isHidden = false
+            // 再次确保状态一致
+            self.isVisible = true
+            self.isFullyHidden = false
+            
+            #if DEBUG
+            if self.debugModeEnabled {
+                print("TabBar强制显示 - 确保可见")
+            }
+            #endif
         }
     }
     
@@ -1094,6 +1044,20 @@ class TabBarManager: ObservableObject {
             print("TabBar可见性: \(isVisible ? "可见" : "隐藏")")
             print("TabBar完全隐藏: \(isFullyHidden ? "是" : "否")")
         }
+    }
+
+    /// 启用调试模式
+    func enableDebugMode() {
+        debugModeEnabled = true
+        print("TabBar调试模式已启用")
+        printStackState()
+    }
+
+    /// 重置并打印状态
+    func resetAndPrintState() {
+        showImmediately()
+        print("TabBar已强制重置并显示")
+        printStackState()
     }
     #endif
 }

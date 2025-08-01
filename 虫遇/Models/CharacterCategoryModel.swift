@@ -8,6 +8,7 @@ import SwiftUI
 enum CharacterCategory: String, CaseIterable {
     case all = "全部"
     // 历史人物分类
+    case historical = "历史人物"
     case scientist = "科学家"
     case artist = "艺术家"
     case philosopher = "哲学家"
@@ -16,11 +17,17 @@ enum CharacterCategory: String, CaseIterable {
     // 虚构角色分类
     case animeCharacter = "动漫角色"
     case gameCharacter = "游戏角色"
+    case movieCharacter = "电影角色"
+    case tvCharacter = "电视剧角色"
+    case mythCharacter = "神话角色"
     case fictionCharacter = "虚构人物"  // 涵盖文学、电影等虚构角色
+    case vtuber = "虚拟主播"
     
     /// 类别显示名称
     var displayName: String {
         switch self {
+        case .historical:
+            return "历史人物"
         case .scientist:
             return "科学家"
         case .philosopher:
@@ -33,8 +40,16 @@ enum CharacterCategory: String, CaseIterable {
             return "动漫角色"
         case .gameCharacter:
             return "游戏角色"
+        case .movieCharacter:
+            return "电影角色"
+        case .tvCharacter:
+            return "电视剧角色"
+        case .mythCharacter:
+            return "神话角色"
         case .fictionCharacter:
             return "虚构人物"
+        case .vtuber:
+            return "虚拟主播"
         case .all:
             return "全部"
         }
@@ -44,6 +59,8 @@ enum CharacterCategory: String, CaseIterable {
         switch self {
         case .all:
             return .primaryColor
+        case .historical:
+            return Color(red: 100/255, green: 100/255, blue: 100/255)  // 灰色
         case .scientist:
             return Color(red: 76/255, green: 175/255, blue: 142/255)  // 绿色
         case .artist:
@@ -58,6 +75,14 @@ enum CharacterCategory: String, CaseIterable {
             return Color(red: 58/255, green: 176/255, blue: 186/255)  // 青色
         case .fictionCharacter:
             return Color(red: 102/255, green: 94/255, blue: 204/255)  // 靛蓝色
+        case .movieCharacter:
+            return Color(red: 220/255, green: 120/255, blue: 120/255)  // 红色
+        case .tvCharacter:
+            return Color(red: 100/255, green: 150/255, blue: 220/255)  // 蓝色
+        case .mythCharacter:
+            return Color(red: 180/255, green: 120/255, blue: 220/255)  // 紫罗兰
+        case .vtuber:
+            return Color(red: 255/255, green: 150/255, blue: 200/255)  // 粉红
         }
     }
     
@@ -66,6 +91,8 @@ enum CharacterCategory: String, CaseIterable {
         switch self {
         case .all:
             return "person.3.fill"
+        case .historical:
+            return "clock.arrow.circlepath"
         case .scientist:
             return "atom"
         case .artist:
@@ -80,18 +107,26 @@ enum CharacterCategory: String, CaseIterable {
             return "gamecontroller.fill"
         case .fictionCharacter:
             return "film.fill"
+        case .movieCharacter:
+            return "film.circle"
+        case .tvCharacter:
+            return "tv.and.mediabox"
+        case .mythCharacter:
+            return "sparkles"
+        case .vtuber:
+            return "person.crop.rectangle"
         }
     }
     
     // 判断是否为虚构角色
     var isVirtual: Bool {
-        return [.animeCharacter, .gameCharacter, .fictionCharacter].contains(self)
+        return [.animeCharacter, .gameCharacter, .fictionCharacter, .movieCharacter, .tvCharacter, .mythCharacter, .vtuber].contains(self)
     }
     
     /// 判断是否为历史人物
     var isHistorical: Bool {
         switch self {
-        case .scientist, .philosopher, .writer, .artist:
+        case .historical, .scientist, .philosopher, .writer, .artist:
             return true
         default:
             return false

@@ -591,12 +591,18 @@ struct ChatView: View {
                 } else {
                     // 如果状态栈不为空，表示可能是从角色详情页返回
                     // 确保TabBar仍然是隐藏的，但不重置堆栈
-                    if !tabBarManager.isFullyHidden {
-                        tabBarManager.completelyHide()
-                        print("ChatView从其他页面返回：确保TabBar仍然隐藏")
-                    } else {
-                        print("ChatView从其他页面返回：TabBar已经正确隐藏")
+                    
+                    // 确保状态栈中只有一个隐藏状态
+                    while tabBarManager.hideStateStack.count > 1 {
+                        tabBarManager.popHideState()
                     }
+                    
+                    // 如果状态栈为空，重新隐藏TabBar
+                    if tabBarManager.hideStateStack.isEmpty {
+                        tabBarManager.pushHideState()
+                    }
+                    
+                    print("ChatView再次出现：TabBar状态已调整，当前深度: \(tabBarManager.hideStateStack.count)")
                 }
                 
                 // 加载消息数据
@@ -607,33 +613,30 @@ struct ChatView: View {
             }
         }
         .onDisappear {
-            DispatchQueue.main.async {
-                // 我们需要检查当前导航路径以确定是否应该恢复TabBar
-                // 如果是导航到CharacterDetailView，则不恢复TabBar
-                // 在这种情况下，我们不应该做任何操作，因为CharacterDetailView也会隐藏TabBar
-                
-                // 注意：在SwiftUI中，我们无法直接访问导航栈，但可以检查hideStateStack
-                // 如果栈仍然有隐藏状态，表示我们是导航到其他需要隐藏TabBar的视图，而不是返回到主页面
-                if tabBarManager.hideStateStack.isEmpty {
-                    // 仅当完全离开需要隐藏TabBar的页面层级时才重置TabBar
-                    tabBarManager.forceResetAndShow()
-                    tabBarManager.applyConsistentStyle()
-                    print("ChatView消失返回主页：TabBar状态已重置")
-                } else {
-                    // 否则，我们是导航到另一个需要隐藏TabBar的页面，不做任何操作
-                    print("ChatView消失但导航到其他隐藏TabBar的页面：保持TabBar隐藏")
+            // 立即处理TabBar状态，无任何延迟
+            // 我们需要检查当前导航路径以确定是否应该恢复TabBar
+            // 如果是导航到CharacterDetailView，则不恢复TabBar
+            // 如果是返回到角色详情页，我们需要确保TabBar状态栈的一致性
+            
+            if tabBarManager.hideStateStack.isEmpty {
+                // 仅当完全离开需要隐藏TabBar的页面层级时才重置TabBar
+                // 立即强制显示，无任何延迟
+                tabBarManager.showImmediately()
+                print("ChatView消失返回主页：TabBar立即重置并显示")
+            } else {
+                // 如果是返回到角色详情页，我们需要确保TabBar状态栈的一致性
+                // 确保状态栈中只有一个隐藏状态
+                while tabBarManager.hideStateStack.count > 1 {
+                    tabBarManager.popHideState()
                 }
-                
-                // 清理返回按钮窗口
-                if let window = systemBackButtonWindow {
-                    // 立即隐藏窗口
-                    window.isHidden = true
-                    window.rootViewController?.view.subviews.forEach { $0.removeFromSuperview() }
-                    window.rootViewController = nil
-                    
-                    // 立即清除引用
-                    systemBackButtonWindow = nil
-                }
+                print("ChatView消失返回角色详情页：TabBar状态栈已调整，当前深度: \(tabBarManager.hideStateStack.count)")
+            }
+            
+            // 清理系统返回按钮窗口
+            if let window = systemBackButtonWindow {
+                window.isHidden = true
+                window.rootViewController = nil
+                systemBackButtonWindow = nil
             }
         }
         // 修改返回按钮为中文

@@ -350,18 +350,45 @@ struct VirtualCharacterPickerView: View {
     @State private var searchText = ""
     @State private var selectedCategory: CharacterCategory? = .all
     @State private var animateContent = false
+    @State private var isLoading = true
+    @Environment(\.presentationMode) var presentationMode
     
-    // 获取示例数据 - 实际项目应从后端获取
-    private let allCharacters = CharacterModel.sampleCharacters // 修复: 使用sampleCharacters而不是historicalCharacters
+    // TabBar管理器
+    @ObservedObject private var tabBarManager = TabBarManager.shared
     
-    // 根据角色类别分组
-    private var categorizedCharacters: [CharacterCategory: [CharacterModel]] {
-        Dictionary(grouping: allCharacters) { $0.category }
-    }
+    // 获取所有角色数据
+    @State private var allCharacters: [CharacterModel] = []
     
     // 所有类别
     private var categories: [CharacterCategory] {
-        CharacterCategory.allCases
+        // 定义固定的类别顺序
+        let fixedCategoryOrder: [CharacterCategory] = [
+            .all,           // 全部
+            .historical,    // 历史人物
+            .scientist,     // 科学家
+            .philosopher,   // 哲学家
+            .writer,        // 文学家
+            .artist,        // 艺术家
+            .mythCharacter, // 神话角色
+            .movieCharacter, // 电影角色
+            .tvCharacter,   // 电视剧角色
+            .animeCharacter, // 动漫角色
+            .gameCharacter, // 游戏角色
+            .fictionCharacter, // 虚构人物
+            .vtuber         // 虚拟主播
+        ]
+        
+        // 从所有角色中提取唯一的类型
+        var uniqueCategories = Set<CharacterCategory>()
+        uniqueCategories.insert(.all) // 始终包含"全部"选项
+        
+        // 根据角色的类型添加对应的类别
+        for character in allCharacters {
+            uniqueCategories.insert(character.category)
+        }
+        
+        // 按照固定顺序返回实际存在的类别
+        return fixedCategoryOrder.filter { uniqueCategories.contains($0) }
     }
     
     // 过滤后的角色
@@ -381,197 +408,358 @@ struct VirtualCharacterPickerView: View {
             }
         }
         
+        // 确保结果不为空
+        if result.isEmpty && !allCharacters.isEmpty {
+            // 如果筛选结果为空，返回所有角色中的前几个
+            return Array(allCharacters.prefix(6))
+        }
+        
         return result
     }
     
     var body: some View {
         ZStack {
-            // 背景
-            Color(.systemBackground)
+            // 添加可点击的背景层，用于关闭视图
+            // 修改为Color.black.opacity(0.001)，保持可点击但几乎透明
+            Color.black.opacity(0.001)
+                .contentShape(Rectangle())
                 .edgesIgnoringSafeArea(.all)
-            
-            VStack(spacing: 0) {
-                // 顶部关闭按钮和标题
-                HStack {
-                    Button(action: onDismiss) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .padding(8)
-                            .background(Color(.systemGray6).opacity(0.8))
-                            .clipShape(Circle())
+                .onTapGesture {
+                    print("背景点击 - 关闭角色选择器")
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        onDismiss()
                     }
-                    .padding(.leading, 16)
-                    
-                    Spacer()
-                    
-                    Text("虚拟角色")
-                        .font(.system(size: 18, weight: .bold))
-                    
-                    Spacer()
-                    
-                    Color.clear
-                        .frame(width: 40, height: 40)
-                        .padding(.trailing, 16)
                 }
-                .padding(.top, 8)
+                .zIndex(0) // 确保背景在最底层
+            
+            // 内容区域，使用Material背景
+            VStack(spacing: 0) {
+                // 顶部导航栏
+                HStack(spacing: 16) {
+                    // 返回按钮
+                    Button(action: {
+                        withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.impactOccurred()
+                            onDismiss()
+                        }
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(Color(red: 140/255, green: 105/255, blue: 158/255)) // 主色调紫色
+                    }
+                    .padding(.leading, 4)
+                    
+                    Spacer()
+                    
+                    // 标题
+                    Text("角色库")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    // 占位区域
+                    Color.clear
+                        .frame(width: 33, height: 33)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
                 .padding(.bottom, 8)
                 
-                // 搜索框
+                // 搜索栏
                 HStack {
                     Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.gray)
                         .padding(.leading, 8)
                     
                     TextField("搜索历史人物", text: $searchText)
-                        .padding(8)
+                        .font(.system(size: 15))
+                        .padding(.vertical, 8)
                     
                     if !searchText.isEmpty {
                         Button(action: {
                             searchText = ""
-                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         }) {
                             Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
-                                .padding(.trailing, 8)
+                                .foregroundColor(.gray)
                         }
+                        .padding(.trailing, 8)
                     }
                 }
-                .background(Color(.systemGray6).opacity(0.5))
-                .cornerRadius(15)
+                .background(Color(.systemGray6))
+                .cornerRadius(10)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
                 
-                // 分类标签栏
+                // 类别选择器
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         ForEach(categories, id: \.self) { category in
-                            CategoryButton(
-                                title: category.displayName,
-                                isSelected: selectedCategory == category,
-                                color: category.color
-                            ) {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    selectedCategory = category == selectedCategory ? nil : category
+                            Button(action: {
+                                withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0.3)) {
+                                    selectedCategory = category
+                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                    generator.impactOccurred()
                                 }
+                            }) {
+                                Text(category.displayName)
+                                    .font(.system(size: 14))
+                                    .fontWeight(selectedCategory == category ? .medium : .regular)
+                                    .foregroundColor(selectedCategory == category ? .white : category.color)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .frame(height: 32)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(selectedCategory == category ? category.color : category.color.opacity(0.1))
+                                    )
+                                    .contentShape(RoundedRectangle(cornerRadius: 16))
                             }
+                            .buttonStyle(PlainButtonStyle())
+                            .id("\(category.rawValue)_tab")
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
+                    .padding(.vertical, 4)
+                }
+                .padding(.bottom, 12)
+                
+                // 角色总数显示
+                HStack {
+                    Text("共 \(filteredCharacters.count) 个角色")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 16)
+                        .padding(.bottom, 8)
+                    
+                    Spacer()
+                    
+                    // 如果是筛选状态，显示"查看全部"按钮
+                    if selectedCategory != .all || !searchText.isEmpty {
+                        Button(action: {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                selectedCategory = .all
+                                searchText = ""
+                            }
+                        }) {
+                            Text("查看全部")
+                                .font(.system(size: 14))
+                                .foregroundColor(.blue)
+                        }
+                        .padding(.trailing, 16)
+                    }
                 }
                 
-                // 角色列表区域
-                if filteredCharacters.isEmpty {
-                    VStack(spacing: 24) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 40))
-                            .foregroundColor(.secondary.opacity(0.7))
-                        
-                        Text("没有符合\"\(searchText)\"的搜索结果")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.bottom, 40)
+                // 角色列表内容
+                if isLoading {
+                    Spacer()
+                    ProgressView()
+                        .scaleEffect(1.2)
+                        .padding()
+                    Spacer()
+                } else if filteredCharacters.isEmpty {
+                    Spacer()
+                    Text("没有找到匹配的角色")
+                        .foregroundColor(.secondary)
+                        .padding()
+                    Spacer()
                 } else {
+                    // 使用新的ScrollView包装角色网格
                     ScrollView {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
-                            ForEach(filteredCharacters) { character in
-                                VirtualCharacterCard(character: character) // 修改为使用不同的卡片组件名称
-                                    .onTapGesture {
-                                        onSelectCharacter(character)
-                                        onDismiss()
-                                    }
-                                    .offset(y: animateContent ? 0 : 20)
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.adaptive(minimum: 100, maximum: 120), spacing: 12)
+                            ],
+                            spacing: 16
+                        ) {
+                            ForEach(filteredCharacters, id: \.characterID) { character in
+                                VirtualCharacterCard(character: character)
+                                    .scaleEffect(animateContent ? 1 : 0.8)
                                     .opacity(animateContent ? 1 : 0)
-                                    .animation(
-                                        .spring(response: 0.5, dampingFraction: 0.7)
-                                        .delay(Double(filteredCharacters.firstIndex(where: { $0.id == character.id }) ?? 0) * 0.03),
-                                        value: animateContent
+                                    .animation(.spring(response: 0.5, dampingFraction: 0.7), value: selectedCategory)
+                                    .transition(
+                                        AnyTransition.opacity
+                                            .combined(with: .scale(scale: 0.9))
+                                            .animation(.spring(response: 0.4, dampingFraction: 0.7))
                                     )
                             }
                         }
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 24)
+                        .padding(.bottom, 16)
                     }
+                    .allowsHitTesting(true) // 确保ScrollView可点击
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(.systemBackground))
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .contentShape(RoundedRectangle(cornerRadius: 20))
+            // 添加阴影和内边距
+            .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
+            .padding(.vertical, 30)
+            .padding(.horizontal, 10)
+            // 确保内容区域捕获点击事件，但不传递到底层
+            .contentShape(RoundedRectangle(cornerRadius: 20))
+            .allowsHitTesting(true)
+            .zIndex(1) // 确保内容在背景之上
+        }
+        .zIndex(1000)
+        .onAppear {
+            // 确保TabBar在角色选择器显示时隐藏
+            tabBarManager.hide()
+            // 使用pushHideState确保TabBar被彻底隐藏
+            tabBarManager.pushHideState()
+            
+            // 加载所有角色
+            loadAllCharacters()
+            
+            // 动画显示内容
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    animateContent = true
                 }
             }
         }
-        .onAppear {
-            // 延迟一小段时间再显示内容，增加动画效果
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                animateContent = true
-            }
+        .onDisappear {
+            // 不在onDisappear中恢复TabBar，而是让HomeView中的代码来控制
+            // 这样可以避免在角色选择器消失时TabBar意外显示
+            print("VirtualCharacterPickerView消失")
         }
+    }
+    
+    private func loadAllCharacters() {
+        isLoading = true
+        
+        // 使用CharacterModel的静态方法加载所有角色
+        allCharacters = CharacterModel.getAllCharacters()
+        isLoading = false
     }
 }
 
-/**
- * 虚拟角色卡片视图 - 改名以避免冲突
- */
 struct VirtualCharacterCard: View {
     let character: CharacterModel
+    @State private var isAppearing: Bool = false
     
     var body: some View {
-        VStack(spacing: 8) {
-            // 角色头像
-            ZStack {
-                Circle()
-                    .fill(character.category.color.opacity(0.15))
-                    .frame(width: 80, height: 80)
-                
-                if UIImage(named: character.avatar) != nil {
-                    Image(character.avatar)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 70, height: 70)
-                        .clipShape(Circle())
-                } else {
-                    Text(character.name.prefix(1))
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(character.category.color)
-                }
-                
-                // 未来可添加消息提示标记
-                if character.isVirtual {
+        // 使用简单的NavigationLink，确保正常导航
+        NavigationLink(destination: CharacterDetailView(character: convertToCharacter(character))) {
+            VStack(spacing: 8) {
+                // 角色头像
+                ZStack {
                     Circle()
-                        .fill(Color.orange)
-                        .frame(width: 16, height: 16)
-                        .overlay(
-                            Image(systemName: "bubble.fill")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundColor(.white)
-                        )
-                        .offset(x: 32, y: -32)
+                        .fill(character.category.color.opacity(0.15))
+                        .frame(width: 68, height: 68)
+                    
+                    // 使用统一的Avatar组件
+                    Avatar(
+                        url: character.characterID ?? character.name,
+                        name: character.name,
+                        category: character.category.displayName,
+                        size: 60
+                    )
+                    
+                    // 虚拟角色标记
+                    if character.isVirtual {
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 14, height: 14)
+                            .overlay(
+                                Image(systemName: "bubble.fill")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(.white)
+                            )
+                            .offset(x: 24, y: -24)
+                    }
+                }
+                .padding(.top, 4)
+                
+                // 角色名称
+                Text(character.name)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity)
+                
+                // 角色职业
+                Text(character.profession)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity)
+                
+                // 角色类型标签
+                Text(character.category.displayName)
+                    .font(.system(size: 10))
+                    .foregroundColor(character.category.color)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(character.category.color.opacity(0.1))
+                    )
+                    .padding(.bottom, 4)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 4)
+            .frame(minWidth: 0, maxWidth: .infinity) // 确保卡片填满可用宽度
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+        }
+        .buttonStyle(PlainButtonStyle()) // 使用PlainButtonStyle确保点击效果正常
+        .contentShape(Rectangle()) // 确保整个卡片区域可点击
+        .allowsHitTesting(true) // 明确允许点击事件
+        .scaleEffect(isAppearing ? 1.0 : 0.92)
+        .opacity(isAppearing ? 1.0 : 0.7)
+        .animation(.spring(response: 0.5, dampingFraction: 0.7, blendDuration: 0.2), value: isAppearing)
+        .onAppear {
+            // 错开动画开始时间，创造波浪效果
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 0.05...0.3)) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    isAppearing = true
                 }
             }
             
-            // 角色名称
-            Text(character.name)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.primary)
-                .lineLimit(1)
-            
-            // 角色分类/职业标签
-            Text(character.profession)
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-                .frame(height: 16)
-            
-            // 类型标签
-            Text(character.category.displayName)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(character.category.color)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(character.category.color.opacity(0.1))
-                .cornerRadius(4)
+            // 打印调试信息
+            print("VirtualCharacterCard appeared: \(character.name)")
         }
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
+        .onDisappear {
+            // 重置状态以便下次显示
+            withAnimation(.easeOut(duration: 0.2)) {
+                isAppearing = false
+            }
+        }
+        .onTapGesture {
+            // 添加调试点击处理器
+            print("Character card tapped: \(character.name)")
+            // 注意：这个点击处理器不会被触发，因为NavigationLink会消耗点击事件
+            // 但保留它作为调试目的
+        }
+    }
+    
+    // 转换CharacterModel为Character的辅助方法
+    private func convertToCharacter(_ characterModel: CharacterModel) -> Character {
+        return Character(
+            id: characterModel.characterID ?? characterModel.name,
+            name: characterModel.name,
+            introduction: characterModel.bio,
+            field: characterModel.profession,
+            birthYear: characterModel.era,
+            deathYear: nil,
+            avatarUrl: characterModel.avatar,
+            eraTag: characterModel.category.rawValue,
+            achievements: characterModel.famousQuotes ?? [],
+            mainWorks: [],
+            keyThoughts: characterModel.famousQuotes ?? [],
+            followerCount: 0,
+            interactionCount: 0,
+            rating: 4.5,
+            createdAt: Date()
+        )
     }
 }
 
@@ -746,7 +934,20 @@ struct HomeView: View {
     /// 是否显示顶部导航栏
     @State private var showNavBar: Bool = true
     /// 是否显示历史人物选择器
-    @State private var showCharacterPicker: Bool = false
+    @State private var showCharacterPicker: Bool = false {
+        didSet {
+            // 监听showCharacterPicker状态变化，确保TabBar状态正确
+            if showCharacterPicker {
+                // 显示角色选择器时隐藏TabBar
+                tabBarManager.hide()
+                // 使用pushHideState确保TabBar被彻底隐藏
+                tabBarManager.pushHideState()
+            } else {
+                // 关闭角色选择器时立即显示TabBar
+                tabBarManager.showImmediately()
+            }
+        }
+    }
     /// 当前选中的历史人物
     @State private var selectedCharacter: CharacterModel? = nil
     /// 是否显示帖子详情
@@ -809,16 +1010,18 @@ struct HomeView: View {
                     endPoint: .bottom
                 )
                 .ignoresSafeArea()
-                
+                .allowsHitTesting(false) // 背景不阻止点击事件
                 
                 // 主滚动视图
                 ScrollView {
-                    // 滚动偏移量监听
+                    // 滚动偏移量监听 - 修改为不阻止点击事件
                     GeometryReader { geometry in
-                        Color.clear.preference(
-                            key: AppScrollOffsetPreferenceKey.self,
-                            value: geometry.frame(in: .named("scroll")).minY
-                        )
+                        Color.clear
+                            .preference(
+                                key: AppScrollOffsetPreferenceKey.self,
+                                value: geometry.frame(in: .named("scroll")).minY
+                            )
+                            .allowsHitTesting(false) // 不阻止点击事件传递
                     }
                     .frame(height: 0)
                     
@@ -831,6 +1034,8 @@ struct HomeView: View {
                                 .offset(y: showNavBar ? 0 : -20)
                                 .animation(.easeInOut(duration: 0.3), value: showNavBar)
                                 .padding(.bottom, 8) // 调整间距
+                                .contentShape(Rectangle()) // 确保整个区域可点击
+                                .allowsHitTesting(true) // 明确允许点击事件
                             
                             // 历史人物横向滚动区 - 集成到顶部区域
                             ScrollViewReader { scrollProxy in
@@ -847,6 +1052,8 @@ struct HomeView: View {
                                                     .delay(Double(topCharacters.firstIndex(where: { $0.id == character.id }) ?? 0) * 0.05),
                                                     value: contentAppeared
                                                 )
+                                                .contentShape(Rectangle()) // 确保整个卡片可点击
+                                                .allowsHitTesting(true) // 明确允许点击事件
                                         }
                                         
                                         // 查看全部按钮
@@ -879,15 +1086,20 @@ struct HomeView: View {
                                             .delay(0.3),
                                             value: contentAppeared
                                         )
+                                        .contentShape(Rectangle()) // 确保按钮可点击
+                                        .allowsHitTesting(true) // 明确允许点击事件
                                     }
                                     .padding(.horizontal, 16)
                                     .padding(.bottom, 12)
                                 }
+                                .allowsHitTesting(true) // 明确允许ScrollView接收点击事件
                             }
                         }
                         .opacity(showNavBar ? 1 : 0)
                         .offset(y: showNavBar ? 0 : -20)
                         .animation(.easeInOut(duration: 0.3), value: showNavBar)
+                        .contentShape(Rectangle()) // 确保整个顶部区域可点击
+                        .allowsHitTesting(true) // 明确允许点击事件
                         
                         // 内容分类标签
                         tabSection
@@ -897,15 +1109,16 @@ struct HomeView: View {
                             .id(forceRefreshID) // 添加动态ID实现强制刷新
                     }
                 }
-                .scrollDismissesKeyboard(.immediately) // 滚动时立即隐藏键盘
-                .scrollIndicators(.hidden) // 隐藏滚动指示器，提供更干净的UI
-                .coordinateSpace(name: "scroll") // 保留坐标空间名称
+                .scrollDismissesKeyboard(.immediately)
+                .scrollIndicators(.hidden)
+                .coordinateSpace(name: "scroll")
                 .onPreferenceChange(AppScrollOffsetPreferenceKey.self) { value in
-                    // 根据滚动位置控制导航栏显示
                     withAnimation {
                         showNavBar = value < 50
                     }
                 }
+                .contentShape(Rectangle())
+                .allowsHitTesting(true)
                 
                 // 添加一键生成内容按钮
                 VStack {
@@ -950,6 +1163,7 @@ struct HomeView: View {
                         .disabled(isGeneratingPosts) // 生成过程中禁用按钮
                     }
                 }
+                .allowsHitTesting(true) // 确保按钮可点击
                 
                 // 错误提示 - 从按钮区域移到屏幕中央，作为全局浮动提示
                 if showGenerateError {
@@ -997,21 +1211,43 @@ struct HomeView: View {
                 
                 // 历史人物选择器（全屏模态）
                 if showCharacterPicker {
-                    VirtualCharacterPickerView(
-                        onDismiss: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                showCharacterPicker = false
+                    ZStack {
+                        // 添加一个全屏黑色半透明背景，点击时关闭角色选择器
+                        Color.black.opacity(0.4)
+                            .edgesIgnoringSafeArea(.all)
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    tabBarManager.popHideState()
+                                    showCharacterPicker = false
+                                }
                             }
-                        },
-                        onSelectCharacter: { character in
-                            selectedCharacter = character
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                showCharacterPicker = false
+                            .contentShape(Rectangle()) // 确保背景可点击
+                            .allowsHitTesting(true) // 明确允许点击事件
+                        
+                        // 使用VirtualCharacterPickerView而不包装额外的修饰符
+                        VirtualCharacterPickerView(
+                            onDismiss: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    tabBarManager.popHideState()
+                                    showCharacterPicker = false
+                                }
+                            },
+                            onSelectCharacter: { character in
+                                selectedCharacter = character
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    tabBarManager.popHideState()
+                                    showCharacterPicker = false
+                                }
                             }
-                        }
-                    )
+                        )
+                        .allowsHitTesting(true) // 确保角色选择器可点击
+                    }
                     .transition(.opacity)
                     .zIndex(1000)
+                    .onAppear {
+                        // 确保TabBar在角色选择器显示时隐藏
+                        tabBarManager.hide()
+                    }
                 }
             }
             .onAppear {
@@ -1835,19 +2071,19 @@ struct HomeView: View {
     /**
      * 将 CharacterModel 转换为 Character
      */
-    private func convertToCharacter(_ model: CharacterModel) -> Character {
+    private func convertToCharacter(_ characterModel: CharacterModel) -> Character {
         return Character(
-            id: model.characterID ?? model.id.uuidString, // 优先使用characterID
-            name: model.name,
-            introduction: model.bio,
-            field: model.profession,
-            birthYear: model.era.components(separatedBy: "-").first ?? "",
-            deathYear: model.era.components(separatedBy: "-").last,
-            avatarUrl: model.avatar,
-            eraTag: model.era,
-            achievements: [],  // 这些数据可以根据需要添加
+            id: characterModel.characterID ?? characterModel.name,
+            name: characterModel.name,
+            introduction: characterModel.bio,
+            field: characterModel.profession,
+            birthYear: characterModel.era,
+            deathYear: nil,
+            avatarUrl: characterModel.avatar,
+            eraTag: characterModel.category.rawValue,
+            achievements: characterModel.famousQuotes ?? [],
             mainWorks: [],
-            keyThoughts: [],
+            keyThoughts: characterModel.famousQuotes ?? [],
             followerCount: 0,
             interactionCount: 0,
             rating: 4.5,
@@ -2345,3 +2581,15 @@ struct HomeView: View {
 #Preview("首页") {
     HomeView()
 } 
+
+// 创建环境键，用于传递是否返回角色选择器的状态
+private struct ReturnToCharacterPickerKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    var returnToCharacterPicker: Bool {
+        get { self[ReturnToCharacterPickerKey.self] }
+        set { self[ReturnToCharacterPickerKey.self] = newValue }
+    }
+}

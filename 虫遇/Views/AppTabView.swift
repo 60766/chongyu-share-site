@@ -32,12 +32,19 @@ struct AppTabView: View {
                                 name: NSNotification.Name("HomeViewShouldRefresh"),
                                 object: nil
                             )
+                            
+                            // 确保TabBar可见
+                            ensureTabBarVisible()
                         }
                     }
                 
                 // 探索页
                 ExploreView()
                     .tag(1)
+                    .onAppear {
+                        // 确保TabBar可见
+                        ensureTabBarVisible()
+                    }
                 
                 // 占位符视图 (不显示，仅为中间按钮预留空间)
                 // 移除这个标签页，避免点击中间区域导致显示空白页面
@@ -45,10 +52,18 @@ struct AppTabView: View {
                 // 通知页
                 NotificationView()
                     .tag(3)
+                    .onAppear {
+                        // 确保TabBar可见
+                        ensureTabBarVisible()
+                    }
                 
                 // 用户空间页
                 ProfileView()
                     .tag(4)
+                    .onAppear {
+                        // 确保TabBar可见
+                        ensureTabBarVisible()
+                    }
             }
             .onChange(of: selectedTab) { oldValue, newValue in
                 // 特殊处理：当切换回首页时，确保数据恢复
@@ -65,6 +80,9 @@ struct AppTabView: View {
                     // 恢复到之前的标签
                     selectedTab = oldValue
                 }
+                
+                // 确保TabBar可见
+                ensureTabBarVisible()
             }
             // 改用TabViewStyle禁用水平滑动翻页功能
             .tabViewStyle(.automatic)
@@ -148,6 +166,22 @@ struct AppTabView: View {
                     selectedTab = 0
                 }
             }
+            
+            // 确保TabBar可见
+            ensureTabBarVisible()
+            
+            // 启用调试模式
+            #if DEBUG
+            tabBarManager.enableDebugMode()
+            #endif
+        }
+    }
+    
+    /// 确保TabBar可见的辅助方法
+    private func ensureTabBarVisible() {
+        // 立即强制显示TabBar，不使用任何延迟
+        if !tabBarManager.isVisible || tabBarManager.isFullyHidden {
+            tabBarManager.showImmediately()
         }
     }
 }

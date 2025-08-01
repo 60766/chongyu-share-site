@@ -5,7 +5,7 @@ import SwiftUI
  * 评论系统中使用的历史人物模型
  * 用于在评论功能中表示历史人物
  */
-struct CommentHistoricalFigure: Identifiable {
+struct CommentHistoricalFigure: Identifiable, Hashable {
     let id = UUID()
     let name: String
     let introduction: String
@@ -36,6 +36,20 @@ struct CommentHistoricalFigure: Identifiable {
     }
     
     /**
+     * 从AppCharacter创建CommentHistoricalFigure
+     * @param character - AppCharacter对象
+     */
+    init(from character: AppCharacter) {
+        self.name = character.name
+        self.introduction = character.briefDescription
+        self.field = character.primaryField
+        self.birthYear = character.era // 简化处理，直接使用era
+        self.deathYear = "" // 大多数情况下没有死亡年份
+        self.avatarUrl = character.avatarName
+        self.eraTag = character.era
+    }
+    
+    /**
      * 获取人物简短描述
      * @return String - 人物简短描述
      */
@@ -51,6 +65,15 @@ struct CommentHistoricalFigure: Identifiable {
         return field
     }
     
+    // Hashable协议实现
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: CommentHistoricalFigure, rhs: CommentHistoricalFigure) -> Bool {
+        return lhs.id == rhs.id
+    }
+    
     // 示例数据 - 用于测试和UI预览
     static var samples: [CommentHistoricalFigure] {
         return [
@@ -60,7 +83,7 @@ struct CommentHistoricalFigure: Identifiable {
                 field: "物理学家",
                 birthYear: "1879",
                 deathYear: "1955",
-                avatarUrl: "https://example.com/einstein.jpg",
+                avatarUrl: "einstein",
                 eraTag: "现代"
             ),
             CommentHistoricalFigure(
@@ -69,7 +92,7 @@ struct CommentHistoricalFigure: Identifiable {
                 field: "文艺",
                 birthYear: "1564",
                 deathYear: "1616",
-                avatarUrl: "https://example.com/shakespeare.jpg",
+                avatarUrl: "shakespeare",
                 eraTag: "文艺复兴"
             ),
             CommentHistoricalFigure(
@@ -78,7 +101,7 @@ struct CommentHistoricalFigure: Identifiable {
                 field: "哲学",
                 birthYear: "公元前551年",
                 deathYear: "公元前479年",
-                avatarUrl: "https://example.com/confucius.jpg",
+                avatarUrl: "kongzi",
                 eraTag: "春秋时期"
             )
         ]

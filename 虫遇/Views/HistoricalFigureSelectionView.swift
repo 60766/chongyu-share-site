@@ -62,6 +62,15 @@ struct HistoricalFigureSelectionView: View {
         }
         .background(backgroundColor)
         .onAppear {
+            // 确保每次显示视图时都加载最新的历史人物数据
+            viewModel.loadHistoricalFigures()
+            
+            // 打印调试信息
+            print("HistoricalFigureSelectionView已显示，当前有\(viewModel.availableFigures.count)个角色")
+        }
+        // 添加刷新功能，允许用户下拉刷新角色列表
+        .refreshable {
+            print("用户触发刷新...")
             viewModel.loadHistoricalFigures()
         }
     }
@@ -141,6 +150,7 @@ struct HistoricalFigureSelectionView: View {
     
     // 分类标签栏
     private var categorySection: some View {
+        VStack(spacing: 0) {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: spacing * 3) {
                 ForEach(categories, id: \.self) { category in
@@ -168,19 +178,73 @@ struct HistoricalFigureSelectionView: View {
             .padding(.vertical, spacing)
         }
         .background(backgroundColor)
+            
+            // 角色数量指示器
+            HStack {
+                Spacer()
+                Text("共 \(viewModel.availableFigures.count) 个角色")
+                    .font(.system(size: 12))
+                    .foregroundColor(secondaryColor)
+                    .padding(.trailing, spacing * 2)
+                    .padding(.bottom, 4)
+            }
+        }
     }
     
     // 历史人物列表
     private var figureListSection: some View {
+        ZStack {
+            if viewModel.isLoading {
+                // 加载中状态
+                ProgressView("加载中...")
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .padding()
+            } else {
+                let figures = viewModel.filteredFigures(searchText: searchText, category: selectedCategory)
+                
+                if figures.isEmpty {
+                    // 空状态
+                    VStack(spacing: spacing * 2) {
+                        Image(systemName: "person.fill.questionmark")
+                            .font(.system(size: 40))
+                            .foregroundColor(secondaryColor)
+                        
+                        Text(searchText.isEmpty ? "没有找到相关角色" : "没有找到与\"\(searchText)\"相关的角色")
+                            .font(.system(size: 16))
+                            .foregroundColor(secondaryColor)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    // 角色列表
+                    VStack {
+                        // 角色计数
+                        HStack {
+                            Text("共找到 \(figures.count) 个角色")
+                                .font(.system(size: 12))
+                                .foregroundColor(secondaryColor)
+                                .padding(.leading, spacing * 2)
+                            
+                            Spacer()
+                        }
+                        .padding(.top, 4)
+                        
+                        // 角色网格
         ScrollView {
             LazyVGrid(columns: gridColumns, spacing: spacing) {
-                ForEach(viewModel.filteredFigures(searchText: searchText, category: selectedCategory)) { figure in
+                                ForEach(figures) { figure in
                     figureCell(figure)
                         .padding(.vertical, spacing / 2)
                 }
             }
             .padding(.horizontal, spacing * 2)
             .padding(.vertical, spacing)
+                        }
+                    }
+                    .id(UUID()) // 强制在数据变化时刷新视图
+                }
+            }
         }
     }
     

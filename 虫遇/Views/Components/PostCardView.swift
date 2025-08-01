@@ -2324,12 +2324,12 @@ struct PostCardView: View {
         // 使用统一的Avatar组件，确保头像降级处理一致
         Avatar(
             url: comment.characterID ?? comment.userAvatar,
-            name: comment.username,
+              name: comment.username,
             category: comment.isVirtualCharacter ? CharacterAvatarService.shared.getCharacterCategoryTag(for: comment.characterID ?? "") : "",
             size: 40
-        )
-        .onAppear {
-            if comment.isVirtualCharacter {
+            )
+            .onAppear {
+                if comment.isVirtualCharacter {
                 print("📱 PostCardView - 评论头像 - 角色ID: \(comment.characterID ?? "nil"), 头像路径: \(comment.userAvatar), 用户名: \(comment.username)")
                 
                 // 检查图片是否存在
@@ -2343,8 +2343,8 @@ struct PostCardView: View {
                         print("⚠️ PostCardView - 角色头像不存在，将使用字母头像 - 角色: \(characterID), 名称: \(comment.username)")
                     }
                 }
+                }
             }
-        }
     }
     
     // MARK: - 视图组件

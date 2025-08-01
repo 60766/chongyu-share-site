@@ -293,7 +293,7 @@ struct CommentView: View {
                         let exists = avatarService.checkImageExistence(imageName: characterID)
                         print("🔍 CommentView.AvatarView - 角色头像检查 - \(characterID): \(exists ? "存在" : "不存在")")
                     }
-                } else {
+            } else {
                     // 没有角色ID的虚拟角色，使用用户名生成字母头像
                     Avatar(
                         url: comment.userAvatar,
@@ -302,7 +302,7 @@ struct CommentView: View {
                     )
                     .onAppear {
                         print("⚠️ CommentView.AvatarView - 虚拟角色没有characterID，使用userAvatar: \(comment.userAvatar)")
-                    }
+                }
                 }
             } else {
                 // 普通用户头像

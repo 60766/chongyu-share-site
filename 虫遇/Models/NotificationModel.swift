@@ -50,6 +50,11 @@ struct NotificationModel: Identifiable {
             case .animeCharacter: return "pattern_anime"
             case .gameCharacter: return "pattern_game"
             case .fictionCharacter: return "pattern_fiction"
+            case .historical: return "pattern_history"
+            case .movieCharacter: return "pattern_movie"
+            case .tvCharacter: return "pattern_tv"
+            case .mythCharacter: return "pattern_myth"
+            case .vtuber: return "pattern_vtuber"
             case .all: return "pattern_default"
             }
         }

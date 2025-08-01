@@ -51,6 +51,15 @@ struct DebugTestView: View {
                         .background(Color.purple.opacity(0.1))
                         .cornerRadius(8)
                 }
+
+                // 添加点击事件调试视图入口
+                NavigationLink(destination: TouchDebugView()) {
+                    Text("点击事件调试")
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.pink.opacity(0.1))
+                        .cornerRadius(8)
+                }
                 
                 Spacer()
                 

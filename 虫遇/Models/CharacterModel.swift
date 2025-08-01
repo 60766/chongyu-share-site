@@ -31,6 +31,64 @@ struct CharacterModel: Identifiable {
         self.characterID = characterID
     }
     
+    // 从AppCharacter创建CharacterModel
+    init(from appCharacter: AppCharacter) {
+        self.name = appCharacter.name
+        self.avatar = appCharacter.avatarName
+        self.era = appCharacter.era
+        self.profession = appCharacter.primaryField
+        self.bio = appCharacter.briefDescription
+        
+        // 根据角色类型和子类型设置分类
+        switch appCharacter.type {
+        case "historical":
+            switch appCharacter.subtype {
+            case "scientist":
+                self.category = .scientist
+            case "philosopher":
+                self.category = .philosopher
+            case "writer":
+                self.category = .writer
+            case "artist":
+                self.category = .artist
+            default:
+                self.category = .historical
+            }
+        case "literary":
+            self.category = .writer
+        case "movie":
+            self.category = .movieCharacter
+        case "anime":
+            self.category = .animeCharacter
+        case "mythological":
+            self.category = .mythCharacter
+        case "tv":
+            self.category = .tvCharacter
+        case "game":
+            self.category = .gameCharacter
+        case "vtuber":
+            self.category = .vtuber
+        default:
+            // 如果type未知，尝试通过subtype判断
+            switch appCharacter.subtype {
+            case "scientist":
+                self.category = .scientist
+            case "philosopher":
+                self.category = .philosopher
+            case "writer":
+                self.category = .writer
+            case "artist":
+                self.category = .artist
+            default:
+                self.category = .historical
+            }
+        }
+        
+        self.universe = nil
+        self.famousQuotes = nil
+        self.characterID = appCharacter.id
+    }
+    
     // 判断是否为虚构角色
     var isVirtual: Bool {
         return category.isVirtual
@@ -171,8 +229,69 @@ struct CharacterModel: Identifiable {
         )
     ]
     
-    // 所有角色数据
+    // 所有示例角色数据
     static var allCharacters: [CharacterModel] {
         return sampleCharacters + virtualCharacters
+    }
+    
+    // 从JSON文件加载所有角色
+    static func getAllCharacters() -> [CharacterModel] {
+        print("开始从JSON加载所有角色...")
+        
+        // 尝试加载characters.json
+        if let url = Bundle.main.url(forResource: "characters", withExtension: "json"),
+           let data = try? Data(contentsOf: url) {
+            print("characters.json文件大小: \(data.count) 字节")
+            
+            do {
+                // 解析JSON数据
+                let decoder = JSONDecoder()
+                let characterData = try decoder.decode(CharacterLibrary.self, from: data)
+                print("成功解析characters.json，包含\(characterData.characters.count)个角色")
+                
+                // 将AppCharacter转换为CharacterModel
+                let characters = characterData.characters.map { CharacterModel(from: $0) }
+                print("成功转换为CharacterModel，共\(characters.count)个角色")
+                
+                // 打印一些角色名称作为验证
+                if !characters.isEmpty {
+                    let sampleNames = characters.prefix(5).map { $0.name }.joined(separator: ", ")
+                    print("加载的角色示例: \(sampleNames)")
+                }
+                
+                return characters
+            } catch {
+                print("解析characters.json失败: \(error)")
+            }
+        } else {
+            print("无法找到或读取characters.json文件")
+        }
+        
+        // 如果加载失败，尝试加载备用文件
+        for fileName in ["characters_fixed2", "characters_clean"] {
+            if let url = Bundle.main.url(forResource: fileName, withExtension: "json"),
+               let data = try? Data(contentsOf: url) {
+                print("\(fileName).json文件大小: \(data.count) 字节")
+                
+                do {
+                    // 解析JSON数据
+                    let decoder = JSONDecoder()
+                    let characterData = try decoder.decode(CharacterLibrary.self, from: data)
+                    print("成功解析\(fileName).json，包含\(characterData.characters.count)个角色")
+                    
+                    // 将AppCharacter转换为CharacterModel
+                    let characters = characterData.characters.map { CharacterModel(from: $0) }
+                    print("成功转换为CharacterModel，共\(characters.count)个角色")
+                    
+                    return characters
+                } catch {
+                    print("解析\(fileName).json失败: \(error)")
+                }
+            }
+        }
+        
+        // 如果所有文件都加载失败，返回示例数据
+        print("所有JSON文件加载失败，返回示例数据")
+        return allCharacters
     }
 } 

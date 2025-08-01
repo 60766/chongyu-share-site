@@ -184,62 +184,62 @@ struct RelationNetworkView: View {
     
     // 计算关系连线
     private func relationLines() -> some View {
-        ForEach(relations.indices, id: \.self) { index in
-            if !relations.isEmpty {
-                let angle = Double(index) * (2 * .pi / Double(relations.count))
-                let nextAngle = Double((index + 1) % relations.count) * (2 * .pi / Double(relations.count))
-                
-                Path { path in
-                    let start = calculatePoint(angle: angle)
-                    let end = calculatePoint(angle: nextAngle)
+            ForEach(relations.indices, id: \.self) { index in
+                if !relations.isEmpty {
+                    let angle = Double(index) * (2 * .pi / Double(relations.count))
+                    let nextAngle = Double((index + 1) % relations.count) * (2 * .pi / Double(relations.count))
                     
-                    path.move(to: start)
-                    path.addLine(to: end)
-                }
-                .stroke(
-                    relations[index].relationColor.opacity(0.3),
-                    lineWidth: 2
-                )
+                    Path { path in
+                        let start = calculatePoint(angle: angle)
+                        let end = calculatePoint(angle: nextAngle)
+                        
+                        path.move(to: start)
+                        path.addLine(to: end)
+                    }
+                    .stroke(
+                        relations[index].relationColor.opacity(0.3),
+                        lineWidth: 2
+                    )
             }
-        }
-    }
-    
+                }
+            }
+            
     // 计算角色头像
     private func characterAvatars() -> some View {
-        ForEach(relations.indices, id: \.self) { index in
-            if !relations.isEmpty {
-                let angle = Double(index) * (2 * .pi / Double(relations.count))
-                let offset = calculatePoint(angle: angle)
-                
+            ForEach(relations.indices, id: \.self) { index in
+                if !relations.isEmpty {
+                    let angle = Double(index) * (2 * .pi / Double(relations.count))
+                    let offset = calculatePoint(angle: angle)
+                    
                 Avatar(
                     url: relations[index].character.avatar,
                     name: relations[index].character.name,
                     size: 40
                 )
-                .offset(x: offset.x - centerPoint.x, y: offset.y - centerPoint.y)
-                .scaleEffect(isAnimating ? 1.0 : 0.8)
-                .animation(
-                    Animation.spring(response: 0.5, dampingFraction: 0.6)
-                        .delay(Double(index) * 0.1),
-                    value: isAnimating
-                )
+                        .offset(x: offset.x - centerPoint.x, y: offset.y - centerPoint.y)
+                        .scaleEffect(isAnimating ? 1.0 : 0.8)
+                        .animation(
+                            Animation.spring(response: 0.5, dampingFraction: 0.6)
+                                .delay(Double(index) * 0.1),
+                            value: isAnimating
+                        )
             }
-        }
-    }
-    
-    // 中心用户头像
+                }
+            }
+            
+            // 中心用户头像
     private func centerAvatar() -> some View {
-        Circle()
-            .fill(Color.white)
-            .frame(width: 60, height: 60)
-            .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-            .overlay(
-                Image(systemName: "person.fill")
-                    .font(.system(size: 24))
-                    .foregroundColor(Color(hex: "4371E5"))
-            )
-            .scaleEffect(isAnimating ? 1.0 : 0.5)
-            .animation(.spring(response: 0.6, dampingFraction: 0.6), value: isAnimating)
+            Circle()
+                .fill(Color.white)
+                .frame(width: 60, height: 60)
+                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                .overlay(
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(Color(hex: "4371E5"))
+                )
+                .scaleEffect(isAnimating ? 1.0 : 0.5)
+                .animation(.spring(response: 0.6, dampingFraction: 0.6), value: isAnimating)
     }
     
     var body: some View {

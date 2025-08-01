@@ -219,7 +219,9 @@ struct ExploreView: View {
                                     .padding(.trailing, 10)
                                     
                                     Button(action: {
-                                        // 查看全部
+                                        // 查看全部角色
+                                        selectedCategory = .all
+                                        searchText = ""
                                     }) {
                                         Text("查看全部")
                                             .font(.system(size: 14))
@@ -277,35 +279,29 @@ struct ExploreView: View {
             ZStack(alignment: .bottomLeading) {
                 // 使用统一的Avatar组件替换直接的Image显示
                 // 由于这里需要的是矩形图像而不是圆形，我们需要做一些特殊处理
-                if CharacterAvatarService.shared.checkImageExistence(imageName: character.avatar) {
-                    // 如果图片存在，使用原始图片
-                    Image(character.avatar)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(height: 180)
-                        .clipped()
-                        .appCornerRadius(16, corners: [.topLeft, .topRight])
-                } else {
-                    // 如果图片不存在，使用渐变背景和字母占位符
-                    ZStack {
-                        // 背景渐变
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                character.category.color.opacity(0.7),
-                                character.category.color.opacity(0.3)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        
-                        // 字母占位符
-                        Text(String(character.name.prefix(1)))
-                            .font(.system(size: 60, weight: .bold))
-                            .foregroundColor(.white.opacity(0.8))
-                    }
-                    .frame(height: 180)
-                    .appCornerRadius(16, corners: [.topLeft, .topRight])
+                // 使用统一的背景渐变
+                ZStack {
+                    // 背景渐变
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            character.category.color.opacity(0.7),
+                            character.category.color.opacity(0.3)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    
+                    // 使用统一的Avatar组件
+                    Avatar(
+                        url: character.characterID ?? character.name,
+                        name: character.name,
+                        category: character.category.displayName,
+                        size: 120
+                    )
+                    .scaleEffect(1.5) // 放大以填充空间
                 }
+                .frame(height: 180)
+                .appCornerRadius(16, corners: [.topLeft, .topRight])
                 
                 // 角色年代标签 - 增强时空感
                 HStack(spacing: 4) {

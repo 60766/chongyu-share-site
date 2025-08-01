@@ -152,6 +152,9 @@ struct CharacterDetailView: View {
     // 个性化调整状态
     @State private var showPersonalityAdjustment: Bool = false
     
+    // 是否返回到角色选择器
+    @Environment(\.returnToCharacterPicker) private var returnToCharacterPicker
+    
     var body: some View {
         ZStack {
             // 背景色 - 简化为纯色背景
@@ -269,12 +272,52 @@ struct CharacterDetailView: View {
                 conversationId: selectedConversationId ?? UUID().uuidString
             )
         }
+        .onDisappear {
+            // 立即处理TabBar状态，无任何延迟
+            // 我们需要检查当前导航路径以确定是否应该恢复TabBar
+            // 如果是导航到ChatView，则不恢复TabBar
+            // 如果是返回上一级，则恢复TabBar
+            
+            if navigateToChatView {
+                // 如果即将导航到聊天页面，保持TabBar隐藏状态
+                print("CharacterDetailView消失导航到聊天：保持TabBar隐藏")
+            } else if returnToCharacterPicker {
+                // 如果是返回到角色选择器，保持TabBar隐藏状态
+                print("CharacterDetailView消失返回角色选择器：保持TabBar隐藏")
+                // 不要popHideState，保持TabBar隐藏
+            } else {
+                // 立即恢复TabBar，没有任何延迟
+                // 如果是返回上一级，恢复TabBar并清理按钮资源
+                tabBarManager.popHideState()
+
+                // 立即确保TabBar可见
+                if tabBarManager.hideStateStack.isEmpty {
+                    // 立即强制显示TabBar，不使用任何延迟
+                    tabBarManager.showImmediately()
+                    print("CharacterDetailView消失返回主页：TabBar立即重置")
+                } else {
+                    print("CharacterDetailView消失但不是返回主页：保持TabBar状态")
+                }
+                
+                // 清理导航状态
+                navigateToChatView = false
+            }
+        }
         .onChange(of: navigateToChatView) { oldValue, newValue in
             // 当从聊天页面返回时，重新显示系统按钮
             if oldValue == true && newValue == false {
                 // 几乎立即显示按钮，仅保留极短延迟以确保转场开始
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     showSystemButtons()
+                    
+                    // 确保TabBar状态栈一致性
+                    if tabBarManager.hideStateStack.count > 1 {
+                        // 保留一个隐藏状态，移除多余的
+                        while tabBarManager.hideStateStack.count > 1 {
+                            tabBarManager.popHideState()
+                        }
+                        print("从ChatView返回CharacterDetailView：TabBar状态栈已调整，当前深度: \(tabBarManager.hideStateStack.count)")
+                    }
                 }
             }
         }
@@ -306,38 +349,6 @@ struct CharacterDetailView: View {
                     animateContent = true
                 }
             })
-        }
-        .onDisappear {
-            // 检查是否需要恢复TabBar状态
-            if navigateToChatView || showPersonalityAdjustment {
-                // 如果正在导航到ChatView或个性化调整页面，不需要清理资源，只隐藏按钮
-                hideSystemButtons()
-            } else {
-                // 如果是返回上一级，恢复TabBar并清理按钮资源
-                tabBarManager.popHideState()
-                
-                // 清理返回按钮窗口
-                if let window = systemBackButtonWindow {
-                    // 立即隐藏窗口
-                    window.isHidden = true
-                    window.rootViewController?.view.subviews.forEach { $0.removeFromSuperview() }
-                    window.rootViewController = nil
-                    
-                    // 立即清除引用
-                    systemBackButtonWindow = nil
-                }
-                
-                // 清理分享按钮窗口
-                if let window = systemShareButtonWindow {
-                    // 立即隐藏窗口
-                    window.isHidden = true
-                    window.rootViewController?.view.subviews.forEach { $0.removeFromSuperview() }
-                    window.rootViewController = nil
-                    
-                    // 立即清除引用
-                    systemShareButtonWindow = nil
-                }
-            }
         }
         .onChange(of: showingShareSheet) { oldValue, newValue in
             // 控制返回按钮窗口的显示/隐藏
