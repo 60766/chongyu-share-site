@@ -818,7 +818,7 @@ struct ChatMessageBubbleView: View {
             // 角色头像（仅在角色消息时显示）
             if !message.isFromUser {
                 ZStack {
-                    // 背景装饰 - 增加纸张质感，代表历史感
+                    // 背景装饰
                     Circle()
                         .fill(
                             LinearGradient(
@@ -833,27 +833,13 @@ struct ChatMessageBubbleView: View {
                         .frame(width: 38, height: 38)
                         .shadow(color: Color.black.opacity(0.08), radius: 2, x: 0, y: 1)
                     
-                    // 角色头像背景 - 增加质感
-                    Circle()
-                        .fill(characterThemeColor.opacity(0.12))
-                        .frame(width: 36, height: 36)
-                    
-                    // 虚拟头像
-                    AsyncImage(url: URL(string: "https://example.com/avatar.jpg")) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Image(systemName: "person.circle.fill")
-                            .resizable()
-                            .foregroundColor(characterThemeColor.opacity(0.6))
-                    }
-                    .frame(width: 34, height: 34)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(characterThemeColor.opacity(0.4), lineWidth: 1)
-                    )
+                    // 角色头像 - 使用Avatar组件
+                    Avatar(url: message.senderId, name: "历史人物", size: 34)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.8), lineWidth: 1)
+                        )
                 }
                 .padding(.top, 4) // 微调头像顶部间距以更好对齐
             } else {

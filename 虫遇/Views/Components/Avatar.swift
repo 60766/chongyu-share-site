@@ -52,15 +52,23 @@ struct Avatar: View {
                     .onAppear {
                         print("✅ Avatar - 已知角色 \(cleanCharacterId)，交由CharacterAvatarService处理")
                     }
+                    .contentShape(Circle()) // 确保头像可点击
+                    .allowsHitTesting(true) // 明确允许点击事件
             } else if url.starts(with: "http") {
                 // 远程URL图片
                 remoteImage
+                    .contentShape(Circle()) // 确保头像可点击
+                    .allowsHitTesting(true) // 明确允许点击事件
             } else if url.contains(".") {
                 // 本地图片 (通常是文件名带后缀)
                 localImage
+                    .contentShape(Circle()) // 确保头像可点击
+                    .allowsHitTesting(true) // 明确允许点击事件
             } else {
                 // 对于未知ID或带有路径的已知ID，尝试直接加载图片
                 characterImage
+                    .contentShape(Circle()) // 确保头像可点击
+                    .allowsHitTesting(true) // 明确允许点击事件
             }
         }
         .onAppear {

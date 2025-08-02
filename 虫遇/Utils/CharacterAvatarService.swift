@@ -142,6 +142,8 @@ class CharacterAvatarService {
                         Circle()
                             .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                     )
+                    .contentShape(Circle()) // 确保头像可点击
+                    .allowsHitTesting(true) // 明确允许点击事件
             )
             
         case .systemIcon(let iconName, let color):
@@ -156,6 +158,12 @@ class CharacterAvatarService {
                         .font(.system(size: size * 0.5))
                         .foregroundColor(color)
                 }
+                .overlay(
+                    Circle()
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
+                .contentShape(Circle()) // 确保头像可点击
+                .allowsHitTesting(true) // 明确允许点击事件
             )
             
         case .letter(let letter, let color):
@@ -174,6 +182,8 @@ class CharacterAvatarService {
                         .stroke(color.opacity(0.7), lineWidth: 1.5)
                         .frame(width: size, height: size)
                 }
+                .contentShape(Circle()) // 确保头像可点击
+                .allowsHitTesting(true) // 明确允许点击事件
             )
         }
     }

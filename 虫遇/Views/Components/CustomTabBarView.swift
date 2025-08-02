@@ -108,6 +108,7 @@ struct TabBarBackground: View {
         }
         // 确保延伸到所有边缘
         .edgesIgnoringSafeArea(.all)
+        .allowsHitTesting(false) // 确保整个背景视图不拦截点击事件
     }
 }
 

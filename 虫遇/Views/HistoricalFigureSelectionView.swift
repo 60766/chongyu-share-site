@@ -47,35 +47,93 @@ struct HistoricalFigureSelectionView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // 顶部区域：标题和搜索框
-            headerSection
-            
-            // 分类标签栏
-            categorySection
-            
-            // 历史人物列表
-            figureListSection
-            
-            // 底部区域：已选择提示和确认按钮
-            bottomSection
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                // 顶部区域和分类，不滚动
+                headerSection
+                categorySection
+                
+                // 角色列表，可滚动
+                figuresListView
+                    .frame(maxHeight: .infinity)
+                
+                // 底部按钮区域，固定在底部
+                VStack(spacing: 0) {
+                    Divider()
+                    bottomSection
+                }
+                .background(backgroundColor)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .background(backgroundColor)
+            .onAppear {
+                viewModel.loadHistoricalFigures()
+            }
+            .refreshable {
+                viewModel.loadHistoricalFigures()
+            }
         }
-        .background(backgroundColor)
-        .onAppear {
-            // 确保每次显示视图时都加载最新的历史人物数据
-            viewModel.loadHistoricalFigures()
-            
-            // 打印调试信息
-            print("HistoricalFigureSelectionView已显示，当前有\(viewModel.availableFigures.count)个角色")
-        }
-        // 添加刷新功能，允许用户下拉刷新角色列表
-        .refreshable {
-            print("用户触发刷新...")
-            viewModel.loadHistoricalFigures()
-        }
+        .ignoresSafeArea(.all, edges: .bottom)
     }
     
     // MARK: - 界面组件
+    
+    // 历史人物列表视图
+    private var figuresListView: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                if viewModel.isLoading {
+                    // 加载中状态
+                    ProgressView("加载中...")
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .padding()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                        .padding(.vertical, 50)
+                } else {
+                    let figures = viewModel.filteredFigures(searchText: searchText, category: selectedCategory)
+                    
+                    if figures.isEmpty {
+                        // 空状态
+                        VStack(spacing: spacing * 2) {
+                            Image(systemName: "person.fill.questionmark")
+                                .font(.system(size: 40))
+                                .foregroundColor(secondaryColor)
+                            
+                            Text(searchText.isEmpty ? "没有找到相关角色" : "没有找到与\"\(searchText)\"相关的角色")
+                                .font(.system(size: 16))
+                                .foregroundColor(secondaryColor)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 50)
+                    } else {
+                        // 角色计数
+                        HStack {
+                            Text("共找到 \(figures.count) 个角色")
+                                .font(.system(size: 12))
+                                .foregroundColor(secondaryColor)
+                                .padding(.leading, spacing * 2)
+                            
+                            Spacer()
+                        }
+                        .padding(.top, 4)
+                        
+                        // 角色网格
+                        LazyVGrid(columns: gridColumns, spacing: spacing) {
+                            ForEach(figures) { figure in
+                                figureCell(figure)
+                                    .padding(.vertical, spacing / 2)
+                            }
+                        }
+                        .padding(.horizontal, spacing * 2)
+                        .padding(.vertical, spacing)
+                    }
+                }
+            }
+            .id(UUID()) // 强制在数据变化时刷新视图
+        }
+    }
     
     // 顶部区域
     private var headerSection: some View {
@@ -191,63 +249,6 @@ struct HistoricalFigureSelectionView: View {
         }
     }
     
-    // 历史人物列表
-    private var figureListSection: some View {
-        ZStack {
-            if viewModel.isLoading {
-                // 加载中状态
-                ProgressView("加载中...")
-                    .progressViewStyle(CircularProgressViewStyle())
-                    .padding()
-            } else {
-                let figures = viewModel.filteredFigures(searchText: searchText, category: selectedCategory)
-                
-                if figures.isEmpty {
-                    // 空状态
-                    VStack(spacing: spacing * 2) {
-                        Image(systemName: "person.fill.questionmark")
-                            .font(.system(size: 40))
-                            .foregroundColor(secondaryColor)
-                        
-                        Text(searchText.isEmpty ? "没有找到相关角色" : "没有找到与\"\(searchText)\"相关的角色")
-                            .font(.system(size: 16))
-                            .foregroundColor(secondaryColor)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    // 角色列表
-                    VStack {
-                        // 角色计数
-                        HStack {
-                            Text("共找到 \(figures.count) 个角色")
-                                .font(.system(size: 12))
-                                .foregroundColor(secondaryColor)
-                                .padding(.leading, spacing * 2)
-                            
-                            Spacer()
-                        }
-                        .padding(.top, 4)
-                        
-                        // 角色网格
-        ScrollView {
-            LazyVGrid(columns: gridColumns, spacing: spacing) {
-                                ForEach(figures) { figure in
-                    figureCell(figure)
-                        .padding(.vertical, spacing / 2)
-                }
-            }
-            .padding(.horizontal, spacing * 2)
-            .padding(.vertical, spacing)
-                        }
-                    }
-                    .id(UUID()) // 强制在数据变化时刷新视图
-                }
-            }
-        }
-    }
-    
     // 历史人物单元格
     private func figureCell(_ figure: CommentHistoricalFigure) -> some View {
         let isSelected = viewModel.isSelected(figure)
@@ -319,7 +320,7 @@ struct HistoricalFigureSelectionView: View {
     
     // 底部区域
     private var bottomSection: some View {
-        VStack(spacing: spacing * 2) {
+        VStack(spacing: spacing) {
             // 已选择的历史人物
             if !viewModel.selectedFigures.isEmpty {
                 HStack {
@@ -375,35 +376,49 @@ struct HistoricalFigureSelectionView: View {
                         .foregroundColor(secondaryColor)
                 }
                 .padding(.horizontal, spacing * 2)
-                .padding(.top, spacing / 2)
+                .padding(.top, spacing)
             }
             
-            // 邀请按钮
+            // 邀请按钮 - 增强视觉效果
             Button(action: {
+                // 添加触觉反馈
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
+                
                 viewModel.inviteSelectedFigures()
                 presentationMode.wrappedValue.dismiss()
             }) {
                 Text("邀请参与")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, spacing * 1.5)
-                    .background(viewModel.selectedFigures.isEmpty ? Color.gray.opacity(0.6) : primaryColor)
+                    .frame(height: 50) // 固定高度
+                    .background(
+                        viewModel.selectedFigures.isEmpty
+                        ? AnyView(Color.gray.opacity(0.6))
+                        : AnyView(LinearGradient(
+                            gradient: Gradient(colors: [primaryColor, primaryColor.opacity(0.8)]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                          ))
+                    )
                     .cornerRadius(cornerRadius)
+                    .shadow(color: viewModel.selectedFigures.isEmpty ? Color.clear : primaryColor.opacity(0.3), radius: 4, x: 0, y: 2)
             }
             .disabled(viewModel.selectedFigures.isEmpty)
             .padding(.horizontal, spacing * 2)
-            .padding(.bottom, spacing * 3)
-            .padding(.top, spacing)
+            .padding(.vertical, spacing)
         }
-        .padding(.top, spacing)
-        .background(backgroundColor)
-        .overlay(
-            Rectangle()
-                .frame(height: 1)
-                .foregroundColor(surfaceColor),
-            alignment: .top
-        )
+        .padding(.bottom, 0) // 移除所有底部间距，让按钮直接贴底
+    }
+
+    // 获取底部安全区域高度
+    private func getSafeAreaBottom() -> CGFloat {
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            return window.safeAreaInsets.bottom
+        }
+        return 0
     }
 }
 

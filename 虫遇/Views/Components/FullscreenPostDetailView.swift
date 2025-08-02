@@ -2390,7 +2390,10 @@ struct FullscreenPostDetailView: View {
                     }
                     .sheet(isPresented: $showHistoricalFigureSelection) {
                         HistoricalFigureSelectionView(postId: viewModel.post.id.uuidString, postAuthor: viewModel.post.username)
-                            .presentationDetents([.medium])
+                            .presentationDetents([.medium, .large])
+                            .presentationDragIndicator(.visible)
+                            .presentationBackground(Material.regular)
+                            .presentationCornerRadius(25)
                     }
                     .contentShape(Rectangle())
                     .frame(width: 22, height: 38)

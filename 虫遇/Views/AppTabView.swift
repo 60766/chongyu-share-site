@@ -90,10 +90,10 @@ struct AppTabView: View {
             .ignoresSafeArea()
             // 确保内容区域无白线分割
             .background(Color.clear)
-            // 添加禁用滑动手势的修饰符
-            .simultaneousGesture(DragGesture().onChanged { _ in })
-            // 添加背景点击手势处理器，防止透传到下层视图
-            .contentShape(Rectangle())
+            // 移除禁用滑动手势的修饰符，这是导致点击问题的主要原因
+            // .simultaneousGesture(DragGesture().onChanged { _ in })
+            // 移除可能导致底部导航栏问题的修饰符
+            // .contentShape(Rectangle())
         }
         // 将TabBar作为overlay添加
         .overlay(alignment: .bottom) {
@@ -137,6 +137,7 @@ struct AppTabView: View {
             Color.clear
                 .frame(height: 60)
                 .contentShape(Rectangle())
+                .allowsHitTesting(false) // 确保不阻止点击事件传递到下层视图
                 .onLongPressGesture(minimumDuration: 2) {
                     showDebugView = true
                 }
