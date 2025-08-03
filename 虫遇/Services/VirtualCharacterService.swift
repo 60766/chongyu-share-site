@@ -714,11 +714,22 @@ class VirtualCharacterService {
     func inviteCharactersToComment(characterIDs: [String], postId: String, postAuthor: String? = nil) {
         print("🔔 开始邀请角色参与讨论 - 角色数量: \(characterIDs.count), 帖子ID: \(postId), 帖子作者: \(postAuthor ?? "未指定")")
         
+        // 创建一个后台任务ID - 使用正确的方式处理后台任务
+        let backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "CharacterCommentGeneration") {
+            // 系统即将终止此后台任务时的回调
+            // 不需要在这里引用backgroundTaskID，因为这是一个逃逸闭包，
+            // 在任务结束前系统会调用这个闭包，此时我们只需终止一个无效任务即可
+            UIApplication.shared.endBackgroundTask(.invalid)
+            print("⚠️ 角色评论生成后台任务被系统终止")
+        }
+        
         // 过滤空ID，规范化角色ID
         let validCharacterIDs = characterIDs.filter { !$0.isEmpty }.map { $0.lowercased() }
         
         if validCharacterIDs.isEmpty {
             print("⚠️ 没有有效的角色ID，取消邀请")
+            // 结束后台任务
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
             return
         }
         
@@ -733,12 +744,16 @@ class VirtualCharacterService {
         // 获取帖子数据
         guard let viewModel = getPostViewModel() else {
             print("❌ VirtualCharacterService: 无法获取PostViewModel实例")
+            // 结束后台任务
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
             return
         }
         
         // 查找对应帖子
         guard let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) else {
             print("❌ VirtualCharacterService: 未找到指定的帖子ID: \(postId)")
+            // 结束后台任务
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
             return
         }
         
@@ -761,16 +776,24 @@ class VirtualCharacterService {
             )
         }
         
+        // 保存帖子内容的副本，确保即使在后台也能访问
+        let postContent = post.content
+        
         // 统一使用MultiCharacterCommentService处理所有角色评论生成，无论是单个还是多个角色
         print("🔄 使用批量评论生成服务处理\(validCharacterIDs.count)个角色")
         MultiCharacterCommentService.shared.generateMultiCharacterComments(
             characterIDs: validCharacterIDs,
             postId: postId,
-            postContent: post.content,
+            postContent: postContent,
             postAuthor: finalPostAuthor,
             isInvited: true,  // 标记为邀请的角色评论
             completion: { [weak self] result in
-            guard let self = self else { return }
+            guard let self = self else {
+                // 如果self已被释放，结束后台任务
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                return 
+            }
+            
             switch result {
             case .success(let commentsMap):
                 print("✅ 批量生成成功，共生成\(commentsMap.count)条评论")
@@ -778,18 +801,24 @@ class VirtualCharacterService {
                 // 批量评论已经在MultiCharacterCommentService中添加到帖子
                 // 通过CommentsGenerated通知处理，不需要再发送CharacterReplyGenerated通知
                 
-                // 额外的刷新机制，确保UI立即更新
+                // 额外的刷新机制，确保UI立即更新，无论用户是否在当前页面
                 DispatchQueue.main.async {
-                    if let viewModel = self.getPostViewModel(),
-                       let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) {
+                    // 尝试直接更新PostViewModel中的数据
+                    if let viewModel = self.getPostViewModel() {
+                        if let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) {
+                            // 去除重复评论
+                            self.removeDuplicateComments(for: postIndex, in: viewModel)
+                            
                         // 强制触发 objectWillChange 通知
                         viewModel.posts[postIndex].objectWillChange.send()
                         
                         // 创建一个临时副本并重新赋值，强制 SwiftUI 刷新
                         let tempPost = viewModel.posts[postIndex]
                         viewModel.posts[postIndex] = tempPost
+                        }
                         
-                        // 发送额外的刷新通知
+                        // 发送多个刷新通知，确保所有相关视图都能更新
+                        // 1. 强制刷新评论
                         NotificationCenter.default.post(
                             name: NSNotification.Name("ForceRefreshComments"),
                             object: nil,
@@ -800,14 +829,41 @@ class VirtualCharacterService {
                                 "postID": postId
                             ]
                         )
+                        
+                        // 2. 刷新帖子评论
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("RefreshPostComments"),
+                            object: nil,
+                            userInfo: [
+                                "postID": postId,
+                                "immediateDisplay": true
+                            ]
+                        )
+                        
+                        // 3. 通知评论已生成
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("CommentsGenerated"),
+                            object: nil,
+                            userInfo: [
+                                "postID": postId,
+                                "commentCount": commentsMap.count
+                            ]
+                        )
+                        
+                        // 4. 全局刷新所有帖子
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("GlobalPostsRefresh"),
+                            object: nil
+                        )
                     }
                 }
                 
+                // 结束后台任务
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                print("✅ 角色评论生成后台任务完成")
+                
             case .failure(let error):
                 print("❌ 批量生成角色评论失败 - \(error.localizedDescription)")
-                
-                // 不再回退到逐个生成模式，直接返回错误
-                print("⚠️ 批量生成失败，不再尝试单独生成")
                 
                 // 发送批量生成失败的通知
                 NotificationCenter.default.post(
@@ -818,8 +874,200 @@ class VirtualCharacterService {
                         "error": error.localizedDescription
                     ]
                 )
+                
+                // 结束后台任务
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                print("❌ 角色评论生成后台任务失败")
             }
         })
+    }
+    
+    /**
+     * 获取角色聊天回复
+     * 专门为聊天界面设计的API调用方法
+     * @param character 聊天角色
+     * @param userMessage 用户消息
+     * @param conversationHistory 对话历史
+     * @return 角色回复内容的Publisher
+     */
+    func getCharacterChatReply(
+        character: CYChatCharacter,
+        userMessage: String,
+        conversationHistory: String
+    ) -> AnyPublisher<String, Error> {
+        // 创建后台任务，确保即使用户退出页面也能完成API调用
+        let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            print("⚠️ VirtualCharacterService: 获取聊天回复的后台任务超时")
+        }
+        
+        print("🔄 VirtualCharacterService: 创建获取聊天回复后台任务，ID: \(backgroundTaskID)")
+        
+        // 构建角色信息
+        let characterInfo = buildCharacterInfo(character)
+        
+        // 调用专门的聊天API
+        return AINetworkService.shared.sendChatRequest(
+            characterName: character.name,
+            characterInfo: characterInfo,
+            conversationHistory: conversationHistory,
+            userMessage: userMessage
+        )
+        .handleEvents(
+            receiveOutput: { output in
+                print("✅ 成功生成聊天回复: \"\(output.prefix(50))...\"")
+                
+                // 存储这次交互的记忆
+                let memoryKey = "chat_\(character.id)"
+                self.memoryManager.storeMemory(
+                    forKey: memoryKey,
+                    content: "用户: \(userMessage)\n\(character.name): \(output)"
+                )
+            },
+            receiveCompletion: { completion in
+                // 在任务完成时结束后台任务
+                if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    print("🏁 VirtualCharacterService: 聊天回复生成任务已完成，后台任务结束")
+                }
+                
+                if case .failure(let error) = completion {
+                    print("❌ 生成聊天回复失败: \(error.localizedDescription)")
+                }
+            }
+        )
+        .mapError { error -> Error in
+            // 将AINetworkError转换为一般Error
+            return error as Error
+        }
+        .eraseToAnyPublisher()
+    }
+
+    /**
+     * 获取角色聊天回复（回调版本）
+     * @param character 聊天角色
+     * @param userMessage 用户消息
+     * @param conversationHistory 对话历史
+     * @param completion 完成回调
+     */
+    func getCharacterChatReply(
+        character: CYChatCharacter,
+        userMessage: String,
+        conversationHistory: String,
+        completion: @escaping (Result<String, Error>) -> Void
+    ) {
+        // 创建后台任务，确保即使用户退出页面也能完成API调用
+        let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            print("⚠️ VirtualCharacterService: 获取聊天回复的后台任务超时")
+        }
+        
+        print("🚀 聊天API请求开始 - 角色: \(character.name)")
+        print("📝 用户消息: \"\(userMessage)\"")
+        print("🔄 VirtualCharacterService: 创建获取聊天回复后台任务，ID: \(backgroundTaskID)")
+        
+        // 构建角色信息
+        let characterInfo = buildCharacterInfo(character)
+        
+        // 添加详细日志
+        print("\n📊 ===== 聊天请求详细数据 =====")
+        print("🧩 角色ID: \(character.id)")
+        print("👤 角色名称: \(character.name)")
+        print("🌍 时代: \(character.eraTag)")
+        print("🔬 领域: \(character.field)")
+        
+        print("\n📜 角色详细信息:")
+        print(characterInfo)
+        
+        print("\n💬 对话历史:")
+        print(conversationHistory)
+        
+        print("\n💭 用户最新消息:")
+        print(userMessage)
+        print("📊 ===== 详细数据结束 =====\n")
+        
+        // 使用Publisher版本的方法并转换为回调
+        let cancellable = AINetworkService.shared.sendChatRequest(
+            characterName: character.name,
+            characterInfo: characterInfo,
+            conversationHistory: conversationHistory,
+            userMessage: userMessage
+        )
+        .sink(
+            receiveCompletion: { completionStatus in
+                // 在任务完成时结束后台任务
+                if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    print("🏁 VirtualCharacterService: 聊天回复生成任务已完成，后台任务结束")
+                }
+                
+                if case .failure(let error) = completionStatus {
+                    print("❌❌❌ 生成聊天回复失败: \(error.localizedDescription)")
+                    completion(.failure(error))
+                }
+            },
+            receiveValue: { output in
+                // 存储这次交互的记忆
+                let memoryKey = "chat_\(character.id)"
+                self.memoryManager.storeMemory(
+                    forKey: memoryKey,
+                    content: "用户: \(userMessage)\n\(character.name): \(output)"
+                )
+                
+                print("✅✅✅ 聊天API返回成功! 角色: \(character.name)")
+                print("💬 回复内容: \"\(output.prefix(100))...\"")
+                completion(.success(output))
+            }
+        )
+        
+        // 存储可取消项，以防需要提前取消
+        cancellables.insert(cancellable)
+    }
+
+    /**
+     * 构建角色详细信息
+     * @param character 角色对象
+     * @return 格式化的角色信息字符串
+     */
+    private func buildCharacterInfo(_ character: CYChatCharacter) -> String {
+        // 极简基本信息
+        var info = "\(character.birthYear)-\(character.deathYear)，\(character.field)。\(character.introduction)"
+        
+        // 创建唯一内容集合，避免重复
+        var uniqueItems = Set<String>()
+        
+        // 合并成就、作品和思想，去除重复
+        var allItems = [String]()
+        
+        // 添加成就，确保唯一性
+        for achievement in character.achievements {
+            if uniqueItems.insert(achievement).inserted {
+                allItems.append(achievement)
+            }
+        }
+        
+        // 添加主要作品，确保唯一性
+        for work in character.mainWorks {
+            if uniqueItems.insert(work).inserted {
+                allItems.append(work)
+            }
+        }
+        
+        // 添加核心思想，确保唯一性
+        for thought in character.keyThoughts {
+            if uniqueItems.insert(thought).inserted {
+                allItems.append(thought)
+            }
+        }
+        
+        // 只有当有内容时才添加
+        if !allItems.isEmpty {
+            info += "\n\n主要贡献与思想:"
+            // 最多添加3个项目，避免过长
+            for (_, item) in allItems.prefix(3).enumerated() {
+                info += "\n• \(item)"
+            }
+        }
+        
+        return info
     }
     
     // MARK: - 测试方法
@@ -1276,7 +1524,6 @@ class VirtualCharacterService {
             let name = getCharacterName(for: id)
             if name == id {
                 print("⚠️ 健康检查警告: 角色 \(id) 可能缺少中文名称映射。")
-            }
         }
     }
 }
@@ -1288,4 +1535,37 @@ struct VCCharacterPersonality {
     let tone: String
     let knowledgeAreas: [String]
     let speechPatterns: [String]
+    }
+
+    /**
+     * 移除重复的评论
+     * @param postIndex 帖子在 viewModel.posts 中的索引
+     * @param viewModel PostViewModel 实例
+     */
+    private func removeDuplicateComments(for postIndex: Int, in viewModel: PostViewModel) {
+        var uniqueComments: [DetailedCommentModel] = []
+        var seenKeys: Set<String> = []
+        
+        for comment in viewModel.posts[postIndex].comments {
+            // 创建唯一键：角色ID + 内容
+            let key = "\(comment.characterID ?? "")-\(comment.content)"
+            
+            if !seenKeys.contains(key) {
+                uniqueComments.append(comment)
+                seenKeys.insert(key)
+            } else {
+                print("⚠️ 检测到重复评论，已移除: \(comment.username)")
+            }
+        }
+        
+        if uniqueComments.count < viewModel.posts[postIndex].comments.count {
+            print("🔍 去重前评论数: \(viewModel.posts[postIndex].comments.count), 去重后: \(uniqueComments.count)")
+        }
+        
+        // 按时间排序，保持一致的排列方式（较新的评论在前）
+        uniqueComments.sort { $0.datePosted > $1.datePosted }
+        
+        // 更新帖子的评论
+        viewModel.posts[postIndex].comments = uniqueComments
+    }
 } 

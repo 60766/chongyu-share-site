@@ -22,10 +22,10 @@ struct HistoricalFigureSelectionView: View {
     // UI常量
     private let categories = ["全部", "最近", "关注", "历史人物", "文学角色", "电影角色", "动漫角色", "神话角色", "电视剧角色", "游戏角色", "虚拟主播"]
     private let gridColumns = [
-        GridItem(.flexible()),
-        GridItem(.flexible()),
-        GridItem(.flexible()),
-        GridItem(.flexible())
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
     ]
     
     // 颜色系统
@@ -51,6 +51,7 @@ struct HistoricalFigureSelectionView: View {
             VStack(spacing: 0) {
                 // 顶部区域和分类，不滚动
                 headerSection
+                    .padding(.top, 8) // 增加顶部间距
                 categorySection
                 
                 // 角色列表，可滚动
@@ -108,17 +109,6 @@ struct HistoricalFigureSelectionView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 50)
                     } else {
-                        // 角色计数
-                        HStack {
-                            Text("共找到 \(figures.count) 个角色")
-                                .font(.system(size: 12))
-                                .foregroundColor(secondaryColor)
-                                .padding(.leading, spacing * 2)
-                            
-                            Spacer()
-                        }
-                        .padding(.top, 4)
-                        
                         // 角色网格
                         LazyVGrid(columns: gridColumns, spacing: spacing) {
                             ForEach(figures) { figure in
@@ -137,28 +127,19 @@ struct HistoricalFigureSelectionView: View {
     
     // 顶部区域
     private var headerSection: some View {
-        VStack(spacing: spacing * 2) {
+        VStack(spacing: spacing) {
             // 标题和关闭按钮
             HStack {
+                Spacer()
+                
                 Text("邀请角色参与讨论")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundColor(textColor)
                 
                 Spacer()
-                
-                Button(action: {
-                    presentationMode.wrappedValue.dismiss()
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(secondaryColor)
-                        .padding(spacing)
-                        .background(surfaceColor)
-                        .clipShape(Circle())
-                }
             }
             .padding(.horizontal, spacing * 2)
-            .padding(.top, spacing * 2)
+            .padding(.top, spacing)
             
             // 搜索框和一键邀请按钮
             HStack(spacing: spacing) {
@@ -169,7 +150,7 @@ struct HistoricalFigureSelectionView: View {
                         .padding(.leading, spacing / 2)
                     
                     TextField("搜索历史人物", text: $searchText)
-                        .font(.system(size: 13))
+                        .font(.system(size: 14))
                     
                     if !searchText.isEmpty {
                         Button(action: {
@@ -182,49 +163,58 @@ struct HistoricalFigureSelectionView: View {
                         }
                     }
                 }
-                .padding(.vertical, spacing)
+                .padding(.vertical, spacing * 0.75)
                 .padding(.horizontal, spacing)
-                .background(surfaceColor)
-                .cornerRadius(cornerRadius)
-                .frame(maxWidth: .infinity, maxHeight: 36)
+                .background(surfaceColor.opacity(0.8))
+                .cornerRadius(17) // 更圆润的搜索框，半径为高度的一半
+                .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                .frame(maxWidth: .infinity, maxHeight: 34)
                 
                 Button(action: {
                     viewModel.oneClickInvite()
                 }) {
-                    Text("一键邀请")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
+                    Text("一键选择")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(primaryColor)
                         .padding(.horizontal, spacing * 1.5)
-                        .padding(.vertical, spacing)
-                        .frame(height: 36)
-                        .background(primaryColor)
-                        .cornerRadius(cornerRadius)
+                        .padding(.vertical, spacing * 0.75)
+                        .frame(height: 34)
+                        .background(
+                            RoundedRectangle(cornerRadius: 17)
+                                .stroke(primaryColor, lineWidth: 1.5)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 17)
+                                        .fill(surfaceColor.opacity(0.7))
+                                )
+                        )
+                        .cornerRadius(17) // 更圆润的按钮，半径为高度的一半
+                        .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
                 }
             }
             .padding(.horizontal, spacing * 2)
         }
-        .padding(.bottom, spacing)
+        .padding(.bottom, spacing / 2)
     }
     
     // 分类标签栏
     private var categorySection: some View {
         VStack(spacing: 0) {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: spacing * 3) {
+            HStack(spacing: spacing * 1.5) {
                 ForEach(categories, id: \.self) { category in
                     Button(action: {
                         selectedCategory = category
                     }) {
                         Text(category)
-                            .font(.system(size: 14, weight: selectedCategory == category ? .medium : .regular))
-                            .foregroundColor(selectedCategory == category ? primaryColor : secondaryColor)
-                            .padding(.bottom, spacing)
+                            .font(.system(size: 13, weight: selectedCategory == category ? .medium : .regular))
+                            .foregroundColor(selectedCategory == category ? primaryColor : secondaryColor.opacity(0.8))
+                            .padding(.bottom, spacing * 0.75)
                             .overlay(
                                 selectedCategory == category ?
                                 Rectangle()
-                                    .frame(height: 2)
+                                    .frame(height: 1.5)
                                     .foregroundColor(primaryColor)
-                                    .offset(y: spacing / 2)
+                                    .offset(y: spacing / 4)
                                 : nil,
                                 alignment: .bottom
                             )
@@ -233,18 +223,13 @@ struct HistoricalFigureSelectionView: View {
                 }
             }
             .padding(.horizontal, spacing * 2)
-            .padding(.vertical, spacing)
+            .padding(.vertical, spacing * 0.75)
         }
         .background(backgroundColor)
             
             // 角色数量指示器
             HStack {
                 Spacer()
-                Text("共 \(viewModel.availableFigures.count) 个角色")
-                    .font(.system(size: 12))
-                    .foregroundColor(secondaryColor)
-                    .padding(.trailing, spacing * 2)
-                    .padding(.bottom, 4)
             }
         }
     }
@@ -261,7 +246,7 @@ struct HistoricalFigureSelectionView: View {
                     if let avatarImage = viewModel.getCharacterAvatar(for: figure.name) {
                         Image(avatarImage)
                             .resizable()
-                            .scaledToFit()
+                            .scaledToFill()
                             .clipShape(Circle())
                     } else {
                         // 使用系统图标作为备用
@@ -270,9 +255,7 @@ struct HistoricalFigureSelectionView: View {
                             .scaledToFit()
                     }
                 }
-                .padding(spacing)
                 .frame(width: 48, height: 48)
-                .background(surfaceColor)
                 .clipShape(Circle())
                 .overlay(
                     Circle()
@@ -320,35 +303,31 @@ struct HistoricalFigureSelectionView: View {
     
     // 底部区域
     private var bottomSection: some View {
-        VStack(spacing: spacing) {
+        VStack(spacing: spacing * 0.75) {
             // 已选择的历史人物
             if !viewModel.selectedFigures.isEmpty {
                 HStack {
                     Text("已选择：")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(secondaryColor)
                     
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: spacing * 2) {
+                        HStack(spacing: spacing * 1.5) {
                             ForEach(viewModel.selectedFigures) { figure in
                                 ZStack(alignment: .topTrailing) {
                                     // 尝试加载角色专属头像
                                     if let avatarImage = viewModel.getCharacterAvatar(for: figure.name) {
                                         Image(avatarImage)
                                             .resizable()
-                                            .scaledToFit()
-                                            .padding(spacing / 2)
-                                            .frame(width: 24, height: 24)
-                                            .background(surfaceColor)
+                                            .scaledToFill()
+                                            .frame(width: 22, height: 22)
                                             .clipShape(Circle())
                                     } else {
                                         // 使用系统图标作为备用
                                         Image(systemName: viewModel.getAvatarSymbol(for: figure.name))
                                             .resizable()
                                             .scaledToFit()
-                                            .padding(spacing / 2)
-                                            .frame(width: 24, height: 24)
-                                            .background(surfaceColor)
+                                            .frame(width: 22, height: 22)
                                             .clipShape(Circle())
                                     }
                                     
@@ -356,13 +335,13 @@ struct HistoricalFigureSelectionView: View {
                                         viewModel.toggleSelection(figure)
                                     }) {
                                         Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: 11))
+                                            .font(.system(size: 10))
                                             .foregroundColor(secondaryColor)
                                             .background(backgroundColor)
                                             .clipShape(Circle())
                                     }
                                     .offset(x: 2, y: -2)
-                                    .padding(4)
+                                    .padding(2)
                                 }
                                 .padding(.horizontal, spacing / 2)
                             }
@@ -372,11 +351,11 @@ struct HistoricalFigureSelectionView: View {
                     Spacer()
                     
                     Text("\(viewModel.selectedFigures.count)/5")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(secondaryColor)
                 }
                 .padding(.horizontal, spacing * 2)
-                .padding(.top, spacing)
+                .padding(.top, spacing / 4)
             }
             
             // 邀请按钮 - 增强视觉效果
@@ -389,25 +368,25 @@ struct HistoricalFigureSelectionView: View {
                 presentationMode.wrappedValue.dismiss()
             }) {
                 Text("邀请参与")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 50) // 固定高度
+                    .frame(height: 42) // 固定高度
                     .background(
                         viewModel.selectedFigures.isEmpty
-                        ? AnyView(Color.gray.opacity(0.6))
+                        ? AnyView(Color.gray.opacity(0.5))
                         : AnyView(LinearGradient(
-                            gradient: Gradient(colors: [primaryColor, primaryColor.opacity(0.8)]),
+                            gradient: Gradient(colors: [primaryColor, primaryColor.opacity(0.9)]),
                             startPoint: .leading,
                             endPoint: .trailing
                           ))
                     )
-                    .cornerRadius(cornerRadius)
-                    .shadow(color: viewModel.selectedFigures.isEmpty ? Color.clear : primaryColor.opacity(0.3), radius: 4, x: 0, y: 2)
+                    .cornerRadius(21) // 更圆润的按钮，半径为高度的一半
+                    .shadow(color: viewModel.selectedFigures.isEmpty ? Color.clear : primaryColor.opacity(0.3), radius: 3, x: 0, y: 1)
             }
             .disabled(viewModel.selectedFigures.isEmpty)
             .padding(.horizontal, spacing * 2)
-            .padding(.vertical, spacing)
+            .padding(.vertical, spacing / 4)
         }
         .padding(.bottom, 0) // 移除所有底部间距，让按钮直接贴底
     }

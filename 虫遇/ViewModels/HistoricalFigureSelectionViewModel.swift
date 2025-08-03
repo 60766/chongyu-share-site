@@ -955,7 +955,7 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
     }
     
     /**
-     * 一键邀请功能
+     * 一键选择功能
      */
     func oneClickInvite() {
         // 清空当前选择
@@ -968,7 +968,7 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         if figureCount > 0 {
             // 有相关角色时，选择相关角色
             selectedFigures = Array(relevantFigures.prefix(figureCount))
-            print("一键邀请：选择了\(figureCount)个相关角色")
+            print("一键选择：选择了\(figureCount)个相关角色")
         } else {
             // 如果没有相关人物，尝试选择关注的角色
             let followedFigures = getFollowedFigures()
@@ -976,14 +976,14 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
                 // 有关注角色时，选择关注角色
                 let followCount = min(3, followedFigures.count)
                 selectedFigures = Array(followedFigures.prefix(followCount))
-                print("一键邀请：选择了\(followCount)个关注角色")
+                print("一键选择：选择了\(followCount)个关注角色")
             } else {
                 // 如果没有关注角色，使用帖子ID作为随机种子，确保相同帖子推荐相同角色，不同帖子推荐不同角色
                 var generator = SeededRandomNumberGenerator(seed: postId.hashValue)
                 let shuffledFigures = availableFigures.shuffled(using: &generator)
                 let randomCount = min(3, shuffledFigures.count)
                 selectedFigures = Array(shuffledFigures.prefix(randomCount))
-                print("一键邀请：随机选择了\(randomCount)个角色，使用帖子ID作为种子")
+                print("一键选择：随机选择了\(randomCount)个角色，使用帖子ID作为种子")
             }
         }
     }
@@ -1067,19 +1067,16 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         // 获取帖子作者信息
         let postAuthorName = postAuthor?.name
         
-        // 使用VirtualCharacterService的邀请方法，传递帖子作者
-        let virtualCharacterService = VirtualCharacterService.shared
-        virtualCharacterService.inviteCharactersToComment(characterIDs: characterIDs, postId: postId, postAuthor: postAuthorName)
+        // 复制需要的数据，避免闭包中引用self
+        let finalPostId = postId
+        let finalSelectedFigures = selectedFigures
         
         // 发送通知，通知其他组件历史人物已被邀请
         NotificationCenter.default.post(
             name: Notification.Name("HistoricalFiguresInvited"),
             object: nil,
-            userInfo: ["postId": postId, "figures": selectedFigures]
+            userInfo: ["postId": finalPostId, "figures": finalSelectedFigures]
         )
-        
-        // 添加额外的通知，确保帖子详情页面立即刷新评论列表
-        let finalPostId = postId // 捕获局部变量，避免在闭包中使用self
         
         // 立即触发一次刷新，确保UI准备好
         DispatchQueue.main.async {
@@ -1098,41 +1095,13 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
             }
         }
         
-        // 延迟一段时间后再次刷新，确保评论已经生成
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            // 发送刷新通知
-            NotificationCenter.default.post(
-                name: NSNotification.Name("RefreshPostComments"),
-                object: nil,
-                userInfo: [
-                    "postID": finalPostId,
-                    "immediateDisplay": true,
-                    "preventScroll": true
-                ]
-            )
-            
-            // 确保详情页面的评论列表立即刷新
-            NotificationCenter.default.post(
-                name: NSNotification.Name("ForceRefreshComments"),
-                object: nil,
-                userInfo: [
-                    "keepExpandState": true,
-                    "preventScroll": true,
-                    "immediateDisplay": true
-                ]
-            )
-            
-            // 再次尝试触发帖子的 objectWillChange
-            let viewModel = PostViewModel.shared
-            if let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == finalPostId }) {
-                // 强制触发 objectWillChange 通知
-                viewModel.posts[postIndex].objectWillChange.send()
-                
-                // 创建一个临时副本并重新赋值，强制 SwiftUI 刷新
-                let tempPost = viewModel.posts[postIndex]
-                viewModel.posts[postIndex] = tempPost
-            }
-        }
+        // 使用VirtualCharacterService的邀请方法，传递帖子作者
+        // 这个方法已经被修改为在后台运行，即使用户离开当前页面
+        let virtualCharacterService = VirtualCharacterService.shared
+        virtualCharacterService.inviteCharactersToComment(characterIDs: characterIDs, postId: finalPostId, postAuthor: postAuthorName)
+        
+        // 不再需要额外的刷新逻辑，因为VirtualCharacterService.inviteCharactersToComment已经包含了完整的刷新机制
+        // 而且它会在后台任务中执行，确保即使用户离开页面，评论也会生成并显示
     }
     
     /**

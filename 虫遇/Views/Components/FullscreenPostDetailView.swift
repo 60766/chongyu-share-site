@@ -210,8 +210,15 @@ struct FullscreenPostDetailView: View {
     @State private var explorationKeyword: String = ""
     @State private var isDirecctedMode: Bool = false
     
-    // 新增状态，用于控制"三颗星星"图标的动画
-    @State private var isGeneratingAIMedia: Bool = false
+    // 新增状态，用于控制"三颗星星"图标的动画，使用Dictionary关联到特定帖子
+    @State private var generatingMediaPostIds: Set<UUID> = []
+    
+    // 计算当前帖子是否正在生成内容
+    private var isGeneratingAIMedia: Bool {
+        // 帖子ID不是可选类型，直接使用
+        let currentPostId = viewModel.post.id
+        return generatingMediaPostIds.contains(currentPostId)
+    }
     
     // 初始化方法
     init(
@@ -1770,16 +1777,34 @@ struct FullscreenPostDetailView: View {
             // 无需额外动画，跟随拖动实时更新
             .opacity(isTransitioning ? 0 : 1)
         )
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("HistoricalFiguresInvited"))) { _ in
-            print("⭐️ 收到HistoricalFiguresInvited通知，设置isGeneratingAIMedia = true")
-            withAnimation {
-                isGeneratingAIMedia = true
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("HistoricalFiguresInvited"))) { notification in
+            // 从通知中获取帖子ID
+            if let postIdString = notification.userInfo?["postId"] as? String,
+               let postId = UUID(uuidString: postIdString) {
+                
+                print("⭐️ 收到HistoricalFiguresInvited通知，为帖子ID: \(postIdString) 设置生成状态")
+                
+                // 使用动画添加帖子ID
+                let _ = withAnimation {
+                    // 只有当前显示的帖子才添加到生成集合中
+                    if postId == viewModel.post.id {
+                        generatingMediaPostIds.insert(postId)
+                    }
+                }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CommentsGenerated"))) { _ in
-            print("⭐️ 收到CommentsGenerated通知，设置isGeneratingAIMedia = false")
-            withAnimation {
-                isGeneratingAIMedia = false
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CommentsGenerated"))) { notification in
+            // 从通知中获取帖子ID
+            if let postIdString = notification.userInfo?["postID"] as? String,
+               let postId = UUID(uuidString: postIdString) {
+                
+                print("⭐️ 收到CommentsGenerated通知，为帖子ID: \(postIdString) 清除生成状态")
+                
+                // 使用动画移除帖子ID
+                let _ = withAnimation {
+                    // 从生成集合中移除该帖子
+                    generatingMediaPostIds.remove(postId)
+                }
             }
         }
     }
@@ -2390,7 +2415,7 @@ struct FullscreenPostDetailView: View {
                     }
                     .sheet(isPresented: $showHistoricalFigureSelection) {
                         HistoricalFigureSelectionView(postId: viewModel.post.id.uuidString, postAuthor: viewModel.post.username)
-                            .presentationDetents([.medium, .large])
+                            .presentationDetents([.height(420), .large])
                             .presentationDragIndicator(.visible)
                             .presentationBackground(Material.regular)
                             .presentationCornerRadius(25)

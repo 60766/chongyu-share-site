@@ -640,10 +640,14 @@ class MultiCharacterCommentService {
      * @param isInvited 是否为邀请的角色评论
      */
     private func sendCommentsNotifications(postId: String, commentsMap: [String: String], isInvited: Bool) {
-        DispatchQueue.main.async {
+        // 首先，直接将评论添加到帖子模型中，确保数据层面的更新
+        self.directlyAddCommentsToPost(postId: postId, commentsMap: commentsMap)
+        
             // 生成一个唯一的批次ID，用于区分不同的评论批次
             let batchId = UUID().uuidString
             
+        // 在主线程上执行UI更新
+        DispatchQueue.main.async {
             // 发送通知，包含生成的评论内容映射
             NotificationCenter.default.post(
                 name: NSNotification.Name("CommentsGenerated"),
@@ -651,8 +655,9 @@ class MultiCharacterCommentService {
                 userInfo: [
                     "postID": postId,
                     "commentsMap": commentsMap,
-                    "isInvited": isInvited,  // 添加标记表明是否为邀请的角色评论
-                    "batchId": batchId       // 添加批次ID
+                    "isInvited": isInvited,
+                    "batchId": batchId,
+                    "forceUpdate": true  // 添加强制更新标记
                 ]
             )
             
@@ -662,17 +667,22 @@ class MultiCharacterCommentService {
                 // 强制触发 objectWillChange 通知
                 viewModel.posts[postIndex].objectWillChange.send()
                 
-                // 额外的强制刷新，确保 SwiftUI 视图更新
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     // 创建一个临时副本并重新赋值，强制 SwiftUI 刷新
                     let tempPost = viewModel.posts[postIndex]
                     viewModel.posts[postIndex] = tempPost
+            }
+            
+            // 发送全局帖子刷新通知
+            NotificationCenter.default.post(
+                name: NSNotification.Name("GlobalPostsRefresh"),
+                object: nil
+            )
                     
             // 发送评论更新通知
             NotificationCenter.default.post(
                 name: NSNotification.Name("PostCommentsUpdated"),
                 object: nil,
-                userInfo: ["postID": postId, "batchId": batchId]
+                userInfo: ["postID": postId, "batchId": batchId, "forceUpdate": true]
             )
             
             // 确保UI刷新
@@ -683,7 +693,8 @@ class MultiCharacterCommentService {
                             "postID": postId, 
                             "batchId": batchId,
                             "immediateDisplay": true,
-                            "preventScroll": true
+                    "preventScroll": true,
+                    "forceUpdate": true
                         ]
                     )
                     
@@ -694,45 +705,161 @@ class MultiCharacterCommentService {
                         userInfo: [
                             "keepExpandState": true,
                             "preventScroll": true,
-                            "immediateDisplay": true
+                    "immediateDisplay": true,
+                    "forceUpdate": true
                         ]
                     )
+            
+            print("📣 已发送所有通知，批量评论内容已生成，批次ID: \(batchId)")
+            
+            // 延迟一段时间后再次刷新，确保在用户返回页面时能看到评论
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.sendDelayedRefreshNotifications(postId: postId, batchId: batchId)
                 }
-            } else {
-                // 如果找不到帖子，仍然发送常规通知
+        }
+    }
+    
+    /**
+     * 直接将评论添加到帖子模型中
+     * 这是一个关键修复，确保评论在数据层面已经添加到帖子中
+     * @param postId 帖子ID
+     * @param commentsMap 角色ID到评论内容的映射
+     */
+    private func directlyAddCommentsToPost(postId: String, commentsMap: [String: String]) {
+        let viewModel = PostViewModel.shared
+        
+        guard let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) else {
+            print("❌ 未找到指定的帖子ID: \(postId)，无法直接添加评论")
+            return
+        }
+        
+        // 创建评论模型并添加到帖子
+        var newComments: [DetailedCommentModel] = []
+        
+        for (characterID, content) in commentsMap {
+            // 获取角色名称
+            let characterName = characterDataManager.getAttribute(id: characterID, attribute: "name") ?? characterID
+            
+            // 获取角色头像
+            let avatarPath = CharacterAvatarService.shared.getAvatarName(for: characterID)
+            
+            // 检查是否已存在相同内容和角色的评论
+            // 防止重复添加相同的评论
+            let existingComment = viewModel.posts[postIndex].comments.first {
+                $0.characterID == characterID && $0.content == content
+            }
+            
+            if existingComment != nil {
+                print("⚠️ 已存在相同内容的评论，跳过添加: \(characterName)")
+                continue
+            }
+            
+            // 创建评论模型，使用稍微错开的时间戳，确保排序合理
+            // 生成一个稍微早于当前时间的时间戳（0-3秒之间的随机值）
+            let randomOffset = Double.random(in: 0...3)
+            let commentDate = Date().addingTimeInterval(-randomOffset)
+            
+            let comment = DetailedCommentModel(
+                username: characterName,
+                userAvatar: avatarPath,
+                content: content,
+                datePosted: commentDate,
+                isVirtualCharacter: true,
+                characterID: characterID,
+                likes: Int.random(in: 1...5)
+            )
+            
+            newComments.append(comment)
+        }
+        
+        if newComments.isEmpty {
+            print("⚠️ 没有新评论需要添加，所有评论都已存在")
+            return
+        }
+        
+        // 按照原有的排序规则添加评论到帖子模型
+        // 首先获取当前帖子的评论
+        var currentComments = viewModel.posts[postIndex].comments
+        
+        // 添加新评论
+        currentComments.append(contentsOf: newComments)
+        
+        // 按时间排序，保持一致的排列方式（较新的评论在前）
+        currentComments.sort { $0.datePosted > $1.datePosted }
+        
+        // 更新帖子的评论
+        viewModel.posts[postIndex].comments = currentComments
+        
+        print("✅ 已直接添加 \(newComments.count) 条评论到帖子模型，并保持原有排序方式")
+    }
+    
+    /**
+     * 发送延迟的刷新通知
+     * 确保在用户返回页面时能看到评论
+     * @param postId 帖子ID
+     * @param batchId 批次ID
+     */
+    private func sendDelayedRefreshNotifications(postId: String, batchId: String) {
+        // 直接触发 PostViewModel 中的帖子刷新 - 只刷新视图，不添加新评论
+        let viewModel = PostViewModel.shared
+        if let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) {
+            // 确保评论按时间排序（较新的评论在前）并去重
+            let uniqueComments = removeDuplicateComments(viewModel.posts[postIndex].comments)
+            viewModel.posts[postIndex].comments = uniqueComments
+            
+            // 强制触发 objectWillChange 通知
+            viewModel.posts[postIndex].objectWillChange.send()
+            
+            // 创建一个临时副本并重新赋值，强制 SwiftUI 刷新
+            let tempPost = viewModel.posts[postIndex]
+            viewModel.posts[postIndex] = tempPost
+            
+            print("🔍 延迟刷新时检查到 \(viewModel.posts[postIndex].comments.count) 条评论")
+        }
+        
+        // 发送全局帖子刷新通知
+        NotificationCenter.default.post(
+            name: NSNotification.Name("GlobalPostsRefresh"),
+            object: nil
+        )
+        
                 // 发送评论更新通知
                 NotificationCenter.default.post(
                     name: NSNotification.Name("PostCommentsUpdated"),
                 object: nil,
-                userInfo: ["postID": postId, "batchId": batchId]
+            userInfo: ["postID": postId, "batchId": batchId, "forceUpdate": true]
             )
                 
-                // 确保UI刷新
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshPostComments"),
-                    object: nil,
-                    userInfo: [
-                        "postID": postId, 
-                        "batchId": batchId,
-                        "immediateDisplay": true,
-                        "preventScroll": true
-                    ]
-                )
-                
-                // 添加额外的强制刷新通知，确保评论立即显示
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("ForceRefreshComments"),
-                    object: nil,
-                    userInfo: [
-                        "keepExpandState": true,
-                        "preventScroll": true,
-                        "immediateDisplay": true
-                    ]
-                )
-            }
+        print("📣 已发送延迟刷新通知，确保用户返回页面时能看到评论")
+    }
+    
+    /**
+     * 移除重复的评论
+     * @param comments 评论列表
+     * @return 去重后的评论列表
+     */
+    private func removeDuplicateComments(_ comments: [DetailedCommentModel]) -> [DetailedCommentModel] {
+        var uniqueComments: [DetailedCommentModel] = []
+        var seenContent: Set<String> = []
+        
+        // 遍历所有评论
+        for comment in comments {
+            // 创建唯一标识 - 使用内容和角色ID组合
+            let uniqueKey = "\(comment.characterID ?? "")-\(comment.content)"
             
-            print("📣 已发送所有通知，批量评论内容已生成，批次ID: \(batchId)")
+            // 如果这是一个新的评论（没有看到过相同的内容+角色组合）
+            if !seenContent.contains(uniqueKey) {
+                uniqueComments.append(comment)
+                seenContent.insert(uniqueKey)
+            } else {
+                print("⚠️ 检测到重复评论，已跳过: \(comment.username)")
+            }
         }
+        
+        // 按时间排序，保持一致的排列方式（较新的评论在前）
+        uniqueComments.sort { $0.datePosted > $1.datePosted }
+        
+        return uniqueComments
     }
 
     /**

@@ -49,16 +49,47 @@ class APIConfigManager {
     private init() {
         // 从钥匙串加载API密钥
         loadAPIKey()
+        
+        // 确保API配置有效
+        validateAndSetupAPI()
     }
     
+    // 验证并设置API配置
+    private func validateAndSetupAPI() {
+        // 如果API密钥为空或无效，使用默认密钥
+        if !hasValidAPIKey || !isValidAPIKeyFormat(apiKey) {
+            print("⚠️ API密钥无效或为空，使用默认密钥")
+            setAPIKey(defaultAPIKey)
+        }
+        
+        // 确保使用ARK端点（更稳定的选择）
+        if currentEndpointIndex != 1 {
+            currentEndpointIndex = 1
+            print("⚙️ 强制使用ARK API端点: \(deepSeekEndpoint)")
+        }
+        
+        print("🔧 API配置已验证并设置：")
+        print("🔑 API密钥: \(apiKey?.prefix(8) ?? "nil")...")
+        print("🌐 端点: \(deepSeekEndpoint)")
+        print("🤖 模型: \(modelName)")
+    }
+
     // 从钥匙串加载API密钥
     private func loadAPIKey() {
         print("🔑 尝试加载API密钥...")
         
-        // 直接设置ARK API密钥（优先级最高）
-        let arkApiKey = "5ec25df2-f799-4fc0-8ee2-ac13d473131b"
+        // 首先尝试从钥匙串加载
+        if let savedKey = retrieveAPIKeyFromKeychain() {
+            self.apiKey = savedKey
+            print("✅ 从钥匙串加载API密钥成功")
+            setupEndpointForAPIKey(savedKey)
+            return
+        }
+        
+        // 如果钥匙串中没有，使用ARK API密钥（优先级最高）
+        let arkApiKey = defaultAPIKey
         self.apiKey = arkApiKey
-        print("💯 直接设置ARK API密钥: \(String(arkApiKey.prefix(8)))...")
+        print("💯 使用默认ARK API密钥: \(String(arkApiKey.prefix(8)))...")
         
         // 设置为ARK端点
         currentEndpointIndex = 1
@@ -68,17 +99,6 @@ class APIConfigManager {
         // 保存到钥匙串以便下次使用
         saveAPIKeyToKeychain(arkApiKey)
         print("💾 已保存API密钥到钥匙串")
-        
-        // 验证API密钥
-        if self.hasValidAPIKey {
-            if isValidAPIKeyFormat(self.apiKey) {
-                print("✅ API密钥格式正确")
-            } else {
-                print("⚠️ API密钥格式可能不正确，但将尝试使用")
-            }
-        } else {
-            print("❌ API密钥验证失败，可能为空或格式不正确")
-        }
     }
     
     // 根据API密钥格式选择合适的端点

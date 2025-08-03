@@ -281,7 +281,7 @@ struct ConversationRow: View {
     
     var body: some View {
         NavigationLink(destination: ChatView(character: character ?? CYChatCharacter(
-            id: "",
+            id: conversation.characterId,
             name: "未知角色",
             introduction: "",
             field: "",
@@ -292,7 +292,7 @@ struct ConversationRow: View {
             achievements: [],
             mainWorks: [],
             keyThoughts: []
-        ), conversationId: conversation.id)) {
+        ))) {
             HStack(spacing: 12) {
                 // 角色头像
                 ZStack(alignment: .bottomTrailing) {

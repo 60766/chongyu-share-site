@@ -268,8 +268,7 @@ struct CharacterDetailView: View {
                     followerCount: character.followerCount,
                     interactionCount: character.interactionCount,
                     rating: character.rating
-                ),
-                conversationId: selectedConversationId ?? UUID().uuidString
+                )
             )
         }
         .onDisappear {
