@@ -3,6 +3,10 @@ import SwiftData
 // CreateCharacterView位于：Views/Components/Character/CreateCharacterView.swift
 import Foundation
 
+// 导入自定义组件
+// @_exported import struct 虫遇.ImprovedCharacterCardView
+// @_exported import struct 虫遇.RecommendedCharactersView
+
 /**
  * 角色探索页面
  * 用于浏览和筛选所有历史人物
@@ -13,7 +17,7 @@ struct ExploreView: View {
     /// 选中的分类
     @State private var selectedCategory: CharacterCategory = .all
     /// 历史人物数据
-    @State private var characters: [CharacterModel] = CharacterModel.sampleCharacters
+    @State private var characters: [CharacterModel] = []
     /// 滚动偏移量
     @State private var scrollOffset: CGFloat = 0
     /// 选中的时间轴时期
@@ -21,18 +25,42 @@ struct ExploreView: View {
     /// 是否显示创建角色视图
     @State private var showingCreateCharacter = false
     
+    // TabBar管理器
+    @ObservedObject private var tabBarManager = TabBarManager.shared
+    
+    // 选项卡类型
+    enum TabType: String, CaseIterable {
+        case all = "全部"
+        case popular = "热门"
+        case recent = "最近"
+    }
+    
+    // 当前选中的选项卡
+    @State private var selectedTab: TabType = .all
+    
     // 时间轴数据
     private let timeEras = [
         "古代", "中世纪", "文艺复兴", "启蒙运动", "工业革命", "现代", "当代"
     ]
     
+    // 定义三列网格布局
+    private let threeColumns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+    
+    // 导航状态
+    @State private var navigateToCharacterDetail: CharacterModel? = nil
+    @State private var navigateToChatView: CharacterModel? = nil
+
     var body: some View {
         ZStack(alignment: .top) {
             // 背景色 - 使用微妙的渐变增加空间感
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color(red: 246/255, green: 248/255, blue: 252/255),
-                    Color(red: 250/255, green: 250/255, blue: 252/255)
+                    Color(red: 248/255, green: 250/255, blue: 252/255),
+                    Color(red: 250/255, green: 252/255, blue: 254/255)
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
@@ -41,41 +69,28 @@ struct ExploreView: View {
             
             // 主内容区
             VStack(spacing: 0) {
-                // 顶部区域：标题和搜索栏
+                // 顶部区域：搜索栏
                 VStack(spacing: 0) {
-                    HStack {
-                        Text("虫遇")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.primaryColor)
-                            .tracking(-0.5) // 紧凑排版
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 16)
-                    
                     // 搜索栏 - 优化视觉层次感
                     HStack(spacing: 12) {
                         HStack {
                             Image(systemName: "magnifyingglass")
-                                .font(.system(size: 17))
-                                .foregroundColor(.gray.opacity(0.7))
-                                .padding(.leading, 4)
+                                .font(.system(size: 16))
+                                .foregroundColor(Color(.systemGray))
+                                .padding(.leading, 8)
                             
                             TextField("搜索时空旅行者...", text: $searchText)
                                 .font(.system(size: 16))
                                 .foregroundColor(.primary)
-                                .padding(.vertical, 10)
+                                .padding(.vertical, 8)
                         }
-                        .padding(.horizontal, 12)
-                        .background(Color.white)
-                        .cornerRadius(24)
+                        .padding(.horizontal, 8)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 24)
-                                .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.gray.opacity(0.05), lineWidth: 0.5)
                         )
-                        .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 2)
                         
                         // 筛选按钮 - 使用与App风格一致的设计语言
                         Button(action: {
@@ -83,170 +98,130 @@ struct ExploreView: View {
                         }) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.white)
-                                    .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 2)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color.gray.opacity(0.1), lineWidth: 1)
-                                    )
+                                    .fill(Color(.systemGray6))
                                 
-                                Image(systemName: "slider.horizontal.3")
-                                    .font(.system(size: 16))
+                                Image(systemName: "line.3.horizontal.decrease")
+                                    .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.primaryColor)
                             }
-                            .frame(width: 44, height: 44)
+                            .frame(width: 36, height: 36)
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 16)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 12)
                 }
                 .background(Color.white.opacity(scrollOffset > 20 ? 1 : 0))
-                .shadow(color: Color.black.opacity(scrollOffset > 20 ? 0.05 : 0), radius: 8, x: 0, y: 4)
+                .shadow(color: Color.black.opacity(scrollOffset > 20 ? 0.05 : 0), radius: 6, x: 0, y: 3)
                 .zIndex(1)
                 
                 // 内容区
                 GeometryReader { geometry in
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 24) {
-                            // 历史时间轴 - 新增元素，强化时空概念
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("历史时间轴")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundColor(.primary)
-                                    .padding(.horizontal, 20)
-                                
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 12) {
-                                        ForEach(timeEras, id: \.self) { era in
-                                            Button(action: {
-                                                withAnimation(.easeInOut) {
-                                                    selectedEra = selectedEra == era ? nil : era
-                                                }
-                                            }) {
-                                                Text(era)
-                                                    .font(.system(size: 14, weight: .medium))
-                                                    .padding(.horizontal, 16)
-                                                    .padding(.vertical, 8)
-                                                    .background(
-                                                        Capsule()
-                                                            .fill(selectedEra == era ? 
-                                                                  Color.primaryColor : 
-                                                                  Color.white)
-                                                    )
-                                                    .foregroundColor(selectedEra == era ? .white : .primary)
-                                                    .overlay(
-                                                        Capsule()
-                                                            .stroke(Color.gray.opacity(0.15), lineWidth: 1)
-                                                    )
-                                                    .shadow(color: Color.black.opacity(selectedEra == era ? 0.1 : 0.03), 
-                                                            radius: 4, x: 0, y: 2)
-                                            }
-                                        }
-                                    }
-                                    .padding(.horizontal, 20)
-                                    .padding(.bottom, 4)
-                                }
-                            }
-                            .padding(.top, 8)
-                            
+                        VStack(alignment: .leading, spacing: 18) { // 调整主要板块间距
                             // 分类筛选
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("按类型探索")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundColor(.primary)
-                                    .padding(.horizontal, 20)
+                                // 分类选择器 - 改为网格布局
+                                // 先获取筛选后的分类列表
+                                let categories = CharacterCategory.allCases.filter { $0 != .all }
                                 
-                                // 分类选择器 - 增强视觉吸引力
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(CharacterCategory.allCases.filter { $0 != .all }, id: \.self) { category in
+                                LazyVGrid(
+                                    columns: [
+                                        GridItem(.flexible(), spacing: 12),
+                                        GridItem(.flexible(), spacing: 12),
+                                        GridItem(.flexible(), spacing: 12),
+                                        GridItem(.flexible(), spacing: 12)
+                                    ],
+                                    spacing: 20
+                                ) {
+                                    // 使用预先筛选的列表
+                                    ForEach(categories, id: \.self) { category in
                                             Button(action: {
                                                 withAnimation(.easeInOut) {
                                                     selectedCategory = category
                                                 }
                                             }) {
-                                                VStack(spacing: 8) {
-                                                    ZStack {
-                                                        Circle()
-                                                            .fill(category.color.opacity(selectedCategory == category ? 1.0 : 0.15))
-                                                            .frame(width: 60, height: 60)
-                                                        
-                                                        Image(systemName: category.icon)
-                                                            .font(.system(size: 24))
-                                                            .foregroundColor(selectedCategory == category ? .white : category.color)
-                                                    }
-                                                    .shadow(color: category.color.opacity(selectedCategory == category ? 0.3 : 0), 
-                                                            radius: 8, x: 0, y: 4)
-                                                    
-                                                    Text(category.displayName)
-                                                        .font(.system(size: 14))
-                                                        .foregroundColor(selectedCategory == category ? .primary : .secondary)
-                                                }
+                                            categoryView(for: category)
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                            }
+                            .padding(.vertical, 6)
+                            
+                            // 选项卡视图
+                            HStack(spacing: 0) {
+                                ForEach(TabType.allCases, id: \.self) { tab in
+                                    Button(action: {
+                                        withAnimation(.easeInOut) {
+                                            selectedTab = tab
+                                        }
+                                    }) {
+                                        ZStack {
+                                            if selectedTab == tab {
+                                                Capsule()
+                                                    .fill(Color(.systemGray6))
+                                                    .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
+                                                    .frame(height: 32)
                                             }
+                                            
+                                            Text(tab.rawValue)
+                                                .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .regular))
+                                                .foregroundColor(selectedTab == tab ? Color(.label) : Color(.systemGray2))
+                                                .padding(.horizontal, 16)
                                         }
+                                        .frame(maxWidth: .infinity)
                                     }
-                                    .padding(.horizontal, 20)
+                                    .buttonStyle(PlainButtonStyle())
                                 }
                             }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 10)
+                            .padding(.bottom, 6)
                             
-                            // 推荐角色 - 平铺网格布局
-                            VStack(alignment: .leading, spacing: 16) {
-                                HStack {
-                                    if selectedCategory == .all {
-                                        Text("推荐角色")
-                                            .font(.system(size: 20, weight: .bold))
-                                            .foregroundColor(.primary)
-                                    } else {
-                                        Text("\(selectedCategory.displayName)")
-                                            .font(.system(size: 20, weight: .bold))
-                                            .foregroundColor(.primary)
-                                    }
+                            // 视觉分隔线
+                            Rectangle()
+                                .fill(Color(.systemGray5).opacity(0.5))
+                                .frame(height: 1)
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 8)
+                            
+                            // 推荐角色 - 纵向网格布局
+                            VStack(alignment: .leading, spacing: 0) {
+                                if selectedCategory == .all {
+                                    // 准备数据
+                                    let displayCharacters = filteredCharacters.prefix(12).map { $0 }
+                                    let titleText = selectedCategory == .all ? "全部角色" : selectedCategory.displayName
                                     
-                                    Spacer()
+                                    // 使用新的推荐角色组件
+                                    RecommendedCharactersView(
+                                        characters: displayCharacters,
+                                        titleText: titleText,
+                                        onCharacterTap: navigateToCharacterDetail,
+                                        onCharacterChatTap: navigateToCharacterChat,
+                                        onViewAllTap: handleViewAllTap,
+                                        onCreateTap: handleCreateCharacter
+                                    )
+                                } else {
+                                    // 分类标题
+                                    Text(selectedCategory.displayName)
+                                        .font(.system(size: 15, weight: .medium)) // 字体保持小一点
+                                        .foregroundColor(Color(.label)) // 恢复原来的颜色
+                                        .padding(.horizontal, 16)
+                                        .padding(.bottom, 8)
                                     
-                                    // 创建角色按钮
-                                    Button(action: {
-                                        showingCreateCharacter = true
-                                    }) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "plus.circle.fill")
-                                                .font(.system(size: 14))
-                                            Text("创建角色")
-                                                .font(.system(size: 14))
+                                    // 优化角色卡片网格
+                                    LazyVGrid(
+                                        columns: threeColumns,
+                                        spacing: 12 // 增加卡片垂直间距
+                                    ) {
+                                        ForEach(filteredCharacters) { character in
+                                            improvedCharacterCard(for: character)
                                         }
-                                        .foregroundColor(.primaryColor)
                                     }
-                                    .padding(.trailing, 10)
-                                    
-                                    Button(action: {
-                                        // 查看全部角色
-                                        selectedCategory = .all
-                                        searchText = ""
-                                    }) {
-                                        Text("查看全部")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.primaryColor)
-                                    }
+                                    .padding(.horizontal, 16) // 与标题使用相同的水平内边距
                                 }
-                                .padding(.horizontal, 20)
-                                
-                                // 优化角色卡片网格
-                                LazyVGrid(
-                                    columns: [
-                                        GridItem(.flexible(), spacing: 16),
-                                        GridItem(.flexible(), spacing: 16)
-                                    ],
-                                    spacing: 20
-                                ) {
-                                    ForEach(filteredCharacters) { character in
-                                        improvedCharacterCard(for: character)
-                                    }
-                                }
-                                .padding(.horizontal, 20)
                             }
-                            
-                            // 底部间距
-                            Color.clear.frame(height: 20)
                         }
                         .background(
                             GeometryReader { proxy in
@@ -270,149 +245,86 @@ struct ExploreView: View {
                 CreateCharacterView(characters: $characters)
             }
         }
+        .onAppear {
+            loadAllCharacters()
+            // 确保TabBar可见
+            tabBarManager.ensureTabBarVisible()
+        }
+        // 添加导航链接 - 使用全屏覆盖而不是sheet
+        .fullScreenCover(item: $navigateToCharacterDetail) { character in
+            NavigationView {
+                CharacterDetailView(character: convertToCharacter(character))
+            }
+            .onDisappear {
+                // 强制重置并显示TabBar，确保返回时TabBar可见
+                tabBarManager.forceResetAndShow()
+            }
+        }
+        .fullScreenCover(item: $navigateToChatView) { character in
+            NavigationView {
+                ChatView(character: convertToChatCharacter(character))
+            }
+            .onDisappear {
+                // 强制重置并显示TabBar，确保返回时TabBar可见
+                tabBarManager.forceResetAndShow()
+            }
+        }
+    }
+    
+    // 加载所有角色
+    private func loadAllCharacters() {
+        self.characters = CharacterModel.getAllCharacters()
+        print("已加载 \(characters.count) 个角色")
     }
     
     // 优化的角色卡片
     private func improvedCharacterCard(for character: CharacterModel) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // 角色头像区域
-            ZStack(alignment: .bottomLeading) {
-                // 使用统一的Avatar组件替换直接的Image显示
-                // 由于这里需要的是矩形图像而不是圆形，我们需要做一些特殊处理
-                // 使用统一的背景渐变
-                ZStack {
-                    // 背景渐变
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            character.category.color.opacity(0.7),
-                            character.category.color.opacity(0.3)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    
-                    // 使用统一的Avatar组件
-                    Avatar(
-                        url: character.characterID ?? character.name,
-                        name: character.name,
-                        category: character.category.displayName,
-                        size: 120
-                    )
-                    .scaleEffect(1.5) // 放大以填充空间
-                }
-                .frame(height: 180)
-                .appCornerRadius(16, corners: [.topLeft, .topRight])
+        ImprovedCharacterCardView(
+            character: character,
+            onTap: { navigateToCharacterDetail(character) }, // 点击图片进入角色详情页
+            onChatTap: { navigateToCharacterChat(character) } // 点击底部按钮进入聊天页
+        )
+        .contentShape(Rectangle())
+    }
+    
+    // 导航到角色详情页
+    private func navigateToCharacterDetail(_ character: CharacterModel) {
+        // 先隐藏TabBar，然后再导航
+        tabBarManager.pushHideState()
+        navigateToCharacterDetail = character
+    }
+    
+    // 导航到聊天页面
+    private func navigateToCharacterChat(_ character: CharacterModel) {
+        // 先隐藏TabBar，然后再导航
+        tabBarManager.pushHideState()
+        navigateToChatView = character
+    }
+    
+    // 分类视图辅助方法
+    private func categoryView(for category: CharacterCategory) -> some View {
+        VStack(spacing: 8) { // 图标和文字间距
+            ZStack {
+                Circle()
+                    .fill(category.color.opacity(selectedCategory == category ? 0.9 : 0.15))
+                    .frame(width: 56, height: 56) // 图标稍大
                 
-                // 角色年代标签 - 增强时空感
-                HStack(spacing: 4) {
-                    Text(character.era)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill(Color.black.opacity(0.5))
-                                .blur(radius: 0.5)
-                        )
-                }
-                .padding(12)
-                
-                // 角色分类标签 - 右上角
-                Text(character.category.displayName)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(character.category.color)
-                    .cornerRadius(12)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .topTrailing)
+                Image(systemName: category.icon)
+                    .font(.system(size: 22)) // icon稍大
+                    .foregroundColor(selectedCategory == category ? .white : category.color)
             }
+            .shadow(
+                color: category.color.opacity(selectedCategory == category ? 0.3 : 0), 
+                radius: 6,
+                x: 0,
+                y: 3
+            )
             
-            // 角色信息区域
-            VStack(alignment: .leading, spacing: 8) {
-                // 角色名称
-                Text(character.name)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.primary)
-                
-                // 职业标签
-                Text(character.profession)
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                
-                // 角色简介
-                Text(character.bio)
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                    .padding(.top, 4)
-                
-                // 互动按钮
-                HStack(spacing: 12) {
-                    // 对话按钮
-                    Button(action: {
-                        // 开始对话
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "bubble.left.fill")
-                                .font(.system(size: 12))
-                            
-                            Text("对话")
-                                .font(.system(size: 13, weight: .medium))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(character.category.color)
-                        .cornerRadius(16)
-                    }
-                    
-                    // 资料按钮
-                    Button(action: {
-                        // 查看资料
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "info.circle")
-                                .font(.system(size: 12))
-                            
-                            Text("资料")
-                                .font(.system(size: 13, weight: .medium))
-                        }
-                        .foregroundColor(character.category.color)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(character.category.color.opacity(0.1))
-                        .cornerRadius(16)
-                    }
-                    
-                    Spacer()
-                    
-                    // 收藏按钮
-                    Button(action: {
-                        // 收藏角色
-                    }) {
-                        Image(systemName: "bookmark")
-                            .font(.system(size: 16))
-                            .foregroundColor(.gray)
-                    }
-                }
-                .padding(.top, 6)
-            }
-            .padding(16)
-            .background(Color.white)
-            .appCornerRadius(16, corners: [.bottomLeft, .bottomRight])
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
-        .contentShape(Rectangle()) // 确保整个卡片都可点击
-        .onTapGesture {
-            // 点击角色卡片的操作 - 查看详情
+            Text(category.displayName)
+                .font(.system(size: 11)) // 文字变小
+                .foregroundColor(selectedCategory == category ? .primary : Color(.secondaryLabel)) // 恢复原来的颜色
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
     }
     
@@ -420,12 +332,29 @@ struct ExploreView: View {
     private var filteredCharacters: [CharacterModel] {
         var result = characters
         
+        // 根据选项卡过滤
+        switch selectedTab {
+        case .all:
+            // 保持所有角色
+            break
+        case .popular:
+            // 模拟热门角色 - 这里可以根据实际数据添加排序逻辑
+            // 在实际应用中，这可能是基于互动量、评分等的排序
+            let shuffled = result.shuffled()
+            result = Array(shuffled.prefix(min(shuffled.count, 20)))
+        case .recent:
+            // 模拟最近角色 - 这里随机排序模拟
+            // 在实际应用中，这可能是基于添加时间的排序
+            let shuffled = result.shuffled()
+            result = Array(shuffled.prefix(min(shuffled.count, 15)))
+        }
+        
         // 根据分类过滤
         if selectedCategory != .all {
             result = result.filter { $0.category == selectedCategory }
         }
         
-        // 根据时间轴过滤
+        // 根据时间轴过滤 - 保留时间轴筛选逻辑，但通过筛选按钮使用
         if let era = selectedEra {
             result = result.filter { $0.era.contains(era) }
         }
@@ -441,6 +370,60 @@ struct ExploreView: View {
         }
         
         return result
+    }
+    
+    // 处理查看全部事件
+    private func handleViewAllTap() {
+        // 查看全部角色
+        selectedCategory = .all
+        searchText = ""
+    }
+    
+    // 处理创建角色事件
+    private func handleCreateCharacter() {
+        showingCreateCharacter = true
+    }
+    
+    // 转换CharacterModel为Character（用于详情页）
+    private func convertToCharacter(_ characterModel: CharacterModel) -> Character {
+        // 创建一个新的Character实例
+        let character = Character(
+            id: characterModel.id,
+            name: characterModel.name, 
+            introduction: characterModel.bio,
+            field: characterModel.category.rawValue,
+            birthYear: characterModel.era,
+            deathYear: "",
+            avatarUrl: characterModel.avatar,
+            eraTag: characterModel.era,
+            achievements: [characterModel.profession],
+            mainWorks: [],
+            keyThoughts: [],
+            followerCount: Int.random(in: 1000...5000),
+            interactionCount: Int.random(in: 5000...15000),
+            rating: Double.random(in: 4.0...5.0)
+        )
+        return character
+    }
+    
+    // 转换CharacterModel为CYChatCharacter（用于聊天页）
+    private func convertToChatCharacter(_ characterModel: CharacterModel) -> CYChatCharacter {
+        return CYChatCharacter(
+            id: characterModel.id,
+            name: characterModel.name,
+            introduction: characterModel.bio,
+            field: characterModel.category.rawValue,
+            birthYear: characterModel.era,
+            deathYear: "",
+            avatarUrl: characterModel.avatar,
+            eraTag: characterModel.era,
+            achievements: [characterModel.profession],
+            mainWorks: [],
+            keyThoughts: [],
+            followerCount: Int.random(in: 1000...5000),
+            interactionCount: Int.random(in: 5000...15000),
+            rating: Double.random(in: 4.0...5.0)
+        )
     }
 }
 
