@@ -58,31 +58,31 @@ enum CharacterCategory: String, CaseIterable {
     var color: Color {
         switch self {
         case .all:
-            return .primaryColor
+            return Color(red: 95/255, green: 92/255, blue: 230/255)  // 稍微增强的蓝紫色
         case .historical:
-            return Color(red: 100/255, green: 100/255, blue: 100/255)  // 灰色
+            return Color(red: 132/255, green: 132/255, blue: 142/255)  // 稍微增强的石墨色
         case .scientist:
-            return Color(red: 76/255, green: 175/255, blue: 142/255)  // 绿色
+            return Color(red: 83/255, green: 182/255, blue: 150/255)  // 稍微增强的绿色
         case .artist:
-            return Color(red: 238/255, green: 131/255, blue: 54/255)  // 橙色
+            return Color(red: 227/255, green: 142/255, blue: 78/255)  // 稍微增强的橙色
         case .philosopher:
-            return Color(red: 244/255, green: 183/255, blue: 63/255)  // 黄色
+            return Color(red: 222/255, green: 175/255, blue: 75/255)  // 稍微增强的黄色
         case .writer:
-            return Color(red: 130/255, green: 115/255, blue: 230/255)  // 紫色
+            return Color(red: 148/255, green: 128/255, blue: 220/255)  // 稍微增强的紫色
         case .animeCharacter:
-            return Color(red: 239/255, green: 118/255, blue: 182/255)  // 粉色
+            return Color(red: 225/255, green: 140/255, blue: 185/255)  // 稍微增强的粉色
         case .gameCharacter:
-            return Color(red: 58/255, green: 176/255, blue: 186/255)  // 青色
+            return Color(red: 78/255, green: 180/255, blue: 185/255)  // 稍微增强的青色
         case .fictionCharacter:
-            return Color(red: 102/255, green: 94/255, blue: 204/255)  // 靛蓝色
+            return Color(red: 128/255, green: 119/255, blue: 205/255)  // 稍微增强的靛蓝色
         case .movieCharacter:
-            return Color(red: 220/255, green: 120/255, blue: 120/255)  // 红色
+            return Color(red: 205/255, green: 128/255, blue: 123/255)  // 稍微增强的红色
         case .tvCharacter:
-            return Color(red: 100/255, green: 150/255, blue: 220/255)  // 蓝色
+            return Color(red: 114/255, green: 158/255, blue: 215/255)  // 稍微增强的蓝色
         case .mythCharacter:
-            return Color(red: 180/255, green: 120/255, blue: 220/255)  // 紫罗兰
+            return Color(red: 178/255, green: 135/255, blue: 210/255)  // 稍微增强的紫罗兰
         case .vtuber:
-            return Color(red: 255/255, green: 150/255, blue: 200/255)  // 粉红
+            return Color(red: 235/255, green: 160/255, blue: 200/255)  // 稍微增强的粉红
         }
     }
     

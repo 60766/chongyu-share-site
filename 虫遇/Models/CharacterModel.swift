@@ -5,21 +5,25 @@ import SwiftUI
  * 角色模型
  * 用于管理应用中的历史人物和虚构角色信息
  */
-struct CharacterModel: Identifiable {
-    let id = UUID()
-    let name: String          // 角色名称
-    let avatar: String        // 角色头像
-    let era: String           // 所属年代/时期
-    let profession: String    // 职业身份
-    let bio: String           // 简介
-    let category: CharacterCategory  // 角色分类
-    let universe: String?     // 所属宇宙/世界观(虚构角色)
-    let famousQuotes: [String]? // 名言/经典台词
-    let characterID: String?  // 角色ID，用于API调用和统一标识
+struct CharacterModel: Identifiable, Hashable {
+    // 原来的第一个定义
+    var id: String
+    var name: String
+    var avatar: String
+    var era: String
+    var profession: String
+    var bio: String
+    var category: CharacterCategory
+    
+    // 来自第二个定义的额外属性
+    var universe: String?     // 所属宇宙/世界观(虚构角色)
+    var famousQuotes: [String]? // 名言/经典台词
+    var characterID: String?  // 角色ID，用于API调用和统一标识
     
     // 默认初始化方法，支持向后兼容
-    init(name: String, avatar: String, era: String, profession: String, bio: String, category: CharacterCategory,
+    init(id: String = UUID().uuidString, name: String, avatar: String, era: String, profession: String, bio: String, category: CharacterCategory,
          universe: String? = nil, famousQuotes: [String]? = nil, characterID: String? = nil) {
+        self.id = id
         self.name = name
         self.avatar = avatar
         self.era = era
@@ -33,6 +37,7 @@ struct CharacterModel: Identifiable {
     
     // 从AppCharacter创建CharacterModel
     init(from appCharacter: AppCharacter) {
+        self.id = appCharacter.id
         self.name = appCharacter.name
         self.avatar = appCharacter.avatarName
         self.era = appCharacter.era
@@ -108,6 +113,7 @@ struct CharacterModel: Identifiable {
     // 示例历史人物数据
     static let sampleCharacters: [CharacterModel] = [
         Self(
+            id: "einstein",
             name: "爱因斯坦",
             avatar: "avatar_einstein",
             era: "1879-1955",
@@ -118,6 +124,7 @@ struct CharacterModel: Identifiable {
             characterID: "einstein"
         ),
         Self(
+            id: "shakespeare",
             name: "莎士比亚",
             avatar: "avatar_shakespeare",
             era: "1564-1616",
@@ -128,6 +135,7 @@ struct CharacterModel: Identifiable {
             characterID: "shakespeare"
         ),
         Self(
+            id: "davinci",
             name: "达芬奇",
             avatar: "avatar_davinci",
             era: "1452-1519",
@@ -138,6 +146,7 @@ struct CharacterModel: Identifiable {
             characterID: "davinci"
         ),
         Self(
+            id: "socrates",
             name: "苏格拉底",
             avatar: "avatar_socrates",
             era: "公元前469-前399",
@@ -148,6 +157,7 @@ struct CharacterModel: Identifiable {
             characterID: "socrates"
         ),
         Self(
+            id: "curie",
             name: "居里夫人",
             avatar: "avatar_curie",
             era: "1867-1934",
@@ -163,6 +173,7 @@ struct CharacterModel: Identifiable {
     static let virtualCharacters: [CharacterModel] = [
         // 动漫角色
         Self(
+            id: "goku",
             name: "孙悟空",
             avatar: "avatar_goku",
             era: "1984-现在",
@@ -174,6 +185,7 @@ struct CharacterModel: Identifiable {
             characterID: "sunwukong"
         ),
         Self(
+            id: "naruto",
             name: "漩涡鸣人",
             avatar: "avatar_naruto",
             era: "1999-2014",
@@ -186,6 +198,7 @@ struct CharacterModel: Identifiable {
         
         // 游戏角色
         Self(
+            id: "mario",
             name: "马里奥",
             avatar: "avatar_mario",
             era: "1981-现在",
@@ -196,6 +209,7 @@ struct CharacterModel: Identifiable {
             famousQuotes: ["It's-a me, Mario!", "Let's-a go!"]
         ),
         Self(
+            id: "link",
             name: "林克",
             avatar: "avatar_link",
             era: "1986-现在",
@@ -208,6 +222,7 @@ struct CharacterModel: Identifiable {
         
         // 虚构人物
         Self(
+            id: "holmes",
             name: "福尔摩斯",
             avatar: "avatar_holmes",
             era: "维多利亚时代",
@@ -218,6 +233,7 @@ struct CharacterModel: Identifiable {
             famousQuotes: ["基本的，我亲爱的华生", "排除所有不可能的，剩下的无论多么难以置信，那就是真相"]
         ),
         Self(
+            id: "ironman",
             name: "钢铁侠",
             avatar: "avatar_ironman",
             era: "现代",

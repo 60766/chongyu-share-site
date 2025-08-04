@@ -653,44 +653,9 @@ class TabBarManager: ObservableObject {
         rootVC.view.addSubview(separatorLine)
         addedOverlayViews.append(separatorLine)
         
-        // 添加一个全覆盖透明层，确保没有白色边缘
-        let fullCover = UIView(frame: CGRect(
-            x: 0,
-            y: window.bounds.height - 50, // 覆盖底部50像素区域
-            width: window.bounds.width,
-            height: 50
-        ))
-        fullCover.backgroundColor = UIColor.clear
-        fullCover.isUserInteractionEnabled = false // 不拦截点击事件
-        fullCover.autoresizingMask = [.flexibleWidth, .flexibleTopMargin]
-        rootVC.view.addSubview(fullCover)
-        addedOverlayViews.append(fullCover)
+        // 移除fullCover视图，它可能导致白色遮挡问题
         
-        // 添加轻微的背景过渡层
-        let gradientLayer = CAGradientLayer()
-        gradientLayer.frame = CGRect(
-            x: 0,
-            y: window.bounds.height - 20, // 位于屏幕底部上方20像素
-            width: window.bounds.width,
-            height: 20 // 20像素高度
-        )
-        // 创建从透明到极轻微背景色的渐变
-        let backgroundColor = UIColor.systemBackground.withAlphaComponent(0.01) // 降低不透明度到0.01
-        gradientLayer.colors = [UIColor.clear.cgColor, backgroundColor.cgColor]
-        gradientLayer.locations = [0.0, 1.0]
-        
-        // 创建包含渐变的视图
-        let gradientView = UIView(frame: CGRect(
-            x: 0,
-            y: window.bounds.height - 20,
-            width: window.bounds.width,
-            height: 20
-        ))
-        gradientView.layer.insertSublayer(gradientLayer, at: 0)
-        gradientView.isUserInteractionEnabled = false
-        gradientView.autoresizingMask = [.flexibleWidth, .flexibleTopMargin]
-        rootVC.view.addSubview(gradientView)
-        addedOverlayViews.append(gradientView)
+        // 移除gradientView和gradientLayer，它们可能导致白色遮挡问题
         
         // 单一的底部透明层
         let invisibleBottomCover = UIView(frame: CGRect(
@@ -1060,4 +1025,79 @@ class TabBarManager: ObservableObject {
         printStackState()
     }
     #endif
+    
+    /// 平滑显示TabBar - 用于从详情页返回时避免闪烁
+    func smoothShowTabBar() {
+        // 立即重置状态栈，但不立即更新UI
+        hideStateStack.removeAll()
+        
+        // 立即更新状态
+        isVisible = true
+        isFullyHidden = false
+        showFloatingButtons = true
+        prefersHomeIndicatorAutoHidden = false
+        
+        // 立即获取TabBar控制器
+        guard let tabBarController = findTabBarController() else {
+            print("TabBarManager: 无法获取TabBar控制器")
+            return
+        }
+        
+        // 直接设置TabBar可见，不进行任何中间状态
+        tabBarController.tabBar.isHidden = false
+        tabBarController.tabBar.alpha = 1.0
+        tabBarController.tabBar.isUserInteractionEnabled = true
+        
+        // 移除所有可能的高度约束
+        for constraint in tabBarController.tabBar.constraints {
+            if constraint.firstAttribute == .height && constraint.constant == 0 {
+                constraint.isActive = false
+            }
+        }
+        
+        // 立即应用样式，但不触发额外的布局更新
+        UIView.performWithoutAnimation {
+            // 应用一致的样式
+            applyConsistentStyle()
+            
+            // 立即更新布局
+            tabBarController.view.layoutIfNeeded()
+        }
+        
+        // 设置ScrollView默认设置
+        UIScrollView.appearance().contentInsetAdjustmentBehavior = .automatic
+        UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = true
+        
+        print("TabBar平滑显示完成")
+    }
+    
+    /// 平滑隐藏TabBar - 用于导航到详情页前
+    func smoothHideTabBar() {
+        // 添加隐藏状态，但不立即触发布局更新
+        hideStateStack.append(true)
+        
+        // 更新状态
+        isVisible = false
+        isFullyHidden = true
+        showFloatingButtons = false
+        
+        // 获取TabBar控制器
+        guard let tabBarController = findTabBarController() else {
+            print("TabBarManager: 无法获取TabBar控制器")
+            return
+        }
+        
+        // 使用无动画的方式隐藏TabBar
+        UIView.performWithoutAnimation {
+            // 直接设置TabBar隐藏
+            tabBarController.tabBar.isHidden = true
+            tabBarController.tabBar.alpha = 0
+            tabBarController.tabBar.isUserInteractionEnabled = false
+            
+            // 立即更新布局
+            tabBarController.view.layoutIfNeeded()
+        }
+        
+        print("TabBar平滑隐藏完成")
+    }
 }

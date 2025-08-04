@@ -153,7 +153,7 @@ struct ChongYuApp: App {
         // 配置导航栏外观
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .white
+        appearance.backgroundColor = .clear // 改为透明背景，解决白色遮挡问题
         appearance.shadowColor = .clear
         
         UINavigationBar.appearance().standardAppearance = appearance

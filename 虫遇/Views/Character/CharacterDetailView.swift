@@ -127,6 +127,8 @@ struct CharacterDetailView: View {
     @State private var animateContent: Bool = false
     /// 角色主题
     @State private var theme: CharacterTheme = CharacterTheme.other
+    /// 是否已关注
+    @State private var isFavorited: Bool = false
     
     // 用于UI显示的状态变量
     @State private var displayFollowerCount: Int = 0
@@ -250,57 +252,35 @@ struct CharacterDetailView: View {
         .fullScreenCover(isPresented: $showingShareSheet) {
             FullScreenShareView(isPresented: $showingShareSheet, character: character, theme: theme, conversations: conversations)
         }
-        // 使用新的导航API
-        .navigationDestination(isPresented: $navigateToChatView) {
-            ChatView(
-                character: CYChatCharacter(
-                    id: character.id,
-                    name: character.name,
-                    introduction: character.introduction,
-                    field: character.field,
-                    birthYear: character.birthYear,
-                    deathYear: character.deathYear ?? "",
-                    avatarUrl: character.avatarUrl,
-                    eraTag: character.eraTag ?? "",
-                    achievements: character.achievements,
-                    mainWorks: character.mainWorks,
-                    keyThoughts: character.keyThoughts,
-                    followerCount: character.followerCount,
-                    interactionCount: character.interactionCount,
-                    rating: character.rating
+        // 使用fullScreenCover替代navigationDestination
+        .fullScreenCover(isPresented: $navigateToChatView) {
+            NavigationView {
+                ChatView(
+                    character: CYChatCharacter(
+                        id: character.id,
+                        name: character.name,
+                        introduction: character.introduction,
+                        field: character.field,
+                        birthYear: character.birthYear,
+                        deathYear: character.deathYear ?? "",
+                        avatarUrl: character.avatarUrl,
+                        eraTag: character.eraTag ?? "",
+                        achievements: character.achievements,
+                        mainWorks: character.mainWorks,
+                        keyThoughts: character.keyThoughts,
+                        followerCount: character.followerCount,
+                        interactionCount: character.interactionCount,
+                        rating: character.rating
+                    )
                 )
-            )
+            }
         }
         .onDisappear {
-            // 立即处理TabBar状态，无任何延迟
-            // 我们需要检查当前导航路径以确定是否应该恢复TabBar
-            // 如果是导航到ChatView，则不恢复TabBar
-            // 如果是返回上一级，则恢复TabBar
+            // 清理导航状态
+            navigateToChatView = false
             
-            if navigateToChatView {
-                // 如果即将导航到聊天页面，保持TabBar隐藏状态
-                print("CharacterDetailView消失导航到聊天：保持TabBar隐藏")
-            } else if returnToCharacterPicker {
-                // 如果是返回到角色选择器，保持TabBar隐藏状态
-                print("CharacterDetailView消失返回角色选择器：保持TabBar隐藏")
-                // 不要popHideState，保持TabBar隐藏
-            } else {
-                // 立即恢复TabBar，没有任何延迟
-                // 如果是返回上一级，恢复TabBar并清理按钮资源
-                tabBarManager.popHideState()
-
-                // 立即确保TabBar可见
-                if tabBarManager.hideStateStack.isEmpty {
-                    // 立即强制显示TabBar，不使用任何延迟
-                    tabBarManager.showImmediately()
-                    print("CharacterDetailView消失返回主页：TabBar立即重置")
-                } else {
-                    print("CharacterDetailView消失但不是返回主页：保持TabBar状态")
-                }
-                
-                // 清理导航状态
-                navigateToChatView = false
-            }
+            // 移除通知监听，避免内存泄漏
+            NotificationCenter.default.removeObserver(self, name: Notification.Name("FavoriteStatusChanged"), object: nil)
         }
         .onChange(of: navigateToChatView) { oldValue, newValue in
             // 当从聊天页面返回时，重新显示系统按钮
@@ -309,6 +289,8 @@ struct CharacterDetailView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     showSystemButtons()
                     
+                    // 不再处理TabBar状态栈
+                    /*
                     // 确保TabBar状态栈一致性
                     if tabBarManager.hideStateStack.count > 1 {
                         // 保留一个隐藏状态，移除多余的
@@ -317,37 +299,35 @@ struct CharacterDetailView: View {
                         }
                         print("从ChatView返回CharacterDetailView：TabBar状态栈已调整，当前深度: \(tabBarManager.hideStateStack.count)")
                     }
+                    */
                 }
             }
         }
         .onAppear {
-            // 设置主题 - 立即执行而不用动画
-            theme = CharacterTheme.forField(character.field)
+            // 调用loadData方法
+            loadData()
             
-            // 加载模拟数据
-            loadMockConversations()
-            
-            // 设置显示数据，确保与图一一致
-            if character.name == "爱因斯坦" {
-                displayFollowerCount = 3500
-                displayInteractionCount = 14200
-            } else {
-                displayFollowerCount = character.followerCount
-                displayInteractionCount = character.interactionCount
-            }
-            
-            // 隐藏TabBar - 提供更沉浸式的体验
-            tabBarManager.pushHideState()
-            
-            // 添加系统级返回按钮和分享按钮
-            showSystemButtons()
-            
-            // 所有准备工作完成后，一次性执行所有动画，避免多次重绘
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: {
-                withAnimation(.easeOut(duration: 0.35)) {
-                    animateContent = true
+            // 添加通知监听，当收到关注状态变化通知时更新UI
+            NotificationCenter.default.addObserver(forName: Notification.Name("FavoriteStatusChanged"), object: nil, queue: .main) { [self] notification in
+                if let userInfo = notification.userInfo,
+                   let characterId = userInfo["characterId"] as? String,
+                   let isFavorited = userInfo["isFavorited"] as? Bool,
+                   characterId == character.id {
+                    // 更新当前角色的关注状态
+                    self.isFavorited = isFavorited
+                    
+                    // 如果状态变为关注，增加粉丝数
+                    if isFavorited && !self.isFavorited {
+                        displayFollowerCount += 1
+                    } 
+                    // 如果状态变为取消关注，减少粉丝数
+                    else if !isFavorited && self.isFavorited {
+                        if displayFollowerCount > 0 {
+                            displayFollowerCount -= 1
+                        }
+                    }
                 }
-            })
+            }
         }
         .onChange(of: showingShareSheet) { oldValue, newValue in
             // 控制返回按钮窗口的显示/隐藏
@@ -541,6 +521,7 @@ struct CharacterDetailView: View {
             // 关注按钮 - 使用微妙的渐变效果
             Button {
                 // 关注操作
+                toggleFavorite()
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred(intensity: 0.6)
             } label: {
@@ -550,26 +531,29 @@ struct CharacterDetailView: View {
                         Circle()
                             .fill(
                                 LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.gray.opacity(0.15),
-                                        Color.gray.opacity(0.12)
-                                    ]),
+                                    gradient: Gradient(colors: isFavorited ? 
+                                        [Color(red: 0.95, green: 0.42, blue: 0.45), Color(red: 0.85, green: 0.36, blue: 0.38)] : 
+                                        [Color.gray.opacity(0.15), Color.gray.opacity(0.12)]
+                                    ),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
                             .frame(width: 42, height: 42) // 增大图标容器尺寸从36x36到42x42
-                            .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+                            .shadow(color: isFavorited ? 
+                                Color(red: 0.85, green: 0.36, blue: 0.38).opacity(0.2) : 
+                                Color.black.opacity(0.05), 
+                                radius: 2, x: 0, y: 1)
                         
                         // 图标
-                        Image(systemName: "plus")
+                        Image(systemName: isFavorited ? "heart.fill" : "plus")
                             .font(.system(size: 18, weight: .medium)) // 增大图标尺寸从16到18
-                            .foregroundColor(.gray.opacity(0.85))
+                            .foregroundColor(isFavorited ? .white : .gray.opacity(0.85))
                     }
                     
-                    Text("关注")
+                    Text(isFavorited ? "已关注" : "关注")
                         .font(.system(size: 13, weight: .medium)) // 增大字体从12到13
-                        .foregroundColor(.gray.opacity(0.85))
+                        .foregroundColor(isFavorited ? Color(red: 0.85, green: 0.36, blue: 0.38) : .gray.opacity(0.85))
                 }
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
@@ -582,11 +566,11 @@ struct CharacterDetailView: View {
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred(intensity: 0.7)
                 
-                // 模拟创建新对话
-                    selectedConversationId = UUID().uuidString
-                    // 立即隐藏系统按钮窗口
-                    hideSystemButtons()
-                    navigateToChatView = true
+                // 立即隐藏系统按钮窗口
+                hideSystemButtons()
+                
+                // 设置导航状态并导航到聊天页面
+                navigateToChatView = true
             } label: {
                 VStack(spacing: 8) { // 增加图标和文字间距从6到8
                     ZStack {
@@ -1252,6 +1236,86 @@ struct CharacterDetailView: View {
             // 如果按钮不存在，重新创建
             addSystemLevelShareButton()
         }
+    }
+    
+    // 在CharacterDetailView类的末尾添加，放在var body之后的任意位置
+    // MARK: - 功能方法
+    
+    /**
+     * 切换角色关注状态
+     * 当用户点击关注按钮时调用，更新关注状态并保存到UserDefaults
+     */
+    private func toggleFavorite() {
+        // 切换关注状态
+        isFavorited.toggle()
+        
+        // 获取当前的收藏列表
+        var favorites: [String] = []
+        if let savedFavorites = UserDefaults.standard.data(forKey: "favoriteCharacters"),
+           let decoded = try? JSONDecoder().decode([String].self, from: savedFavorites) {
+            favorites = decoded
+        }
+        
+        if isFavorited {
+            // 添加到收藏
+            if !favorites.contains(character.id) {
+                favorites.append(character.id)
+                // 模拟增加粉丝数
+                displayFollowerCount += 1
+            }
+        } else {
+            // 从收藏移除
+            favorites.removeAll { $0 == character.id }
+            // 模拟减少粉丝数，但确保不会小于0
+            if displayFollowerCount > 0 {
+                displayFollowerCount -= 1
+            }
+        }
+        
+        // 保存更新后的收藏列表
+        if let encoded = try? JSONEncoder().encode(favorites) {
+            UserDefaults.standard.set(encoded, forKey: "favoriteCharacters")
+        }
+        
+        // 发送变化通知，让其他视图知道关注状态改变
+        NotificationCenter.default.post(name: Notification.Name("FavoriteStatusChanged"), object: nil, userInfo: ["characterId": character.id, "isFavorited": isFavorited])
+    }
+    
+    /**
+     * 加载数据
+     * 在onAppear时调用，加载模拟数据和初始化UI状态
+     */
+    private func loadData() {
+        // 设置主题 - 立即执行而不用动画
+        theme = CharacterTheme.forField(character.field)
+            
+        // 加载模拟数据
+        loadMockConversations()
+        
+        // 设置关注状态
+        isFavorited = character.isFavorited
+        
+        // 设置显示数据，确保与图一一致
+        if character.name == "爱因斯坦" {
+            displayFollowerCount = 3500
+            displayInteractionCount = 14200
+        } else {
+            displayFollowerCount = character.followerCount
+            displayInteractionCount = character.interactionCount
+        }
+        
+        // 不再隐藏TabBar，保持底部导航栏可见
+        // tabBarManager.pushHideState()
+        
+        // 添加系统级返回按钮和分享按钮
+        showSystemButtons()
+        
+        // 所有准备工作完成后，一次性执行所有动画，避免多次重绘
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: {
+            withAnimation(.easeOut(duration: 0.35)) {
+                animateContent = true
+            }
+        })
     }
 }
 

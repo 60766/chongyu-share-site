@@ -643,9 +643,13 @@ struct VirtualCharacterPickerView: View {
 struct VirtualCharacterCard: View {
     let character: CharacterModel
     @State private var isAppearing: Bool = false
+    @State private var showCharacterDetail: Bool = false
+    @ObservedObject private var tabBarManager = TabBarManager.shared
     
     var body: some View {
-        NavigationLink(destination: CharacterDetailView(character: convertToCharacter(character))) {
+        Button(action: {
+            showCharacterDetail = true
+        }) {
             VStack(spacing: 8) {
                 // 角色头像
                 ZStack {
@@ -715,6 +719,25 @@ struct VirtualCharacterCard: View {
         .scaleEffect(isAppearing ? 1.0 : 0.92)
         .opacity(isAppearing ? 1.0 : 0.7)
         .animation(.spring(response: 0.5, dampingFraction: 0.7, blendDuration: 0.2), value: isAppearing)
+        .fullScreenCover(isPresented: $showCharacterDetail) {
+            // 使用ZStack包装NavigationView，确保底部导航栏在整个导航过程中保持可见
+            ZStack {
+                // 使用NavigationView包装CharacterDetailView
+                NavigationView {
+                    CharacterDetailView(character: createCharacterFromModel(character))
+                }
+                .edgesIgnoringSafeArea(.all)
+                
+                // 添加一个透明视图，确保底部导航栏区域不被覆盖
+                VStack {
+                    Spacer()
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(height: tabBarManager.fullBottomAreaHeight)
+                }
+                .edgesIgnoringSafeArea(.bottom)
+            }
+        }
         .onAppear {
             // 错开动画开始时间，创造波浪效果
             DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 0.05...0.3)) {
@@ -730,30 +753,30 @@ struct VirtualCharacterCard: View {
             // 重置状态以便下次显示
             withAnimation(.easeOut(duration: 0.2)) {
                 isAppearing = false
-            }
         }
     }
 }
 
-// 转换CharacterModel为Character的辅助方法
-private func convertToCharacter(_ characterModel: CharacterModel) -> Character {
+    // 内部转换方法
+    private func createCharacterFromModel(_ characterModel: CharacterModel) -> Character {
+        // 创建一个新的Character实例
     return Character(
-        id: characterModel.characterID ?? characterModel.name,
+            id: characterModel.id,
         name: characterModel.name,
         introduction: characterModel.bio,
-        field: characterModel.profession,
+            field: characterModel.category.rawValue,
         birthYear: characterModel.era,
-        deathYear: nil,
+            deathYear: "",
         avatarUrl: characterModel.avatar,
-        eraTag: characterModel.category.rawValue,
-        achievements: characterModel.famousQuotes ?? [],
+            eraTag: characterModel.era,
+            achievements: [characterModel.profession],
         mainWorks: [],
-        keyThoughts: characterModel.famousQuotes ?? [],
-        followerCount: 0,
-        interactionCount: 0,
-        rating: 4.5,
-        createdAt: Date()
+            keyThoughts: [],
+            followerCount: Int.random(in: 1000...5000),
+            interactionCount: Int.random(in: 5000...15000),
+            rating: Double.random(in: 4.0...5.0)
     )
+    }
 }
 
 // 添加通知管理器类
@@ -2058,14 +2081,14 @@ struct HomeView: View {
             id: characterModel.characterID ?? characterModel.name,
             name: characterModel.name,
             introduction: characterModel.bio,
-            field: characterModel.profession,
+            field: characterModel.category.rawValue,
             birthYear: characterModel.era,
-            deathYear: nil,
+            deathYear: "",
             avatarUrl: characterModel.avatar,
-            eraTag: characterModel.category.rawValue,
-            achievements: characterModel.famousQuotes ?? [],
+            eraTag: characterModel.era,
+            achievements: [characterModel.profession],
             mainWorks: [],
-            keyThoughts: characterModel.famousQuotes ?? [],
+            keyThoughts: [],
             followerCount: 0,
             interactionCount: 0,
             rating: 4.5,
@@ -2075,7 +2098,19 @@ struct HomeView: View {
 
     // MARK: - Character Card View
     private func characterCard(for character: CharacterModel) -> some View {
-        NavigationLink(destination: CharacterDetailView(character: convertToCharacter(character))) {
+        CharacterCardButton(character: character)
+    }
+
+    // 新增CharacterCardButton组件
+    struct CharacterCardButton: View {
+        let character: CharacterModel
+        @State private var showCharacterDetail: Bool = false
+        @ObservedObject private var tabBarManager = TabBarManager.shared
+        
+        var body: some View {
+            Button(action: {
+                showCharacterDetail = true
+            }) {
             VStack(spacing: 4) {
                 // 头像部分 - 极简设计
                 ZStack {
@@ -2098,9 +2133,50 @@ struct HomeView: View {
             }
             .frame(width: 50)
         }
-        .buttonStyle(PlainButtonStyle()) // 使用PlainButtonStyle避免NavigationLink的默认样式
-        .contentShape(Rectangle()) // 确保整个区域可点击
-        .allowsHitTesting(true) // 明确允许点击事件
+            .buttonStyle(PlainButtonStyle())
+            .contentShape(Rectangle())
+            .allowsHitTesting(true)
+            .fullScreenCover(isPresented: $showCharacterDetail) {
+                // 使用ZStack包装NavigationView，确保底部导航栏在整个导航过程中保持可见
+                ZStack {
+                    // 使用NavigationView包装CharacterDetailView
+                    NavigationView {
+                        CharacterDetailView(character: createCharacterFromModel(character))
+                    }
+                    .edgesIgnoringSafeArea(.all)
+                    
+                    // 添加一个透明视图，确保底部导航栏区域不被覆盖
+                    VStack {
+                        Spacer()
+                        Rectangle()
+                            .fill(Color.clear)
+                            .frame(height: tabBarManager.fullBottomAreaHeight)
+                    }
+                    .edgesIgnoringSafeArea(.bottom)
+                }
+            }
+        }
+        
+        // 内部转换方法
+        private func createCharacterFromModel(_ characterModel: CharacterModel) -> Character {
+            // 创建一个新的Character实例
+            return Character(
+                id: characterModel.id,
+                name: characterModel.name, 
+                introduction: characterModel.bio,
+                field: characterModel.category.rawValue,
+                birthYear: characterModel.era,
+                deathYear: "",
+                avatarUrl: characterModel.avatar,
+                eraTag: characterModel.era,
+                achievements: [characterModel.profession],
+                mainWorks: [],
+                keyThoughts: [],
+                followerCount: Int.random(in: 1000...5000),
+                interactionCount: Int.random(in: 5000...15000),
+                rating: Double.random(in: 4.0...5.0)
+            )
+        }
     }
 
     // 生成并添加帖子的方法

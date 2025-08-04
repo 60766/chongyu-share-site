@@ -14,6 +14,9 @@ public struct WormholeExplorationView: View {
     @State private var isTransitioning = false
     @State private var blackHoleCenterPosition: CGPoint? = nil // 保存黑洞中心位置
     
+    // 添加搜索状态
+    @State private var searchText = ""
+    
     // 使用共享的PostViewModel实例
     @ObservedObject private var postViewModel = PostViewModel()
     // 兼容错误修复 - 为了兼容旧代码中的引用
@@ -53,22 +56,38 @@ public struct WormholeExplorationView: View {
             // 星空背景
             StarfieldBackground()
             
-            // 主标题
+            // 主内容
             VStack {
-                Text("时空探索")
-                    .font(.system(size: 28, weight: .medium))
-                    .foregroundColor(.white)
-                    .padding(.top, 60)
-                
-                Text("选择你想探索的方向")
-                    .font(.system(size: 16, weight: .regular))
+                // 搜索栏
+                HStack {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 15))
                     .foregroundColor(.white.opacity(0.7))
-                    .padding(.top, 2)
+                            .padding(.leading, 6)
+                        
+                        TextField("搜索时空内容...", text: $searchText)
+                            .font(.system(size: 14))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 6)
+                            .accentColor(.white)
+                    }
+                    .padding(.horizontal, 10)
+                    .background(Color.white.opacity(0.15))
+                    .cornerRadius(20)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
+            .opacity(isShowingButtons ? 1 : 0)
+            .animation(.easeInOut(duration: 0.6).delay(0.3), value: isShowingButtons)
                 
                 Spacer()
             }
-            .opacity(isShowingButtons ? 1 : 0)
-            .animation(.easeInOut(duration: 0.6).delay(0.3), value: isShowingButtons)
             
             // 黑洞视图 - 使用GeometryReader获取其中心位置
             GeometryReader { geometry in
@@ -79,12 +98,13 @@ public struct WormholeExplorationView: View {
                     .onAppear {
                         // 计算黑洞中心位置
                         let centerX = geometry.frame(in: .global).midX
-                        let centerY = geometry.frame(in: .global).midY + geometry.size.height * 0.25 - 290
+                        let centerY = geometry.frame(in: .global).midY + geometry.size.height * 0.15 - 290
                         blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
                         
                         print("黑洞中心位置设置为: x=\(centerX), y=\(centerY)")
                     }
             }
+            .padding(.top, -20) // 向上移动黑洞位置，使其更靠近顶部
             
             // 底部按钮视图
             VStack {
@@ -100,7 +120,7 @@ public struct WormholeExplorationView: View {
                     // 当类型更改时，更新帖子数量
                     loadCurrentPostCount()
                 })
-                .padding(.bottom, 20)
+                .padding(.bottom, 24) // 增加与下方元素的间距
                 
                 // 帖子数量控制视图
                 PostCountControlView(
@@ -112,7 +132,7 @@ public struct WormholeExplorationView: View {
                         decreasePostCount()
                     }
                 )
-                    .padding(.bottom, 30)
+                    .padding(.bottom, 32) // 增加与启动按钮的间距
                 .opacity(isShowingButtons ? 1 : 0)
                 .animation(.easeInOut(duration: 0.6).delay(0.4), value: isShowingButtons)
                 
@@ -135,8 +155,8 @@ public struct WormholeExplorationView: View {
                     Text("启动虫洞捕捉")
                         .font(.system(size: 17, weight: .medium))
                         .foregroundColor(.white)
-                        .padding(.vertical, 14)
-                        .padding(.horizontal, 36)
+                        .padding(.vertical, 16) // 增加按钮高度
+                        .padding(.horizontal, 40) // 增加按钮宽度
                         .background(
                             Capsule()
                                 .fill(
@@ -158,7 +178,7 @@ public struct WormholeExplorationView: View {
                 }
                 .disabled(isTransitioning)
                 .opacity(isTransitioning ? 0.5 : 1.0)
-                .padding(.bottom, 40)
+                .padding(.bottom, 44) // 增加底部间距
                 .opacity(isShowingButtons ? 1 : 0)
                 .animation(.easeInOut(duration: 0.6).delay(0.5), value: isShowingButtons)
                 
@@ -175,7 +195,7 @@ public struct WormholeExplorationView: View {
                                 .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
                         )
                 }
-                .padding(.bottom, 10)
+                .padding(.bottom, 12) // 调整测试按钮间距
                 .opacity(isShowingButtons ? 0.7 : 0)
                 #endif
             }
@@ -786,40 +806,40 @@ struct PostCountControlView: View {
     var onDecrease: () -> Void
     
     var body: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 24) { // 增加按钮间距
             // 减号按钮
             Button(action: onDecrease) {
                 Image(systemName: "minus.circle.fill")
-                    .font(.system(size: 24))
+                    .font(.system(size: 26)) // 稍微增大按钮
                     .foregroundColor(.white.opacity(0.8))
             }
             
             // 数量显示
-            HStack(spacing: 8) {
+            HStack(spacing: 6) { // 调整数字和"篇"字的间距
                 Text("\(count)")
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 22, weight: .medium)) // 数字字体稍大
                     .foregroundColor(.white)
                 
                 Text("篇")
-                    .font(.system(size: 16))
+                    .font(.system(size: 15)) // "篇"字字体
                     .foregroundColor(.white.opacity(0.8))
             }
-            .frame(width: 60)
+            .frame(width: 70) // 增加显示区域宽度
             
             // 加号按钮
             Button(action: onIncrease) {
                 Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 24))
+                    .font(.system(size: 26)) // 稍微增大按钮
                     .foregroundColor(.white.opacity(0.8))
             }
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 20)
+        .padding(.vertical, 12) // 调整垂直内边距
+        .padding(.horizontal, 24) // 调整水平内边距
         .background(
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: 24) // 增加圆角
                 .fill(Color.black.opacity(0.3))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 20)
+                    RoundedRectangle(cornerRadius: 24)
                         .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
                 )
         )
@@ -985,10 +1005,10 @@ struct WormholeCreationTypeButtonsView: View {
     private func buttonLabel(for index: Int, isSelected: Bool) -> some View {
         HStack {
             Text(typeManager.types[index])
-                .font(.system(size: 16, weight: isSelected ? .medium : .regular))
+                .font(.system(size: 15, weight: isSelected ? .medium : .regular)) // 调整字体大小
                 .foregroundColor(isSelected ? .white : .white.opacity(0.7))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 14) // 调整水平内边距
+                .padding(.vertical, 8) // 调整垂直内边距
         }
         .background(buttonBackground(isSelected: isSelected))
     }

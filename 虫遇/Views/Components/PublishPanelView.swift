@@ -721,7 +721,7 @@ struct PublishPanelView: View {
         // 为选中的角色创建初始评论
         for character in postData.characters {
             // 获取角色回复概率
-            let probability = postData.characterProbabilities[character.id.uuidString] ?? 0
+            let probability = postData.characterProbabilities[character.id] ?? 0
             
             // 如果概率大于0，添加评论
             if probability > 0 {
@@ -732,7 +732,7 @@ struct PublishPanelView: View {
                     content: generateInitialComment(from: character, about: postData.content),
                     datePosted: Date().addingTimeInterval(Double.random(in: 60...300)), // 1-5分钟后
                     isVirtualCharacter: true,
-                    characterID: character.id.uuidString,
+                    characterID: character.id,
                     likes: Int.random(in: 0...10),
                     isLikedByCurrentUser: false
                 )
@@ -802,7 +802,7 @@ struct PublishPanelView: View {
     private func getProbabilityDict() -> [String: Int] {
         var dict = [String: Int]()
         for i in 0..<min(selectedCharacters.count, characterProbabilities.count) {
-            dict[selectedCharacters[i].id.uuidString] = Int(characterProbabilities[i])
+            dict[selectedCharacters[i].id] = Int(characterProbabilities[i])
         }
         return dict
     }

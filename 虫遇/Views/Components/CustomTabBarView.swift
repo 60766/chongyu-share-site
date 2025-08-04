@@ -78,9 +78,9 @@ struct TabBarBackground: View {
             if #available(iOS 15.0, *) {
                 // iOS 15 - 使用更轻的模糊效果和更亮的底色
                 ZStack {
-                    // 提亮背景色，使其更好地匹配上方白色
+                    // 恢复白色背景，保留底部导航栏的白色效果
                     Rectangle()
-                        .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.3))
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.1))
                         .frame(width: geometry.size.width, height: geometry.size.height)
                     
                     // 使用系统Material材质实现轻微的磨砂玻璃效果
@@ -93,9 +93,9 @@ struct TabBarBackground: View {
             } else {
                 // iOS 14 - 使用更轻的模糊效果和更亮的底色
                 ZStack {
-                    // 提亮背景色，使其更好地匹配上方白色
+                    // 恢复白色背景，保留底部导航栏的白色效果
                     Rectangle()
-                        .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.3))
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.1))
                         .frame(width: geometry.size.width, height: geometry.size.height)
                     
                     // 核心模糊效果 - 极轻微模糊

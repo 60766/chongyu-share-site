@@ -37,6 +37,8 @@ final class Character: Identifiable {
     var rating: Double
     /// 创建时间
     var createdAt: Date
+    /// 是否被关注
+    var isFavorited: Bool = false
     
     /**
      * 初始化一个角色实例
@@ -55,6 +57,7 @@ final class Character: Identifiable {
      * @param interactionCount - 互动量
      * @param rating - 评分
      * @param createdAt - 创建时间
+     * @param isFavorited - 是否被关注
      */
     init(
         id: String = UUID().uuidString,
@@ -71,7 +74,8 @@ final class Character: Identifiable {
         followerCount: Int = 0,
         interactionCount: Int = 0,
         rating: Double = 4.5,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        isFavorited: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -88,6 +92,7 @@ final class Character: Identifiable {
         self.interactionCount = interactionCount
         self.rating = rating
         self.createdAt = createdAt
+        self.isFavorited = isFavorited
     }
 }
 

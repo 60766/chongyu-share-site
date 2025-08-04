@@ -274,7 +274,7 @@ struct ChatView: View {
                             // 只有在初始化完成后才使用动画滚动
                             if hasInitialized {
                                 withAnimation(.easeInOut(duration: 0.25)) {  // 减少动画时长，提高响应速度
-                                    // 使用滚动动画，确保流畅的滚动效果
+                                // 使用滚动动画，确保流畅的滚动效果
                                     // 使用centerY锚点，让最新消息显示在中间位置而不是底部
                                     scrollView.scrollTo("bottomId", anchor: .center)
                                 }
@@ -560,6 +560,8 @@ struct ChatView: View {
         // 不在这里监听键盘通知，而是在onAppear中设置
         .onAppear {
             DispatchQueue.main.async {
+                // 不再处理TabBar状态，保持底部导航栏可见
+                /*
                 // 检查当前TabBar状态栈
                 if tabBarManager.hideStateStack.isEmpty {
                     // 如果状态栈为空，这是首次进入聊天页面
@@ -582,6 +584,7 @@ struct ChatView: View {
                     
                     print("ChatView再次出现：TabBar状态已调整，当前深度: \(tabBarManager.hideStateStack.count)")
                 }
+                */
                 
                 // 加载消息数据
                 loadMessages()
@@ -623,6 +626,8 @@ struct ChatView: View {
             }
         }
         .onDisappear {
+            // 不再处理TabBar状态，保持底部导航栏可见
+            /*
             // 立即处理TabBar状态，无任何延迟
             // 我们需要检查当前导航路径以确定是否应该恢复TabBar
             // 如果是导航到CharacterDetailView，则不恢复TabBar
@@ -641,6 +646,7 @@ struct ChatView: View {
                 }
                 print("ChatView消失返回角色详情页：TabBar状态栈已调整，当前深度: \(tabBarManager.hideStateStack.count)")
             }
+            */
             
             // 清理系统返回按钮窗口
             if let window = systemBackButtonWindow {
@@ -1418,7 +1424,7 @@ struct ChatMessageBubbleView: View {
         let status = message.isFromUser
             ? messageStatus
             : .read // 角色的消息总是已读
-            
+        
         // 检查是否为等待消息
         let isWaitingMessage = !message.isFromUser && message.content == "..."
         
@@ -1477,19 +1483,19 @@ struct ChatMessageBubbleView: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 8)
                     } else {
-                        Text(message.content)
-                            .font(.system(size: 15))
-                            .lineSpacing(5) // 增加行间距改善阅读体验
-                            .padding(.horizontal, 15)
-                            .padding(.vertical, 8)  // 减小垂直内边距从10到8，让气泡更紧凑
+                Text(message.content)
+                    .font(.system(size: 15))
+                    .lineSpacing(5) // 增加行间距改善阅读体验
+                    .padding(.horizontal, 15)
+                    .padding(.vertical, 8)  // 减小垂直内边距从10到8，让气泡更紧凑
                     }
                 }
-                .background(
-                    message.isFromUser
-                        ? LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color.blue.opacity(0.95),
-                                Color.blue.opacity(0.85)
+                    .background(
+                        message.isFromUser
+                            ? LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.blue.opacity(0.95),
+                                    Color.blue.opacity(0.85)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -1511,14 +1517,14 @@ struct ChatMessageBubbleView: View {
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                               )
-                )
-                .foregroundColor(message.isFromUser ? .white : .primary)
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: message.isFromUser ? 18 : (isWaitingMessage ? 14 : 16),
-                        style: .continuous
                     )
-                )
+                    .foregroundColor(message.isFromUser ? .white : .primary)
+                    .clipShape(
+                        RoundedRectangle(
+                        cornerRadius: message.isFromUser ? 18 : (isWaitingMessage ? 14 : 16),
+                            style: .continuous
+                        )
+                    )
                     // 用户消息添加微妙的高光，历史角色消息添加纹理效果
                     .overlay(
                         ZStack {
@@ -1580,36 +1586,36 @@ struct ChatMessageBubbleView: View {
                 
                 // 消息时间和状态 - 减小与消息气泡的间距
                 if !isWaitingMessage {
-                    HStack(spacing: 4) {
-                        if message.isFromUser {
-                            // 消息状态指示器
-                            if status == .sending {
-                                Image(systemName: "clock")
-                                    .font(.system(size: 9))
-                                    .foregroundColor(.secondary.opacity(0.7))
-                            } else if status == .sent {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 9))
-                                    .foregroundColor(.secondary.opacity(0.7))
-                            } else if status == .delivered {
-                                Image(systemName: "checkmark.circle")
-                                    .font(.system(size: 9))
-                                    .foregroundColor(.secondary.opacity(0.7))
-                            } else if status == .read {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 9))
-                                    .foregroundColor(.blue.opacity(0.7))
-                            }
+                HStack(spacing: 4) {
+                    if message.isFromUser {
+                        // 消息状态指示器
+                        if status == .sending {
+                            Image(systemName: "clock")
+                                .font(.system(size: 9))
+                                .foregroundColor(.secondary.opacity(0.7))
+                        } else if status == .sent {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 9))
+                                .foregroundColor(.secondary.opacity(0.7))
+                        } else if status == .delivered {
+                            Image(systemName: "checkmark.circle")
+                                .font(.system(size: 9))
+                                .foregroundColor(.secondary.opacity(0.7))
+                        } else if status == .read {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(.blue.opacity(0.7))
                         }
-                        
-                        // 时间 - 更优雅的样式
-                        Text(formatMessageTime(message.timestamp))
-                            .font(.system(size: 10, weight: .light))  // 增加字体大小从9到10，提高可读性
-                            .kerning(0.3)
-                            .foregroundColor(.secondary.opacity(0.8))  // 增加不透明度从0.7到0.8，提高对比度
                     }
-                    .padding(.horizontal, 4) // 减小水平内边距
-                    .padding(.vertical, 1) // 减小垂直内边距
+                    
+                    // 时间 - 更优雅的样式
+                    Text(formatMessageTime(message.timestamp))
+                        .font(.system(size: 10, weight: .light))  // 增加字体大小从9到10，提高可读性
+                        .kerning(0.3)
+                        .foregroundColor(.secondary.opacity(0.8))  // 增加不透明度从0.7到0.8，提高对比度
+                }
+                .padding(.horizontal, 4) // 减小水平内边距
+                .padding(.vertical, 1) // 减小垂直内边距
                 }
             }
             .padding(.trailing, message.isFromUser ? 0 : 4)
