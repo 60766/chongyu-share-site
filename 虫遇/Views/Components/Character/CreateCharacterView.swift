@@ -300,6 +300,13 @@ struct CreateCharacterView: View {
             }
         }
         
+        // 发送通知，通知其他视图更新
+        NotificationCenter.default.post(
+            name: Notification.Name("CharacterCreated"),
+            object: nil,
+            userInfo: ["characterId": characterId]
+        )
+        
         // 关闭表单
         presentationMode.wrappedValue.dismiss()
     }

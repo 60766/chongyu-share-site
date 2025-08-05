@@ -90,8 +90,8 @@ struct ExploreView: View {
         }
     }
 
-    // 添加新的状态变量和sheet
-    @State private var showingMyCharacters = false
+    // 添加新的状态变量
+    @State private var showingUserCharacters: Bool = false
     @State private var userCharacters: [CharacterModel] = []
 
     var body: some View {
@@ -281,21 +281,20 @@ struct ExploreView: View {
                                         
                                     // 我的角色按钮 (交换位置)
                                         Button(action: {
-                                        // 显示用户创建的角色列表，而不是直接显示创建角色视图
-                                        showingMyCharacters = true
+                                        handleUserCharactersTap()
                                         }) {
                                             VStack(spacing: 8) {
                                                 ZStack {
                                                     Circle()
-                                                    .fill(Color(red: 95/255, green: 158/255, blue: 225/255).opacity(0.15))
+                                                    .fill(Color(red: 95/255, green: 158/255, blue: 225/255).opacity(showingUserCharacters ? 0.9 : 0.15))
                                                         .frame(width: 56, height: 56)
                                                     
                                                 Image(systemName: "person.crop.circle")
                                                         .font(.system(size: 22))
-                                                    .foregroundColor(Color(red: 95/255, green: 158/255, blue: 225/255))
+                                                    .foregroundColor(showingUserCharacters ? .white : Color(red: 95/255, green: 158/255, blue: 225/255))
                                                 }
                                                 .shadow(
-                                                color: Color(red: 95/255, green: 158/255, blue: 225/255).opacity(0), 
+                                                color: Color(red: 95/255, green: 158/255, blue: 225/255).opacity(showingUserCharacters ? 0.2 : 0), 
                                                 radius: 5,
                                                     x: 0,
                                                 y: 2
@@ -303,7 +302,7 @@ struct ExploreView: View {
                                                 
                                             Text("我的角色")
                                                     .font(.system(size: 11))
-                                                .foregroundColor(Color(.secondaryLabel))
+                                                .foregroundColor(showingUserCharacters ? .primary : Color(.secondaryLabel))
                                                     .lineLimit(1)
                                                     .minimumScaleFactor(0.8)
                                             }
@@ -312,22 +311,23 @@ struct ExploreView: View {
                                     // 显示历史人物和文学家分类按钮（固定在第一排）
                                     let firstRowCategories: [CharacterCategory] = [.historical, .writer]
                                     ForEach(firstRowCategories, id: \.self) { category in
-                                            Button(action: {
-                                                withAnimation(.easeInOut) {
+                                        Button(action: {
+                                            withAnimation(.easeInOut) {
                                                 // 设置选中的分类
-                                                    selectedCategory = category
+                                                selectedCategory = category
                                                 
-                                                // 重置特殊显示模式，但保持分类选择
+                                                // 重置特殊显示模式，确保包括我的角色模式
                                                 showingRecentInteractions = false
                                                 showingFavorites = false
+                                                showingUserCharacters = false
                                                 
                                                 // 打印调试信息
                                                 print("选中分类: \(category.displayName)")
-                                                }
-                                            }) {
-                                                categoryView(for: category)
                                             }
+                                        }) {
+                                            categoryView(for: category)
                                         }
+                                    }
                                     }
                                     .padding(.horizontal, 16)
                                     .padding(.top, 2) // 减小顶部内边距
@@ -343,9 +343,10 @@ struct ExploreView: View {
                                             // 设置选中的分类
                                             selectedCategory = movieCategory
                                             
-                                            // 重置特殊显示模式，但保持分类选择
+                                            // 重置特殊显示模式，确保包括我的角色模式
                                             showingRecentInteractions = false
                                             showingFavorites = false
+                                            showingUserCharacters = false
                                             
                                             // 打印调试信息
                                             print("选中分类: \(movieCategory.displayName)")
@@ -364,9 +365,10 @@ struct ExploreView: View {
                                                 // 设置选中的分类
                                                     selectedCategory = category
                                                 
-                                                // 重置特殊显示模式，但保持分类选择
+                                                // 重置特殊显示模式，确保包括我的角色模式
                                                 showingRecentInteractions = false
                                                 showingFavorites = false
+                                                showingUserCharacters = false
                                                 
                                                 // 打印调试信息
                                                 print("选中分类: \(category.displayName)")
@@ -606,10 +608,16 @@ struct ExploreView: View {
         .sheet(isPresented: $showingCreateCharacter) {
             NavigationView {
                 CreateCharacterView(characters: $characters)
+                    .onDisappear {
+                        // 如果当前正在显示用户角色，则重新加载
+                        if showingUserCharacters {
+                            loadUserCharacters()
+                        }
+                        // 无论是否显示用户角色，都重新加载所有角色
+                        // 这样确保新创建的角色同时出现在主列表和分类中
+                        loadAllCharacters()
+                    }
             }
-        }
-        .sheet(isPresented: $showingMyCharacters) {
-            MyCharactersView()
         }
         .onAppear {
             loadAllCharacters()
@@ -623,17 +631,32 @@ struct ExploreView: View {
                 // 收到通知后，重新加载关注列表
                 self.loadFavoriteCharacters()
             }
+            
+            // 添加通知监听，当创建新角色时更新UI
+            NotificationCenter.default.addObserver(forName: Notification.Name("CharacterCreated"), object: nil, queue: .main) { _ in
+                // 收到通知后，重新加载所有角色
+                self.loadAllCharacters()
+            }
         }
         .onDisappear {
             // 移除通知监听，避免内存泄漏
             NotificationCenter.default.removeObserver(self, name: Notification.Name("FavoriteStatusChanged"), object: nil)
+            NotificationCenter.default.removeObserver(self, name: Notification.Name("CharacterCreated"), object: nil)
         }
     }
     
     // 加载所有角色
     private func loadAllCharacters() {
+        // 加载预定义角色
         self.characters = CharacterModel.getAllCharacters()
-        print("已加载 \(characters.count) 个角色")
+        
+        // 加载用户创建的角色
+        loadUserCharacters()
+        
+        // 将用户创建的角色也添加到主角色列表中
+        self.characters.append(contentsOf: userCharacters)
+        
+        print("已加载 \(characters.count) 个角色，其中用户创建的角色有 \(userCharacters.count) 个")
     }
     
     // 创建改进的角色卡片视图
@@ -695,55 +718,45 @@ struct ExploreView: View {
     private var filteredCharacters: [CharacterModel] {
         var result = characters
         
+        // 如果是在"我的角色"模式下，只显示用户创建的角色
+        // 这个判断必须放在最前面，确保优先级最高
+        if showingUserCharacters {
+            return userCharacters
+        }
+        
         // 如果是在"我的关注"模式下，只显示关注的角色
         if showingFavorites {
             result = result.filter { favoriteCharacters.contains($0.id) }
         }
         
-        // 根据选项卡过滤
-        switch selectedTab {
-        case .all:
-            // 保持所有角色
-            break
-        case .popular:
-            // 模拟热门角色 - 这里可以根据实际数据添加排序逻辑
-            // 在实际应用中，这可能是基于互动量、评分等的排序
-            let shuffled = result.shuffled()
-            result = Array(shuffled.prefix(min(shuffled.count, 20))).uniqued()
-        case .recent:
-            // 模拟最近角色 - 这里随机排序模拟
-            // 在实际应用中，这可能是基于添加时间的排序
-            let shuffled = result.shuffled()
-            result = Array(shuffled.prefix(min(shuffled.count, 15))).uniqued()
-        }
-        
-        // 根据分类过滤 - 确保正确使用selectedCategory
-        if selectedCategory != .all {
-            // 打印调试信息
-            print("按分类过滤: \(selectedCategory.displayName), 过滤前数量: \(result.count)")
-            result = result.filter { $0.category == selectedCategory }
-            print("过滤后数量: \(result.count)")
+        // 如果是在"最近互动"模式下，显示最近互动的角色
+        if showingRecentInteractions {
+            let recentCharacterIds = recentInteractions.map { $0.characterId }
+            result = result.filter { recentCharacterIds.contains($0.id) }
             
-            // 如果过滤后结果为空，可能是类别匹配问题，尝试打印所有角色的类别
-            if result.isEmpty {
-                let allCategories = Set(characters.map { $0.category })
-                print("所有可用类别: \(allCategories.map { $0.displayName }.joined(separator: ", "))")
+            // 根据最近互动的顺序排序
+            result.sort { char1, char2 in
+                let index1 = recentCharacterIds.firstIndex(of: char1.id) ?? Int.max
+                let index2 = recentCharacterIds.firstIndex(of: char2.id) ?? Int.max
+                return index1 < index2
             }
-        }
-        
-        // 根据时间轴过滤 - 保留时间轴筛选逻辑，但通过筛选按钮使用
-        if let era = selectedEra {
-            result = result.filter { $0.era.contains(era) }
+        } else if selectedCategory != .all {
+            // 根据选中的分类过滤
+            result = result.filter { $0.category == selectedCategory }
         }
         
         // 根据搜索文本过滤
         if !searchText.isEmpty {
             result = result.filter {
-                $0.name.lowercased().contains(searchText.lowercased()) ||
-                ($0.era.lowercased().contains(searchText.lowercased())) ||
-                ($0.profession.lowercased().contains(searchText.lowercased())) ||
-                ($0.bio.lowercased().contains(searchText.lowercased()))
+                $0.name.localizedCaseInsensitiveContains(searchText) ||
+                $0.profession.localizedCaseInsensitiveContains(searchText) ||
+                $0.bio.localizedCaseInsensitiveContains(searchText)
             }
+        }
+        
+        // 根据时间轴过滤
+        if let era = selectedEra {
+            result = result.filter { $0.era == era }
         }
         
         return result
@@ -823,6 +836,29 @@ struct ExploreView: View {
                 if !recentFavorites.isEmpty {
                     result = recentFavorites
                 }
+            }
+            
+            return result
+        } else if showingUserCharacters {
+            // 在"我的角色"模式下，根据选项卡和分类进行过滤
+            var result = userCharacters
+            
+            // 如果选择了特定分类，则过滤用户角色
+            if selectedCategory != .all {
+                result = result.filter { $0.category == selectedCategory }
+            }
+            
+            // 根据选项卡进行排序
+            switch selectedTab {
+            case .all:
+                // 保持所有用户角色
+                break
+            case .popular:
+                // 随机排序模拟热门
+                result = result.shuffled()
+            case .recent:
+                // 按照ID倒序排列，假设ID中包含时间信息
+                result = result.sorted { $0.id > $1.id }
             }
             
             return result
@@ -965,32 +1001,33 @@ struct ExploreView: View {
         }
     }
     
-    /// 处理最近互动按钮点击
+    // 修改处理最近互动按钮点击的方法
     private func handleRecentInteractionsTap() {
         withAnimation(.easeInOut) {
-            // 重置其他显示模式
-            if showingFavorites {
-                showingFavorites = false
-            }
+            // 切换最近互动显示状态
+            showingRecentInteractions.toggle()
             
-            showingRecentInteractions = true
-            selectedCategory = .all
-            // 不重置选项卡，允许在最近互动中使用选项卡筛选
+            // 如果开启了最近互动显示，关闭其他特殊显示模式
+            if showingRecentInteractions {
+                showingFavorites = false
+                showingUserCharacters = false // 确保关闭"我的角色"模式
+                selectedCategory = .all // 重置分类选择
+            }
         }
     }
     
-    /// 处理我的关注点击
+    // 修改处理我的关注按钮点击的方法
     private func handleFavoritesTap() {
         withAnimation(.easeInOut) {
-            // 重置其他显示模式
-            if showingRecentInteractions {
-                showingRecentInteractions = false
-            }
+            // 切换我的关注显示状态
+            showingFavorites.toggle()
             
-            // 切换到我的关注模式
-                showingFavorites = true
-            selectedCategory = .all
-            // 不重置选项卡，允许在我的关注中使用选项卡筛选
+            // 如果开启了我的关注显示，关闭其他特殊显示模式
+            if showingFavorites {
+                showingRecentInteractions = false
+                showingUserCharacters = false // 确保关闭"我的角色"模式
+                selectedCategory = .all // 重置分类选择
+            }
         }
     }
     
@@ -1082,6 +1119,72 @@ struct ExploreView: View {
         
         // 导航到聊天页面
         navigateToCharacterChat(character)
+    }
+
+    // 添加处理"我的角色"点击的方法
+    private func handleUserCharactersTap() {
+        withAnimation(.easeInOut) {
+            // 切换显示状态
+            showingUserCharacters.toggle()
+            
+            // 如果开启了"我的角色"显示，关闭其他特殊显示模式
+            if showingUserCharacters {
+                showingRecentInteractions = false
+                showingFavorites = false
+                selectedCategory = .all // 在"我的角色"模式下，重置分类选择为"全部"
+                
+                // 加载用户创建的角色
+                loadUserCharacters()
+            } else {
+                // 如果关闭了"我的角色"显示，重置为默认状态
+                selectedCategory = .all
+            }
+        }
+    }
+
+    // 添加加载用户角色的方法
+    private func loadUserCharacters() {
+        // 尝试从UserDefaults加载自定义角色
+        guard let data = UserDefaults.standard.data(forKey: "CustomCharactersData") else {
+            userCharacters = []
+            return
+        }
+        
+        do {
+            if let characterDicts = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                var loadedCharacters: [CharacterModel] = []
+                
+                for dict in characterDicts {
+                    if let id = dict["id"] as? String,
+                       let name = dict["name"] as? String,
+                       let avatar = dict["avatar"] as? String,
+                       let profession = dict["profession"] as? String,
+                       let bio = dict["bio"] as? String,
+                       let categoryRawValue = dict["category"] as? String,
+                       let era = dict["era"] as? String {
+                        
+                        let category = CharacterCategory(rawValue: categoryRawValue) ?? .fictionCharacter
+                        
+                        let character = CharacterModel(
+                            id: id,
+                            name: name,
+                            avatar: avatar,
+                            era: era,
+                            profession: profession,
+                            bio: bio,
+                            category: category
+                        )
+                        
+                        loadedCharacters.append(character)
+                    }
+                }
+                
+                userCharacters = loadedCharacters
+            }
+        } catch {
+            print("加载自定义角色失败: \(error)")
+            userCharacters = []
+        }
     }
 }
 
@@ -1303,7 +1406,6 @@ struct MyCharactersView: View {
                         
                         let category = CharacterCategory(rawValue: categoryRawValue) ?? .fictionCharacter
                         
-                        // 修复CharacterModel初始化时多余的region参数
                         let character = CharacterModel(
                             id: id,
                             name: name,
