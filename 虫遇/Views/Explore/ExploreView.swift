@@ -609,7 +609,7 @@ struct ExploreView: View {
             }
         }
         .sheet(isPresented: $showingMyCharacters) {
-            MyCharactersView(characters: $characters)
+            MyCharactersView()
         }
         .onAppear {
             loadAllCharacters()
@@ -1222,11 +1222,14 @@ struct MyCharactersView: View {
                     }
             }
             .background(
-                NavigationLink(
-                    destination: Group {
-                        if let character = selectedCharacter {
+                Group {
+                    if #available(iOS 16.0, *) {
+                        // iOS 16及以上使用新API
+                        NavigationLink(value: selectedCharacter) {
+                            EmptyView()
+                        }
+                        .navigationDestination(for: CharacterModel.self) { character in
                             // 创建一个Character对象，使用CharacterModel的属性
-                            // 注意：这里使用Character而不是UICharacter，因为CharacterDetailView需要Character类型
                             let characterForDetail = Character(
                                 id: character.id,
                                 name: character.name,
@@ -1239,16 +1242,37 @@ struct MyCharactersView: View {
                                 keyThoughts: []
                             )
                             CharacterDetailView(character: characterForDetail)
-                        } else {
+                        }
+                    } else {
+                        // iOS 16以下使用旧API
+                        NavigationLink(
+                            destination: Group {
+                                if let character = selectedCharacter {
+                                    // 创建一个Character对象，使用CharacterModel的属性
+                                    let characterForDetail = Character(
+                                        id: character.id,
+                                        name: character.name,
+                                        introduction: character.bio,
+                                        field: character.profession,
+                                        birthYear: character.era,
+                                        avatarUrl: character.avatar,
+                                        achievements: [],
+                                        mainWorks: [],
+                                        keyThoughts: []
+                                    )
+                                    CharacterDetailView(character: characterForDetail)
+                                } else {
+                                    EmptyView()
+                                }
+                            },
+                            isActive: Binding<Bool>(
+                                get: { selectedCharacter != nil },
+                                set: { if !$0 { selectedCharacter = nil } }
+                            )
+                        ) {
                             EmptyView()
                         }
-                    },
-                    isActive: Binding<Bool>(
-                        get: { selectedCharacter != nil },
-                        set: { if !$0 { selectedCharacter = nil } }
-                    )
-                ) {
-                    EmptyView()
+                    }
                 }
             )
         }
