@@ -35,6 +35,12 @@ struct CreateCharacterView: View {
     @State private var showingError = false
     @State private var errorMessage = ""
     
+    // 快速创建相关状态
+    @State private var quickCreateMode: Bool = false
+    @State private var characterSearchText: String = ""
+    @State private var isGeneratingInfo: Bool = false
+    @State private var showingQuickCreateHelp: Bool = false
+    
     private let eras = ["现代", "未来", "古代", "中世纪", "文艺复兴", "动漫世界", "科幻宇宙", "奇幻大陆"]
     
     private var isFormValid: Bool {
@@ -43,12 +49,70 @@ struct CreateCharacterView: View {
     
     // 可选择的角色分类
     private let selectableCategories: [CharacterCategory] = [
+        // 历史人物分类
+        .historical, .scientist, .artist, .philosopher, .writer,
+        // 虚构角色分类
         .fictionCharacter, .animeCharacter, .gameCharacter, 
         .movieCharacter, .tvCharacter, .mythCharacter, .vtuber
     ]
     
     var body: some View {
         Form {
+            // 快速创建区域
+            Section(header: Text("快速创建")) {
+                Toggle("快速创建模式", isOn: Binding(
+                    get: { quickCreateMode },
+                    set: { 
+                        quickCreateMode = $0
+                        if !$0 {
+                            // 退出快速创建模式时清空搜索文本
+                            characterSearchText = ""
+                        }
+                    }
+                ))
+                
+                if quickCreateMode {
+                    HStack {
+                        TextField("输入角色名称和出处，如'航海王中的索隆'", text: $characterSearchText)
+                        
+                        Button(action: {
+                            generateCharacterInfo()
+                        }) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.blue)
+                        }
+                        .disabled(characterSearchText.isEmpty || isGeneratingInfo)
+                    }
+                    
+                    if isGeneratingInfo {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                                .padding(.vertical, 10)
+                            Spacer()
+                        }
+                    }
+                    
+                    // 示例角色提示
+                    Text("试试这些: 索隆、爱因斯坦、哈利·波特、钢铁侠、孙悟空、孔子")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 5)
+                    
+                    Button(action: {
+                        showingQuickCreateHelp.toggle()
+                    }) {
+                        Label("如何使用快速创建", systemImage: "questionmark.circle")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                    .sheet(isPresented: $showingQuickCreateHelp) {
+                        QuickCreateHelpView()
+                    }
+                }
+            }
+            
+            // 基本信息区域
             Section(header: Text("基本信息")) {
                 TextField("角色名称 *", text: $name)
                 TextField("职业/身份 *", text: $field)
@@ -71,6 +135,7 @@ struct CreateCharacterView: View {
                     )
             }
             
+            // 角色分类
             Section(header: Text("角色分类")) {
                 Picker("角色类型", selection: $selectedCategory) {
                     ForEach(selectableCategories, id: \.self) { category in
@@ -93,6 +158,7 @@ struct CreateCharacterView: View {
                 }
             }
             
+            // 时间信息
             Section(header: Text("时间信息")) {
                 TextField("出生年份", text: $birthYear)
                     .keyboardType(.numberPad)
@@ -106,6 +172,7 @@ struct CreateCharacterView: View {
                 }
             }
             
+            // 形象
             Section(header: Text("形象")) {
                 Button(action: {
                     isImagePickerPresented = true
@@ -135,6 +202,7 @@ struct CreateCharacterView: View {
                 }
             }
             
+            // 角色特点
             Section(header: Text("角色特点（每项用逗号分隔多个内容）")) {
                 TextEditor(text: $keyThoughts)
                     .frame(height: 80)
@@ -311,6 +379,95 @@ struct CreateCharacterView: View {
         presentationMode.wrappedValue.dismiss()
     }
     
+    // 生成角色信息
+    private func generateCharacterInfo() {
+        guard !characterSearchText.isEmpty else { return }
+        
+        isGeneratingInfo = true
+        
+        // 模拟网络请求或AI生成过程
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            // 根据输入识别角色
+            if characterSearchText.contains("索隆") || characterSearchText.contains("卓洛") {
+                // 航海王索隆
+                self.name = "罗罗诺亚·索隆"
+                self.field = "剑士"
+                self.region = "东海"
+                self.introduction = "草帽海贼团战斗员，梦想是成为世界第一大剑豪。使用三刀流剑术，右眼有疤痕。性格忠诚但方向感极差。"
+                self.selectedCategory = .animeCharacter
+                self.selectedEraIndex = 5 // 动漫世界
+                self.achievements = "悬赏金：3亿2千万贝利,打败过Mr.1,击败过CP9成员"
+                self.mainWorks = "和之国篇,德雷斯罗萨篇,司法岛篇"
+                self.keyThoughts = "什么都不知道的人比什么都不能做的人更可怕,我不会再输了！"
+            } else if characterSearchText.contains("爱因斯坦") {
+                // 爱因斯坦
+                self.name = "阿尔伯特·爱因斯坦"
+                self.field = "物理学家"
+                self.region = "德国"
+                self.birthYear = "1879"
+                self.deathYear = "1955"
+                self.introduction = "20世纪最伟大的物理学家，相对论的创立者，获得过诺贝尔物理学奖。他的质能方程E=mc²彻底改变了人类对宇宙的认识。"
+                self.selectedCategory = .scientist
+                self.selectedEraIndex = 0 // 现代
+                self.achievements = "相对论,光电效应,布朗运动理论,诺贝尔物理学奖"
+                self.mainWorks = "狭义相对论,广义相对论,《论动体的电动力学》"
+                self.keyThoughts = "想象力比知识更重要,我们不能用制造问题的思维方式来解决问题"
+            } else if characterSearchText.contains("哈利") || characterSearchText.contains("波特") {
+                // 哈利·波特
+                self.name = "哈利·波特"
+                self.field = "巫师"
+                self.region = "英国"
+                self.introduction = "霍格沃茨魔法学校的学生，额头上有闪电形状的疤痕。父母被伏地魔杀害，自己却奇迹般地生存下来，被称为'大难不死的男孩'。"
+                self.selectedCategory = .fictionCharacter
+                self.selectedEraIndex = 7 // 奇幻大陆
+                self.achievements = "三强争霸赛冠军,邓布利多军团创始人,打败伏地魔"
+                self.mainWorks = "哈利·波特系列"
+                self.keyThoughts = "不是我们的能力决定我们是谁，而是我们的选择,幸福可以在最黑暗的日子里找到，只要记得开灯"
+            } else if characterSearchText.contains("钢铁侠") || characterSearchText.contains("托尼") || characterSearchText.contains("斯塔克") {
+                // 钢铁侠
+                self.name = "托尼·斯塔克"
+                self.field = "天才发明家/超级英雄"
+                self.region = "美国"
+                self.introduction = "斯塔克工业的CEO，天才发明家，凭借自己设计的钢铁战衣成为超级英雄钢铁侠。复仇者联盟的创始成员之一。"
+                self.selectedCategory = .movieCharacter
+                self.selectedEraIndex = 0 // 现代
+                self.achievements = "开发方舟反应堆,创造奥创,打败灭霸"
+                self.mainWorks = "钢铁侠三部曲,复仇者联盟系列"
+                self.keyThoughts = "有时候，你得先跑起来，才知道自己要去哪,我就是钢铁侠"
+            } else if characterSearchText.contains("孙悟空") || characterSearchText.contains("龙珠") {
+                // 龙珠孙悟空
+                self.name = "孙悟空"
+                self.field = "武道家"
+                self.region = "地球"
+                self.introduction = "来自地球的赛亚人，拥有超强的战斗天赋和纯净的心灵。一生追求变强，保护地球免受各种威胁。能变身超级赛亚人。"
+                self.selectedCategory = .animeCharacter
+                self.selectedEraIndex = 5 // 动漫世界
+                self.achievements = "打败弗利萨,击败魔人布欧,掌握超级赛亚人形态"
+                self.mainWorks = "龙珠,龙珠Z,龙珠超"
+                self.keyThoughts = "我要超越超级赛亚人！,这还不是我的最终形态！"
+            } else if characterSearchText.contains("孔子") {
+                // 孔子
+                self.name = "孔子"
+                self.field = "思想家/教育家"
+                self.region = "中国"
+                self.birthYear = "前551"
+                self.deathYear = "前479"
+                self.introduction = "中国古代伟大的思想家、教育家，儒家学派创始人。其思想对中国和东亚文化圈影响深远。著有《论语》等经典著作。"
+                self.selectedCategory = .philosopher
+                self.selectedEraIndex = 2 // 古代
+                self.achievements = "创立儒家思想,周游列国,私人讲学"
+                self.mainWorks = "论语,诗经(编订),春秋(修订)"
+                self.keyThoughts = "己所不欲，勿施于人,学而不思则罔，思而不学则殆,三人行，必有我师焉"
+            } else {
+                // 未能识别的角色，给出提示
+                self.errorMessage = "无法识别该角色，请尝试提供更详细的描述或手动填写信息。"
+                self.showingError = true
+            }
+            
+            isGeneratingInfo = false
+        }
+    }
+    
     // 安全地保存图像
     private func safelySaveImage(_ image: UIImage, forCharacterId: String) {
         guard let data = image.jpegData(compressionQuality: 0.7) else { 
@@ -448,6 +605,85 @@ struct CharacterImagePicker: UIViewControllerRepresentable {
                     }
                 }
             }
+        }
+    }
+} 
+
+// 快速创建帮助视图
+struct QuickCreateHelpView: View {
+    @Environment(\.presentationMode) var presentationMode
+    
+    var body: some View {
+        NavigationView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("如何使用快速创建功能")
+                    .font(.headline)
+                    .padding(.top)
+                
+                VStack(alignment: .leading, spacing: 15) {
+                    HStack(alignment: .top) {
+                        Text("1.")
+                            .font(.body)
+                            .fontWeight(.bold)
+                            .frame(width: 25, alignment: .leading)
+                        
+                        Text("输入角色名称和出处，例如\"航海王中的索隆\"或\"物理学家爱因斯坦\"")
+                    }
+                    
+                    HStack(alignment: .top) {
+                        Text("2.")
+                            .font(.body)
+                            .fontWeight(.bold)
+                            .frame(width: 25, alignment: .leading)
+                        
+                        Text("点击搜索按钮，系统会自动生成角色信息")
+                    }
+                    
+                    HStack(alignment: .top) {
+                        Text("3.")
+                            .font(.body)
+                            .fontWeight(.bold)
+                            .frame(width: 25, alignment: .leading)
+                        
+                        Text("检查并调整生成的信息，确保准确性")
+                    }
+                    
+                    HStack(alignment: .top) {
+                        Text("4.")
+                            .font(.body)
+                            .fontWeight(.bold)
+                            .frame(width: 25, alignment: .leading)
+                        
+                        Text("添加角色头像（可选）")
+                    }
+                    
+                    HStack(alignment: .top) {
+                        Text("5.")
+                            .font(.body)
+                            .fontWeight(.bold)
+                            .frame(width: 25, alignment: .leading)
+                        
+                        Text("点击\"创建\"按钮完成")
+                    }
+                }
+                .padding()
+                
+                Divider()
+                
+                Text("提示：")
+                    .font(.headline)
+                    .padding(.horizontal)
+                
+                Text("• 描述越详细，生成的信息越准确\n• 目前支持部分知名角色的自动识别\n• 所有生成的信息均可手动修改\n• 创建的角色仅供个人使用")
+                    .padding(.horizontal)
+                
+                Spacer()
+            }
+            .padding()
+            .navigationBarTitle("使用帮助", displayMode: .inline)
+            .navigationBarItems(trailing: Button("关闭") {
+                presentationMode.wrappedValue.dismiss()
+            })
         }
     }
 } 
