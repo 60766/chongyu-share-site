@@ -1176,7 +1176,20 @@ struct MyCharactersView: View {
                 NavigationLink(
                     destination: Group {
                         if let character = selectedCharacter {
-                            CharacterDetailView(character: UICharacter(from: character))
+                            // 创建一个Character对象，使用CharacterModel的属性
+                            // 注意：这里使用Character而不是UICharacter，因为CharacterDetailView需要Character类型
+                            let characterForDetail = Character(
+                                id: character.id,
+                                name: character.name,
+                                introduction: character.bio,
+                                field: character.profession,
+                                birthYear: character.era,
+                                avatarUrl: character.avatar,
+                                achievements: [],
+                                mainWorks: [],
+                                keyThoughts: []
+                            )
+                            CharacterDetailView(character: characterForDetail)
                         } else {
                             EmptyView()
                         }
