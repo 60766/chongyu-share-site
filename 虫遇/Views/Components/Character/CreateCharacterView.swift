@@ -9,6 +9,16 @@ struct CreateCharacterView: View {
     @Environment(\.presentationMode) var presentationMode
     @Binding var characters: [CharacterModel]
     
+    // 网络服务
+    private let aiNetworkService = AINetworkService.shared
+    private let apiConfigManager = APIConfigManager.shared
+    
+    // 快速创建相关
+    @State private var quickCreateMode: Bool = false
+    @State private var characterSearchText: String = ""
+    @State private var isGeneratingInfo: Bool = false
+    @State private var generationError: String? = nil
+    
     // 基本信息
     @State private var name: String = ""
     @State private var introduction: String = ""
@@ -25,27 +35,17 @@ struct CreateCharacterView: View {
     
     // 图像选择
     @State private var selectedImage: UIImage?
-    @State private var isImagePickerPresented: Bool = false
-    @State private var avatarSelected: Bool = false
-    
-    // 分类选择
-    @State private var selectedCategory: CharacterCategory = .fictionCharacter
+    @State private var isShowingImagePicker = false
+    @State private var selectedImageSource: UIImagePickerController.SourceType = .photoLibrary
+    @State private var showingSourceOptions = false
     
     // 错误处理
     @State private var showingError = false
     @State private var errorMessage = ""
+    @State private var showingQuickCreateHelp = false
     
-    // 快速创建相关状态
-    @State private var quickCreateMode: Bool = false
-    @State private var characterSearchText: String = ""
-    @State private var isGeneratingInfo: Bool = false
-    @State private var showingQuickCreateHelp: Bool = false
-    
-    private let eras = ["现代", "未来", "古代", "中世纪", "文艺复兴", "动漫世界", "科幻宇宙", "奇幻大陆"]
-    
-    private var isFormValid: Bool {
-        !name.isEmpty && !introduction.isEmpty && !field.isEmpty
-    }
+    // 分类选择
+    @State private var selectedCategory: CharacterCategory = .fictionCharacter
     
     // 可选择的角色分类
     private let selectableCategories: [CharacterCategory] = [
@@ -55,6 +55,19 @@ struct CreateCharacterView: View {
         .fictionCharacter, .animeCharacter, .gameCharacter, 
         .movieCharacter, .tvCharacter, .mythCharacter, .vtuber
     ]
+    
+    // 时代选项
+    private let eras = ["古代", "近代", "现代", "未来", "架空世界", "动漫世界"]
+    
+    // 验证状态
+    private var isFormValid: Bool {
+        !name.isEmpty && !introduction.isEmpty && selectedImage != nil
+    }
+    
+    // 提交按钮是否禁用
+    private var isSubmitDisabled: Bool {
+        isGeneratingInfo || !isFormValid
+    }
     
     var body: some View {
         Form {
@@ -91,13 +104,34 @@ struct CreateCharacterView: View {
                                 .padding(.vertical, 10)
                             Spacer()
                         }
+                    } else if let error = generationError {
+                        Text(error)
+                            .foregroundColor(.red)
+                            .font(.footnote)
+                            .padding(.vertical, 5)
                     }
                     
-                    // 示例角色提示
-                    Text("试试这些: 索隆、爱因斯坦、哈利·波特、钢铁侠、孙悟空、孔子")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                        .padding(.top, 5)
+                    VStack(alignment: .leading) {
+                        Text("提示：")
+                            .font(.footnote)
+                            .foregroundColor(.gray)
+                        Text("输入角色名称和出处，例如：")
+                            .font(.footnote)
+                            .foregroundColor(.gray)
+                        Text("• 航海王中的索隆")
+                            .font(.footnote)
+                            .foregroundColor(.gray)
+                        Text("• 钢铁侠托尼·斯塔克")
+                            .font(.footnote)
+                            .foregroundColor(.gray)
+                        Text("• 哈利·波特")
+                            .font(.footnote)
+                            .foregroundColor(.gray)
+                        Text("• 科学家爱因斯坦")
+                            .font(.footnote)
+                            .foregroundColor(.gray)
+                    }
+                    .padding(.vertical, 5)
                     
                     Button(action: {
                         showingQuickCreateHelp.toggle()
@@ -175,30 +209,25 @@ struct CreateCharacterView: View {
             // 形象
             Section(header: Text("形象")) {
                 Button(action: {
-                    isImagePickerPresented = true
+                    isShowingImagePicker = true
                 }) {
                     HStack {
-                        Text(avatarSelected ? "更换头像" : "选择角色头像")
+                        Text(selectedImage != nil ? "更换头像" : "选择角色头像")
                         Spacer()
-                        if avatarSelected {
-                            if let image = selectedImage {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 40, height: 40)
-                                    .clipShape(Circle())
-                            } else {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
-                            }
+                        if selectedImage != nil {
+                            Image(uiImage: selectedImage!)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 40, height: 40)
+                                .clipShape(Circle())
                         } else {
                             Image(systemName: "photo")
                                 .foregroundColor(.blue)
                         }
                     }
                 }
-                .sheet(isPresented: $isImagePickerPresented) {
-                    CharacterImagePicker(selectedImage: $selectedImage, isPresented: $isImagePickerPresented, avatarSelected: $avatarSelected)
+                .sheet(isPresented: $isShowingImagePicker) {
+                    CharacterImagePicker(selectedImage: $selectedImage, isPresented: $isShowingImagePicker, avatarSelected: .constant(false))
                 }
             }
             
@@ -268,7 +297,7 @@ struct CreateCharacterView: View {
                         createCharacter()
                     }
                 }
-                .disabled(!isFormValid)
+                .disabled(isSubmitDisabled)
                 .fontWeight(.bold)
             }
         }
@@ -384,88 +413,137 @@ struct CreateCharacterView: View {
         guard !characterSearchText.isEmpty else { return }
         
         isGeneratingInfo = true
+        generationError = nil
         
-        // 模拟网络请求或AI生成过程
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            // 根据输入识别角色
-            if characterSearchText.contains("索隆") || characterSearchText.contains("卓洛") {
-                // 航海王索隆
-                self.name = "罗罗诺亚·索隆"
-                self.field = "剑士"
-                self.region = "东海"
-                self.introduction = "草帽海贼团战斗员，梦想是成为世界第一大剑豪。使用三刀流剑术，右眼有疤痕。性格忠诚但方向感极差。"
-                self.selectedCategory = .animeCharacter
-                self.selectedEraIndex = 5 // 动漫世界
-                self.achievements = "悬赏金：3亿2千万贝利,打败过Mr.1,击败过CP9成员"
-                self.mainWorks = "和之国篇,德雷斯罗萨篇,司法岛篇"
-                self.keyThoughts = "什么都不知道的人比什么都不能做的人更可怕,我不会再输了！"
-            } else if characterSearchText.contains("爱因斯坦") {
-                // 爱因斯坦
-                self.name = "阿尔伯特·爱因斯坦"
-                self.field = "物理学家"
-                self.region = "德国"
-                self.birthYear = "1879"
-                self.deathYear = "1955"
-                self.introduction = "20世纪最伟大的物理学家，相对论的创立者，获得过诺贝尔物理学奖。他的质能方程E=mc²彻底改变了人类对宇宙的认识。"
-                self.selectedCategory = .scientist
-                self.selectedEraIndex = 0 // 现代
-                self.achievements = "相对论,光电效应,布朗运动理论,诺贝尔物理学奖"
-                self.mainWorks = "狭义相对论,广义相对论,《论动体的电动力学》"
-                self.keyThoughts = "想象力比知识更重要,我们不能用制造问题的思维方式来解决问题"
-            } else if characterSearchText.contains("哈利") || characterSearchText.contains("波特") {
-                // 哈利·波特
-                self.name = "哈利·波特"
-                self.field = "巫师"
-                self.region = "英国"
-                self.introduction = "霍格沃茨魔法学校的学生，额头上有闪电形状的疤痕。父母被伏地魔杀害，自己却奇迹般地生存下来，被称为'大难不死的男孩'。"
-                self.selectedCategory = .fictionCharacter
-                self.selectedEraIndex = 7 // 奇幻大陆
-                self.achievements = "三强争霸赛冠军,邓布利多军团创始人,打败伏地魔"
-                self.mainWorks = "哈利·波特系列"
-                self.keyThoughts = "不是我们的能力决定我们是谁，而是我们的选择,幸福可以在最黑暗的日子里找到，只要记得开灯"
-            } else if characterSearchText.contains("钢铁侠") || characterSearchText.contains("托尼") || characterSearchText.contains("斯塔克") {
-                // 钢铁侠
-                self.name = "托尼·斯塔克"
-                self.field = "天才发明家/超级英雄"
-                self.region = "美国"
-                self.introduction = "斯塔克工业的CEO，天才发明家，凭借自己设计的钢铁战衣成为超级英雄钢铁侠。复仇者联盟的创始成员之一。"
-                self.selectedCategory = .movieCharacter
-                self.selectedEraIndex = 0 // 现代
-                self.achievements = "开发方舟反应堆,创造奥创,打败灭霸"
-                self.mainWorks = "钢铁侠三部曲,复仇者联盟系列"
-                self.keyThoughts = "有时候，你得先跑起来，才知道自己要去哪,我就是钢铁侠"
-            } else if characterSearchText.contains("孙悟空") || characterSearchText.contains("龙珠") {
-                // 龙珠孙悟空
-                self.name = "孙悟空"
-                self.field = "武道家"
-                self.region = "地球"
-                self.introduction = "来自地球的赛亚人，拥有超强的战斗天赋和纯净的心灵。一生追求变强，保护地球免受各种威胁。能变身超级赛亚人。"
-                self.selectedCategory = .animeCharacter
-                self.selectedEraIndex = 5 // 动漫世界
-                self.achievements = "打败弗利萨,击败魔人布欧,掌握超级赛亚人形态"
-                self.mainWorks = "龙珠,龙珠Z,龙珠超"
-                self.keyThoughts = "我要超越超级赛亚人！,这还不是我的最终形态！"
-            } else if characterSearchText.contains("孔子") {
-                // 孔子
-                self.name = "孔子"
-                self.field = "思想家/教育家"
-                self.region = "中国"
-                self.birthYear = "前551"
-                self.deathYear = "前479"
-                self.introduction = "中国古代伟大的思想家、教育家，儒家学派创始人。其思想对中国和东亚文化圈影响深远。著有《论语》等经典著作。"
-                self.selectedCategory = .philosopher
-                self.selectedEraIndex = 2 // 古代
-                self.achievements = "创立儒家思想,周游列国,私人讲学"
-                self.mainWorks = "论语,诗经(编订),春秋(修订)"
-                self.keyThoughts = "己所不欲，勿施于人,学而不思则罔，思而不学则殆,三人行，必有我师焉"
-            } else {
-                // 未能识别的角色，给出提示
-                self.errorMessage = "无法识别该角色，请尝试提供更详细的描述或手动填写信息。"
-                self.showingError = true
-            }
-            
-            isGeneratingInfo = false
+        // 构建提示词
+        let prompt = """
+        用户想要创建一个角色: \(characterSearchText)
+        请提供这个角色的详细信息，包括：
+        1. 全名
+        2. 职业/身份
+        3. 地区/国家
+        4. 简短介绍（100字以内）
+        5. 主要成就（用逗号分隔）
+        6. 主要作品（用逗号分隔）
+        7. 所属分类（必须是以下之一：历史人物、科学家、艺术家、哲学家、文学家、虚构人物、动漫角色、游戏角色、电影角色、电视剧角色、神话角色、虚拟主播）
+        8. 时代背景（古代、近代、现代、未来、架空世界、动漫世界）
+        
+        以JSON格式返回，格式如下：
+        {
+          "name": "角色全名",
+          "field": "职业/身份",
+          "region": "地区/国家",
+          "introduction": "简短介绍",
+          "achievements": "主要成就1,主要成就2",
+          "mainWorks": "主要作品1,主要作品2",
+          "category": "所属分类",
+          "era": "时代背景"
         }
+        
+        只返回JSON数据，不要有其他任何文字。
+        """
+        
+        // 调用API获取角色信息
+        Task {
+            do {
+                let response = try await aiNetworkService.fetchAIResponse(
+                    prompt: prompt,
+                    model: apiConfigManager.currentConfig.defaultModel,
+                    temperature: 0.7,
+                    maxTokens: 1000
+                )
+                
+                // 解析JSON响应
+                if let jsonData = response.data(using: .utf8) {
+                    do {
+                        let decoder = JSONDecoder()
+                        let characterInfo = try decoder.decode(CharacterInfo.self, from: jsonData)
+                        
+                        // 更新UI - 必须在主线程
+                        await MainActor.run {
+                            // 填充表单
+                            self.name = characterInfo.name
+                            self.field = characterInfo.field
+                            self.region = characterInfo.region
+                            self.introduction = characterInfo.introduction
+                            self.achievements = characterInfo.achievements
+                            self.mainWorks = characterInfo.mainWorks
+                            
+                            // 设置分类
+                            if let category = mapStringToCategory(characterInfo.category) {
+                                self.selectedCategory = category
+                            }
+                            
+                            // 设置时代
+                            if let eraIndex = mapStringToEraIndex(characterInfo.era) {
+                                self.selectedEraIndex = eraIndex
+                            }
+                            
+                            self.isGeneratingInfo = false
+                        }
+                    } catch {
+                        await MainActor.run {
+                            self.generationError = "无法解析角色信息: \(error.localizedDescription)"
+                            self.isGeneratingInfo = false
+                        }
+                    }
+                } else {
+                    await MainActor.run {
+                        self.generationError = "无法解析API响应"
+                        self.isGeneratingInfo = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.generationError = "获取角色信息失败: \(error.localizedDescription)"
+                    self.isGeneratingInfo = false
+                }
+            }
+        }
+    }
+    
+    // 将字符串映射到角色分类
+    private func mapStringToCategory(_ categoryString: String) -> CharacterCategory? {
+        switch categoryString.lowercased() {
+        case "历史人物": return .historical
+        case "科学家": return .scientist
+        case "艺术家": return .artist
+        case "哲学家": return .philosopher
+        case "文学家": return .writer
+        case "虚构人物": return .fictionCharacter
+        case "动漫角色": return .animeCharacter
+        case "游戏角色": return .gameCharacter
+        case "电影角色": return .movieCharacter
+        case "电视剧角色": return .tvCharacter
+        case "神话角色": return .mythCharacter
+        case "虚拟主播": return .vtuber
+        default: return .fictionCharacter
+        }
+    }
+    
+    // 将字符串映射到时代索引
+    private func mapStringToEraIndex(_ eraString: String) -> Int? {
+        switch eraString {
+        case "古代": return 0
+        case "近代": return 1
+        case "现代": return 2
+        case "未来": return 3
+        case "架空世界": return 4
+        case "动漫世界": return 5
+        default: return 2 // 默认为现代
+        }
+    }
+    
+    // 角色信息解码模型
+    private struct CharacterInfo: Decodable {
+        let name: String
+        let field: String
+        let region: String
+        let introduction: String
+        let achievements: String
+        let mainWorks: String
+        let category: String
+        let era: String
     }
     
     // 安全地保存图像
