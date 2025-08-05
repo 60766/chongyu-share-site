@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import Combine // Added for Combine
 
 /**
  * 创建自定义角色视图
@@ -12,6 +13,7 @@ struct CreateCharacterView: View {
     // 网络服务
     private let aiNetworkService = AINetworkService.shared
     private let apiConfigManager = APIConfigManager.shared
+    private var cancellables = Set<AnyCancellable>()
     
     // 快速创建相关
     @State private var quickCreateMode: Bool = false
@@ -446,12 +448,27 @@ struct CreateCharacterView: View {
         // 调用API获取角色信息
         Task {
             do {
-                let response = try await aiNetworkService.fetchAIResponse(
-                    prompt: prompt,
-                    model: apiConfigManager.currentConfig.defaultModel,
-                    temperature: 0.7,
-                    maxTokens: 1000
-                )
+                // 使用sendRequest方法替代fetchAIResponse
+                let responsePublisher = aiNetworkService.sendRequest(prompt: prompt)
+                
+                // 使用Combine异步等待结果
+                let response = try await withCheckedThrowingContinuation { continuation in
+                    responsePublisher
+                        .sink(
+                            receiveCompletion: { completion in
+                                switch completion {
+                                case .finished:
+                                    break
+                                case .failure(let error):
+                                    continuation.resume(throwing: error)
+                                }
+                            },
+                            receiveValue: { value in
+                                continuation.resume(returning: value)
+                            }
+                        )
+                        .store(in: &cancellables)
+                }
                 
                 // 解析JSON响应
                 if let jsonData = response.data(using: .utf8) {
