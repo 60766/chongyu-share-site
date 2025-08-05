@@ -1101,70 +1101,119 @@ extension Array where Element: Hashable {
 // 添加"我的角色"视图
 struct MyCharactersView: View {
     @Environment(\.presentationMode) var presentationMode
-    @Binding var characters: [CharacterModel]
-    @State private var userCharacters: [CharacterModel] = []
+    @State private var characters: [CharacterModel] = []
+    @State private var selectedCharacter: CharacterModel?
     @State private var showingCreateCharacter = false
-    @State private var selectedCharacter: CharacterModel? = nil
     
     var body: some View {
         NavigationView {
-            VStack {
-                if userCharacters.isEmpty {
+            VStack(spacing: 0) {
+                // 标题栏
+                Text("我的角色")
+                    .font(.system(size: 18, weight: .medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 15)
+                    .background(Color(.systemBackground))
+                    .overlay(
+                        HStack {
+                            Button(action: {
+                                presentationMode.wrappedValue.dismiss()
+                            }) {
+                                Text("关闭")
+                                    .foregroundColor(.blue)
+                            }
+                            .padding(.leading, 16)
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                showingCreateCharacter = true
+                            }) {
+                                Image(systemName: "plus")
+                                    .foregroundColor(.blue)
+                            }
+                            .padding(.trailing, 16)
+                        }
+                    )
+                
+                if characters.isEmpty {
+                    // 空状态视图
                     VStack(spacing: 20) {
+                        Spacer()
+                        
                         Image(systemName: "person.fill.questionmark")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray.opacity(0.7))
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 60, height: 60)
+                            .foregroundColor(.gray.opacity(0.5))
                         
                         Text("您还没有创建角色")
-                            .font(.title3)
-                            .fontWeight(.medium)
-                        
-                        Text("创建您自己的虚拟角色，与历史人物进行对话")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
+                            .font(.headline)
+                            .foregroundColor(.secondary)
                         
                         Button(action: {
                             showingCreateCharacter = true
                         }) {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                Text("创建角色")
-                            }
-                            .padding()
-                            .foregroundColor(.white)
-                            .background(Color.blue)
-                            .cornerRadius(10)
+                            Text("创建角色")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(Color.blue)
+                                .cornerRadius(8)
                         }
-                        .padding(.top, 10)
+                        
+                        Spacer()
                     }
-                    .padding()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.systemGroupedBackground))
                 } else {
-                    List {
-                        ForEach(userCharacters, id: \.id) { character in
-                            CharacterRowView(character: character)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    selectedCharacter = character
-                                }
+                    // 内容视图 - 使用网格布局展示角色卡片
+                    ScrollView {
+                        // 分类标签栏
+                        HStack(spacing: 20) {
+                            Text("全部")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.primary)
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 16)
+                                .background(Color.primary.opacity(0.1))
+                                .cornerRadius(16)
+                            
+                            Text("最近")
+                                .font(.system(size: 15))
+                                .foregroundColor(.secondary)
+                            
+                            Text("热门")
+                                .font(.system(size: 15))
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
+                        
+                        // 角色网格
+                        LazyVGrid(columns: [
+                            GridItem(.flexible()),
+                            GridItem(.flexible()),
+                            GridItem(.flexible())
+                        ], spacing: 16) {
+                            ForEach(characters) { character in
+                                CharacterGridItem(character: character)
+                                    .onTapGesture {
+                                        selectedCharacter = character
+                                    }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 20)
                     }
-                    .listStyle(InsetGroupedListStyle())
+                    .background(Color(.systemGroupedBackground))
                 }
             }
-            .navigationBarTitle("我的角色", displayMode: .inline)
-            .navigationBarItems(
-                leading: Button("关闭") {
-                    presentationMode.wrappedValue.dismiss()
-                },
-                trailing: Button(action: {
-                    showingCreateCharacter = true
-                }) {
-                    Image(systemName: "plus")
-                }
-            )
+            .navigationBarHidden(true)
             .sheet(isPresented: $showingCreateCharacter) {
                 // 使用相对路径引用CreateCharacterView
                 CreateCharacterView(characters: $characters)
@@ -1211,7 +1260,7 @@ struct MyCharactersView: View {
     private func loadUserCharacters() {
         // 尝试从UserDefaults加载自定义角色
         guard let data = UserDefaults.standard.data(forKey: "CustomCharactersData") else {
-            userCharacters = []
+            characters = []
             return
         }
         
@@ -1229,7 +1278,8 @@ struct MyCharactersView: View {
                        let era = dict["era"] as? String {
                         
                         let category = CharacterCategory(rawValue: categoryRawValue) ?? .fictionCharacter
-                        // 修复错误2：移除CharacterModel初始化中多余的region参数
+                        
+                        // 修复CharacterModel初始化时多余的region参数
                         let character = CharacterModel(
                             id: id,
                             name: name,
@@ -1244,60 +1294,58 @@ struct MyCharactersView: View {
                     }
                 }
                 
-                userCharacters = loadedCharacters
+                characters = loadedCharacters
             }
         } catch {
             print("加载自定义角色失败: \(error)")
-            userCharacters = []
+            characters = []
         }
     }
 }
 
-struct CharacterRowView: View {
+// 角色网格项组件
+struct CharacterGridItem: View {
     let character: CharacterModel
     
     var body: some View {
-        HStack(spacing: 12) {
+        VStack(spacing: 6) {
             // 角色头像
-            if character.avatar == "default_avatar" {
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 50, height: 50)
-                    .clipShape(Circle())
-                    .foregroundColor(.gray)
-            } else {
-                Image(character.avatar)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 50, height: 50)
-                    .clipShape(Circle())
+            ZStack {
+                if character.avatar == "default_avatar" {
+                    Image(systemName: "person.circle.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 100, height: 100)
+                        .clipShape(Rectangle())
+                        .cornerRadius(8)
+                        .foregroundColor(.gray)
+                } else {
+                    Image(character.avatar)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 100, height: 100)
+                        .clipShape(Rectangle())
+                        .cornerRadius(8)
+                }
             }
+            .frame(width: 100, height: 100)
+            .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
             
-            // 角色信息
-            VStack(alignment: .leading, spacing: 4) {
+            // 角色名称 - 添加聊天气泡样式
+            HStack {
+                Image(systemName: "bubble.left.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(red: 0.9, green: 0.4, blue: 0.7))
+                
                 Text(character.name)
-                    .font(.headline)
-                
-                Text(character.profession)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                Text(character.era)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
             }
-            
-            Spacer()
-            
-            // 类型标签
-            Text(character.category.displayName)
-                .font(.caption)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(character.category.color.opacity(0.2))
-                .foregroundColor(character.category.color)
-                .cornerRadius(8)
+            .padding(.vertical, 4)
+            .padding(.horizontal, 8)
+            .background(Color(red: 0.95, green: 0.95, blue: 0.97))
+            .cornerRadius(12)
         }
         .padding(.vertical, 8)
     }
