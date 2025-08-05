@@ -90,6 +90,10 @@ struct ExploreView: View {
         }
     }
 
+    // 添加新的状态变量和sheet
+    @State private var showingMyCharacters = false
+    @State private var userCharacters: [CharacterModel] = []
+
     var body: some View {
         ZStack(alignment: .top) {
             // 背景色 - 使用微妙的渐变增加空间感
@@ -277,8 +281,8 @@ struct ExploreView: View {
                                         
                                     // 我的角色按钮 (交换位置)
                                         Button(action: {
-                                        // 显示创建角色功能
-                                        showingCreateCharacter = true
+                                        // 显示用户创建的角色列表，而不是直接显示创建角色视图
+                                        showingMyCharacters = true
                                         }) {
                                             VStack(spacing: 8) {
                                                 ZStack {
@@ -603,6 +607,9 @@ struct ExploreView: View {
             NavigationView {
                 CreateCharacterView(characters: $characters)
             }
+        }
+        .sheet(isPresented: $showingMyCharacters) {
+            MyCharactersView(characters: $characters)
         }
         .onAppear {
             loadAllCharacters()
@@ -1089,4 +1096,198 @@ extension Array where Element: Hashable {
 
 #Preview("探索页面") {
     ExploreView()
+} 
+
+// 添加"我的角色"视图
+struct MyCharactersView: View {
+    @Environment(\.presentationMode) var presentationMode
+    @Binding var characters: [CharacterModel]
+    @State private var userCharacters: [CharacterModel] = []
+    @State private var showingCreateCharacter = false
+    @State private var selectedCharacter: CharacterModel? = nil
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                if userCharacters.isEmpty {
+                    VStack(spacing: 20) {
+                        Image(systemName: "person.fill.questionmark")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray.opacity(0.7))
+                        
+                        Text("您还没有创建角色")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                        
+                        Text("创建您自己的虚拟角色，与历史人物进行对话")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        
+                        Button(action: {
+                            showingCreateCharacter = true
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text("创建角色")
+                            }
+                            .padding()
+                            .foregroundColor(.white)
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                        }
+                        .padding(.top, 10)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(userCharacters, id: \.id) { character in
+                            CharacterRowView(character: character)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedCharacter = character
+                                }
+                        }
+                    }
+                    .listStyle(InsetGroupedListStyle())
+                }
+            }
+            .navigationBarTitle("我的角色", displayMode: .inline)
+            .navigationBarItems(
+                leading: Button("关闭") {
+                    presentationMode.wrappedValue.dismiss()
+                },
+                trailing: Button(action: {
+                    showingCreateCharacter = true
+                }) {
+                    Image(systemName: "plus")
+                }
+            )
+            .sheet(isPresented: $showingCreateCharacter) {
+                // 使用相对路径引用CreateCharacterView
+                CreateCharacterView(characters: $characters)
+                    .onDisappear {
+                        loadUserCharacters()
+                    }
+            }
+            .background(
+                NavigationLink(
+                    destination: Group {
+                        if let character = selectedCharacter {
+                            CharacterDetailView(character: character)
+                        } else {
+                            EmptyView()
+                        }
+                    },
+                    isActive: Binding<Bool>(
+                        get: { selectedCharacter != nil },
+                        set: { if !$0 { selectedCharacter = nil } }
+                    )
+                ) {
+                    EmptyView()
+                }
+            )
+        }
+        .onAppear {
+            loadUserCharacters()
+        }
+    }
+    
+    private func loadUserCharacters() {
+        // 尝试从UserDefaults加载自定义角色
+        guard let data = UserDefaults.standard.data(forKey: "CustomCharactersData") else {
+            userCharacters = []
+            return
+        }
+        
+        do {
+            if let characterDicts = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                var loadedCharacters: [CharacterModel] = []
+                
+                for dict in characterDicts {
+                    if let id = dict["id"] as? String,
+                       let name = dict["name"] as? String,
+                       let avatar = dict["avatar"] as? String,
+                       let profession = dict["profession"] as? String,
+                       let bio = dict["bio"] as? String,
+                       let categoryRawValue = dict["category"] as? String,
+                       let era = dict["era"] as? String {
+                        
+                        let category = CharacterCategory(rawValue: categoryRawValue) ?? .fictionCharacter
+                        let region = dict["region"] as? String ?? ""
+                        
+                        let character = CharacterModel(
+                            id: id,
+                            name: name,
+                            avatar: avatar,
+                            category: category,
+                            era: era,
+                            profession: profession,
+                            bio: bio,
+                            region: region
+                        )
+                        
+                        loadedCharacters.append(character)
+                    }
+                }
+                
+                userCharacters = loadedCharacters
+            }
+        } catch {
+            print("加载自定义角色失败: \(error)")
+            userCharacters = []
+        }
+    }
+}
+
+struct CharacterRowView: View {
+    let character: CharacterModel
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // 角色头像
+            if character.avatar == "default_avatar" {
+                Image(systemName: "person.circle.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 50, height: 50)
+                    .clipShape(Circle())
+                    .foregroundColor(.gray)
+            } else {
+                Image(character.avatar)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 50, height: 50)
+                    .clipShape(Circle())
+            }
+            
+            // 角色信息
+            VStack(alignment: .leading, spacing: 4) {
+                Text(character.name)
+                    .font(.headline)
+                
+                Text(character.profession)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Text(character.era)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            // 类型标签
+            Text(character.category.displayName)
+                .font(.caption)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(character.category.color.opacity(0.2))
+                .foregroundColor(character.category.color)
+                .cornerRadius(8)
+        }
+        .padding(.vertical, 8)
+    }
 } 
