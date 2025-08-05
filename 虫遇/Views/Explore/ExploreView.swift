@@ -1176,7 +1176,7 @@ struct MyCharactersView: View {
                 NavigationLink(
                     destination: Group {
                         if let character = selectedCharacter {
-                            CharacterDetailView(character: character)
+                            CharacterDetailView(character: UICharacter(from: character))
                         } else {
                             EmptyView()
                         }
@@ -1216,17 +1216,15 @@ struct MyCharactersView: View {
                        let era = dict["era"] as? String {
                         
                         let category = CharacterCategory(rawValue: categoryRawValue) ?? .fictionCharacter
-                        let region = dict["region"] as? String ?? ""
-                        
+                        // 修复错误2：移除CharacterModel初始化中多余的region参数
                         let character = CharacterModel(
                             id: id,
                             name: name,
                             avatar: avatar,
-                            category: category,
                             era: era,
                             profession: profession,
                             bio: bio,
-                            region: region
+                            category: category
                         )
                         
                         loadedCharacters.append(character)

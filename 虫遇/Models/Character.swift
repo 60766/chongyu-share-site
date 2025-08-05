@@ -199,6 +199,27 @@ struct UICharacter: Identifiable {
         self.interactionCount = character.interactionCount
         self.rating = character.rating
     }
+    
+    /**
+     * 从CharacterModel转换为UICharacter
+     * @param model - CharacterModel模型
+     */
+    init(from model: CharacterModel) {
+        self.id = model.id
+        self.name = model.name
+        self.introduction = model.bio
+        self.field = model.profession
+        self.birthYear = model.era
+        self.deathYear = nil
+        self.avatarUrl = model.avatar
+        self.eraTag = model.era
+        self.achievements = []
+        self.mainWorks = []
+        self.keyThoughts = []
+        self.followerCount = 0
+        self.interactionCount = 0
+        self.rating = 4.5
+    }
 }
 
 /**
