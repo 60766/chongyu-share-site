@@ -23,7 +23,9 @@ struct ChongYuApp: App {
             Message.self,
             SDConversation.self,
             Post.self,
-            Comment.self
+            Comment.self,
+            MultiPersonChatSession.self,
+            MultiPersonChatMessage.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

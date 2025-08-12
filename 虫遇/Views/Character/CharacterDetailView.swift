@@ -129,6 +129,12 @@ struct CharacterDetailView: View {
     @State private var theme: CharacterTheme = CharacterTheme.other
     /// 是否已关注
     @State private var isFavorited: Bool = false
+    /// 自定义头像
+    @State private var customImage: UIImage? = nil
+    
+    // 环境值
+    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.colorScheme) var colorScheme
     
     // 用于UI显示的状态变量
     @State private var displayFollowerCount: Int = 0
@@ -307,27 +313,12 @@ struct CharacterDetailView: View {
             // 调用loadData方法
             loadData()
             
-            // 添加通知监听，当收到关注状态变化通知时更新UI
-            NotificationCenter.default.addObserver(forName: Notification.Name("FavoriteStatusChanged"), object: nil, queue: .main) { [self] notification in
-                if let userInfo = notification.userInfo,
-                   let characterId = userInfo["characterId"] as? String,
-                   let isFavorited = userInfo["isFavorited"] as? Bool,
-                   characterId == character.id {
-                    // 更新当前角色的关注状态
-                    self.isFavorited = isFavorited
-                    
-                    // 如果状态变为关注，增加粉丝数
-                    if isFavorited && !self.isFavorited {
-                        displayFollowerCount += 1
-                    } 
-                    // 如果状态变为取消关注，减少粉丝数
-                    else if !isFavorited && self.isFavorited {
-                        if displayFollowerCount > 0 {
-                            displayFollowerCount -= 1
-                        }
-                    }
-                }
-            }
+            // 尝试加载自定义头像
+            loadCustomAvatar()
+            
+            // 添加系统级按钮
+            addSystemLevelBackButton()
+            addSystemLevelShareButton()
         }
         .onChange(of: showingShareSheet) { oldValue, newValue in
             // 控制返回按钮窗口的显示/隐藏
@@ -403,21 +394,57 @@ struct CharacterDetailView: View {
             // 头像和基本信息区 - 水平布局以提高空间效率
             HStack(alignment: .center, spacing: 14) {
                 // 头像 - 左侧放置，符合图一设计
-                // 使用统一的Avatar组件替换原来的直接Image显示
-                Avatar(
-                    url: character.id.lowercased(), // 使用小写的角色ID，确保与主页面一致
-                    name: character.name,
-                    category: character.field,
-                    size: 70
-                )
+                ZStack {
+                    if let customImage = customImage {
+                        // 显示从文档目录加载的自定义头像
+                        Image(uiImage: customImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 70, height: 70)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                            )
+                    } else {
+                        // 尝试加载系统提供的头像
+                        if let image = UIImage(named: character.avatarUrl) {
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 70, height: 70)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                )
+                        } else {
+                            // 如果加载失败，显示初始字母头像
+                            Circle()
+                                .fill(Color.gray.opacity(0.15))
+                                .frame(width: 70, height: 70)
+                                .overlay(
+                                    Text(String(character.name.prefix(1)))
+                                        .font(.system(size: 32, weight: .medium))
+                                        .foregroundColor(Color.purple.opacity(0.8))
+                                )
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                )
+                        }
+                    }
+                }
                 .onAppear {
                     print("🔍 CharacterDetailView - 显示角色头像: \(character.avatarUrl), 名称: \(character.name)")
+                    // 确保在onAppear时加载自定义头像
+                    loadCustomAvatar()
                 }
                 
                 // 右侧信息区 - 垂直排列名称、职业和标签
                 VStack(alignment: .leading, spacing: 5) {
                     // 角色名称
-                Text(character.name)
+                Text(formatDisplayName(character.name))
                         .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.primary)
                 
@@ -1054,28 +1081,28 @@ struct CharacterDetailView: View {
      * 创建一个覆盖在左上角的浮动返回按钮
      */
     private func addSystemLevelBackButton() {
+        // 先移除旧窗口（如果存在）
+        systemBackButtonWindow?.isHidden = true
+        systemBackButtonWindow = nil
+        
         // 计算顶部安全区域高度，为返回按钮定位
         let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
         let topPadding = windowScene?.windows.first?.safeAreaInsets.top ?? 44
         
         // 创建新窗口 - 只覆盖左上角返回按钮区域
-        let buttonWindow = UIWindow(frame: CGRect(
+        let buttonWindow = UIWindow(windowScene: windowScene!)
+        buttonWindow.frame = CGRect(
             x: 0,
             y: 0,
             width: 50,
             height: topPadding + 44
-        ))
+        )
         buttonWindow.tag = 9999 // 为后续标识设置tag
         
         // 设置窗口属性
         buttonWindow.isUserInteractionEnabled = true
-        buttonWindow.windowLevel = .alert // 使用高层级确保可见
+        buttonWindow.windowLevel = .alert + 1 // 使用更高层级确保可见
         buttonWindow.backgroundColor = .clear
-        buttonWindow.accessibilityViewIsModal = false
-        
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-            buttonWindow.windowScene = windowScene
-        }
         
         // 设置根视图控制器
         let viewController = UIViewController()
@@ -1112,7 +1139,15 @@ struct CharacterDetailView: View {
         
         // 保存窗口引用并显示
         systemBackButtonWindow = buttonWindow
+        
+        // 确保主线程
+        DispatchQueue.main.async {
+            buttonWindow.isHidden = false
         buttonWindow.makeKeyAndVisible()
+            
+            // 输出调试信息
+            print("✓ 返回按钮已创建并显示")
+        }
     }
     
     /**
@@ -1147,29 +1182,29 @@ struct CharacterDetailView: View {
     
     // 添加系统级分享按钮，确保总是可点击
     private func addSystemLevelShareButton() {
+        // 先移除旧窗口（如果存在）
+        systemShareButtonWindow?.isHidden = true
+        systemShareButtonWindow = nil
+        
         // 计算顶部安全区域高度，为分享按钮定位
         let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
         let topPadding = windowScene?.windows.first?.safeAreaInsets.top ?? 44
         let screenWidth = UIScreen.main.bounds.width
         
         // 创建新窗口 - 只覆盖右上角分享按钮区域
-        let buttonWindow = UIWindow(frame: CGRect(
+        let buttonWindow = UIWindow(windowScene: windowScene!)
+        buttonWindow.frame = CGRect(
             x: screenWidth - 55,
             y: 0,
             width: 55,
             height: topPadding + 44
-        ))
+        )
         buttonWindow.tag = 9998 // 为后续标识设置tag
         
         // 设置窗口属性
         buttonWindow.isUserInteractionEnabled = true
-        buttonWindow.windowLevel = .alert // 使用高层级确保可见
+        buttonWindow.windowLevel = .alert + 1 // 使用更高层级确保可见
         buttonWindow.backgroundColor = .clear
-        buttonWindow.accessibilityViewIsModal = false
-        
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-            buttonWindow.windowScene = windowScene
-        }
         
         // 设置根视图控制器
         let viewController = UIViewController()
@@ -1203,38 +1238,62 @@ struct CharacterDetailView: View {
         
         // 保存窗口引用并显示
         systemShareButtonWindow = buttonWindow
+        
+        // 确保主线程
+        DispatchQueue.main.async {
+            buttonWindow.isHidden = false
         buttonWindow.makeKeyAndVisible()
+            
+            // 输出调试信息
+            print("✓ 分享按钮已创建并显示")
+        }
     }
     
     // 立即隐藏系统按钮，用于页面切换时
     private func hideSystemButtons() {
+        print("🔄 CharacterDetailView - 隐藏系统按钮")
+        
+        // 使用异步调用确保UI更新
+        DispatchQueue.main.async {
         // 隐藏返回按钮
-        if let window = systemBackButtonWindow {
+            if let window = self.systemBackButtonWindow {
             window.isHidden = true
+                print("✓ 返回按钮已隐藏")
         }
         
         // 隐藏分享按钮
-        if let window = systemShareButtonWindow {
+            if let window = self.systemShareButtonWindow {
             window.isHidden = true
+                print("✓ 分享按钮已隐藏")
+            }
         }
     }
     
     // 显示系统按钮，用于页面返回时
     private func showSystemButtons() {
+        print("🔄 CharacterDetailView - 显示系统按钮")
+        
+        // 使用异步调用确保UI更新
+        DispatchQueue.main.async {
         // 显示返回按钮
-        if let window = systemBackButtonWindow {
+            if let window = self.systemBackButtonWindow, !window.isHidden {
+                print("✓ 返回按钮窗口已存在，设置为可见")
             window.isHidden = false
         } else {
-            // 如果按钮不存在，重新创建
-            addSystemLevelBackButton()
+                // 如果按钮不存在或被隐藏，重新创建
+                print("⚠️ 返回按钮窗口不存在或被隐藏，重新创建")
+                self.addSystemLevelBackButton()
         }
         
         // 显示分享按钮
-        if let window = systemShareButtonWindow {
+            if let window = self.systemShareButtonWindow, !window.isHidden {
+                print("✓ 分享按钮窗口已存在，设置为可见")
             window.isHidden = false
         } else {
-            // 如果按钮不存在，重新创建
-            addSystemLevelShareButton()
+                // 如果按钮不存在或被隐藏，重新创建
+                print("⚠️ 分享按钮窗口不存在或被隐藏，重新创建")
+                self.addSystemLevelShareButton()
+            }
         }
     }
     
@@ -1283,39 +1342,124 @@ struct CharacterDetailView: View {
     
     /**
      * 加载数据
-     * 在onAppear时调用，加载模拟数据和初始化UI状态
+     * 初始化模拟数据和UI状态
      */
     private func loadData() {
-        // 设置主题 - 立即执行而不用动画
-        theme = CharacterTheme.forField(character.field)
+        print("🔍 CharacterDetailView - 加载数据")
+        
+        // 初始化角色主题
+        determineCharacterTheme()
             
-        // 加载模拟数据
-        loadMockConversations()
+        // 加载模拟对话数据
+        loadConversations()
         
-        // 设置关注状态
-        isFavorited = character.isFavorited
+        // 加载关注状态
+        checkFavoriteStatus()
         
-        // 设置显示数据，确保与图一一致
-        if character.name == "爱因斯坦" {
-            displayFollowerCount = 3500
-            displayInteractionCount = 14200
+        // 加载自定义头像
+        loadCustomAvatar()
+        
+        // 延迟动画，使内容有序显示
+        withAnimation(.easeOut(duration: 0.5).delay(0.3)) {
+            animateContent = true
+        }
+    }
+    
+    // MARK: - 生命周期方法
+    /**
+     * 初始化UI状态和数据
+     * 在onAppear时调用，加载模拟数据和初始化UI状态
+     */
+    private func initializeView() {
+        print("🔍 CharacterDetailView - 初始化视图: \(character.name)")
+        
+        // 调用loadData方法
+        loadData()
+    }
+    
+    // MARK: - 加载自定义头像
+    /**
+     * 加载自定义头像
+     * 从文档目录加载用户创建的角色头像
+     */
+    private func loadCustomAvatar() {
+        // 检查角色ID是否是自定义角色（以"custom_"开头）
+        let characterId = character.id
+        if characterId.hasPrefix("custom_") || character.avatarUrl == "default_avatar" {
+            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentsDirectory.appendingPathComponent("\(characterId).jpg")
+            
+            print("📁 CharacterDetailView - 尝试加载自定义头像: \(fileURL.path)")
+            
+            // 检查文件是否存在
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                if let imageData = try? Data(contentsOf: fileURL),
+                   let image = UIImage(data: imageData) {
+                    DispatchQueue.main.async {
+                        self.customImage = image
+                        print("✅ CharacterDetailView - 成功加载自定义头像: \(fileURL.path)")
+                    }
         } else {
-            displayFollowerCount = character.followerCount
-            displayInteractionCount = character.interactionCount
+                    print("❌ CharacterDetailView - 无法加载自定义头像数据: \(fileURL.path)")
+                }
+            } else {
+                print("⚠️ CharacterDetailView - 自定义头像文件不存在: \(fileURL.path)")
+                // 尝试从备份目录加载
+                let backupURL = URL(fileURLWithPath: "/Users/lishilong/IOS开发/虫遇/虫遇/backup_images/default_avatar.png")
+                if FileManager.default.fileExists(atPath: backupURL.path),
+                   let imageData = try? Data(contentsOf: backupURL),
+                   let image = UIImage(data: imageData) {
+                    DispatchQueue.main.async {
+                        self.customImage = image
+                        print("✅ CharacterDetailView - 从备份目录加载头像成功")
+                    }
+                }
+            }
+        }
         }
         
-        // 不再隐藏TabBar，保持底部导航栏可见
-        // tabBarManager.pushHideState()
+    // MARK: - 辅助方法
+    
+    /**
+     * 确定角色主题
+     * 根据角色的领域设置合适的主题
+     */
+    private func determineCharacterTheme() {
+        theme = CharacterTheme.forField(character.field)
+    }
+    
+    /**
+     * 加载对话记录
+     * 加载与角色的历史对话记录
+     */
+    private func loadConversations() {
+        // 这里加载模拟对话数据
+        conversations = [
+            DisplayConversation(id: UUID().uuidString, characterId: character.id, userId: "current_user", lastMessageContent: "我想了解更多关于你的思想", lastMessageTime: Date().addingTimeInterval(-86400), messageCount: 5),
+            DisplayConversation(id: UUID().uuidString, characterId: character.id, userId: "current_user", lastMessageContent: "你能解释一下相对论吗？", lastMessageTime: Date().addingTimeInterval(-172800), messageCount: 12),
+            DisplayConversation(id: UUID().uuidString, characterId: character.id, userId: "current_user", lastMessageContent: "你对现代科学有什么看法？", lastMessageTime: Date().addingTimeInterval(-345600), messageCount: 8)
+        ]
+    }
+    
+    /**
+     * 检查收藏状态
+     * 检查当前角色是否被用户收藏
+     */
+    private func checkFavoriteStatus() {
+        // 这里应该从用户偏好或数据库中获取收藏状态
+        // 暂时使用模拟数据
+        isFavorited = UserDefaults.standard.bool(forKey: "favorite_\(character.id)")
+    }
+    
+    // 格式化显示名称，处理过长或中英文混合的名称
+    private func formatDisplayName(_ name: String) -> String {
+        // 如果名称中包含括号，只显示括号前的部分
+        if let bracketRange = name.range(of: "（") ?? name.range(of: "(") {
+            let nameBeforeBracket = String(name[name.startIndex..<bracketRange.lowerBound])
+            return nameBeforeBracket.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         
-        // 添加系统级返回按钮和分享按钮
-        showSystemButtons()
-        
-        // 所有准备工作完成后，一次性执行所有动画，避免多次重绘
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: {
-            withAnimation(.easeOut(duration: 0.35)) {
-                animateContent = true
-            }
-        })
+        return name
     }
 }
 
@@ -2120,6 +2264,7 @@ private struct ShareCardView: View {
     let character: Character
     let theme: CharacterTheme
     let conversations: [DisplayConversation]  // 添加会话数据
+    @State private var customImage: UIImage? = nil
     
     // 设计系统颜色
     private struct DesignSystem {
@@ -2147,6 +2292,54 @@ private struct ShareCardView: View {
         static let primaryText = Color.white
         static let secondaryText = Color(hex: "BDAEEF")
         static let accentText = Color(hex: "FFD76A")
+    }
+    
+    // 格式化显示名称，处理过长或中英文混合的名称
+    private func formatDisplayName(_ name: String) -> String {
+        // 如果名称中包含括号，只显示括号前的部分
+        if let bracketRange = name.range(of: "（") ?? name.range(of: "(") {
+            let nameBeforeBracket = String(name[name.startIndex..<bracketRange.lowerBound])
+            return nameBeforeBracket.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        return name
+    }
+    
+    // 从文档目录加载自定义头像
+    private func loadCustomAvatar() {
+        // 检查角色ID是否是自定义角色（以"custom_"开头）
+        let characterId = character.id
+        if characterId.hasPrefix("custom_") || character.avatarUrl == "default_avatar" {
+            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentsDirectory.appendingPathComponent("\(characterId).jpg")
+            
+            print("📁 CharacterDetailView - 尝试加载自定义头像: \(fileURL.path)")
+            
+            // 检查文件是否存在
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                if let imageData = try? Data(contentsOf: fileURL),
+                   let image = UIImage(data: imageData) {
+                    DispatchQueue.main.async {
+                        self.customImage = image
+                        print("✅ CharacterDetailView - 成功加载自定义头像: \(fileURL.path)")
+                    }
+                } else {
+                    print("❌ CharacterDetailView - 无法加载自定义头像数据: \(fileURL.path)")
+                }
+            } else {
+                print("⚠️ CharacterDetailView - 自定义头像文件不存在: \(fileURL.path)")
+                // 尝试从备份目录加载
+                let backupURL = URL(fileURLWithPath: "/Users/lishilong/IOS开发/虫遇/虫遇/backup_images/default_avatar.png")
+                if FileManager.default.fileExists(atPath: backupURL.path),
+                   let imageData = try? Data(contentsOf: backupURL),
+                   let image = UIImage(data: imageData) {
+                    DispatchQueue.main.async {
+                        self.customImage = image
+                        print("✅ CharacterDetailView - 从备份目录加载头像成功")
+                    }
+                }
+            }
+        }
     }
     
     // 动态生成示例问题
@@ -2271,7 +2464,28 @@ private struct ShareCardView: View {
                         .frame(width: 70, height: 70)
                         .blur(radius: 10)
                     
-                    if UIImage(named: character.avatarUrl) != nil {
+                    if let customImage = customImage {
+                        // 显示从文档目录加载的自定义头像
+                        Image(uiImage: customImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 64, height: 64)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                DesignSystem.vibrantYellow.opacity(0.6),
+                                                DesignSystem.vibrantYellow.opacity(0.2)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 2
+                                    )
+                            )
+                    } else if UIImage(named: character.avatarUrl) != nil {
                         Image(character.avatarUrl)
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
@@ -2296,7 +2510,7 @@ private struct ShareCardView: View {
                             .fill(DesignSystem.mediumPurple)
                             .frame(width: 64, height: 64)
                             .overlay(
-                                Text(String(character.name.prefix(1)))
+                                Text(String(formatDisplayName(character.name).prefix(1)))
                                     .font(.system(size: 24, weight: .medium))
                                     .foregroundColor(DesignSystem.vibrantYellow)
                             )
@@ -2306,7 +2520,7 @@ private struct ShareCardView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     // 名称和标签
                     HStack(spacing: 8) {
-                                Text(character.name)
+                                Text(formatDisplayName(character.name))
                             .font(.system(size: 20, weight: .bold))
                             .foregroundColor(DesignSystem.primaryText)
                         
@@ -2385,7 +2599,18 @@ private struct ShareCardView: View {
                 // 角色回答
                 HStack(alignment: .top, spacing: 12) {
                     // 头像
-                    if UIImage(named: character.avatarUrl) != nil {
+                    if let customImage = customImage {
+                        // 显示从文档目录加载的自定义头像
+                        Image(uiImage: customImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 36, height: 36)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(DesignSystem.vibrantYellow.opacity(0.3), lineWidth: 1)
+                            )
+                    } else if UIImage(named: character.avatarUrl) != nil {
                         Image(character.avatarUrl)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -2439,7 +2664,7 @@ private struct ShareCardView: View {
                         .fill(DesignSystem.vibrantYellow)
                         .frame(width: 6, height: 6)
                     
-                    Text("想提问？扫码与\(character.name)直接对话")
+                    Text("想提问？扫码与\(formatDisplayName(character.name))直接对话")
                         .font(.system(size: 14))
                         .foregroundColor(DesignSystem.softPurple)
                 }
@@ -2557,6 +2782,9 @@ private struct ShareCardView: View {
                 )
         )
         .shadow(color: Color.black.opacity(0.2), radius: 16, x: 0, y: 8)
+        .onAppear {
+            loadCustomAvatar()
+        }
     }
     
     // 格式化数字
@@ -2602,6 +2830,11 @@ private struct ShareCardView: View {
         
         // 如果没有真实对话，使用生成的答案
         return exampleAnswer
+    }
+    
+    // 在视图加载时调用
+    func onAppear() {
+        loadCustomAvatar()
     }
 }
 

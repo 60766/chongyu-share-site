@@ -70,7 +70,8 @@ struct AutoSizingTextView: UIViewRepresentable {
         
         // 处理焦点状态变化
         if isFocused != uiView.isFirstResponder {
-            DispatchQueue.main.async {
+            // 使用动画过渡，减少抖动
+            UIView.animate(withDuration: 0.25) {
                 if isFocused {
                     uiView.becomeFirstResponder()
                     
@@ -102,14 +103,16 @@ struct AutoSizingTextView: UIViewRepresentable {
         let size = textView.sizeThatFits(CGSize(width: textView.frame.width, height: .infinity))
         let newHeight = size.height
         
-        // 防抖动逻辑
-        if abs(newHeight - AutoSizingTextView.lastCalculatedHeight) > 2 { // 高度变化阈值
+        // 防抖动逻辑，增加阈值和延迟时间
+        if abs(newHeight - AutoSizingTextView.lastCalculatedHeight) > 3 { // 增加高度变化阈值
             AutoSizingTextView.heightUpdateTimer?.invalidate()
-            AutoSizingTextView.heightUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: false) { _ in
-                // 在主线程上更新高度
+            AutoSizingTextView.heightUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { _ in
+                // 在主线程上更新高度，使用动画
                 DispatchQueue.main.async {
+                    UIView.animate(withDuration: 0.25) {
                     heightChanged(newHeight)
                     AutoSizingTextView.lastCalculatedHeight = newHeight
+                    }
                 }
             }
         }
@@ -120,7 +123,10 @@ struct AutoSizingTextView: UIViewRepresentable {
         let contentHeight = textView.contentSize.height
         let frameHeight = textView.frame.size.height
         if contentHeight > frameHeight {
+            // 使用动画滚动到底部
+            UIView.animate(withDuration: 0.2) {
             textView.scrollRangeToVisible(NSRange(location: (textView.text as NSString).length - 1, length: 1))
+            }
         }
     }
     
@@ -137,17 +143,23 @@ struct AutoSizingTextView: UIViewRepresentable {
         
         func textViewDidChange(_ textView: UITextView) {
             parent.text = textView.text
+            // 使用防抖动方式计算高度
+            parent.calculateAndUpdateHeight(textView)
         }
         
         func textViewDidBeginEditing(_ textView: UITextView) {
-            parent.isFocused = true
+            // 使用动画过渡状态
+            UIView.animate(withDuration: 0.25) {
+                self.parent.isFocused = true
+            }
             parent.calculateAndUpdateHeight(textView)
         }
         
         func textViewDidEndEditing(_ textView: UITextView) {
-            parent.isFocused = false
-            // 在失去焦点时重置高度，如果需要的话
-            // parent.heightChanged?(36) //
+            // 使用动画过渡状态
+            UIView.animate(withDuration: 0.25) {
+                self.parent.isFocused = false
+            }
         }
     }
 } 

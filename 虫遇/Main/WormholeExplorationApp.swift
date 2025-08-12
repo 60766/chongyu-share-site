@@ -43,6 +43,8 @@ struct WormholeExplorationApp: App {
             .sheet(isPresented: $showDebugMenu) {
                 DebugMenuView()
             }
+            .provideBottomSafeAreaHeight() // 提供底部安全区域高度
+            .provideSafeAreaInsets() // 提供全部安全区域尺寸
         }
     }
 } 

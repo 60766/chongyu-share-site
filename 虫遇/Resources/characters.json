@@ -966,24 +966,6 @@
       }
     },
     {
-      "id": "conan",
-      "name": "柯南·奥布莱恩",
-      "type": "tv",
-      "subtype": "talkshow",
-      "era": "现代",
-      "primaryField": "脱口秀主持人",
-      "briefDescription": "美国著名脱口秀主持人，以幽默风格和自嘲式喜剧著称",
-      "avatarName": "conan",
-      "region": "美国",
-      "contentAffinities": {
-        "古潮新语": 0.7,
-        "穿越吐槽": 0.95,
-        "日常心情": 0.85,
-        "虫洞共鸣": 0.7,
-        "时空记事": 0.6
-      }
-    },
-    {
       "id": "gollum",
       "name": "咕噜",
       "type": "movie",
@@ -1531,7 +1513,7 @@
       ]
     },
     {
-      "id": "conan",
+      "id": "edogawa_conan",
       "name": "江户川柯南",
       "type": "anime",
       "subtype": "detective",

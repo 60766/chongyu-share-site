@@ -7,13 +7,21 @@ import SwiftUI
 struct ExploreCharacterCardView: View {
     let character: CharacterModel
     var action: () -> Void = {}
+    @State private var customImage: UIImage? = nil
     
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
                 // 角色头像
                 ZStack(alignment: .topLeading) {
-                    if UIImage(named: character.avatar) != nil {
+                    if let customImage = customImage {
+                        // 如果有自定义头像，显示自定义头像
+                        Image(uiImage: customImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 180)
+                            .clipped()
+                    } else if UIImage(named: character.avatar) != nil {
                         // 如果有图像，显示图像
                         Image(character.avatar)
                             .resizable()
@@ -92,6 +100,17 @@ struct ExploreCharacterCardView: View {
             .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         }
         .buttonStyle(PlainButtonStyle())
+        .onAppear {
+            // 尝试加载自定义头像
+            loadCustomAvatar()
+        }
+    }
+    
+    // 加载自定义头像
+    private func loadCustomAvatar() {
+        if let image = CustomAvatarLoader.shared.loadCustomAvatar(characterId: character.id, avatarName: character.avatar) {
+            self.customImage = image
+        }
     }
 }
 

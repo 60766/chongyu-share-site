@@ -1,0 +1,260 @@
+import SwiftUI
+
+/// 聊天消息气泡组件
+struct ChatBubble: View {
+    let message: ChatMessage
+    let character: CharacterModel
+    
+
+    
+    // 为不同虚拟角色设置不同的淡紫色背景，便于区分
+    private var bubbleColor: Color {
+        // 根据角色名称哈希值选择颜色，确保同一角色颜色一致
+        let colorIndex = abs(character.name.hashValue) % 4
+        let colors = [
+            Color(hex: "F3F1FF"), // 淡紫色
+            Color(hex: "F0F4FF"), // 淡蓝紫色
+            Color(hex: "FFFBF0"), // 淡黄紫色（偏黄）
+            Color(hex: "FFF0F5")  // 淡粉色
+        ]
+        return colors[colorIndex]
+    }
+    
+    // 优雅的名称颜色 - 使用统一的深色调确保可读性
+    private var nameColor: Color {
+        Color(hex: "6B7280") // 现代灰色，优雅且易读
+    }
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) { // 恢复适当的头像和消息间距
+            // 头像
+            Image(character.avatar)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 36, height: 36)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.white, lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+            
+            VStack(alignment: .leading, spacing: 3) {
+                // 角色名称
+                Text(character.name)
+                    .font(.system(size: 14, weight: .semibold)) // 增加字重和大小
+                    .foregroundColor(nameColor)
+                
+                // 消息内容或思考状态
+                if message.isThinking {
+                    HStack(spacing: 6) {
+                        Text("正在思考")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(Color(hex: "9CA3AF")) // 更淡的灰色
+                        
+                        // 动态省略号
+                        ThinkingDots()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        bubbleColor.opacity(0.6)
+                                                            .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(Color(hex: "D1D5DB"), lineWidth: 1)
+                                )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                } else {
+                    Text(message.content)
+                        .font(.system(size: 15))
+                        .lineSpacing(5) // 增加行间距提升可读性
+                        .padding(.horizontal, 14) // 稍微增加水平内边距
+                        .padding(.vertical, 10) // 增加垂直内边距
+                        .foregroundColor(.primary)
+                        .background(bubbleColor)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)) // 参考单人聊天的圆角大小
+                        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1) // 添加微妙阴影
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 4) // 测试：更明显的紧凑间距，让头像几乎贴边
+        .padding(.vertical, 4)
+    }
+}
+
+/// 思考中的动态省略号
+struct ThinkingDots: View {
+    @State private var animationStep = 0
+    @State private var timer: Timer? = nil
+    
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<3) { index in
+                Circle()
+                    .fill(Color(hex: "9CA3AF").opacity(animationStep == index ? 0.8 : 0.3))
+                    .frame(width: 5, height: 5) // 稍微增大尺寸
+                    .scaleEffect(animationStep == index ? 1.2 : 1.0) // 添加缩放动画
+                    .animation(.easeInOut(duration: 0.3), value: animationStep)
+            }
+        }
+        .onAppear {
+            // 创建定时器
+            timer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { _ in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    animationStep = (animationStep + 1) % 3
+                }
+            }
+        }
+        .onDisappear {
+            // 清理定时器
+            timer?.invalidate()
+            timer = nil
+        }
+    }
+}
+
+struct ChatBubble_Previews: PreviewProvider {
+    static var previews: some View {
+        VStack {
+            // 普通消息
+            ChatBubble(
+                message: ChatMessage(
+                    characterId: "einstein",
+                    content: "这是一条测试消息，用于展示气泡的样式和布局。",
+                    timestamp: Date()
+                ),
+                character: CharacterModel.sampleCharacters[0]
+            )
+            
+            // 思考中的消息
+            ChatBubble(
+                message: ChatMessage(
+                    characterId: "curie",
+                    content: "",
+                    timestamp: Date(),
+                    isThinking: true
+                ),
+                character: CharacterModel.sampleCharacters[4]
+            )
+        }
+        .previewLayout(.sizeThatFits)
+    }
+} 
+
+// MARK: - 用户消息气泡组件
+
+/// 用户消息气泡（用于显示用户的引导消息或参与消息）
+struct UserMessageBubble: View {
+    let message: ChatMessage
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 4) {
+                // 消息内容
+                Text(message.content)
+                    .font(.system(size: 15))
+                    .lineSpacing(5)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .foregroundColor(.white)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(hex: "B8B5FF"),
+                                Color(hex: "C7C4FF")
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: Color(hex: "C7C4FF").opacity(0.25), radius: 4, x: 0, y: 2)
+                
+                // 时间戳
+                Text(formatTime(message.timestamp))
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: UIScreen.main.bounds.width * 0.7, alignment: .trailing)
+            
+            // 用户头像
+            Image(systemName: "person.circle.fill")
+                .font(.system(size: 32))
+                .foregroundColor(Color(hex: "B8B5FF"))
+                .padding(.top, 2)
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 4)
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - 用户扮演角色消息气泡组件
+
+/// 用户扮演角色时的消息气泡（右侧显示，显示角色头像）
+struct UserRolePlayingBubble: View {
+    let message: ChatMessage
+    let character: CharacterModel
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 4) {
+                // 角色名称 + 扮演标识
+                HStack(spacing: 4) {
+                    Text("🎭")
+                        .font(.system(size: 11))
+                    Text(character.name)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color(hex: "A78DC7"))
+                }
+                
+                // 消息内容
+                Text(message.content)
+                    .font(.system(size: 15))
+                    .lineSpacing(5)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .foregroundColor(.white)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(hex: "8B7BCF"),
+                                Color(hex: "A78DC7")
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: Color(hex: "A78DC7").opacity(0.25), radius: 4, x: 0, y: 2)
+            }
+            .frame(maxWidth: UIScreen.main.bounds.width * 0.7, alignment: .trailing)
+            
+            // 角色头像
+            Image(character.avatar)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 36, height: 36)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.white, lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+        }
+        .padding(.horizontal, 4) // 测试：更明显的紧凑间距，让头像几乎贴边
+        .padding(.vertical, 4)
+    }
+} 

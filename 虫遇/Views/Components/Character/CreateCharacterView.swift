@@ -1,6 +1,5 @@
 import SwiftUI
 import PhotosUI
-import Combine // Added for Combine
 
 /**
  * 创建自定义角色视图
@@ -13,7 +12,6 @@ struct CreateCharacterView: View {
     // 网络服务
     private let aiNetworkService = AINetworkService.shared
     private let apiConfigManager = APIConfigManager.shared
-    private var cancellables = Set<AnyCancellable>()
     
     // 快速创建相关
     @State private var quickCreateMode: Bool = false
@@ -63,7 +61,7 @@ struct CreateCharacterView: View {
     
     // 验证状态
     private var isFormValid: Bool {
-        !name.isEmpty && !introduction.isEmpty && selectedImage != nil
+        !name.isEmpty && !introduction.isEmpty && !field.isEmpty
     }
     
     // 提交按钮是否禁用
@@ -73,133 +71,290 @@ struct CreateCharacterView: View {
     
     var body: some View {
         Form {
-            // 快速创建区域
-            Section(header: Text("快速创建")) {
-                Toggle("快速创建模式", isOn: Binding(
-                    get: { quickCreateMode },
-                    set: { 
-                        quickCreateMode = $0
-                        if !$0 {
-                            // 退出快速创建模式时清空搜索文本
-                            characterSearchText = ""
-                        }
-                    }
-                ))
-                
-                if quickCreateMode {
+            // 快速创建区域 - 优化布局和用户体验
+            Section(header: Text("快速创建").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
+                VStack(spacing: 8) {
+                    // 开关和搜索框放在同一行，节省空间
                     HStack {
-                        TextField("输入角色名称和出处，如'航海王中的索隆'", text: $characterSearchText)
+                        Toggle("", isOn: Binding(
+                            get: { quickCreateMode },
+                            set: { 
+                                quickCreateMode = $0
+                                if !$0 {
+                                    // 退出快速创建模式时清空搜索文本
+                                    characterSearchText = ""
+                                }
+                            }
+                        ))
+                        .labelsHidden()
+                        .frame(width: 50)
                         
-                        Button(action: {
-                            generateCharacterInfo()
-                        }) {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.blue)
+                        if quickCreateMode {
+                            // 搜索框和按钮
+                            HStack(spacing: 2) {
+                                TextField("航海王中的索隆", text: $characterSearchText)
+                                    .font(.system(size: 15))
+                                    .padding(.vertical, 2)
+                                
+                                Button(action: {
+                                    generateCharacterInfo()
+                                }) {
+                                    Image(systemName: "magnifyingglass")
+                                        .foregroundColor(Color(hex: "6A7FDB"))
+                                        .font(.system(size: 16, weight: .medium))
+                                }
+                                .disabled(characterSearchText.isEmpty || isGeneratingInfo)
+                                .padding(.horizontal, 6)
+                            }
+                            .padding(6)
+                            .background(Color(hex: "F2F2F7"))
+                            .cornerRadius(8)
+                        } else {
+                            Text("快速创建模式")
+                                .font(.system(size: 15))
+                                .foregroundColor(.primary)
                         }
-                        .disabled(characterSearchText.isEmpty || isGeneratingInfo)
                     }
                     
-                    if isGeneratingInfo {
-                        HStack {
-                            Spacer()
-                            ProgressView()
-                                .padding(.vertical, 10)
-                            Spacer()
+                    // 只在快速创建模式下显示提示和状态
+                    if quickCreateMode {
+                        // 生成状态和错误信息
+                        if isGeneratingInfo {
+                                HStack {
+                                Spacer()
+                                ProgressView()
+                                    .padding(.vertical, 4)
+                                Text("正在生成角色信息...")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                    .padding(.leading, 8)
+                                    Spacer()
+                                }
+                            .padding(.vertical, 4)
+                            .background(Color(hex: "F2F2F7").opacity(0.5))
+                            .cornerRadius(6)
+                        } else if let error = generationError {
+                            Text(error)
+                                .foregroundColor(.red)
+                                .font(.footnote)
+                                .padding(.vertical, 2)
+                        } else if !name.isEmpty && !characterSearchText.isEmpty {
+                            // 显示填充成功的提示
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                    .font(.system(size: 14))
+                                Text("已自动填充角色信息")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.green)
+                                Spacer()
+                            }
+                            .padding(.vertical, 4)
+                        } else {
+                            // 简化的提示，只占一行
+                            HStack {
+                                Text("提示: 输入如\"航海王中的索隆\"或\"爱因斯坦\"")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                
+                                Button(action: {
+                                    showingQuickCreateHelp.toggle()
+                                }) {
+                                    Image(systemName: "questionmark.circle")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
+                                }
+                                .sheet(isPresented: $showingQuickCreateHelp) {
+                                    QuickCreateHelpView()
+                                }
+                            }
+                            .padding(.vertical, 2)
                         }
-                    } else if let error = generationError {
-                        Text(error)
-                            .foregroundColor(.red)
-                            .font(.footnote)
-                            .padding(.vertical, 5)
-                    }
-                    
-                    VStack(alignment: .leading) {
-                        Text("提示：")
-                            .font(.footnote)
-                            .foregroundColor(.gray)
-                        Text("输入角色名称和出处，例如：")
-                            .font(.footnote)
-                            .foregroundColor(.gray)
-                        Text("• 航海王中的索隆")
-                            .font(.footnote)
-                            .foregroundColor(.gray)
-                        Text("• 钢铁侠托尼·斯塔克")
-                            .font(.footnote)
-                            .foregroundColor(.gray)
-                        Text("• 哈利·波特")
-                            .font(.footnote)
-                            .foregroundColor(.gray)
-                        Text("• 科学家爱因斯坦")
-                            .font(.footnote)
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 5)
-                    
-                    Button(action: {
-                        showingQuickCreateHelp.toggle()
-                    }) {
-                        Label("如何使用快速创建", systemImage: "questionmark.circle")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                    }
-                    .sheet(isPresented: $showingQuickCreateHelp) {
-                        QuickCreateHelpView()
                     }
                 }
             }
             
-            // 基本信息区域
-            Section(header: Text("基本信息")) {
-                TextField("角色名称 *", text: $name)
-                TextField("职业/身份 *", text: $field)
-                TextField("地区/国家", text: $region)
-                
-                TextEditor(text: $introduction)
-                    .frame(height: 100)
-                    .overlay(
-                        VStack {
-                            if introduction.isEmpty {
-                                HStack {
-                                    Text("角色简介 *")
-                                        .foregroundColor(.gray)
-                                        .padding(.leading, 5)
-                                    Spacer()
-                                }
-                                Spacer()
-                            }
+            // 形象 - 移到基本信息前面，优化设计
+            Section(header: Text("形象").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
+                VStack(alignment: .center, spacing: 10) {
+                    // 头像预览 - 调整大小和样式
+                    if selectedImage != nil {
+                        Image(uiImage: selectedImage!)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 80, height: 80)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color(hex: "6A7FDB").opacity(0.6), lineWidth: 2))
+                            .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                            .padding(.vertical, 5)
+                    } else {
+                        ZStack {
+                            Circle()
+                                .fill(Color(hex: "F2F2F7"))
+                                .frame(width: 80, height: 80)
+                            
+                            Image(systemName: "person.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 40, height: 40)
+                                .foregroundColor(Color(hex: "BDBDBD"))
                         }
-                    )
+                        .padding(.vertical, 5)
+                    }
+                    
+                    // 选择头像按钮 - 更现代化的设计
+                    Button(action: {
+                        isShowingImagePicker = true
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "photo")
+                                .font(.system(size: 14))
+                            Text(selectedImage != nil ? "更换头像" : "选择角色头像")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(Color(hex: "6A7FDB"))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(hex: "6A7FDB").opacity(0.1))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color(hex: "6A7FDB").opacity(0.3), lineWidth: 1)
+                        )
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 5)
+                .sheet(isPresented: $isShowingImagePicker) {
+                    CharacterImagePicker(selectedImage: $selectedImage, isPresented: $isShowingImagePicker, avatarSelected: .constant(false))
+                }
             }
             
-            // 角色分类
-            Section(header: Text("角色分类")) {
+            // 基本信息区域 - 优化设计
+            Section(header: Text("基本信息").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
+                // 角色名称 - 添加图标和样式
+                HStack(spacing: 10) {
+                    Image(systemName: "person.text.rectangle")
+                        .foregroundColor(Color(hex: "6A7FDB"))
+                        .font(.system(size: 16))
+                    TextField("角色名称 *", text: $name)
+                        .font(.system(size: 15))
+                }
+                .padding(.vertical, 4)
+                
+                // 职业/身份 - 添加图标和样式
+                HStack(spacing: 10) {
+                    Image(systemName: "briefcase")
+                        .foregroundColor(Color(hex: "6A7FDB"))
+                        .font(.system(size: 16))
+                    TextField("职业/身份 *", text: $field)
+                        .font(.system(size: 15))
+                }
+                .padding(.vertical, 4)
+                
+                // 地区/国家 - 添加图标和样式
+                HStack(spacing: 10) {
+                    Image(systemName: "map")
+                        .foregroundColor(Color(hex: "6A7FDB"))
+                        .font(.system(size: 16))
+                    TextField("地区/国家", text: $region)
+                        .font(.system(size: 15))
+                }
+                .padding(.vertical, 4)
+                
+                // 角色简介 - 优化样式
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "text.quote")
+                            .foregroundColor(Color(hex: "6A7FDB"))
+                            .font(.system(size: 16))
+                        Text("角色简介 *")
+                            .foregroundColor(introduction.isEmpty ? .gray : .primary)
+                            .font(.system(size: 15))
+                    }
+                    .padding(.bottom, 2)
+                    
+                    TextEditor(text: $introduction)
+                        .frame(height: 100)
+                        .padding(4)
+                        .background(Color(hex: "F2F2F7").opacity(0.5))
+                        .cornerRadius(8)
+                }
+                .padding(.vertical, 4)
+            }
+            
+            // 角色分类 - 优化设计
+            Section(header: Text("角色分类").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
+                VStack(spacing: 10) {
+                    // 角色类型选择器
+                    HStack(spacing: 10) {
+                        Image(systemName: "tag")
+                            .foregroundColor(Color(hex: "6A7FDB"))
+                            .font(.system(size: 16))
+                        
                 Picker("角色类型", selection: $selectedCategory) {
                     ForEach(selectableCategories, id: \.self) { category in
                         Text(category.displayName).tag(category)
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
+                    }
+                    .padding(.vertical, 4)
                 
+                    // 选中类型显示
                 HStack {
-                    Text("选中类型")
                     Spacer()
                     Text(selectedCategory.displayName)
+                            .font(.system(size: 14, weight: .medium))
                         .foregroundColor(selectedCategory.color)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(selectedCategory.color.opacity(0.15))
                         )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(selectedCategory.color.opacity(0.3), lineWidth: 1)
+                            )
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
                 }
             }
             
-            // 时间信息
-            Section(header: Text("时间信息")) {
+            // 时间信息 - 优化设计
+            Section(header: Text("时间信息").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
+                // 出生年份
+                HStack(spacing: 10) {
+                    Image(systemName: "calendar")
+                        .foregroundColor(Color(hex: "6A7FDB"))
+                        .font(.system(size: 16))
                 TextField("出生年份", text: $birthYear)
+                        .font(.system(size: 15))
                     .keyboardType(.numberPad)
+                }
+                .padding(.vertical, 4)
+                
+                // 逝世年份
+                HStack(spacing: 10) {
+                    Image(systemName: "calendar.badge.clock")
+                        .foregroundColor(Color(hex: "6A7FDB"))
+                        .font(.system(size: 16))
                 TextField("逝世年份（如适用）", text: $deathYear)
+                        .font(.system(size: 15))
                     .keyboardType(.numberPad)
+                }
+                .padding(.vertical, 4)
+                
+                // 时代/世界
+                HStack(spacing: 10) {
+                    Image(systemName: "globe")
+                        .foregroundColor(Color(hex: "6A7FDB"))
+                        .font(.system(size: 16))
                 
                 Picker("时代/世界", selection: $selectedEraIndex) {
                     ForEach(0..<eras.count, id: \.self) { index in
@@ -207,81 +362,70 @@ struct CreateCharacterView: View {
                     }
                 }
             }
-            
-            // 形象
-            Section(header: Text("形象")) {
-                Button(action: {
-                    isShowingImagePicker = true
-                }) {
-                    HStack {
-                        Text(selectedImage != nil ? "更换头像" : "选择角色头像")
-                        Spacer()
-                        if selectedImage != nil {
-                            Image(uiImage: selectedImage!)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 40, height: 40)
-                                .clipShape(Circle())
-                        } else {
-                            Image(systemName: "photo")
-                                .foregroundColor(.blue)
-                        }
-                    }
-                }
-                .sheet(isPresented: $isShowingImagePicker) {
-                    CharacterImagePicker(selectedImage: $selectedImage, isPresented: $isShowingImagePicker, avatarSelected: .constant(false))
-                }
+                .padding(.vertical, 4)
             }
             
-            // 角色特点
-            Section(header: Text("角色特点（每项用逗号分隔多个内容）")) {
+            // 角色特点 - 优化设计
+            Section(header: Text("角色特点").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
+                // 名言/经典台词
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "quote.bubble")
+                            .foregroundColor(Color(hex: "6A7FDB"))
+                            .font(.system(size: 16))
+                        Text("名言/经典台词")
+                            .foregroundColor(keyThoughts.isEmpty ? .gray : .primary)
+                            .font(.system(size: 15))
+                }
+                    .padding(.bottom, 2)
+                    
                 TextEditor(text: $keyThoughts)
-                    .frame(height: 80)
-                    .overlay(
-                        VStack {
-                            if keyThoughts.isEmpty {
-                                HStack {
-                                    Text("名言/经典台词")
-                                        .foregroundColor(.gray)
-                                        .padding(.leading, 5)
-                                    Spacer()
+                        .frame(height: 70)
+                        .padding(4)
+                        .background(Color(hex: "F2F2F7").opacity(0.5))
+                        .cornerRadius(8)
+                }
+                .padding(.vertical, 4)
+                
+                // 主要成就
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "trophy")
+                            .foregroundColor(Color(hex: "6A7FDB"))
+                            .font(.system(size: 16))
+                        Text("主要成就（用逗号分隔）")
+                            .foregroundColor(achievements.isEmpty ? .gray : .primary)
+                            .font(.system(size: 15))
                                 }
-                                Spacer()
-                            }
-                        }
-                    )
+                    .padding(.bottom, 2)
                 
                 TextEditor(text: $achievements)
-                    .frame(height: 80)
-                    .overlay(
-                        VStack {
-                            if achievements.isEmpty {
-                                HStack {
-                                    Text("主要成就")
-                                        .foregroundColor(.gray)
-                                        .padding(.leading, 5)
-                                    Spacer()
+                        .frame(height: 70)
+                        .padding(4)
+                        .background(Color(hex: "F2F2F7").opacity(0.5))
+                        .cornerRadius(8)
+                }
+                .padding(.vertical, 4)
+                
+                // 主要作品
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "book")
+                            .foregroundColor(Color(hex: "6A7FDB"))
+                            .font(.system(size: 16))
+                        Text("主要作品（用逗号分隔）")
+                            .foregroundColor(mainWorks.isEmpty ? .gray : .primary)
+                            .font(.system(size: 15))
                                 }
-                                Spacer()
-                            }
-                        }
-                    )
+                    .padding(.bottom, 2)
                 
                 TextEditor(text: $mainWorks)
-                    .frame(height: 80)
-                    .overlay(
-                        VStack {
-                            if mainWorks.isEmpty {
-                                HStack {
-                                    Text("主要作品")
-                                        .foregroundColor(.gray)
-                                        .padding(.leading, 5)
-                                    Spacer()
-                                }
-                                Spacer()
-                            }
-                        }
-                    )
+                        .frame(height: 70)
+                        .padding(4)
+                        .background(Color(hex: "F2F2F7").opacity(0.5))
+                        .cornerRadius(8)
+                }
+                .padding(.vertical, 4)
             }
         }
         .navigationTitle("创建自定义角色")
@@ -291,6 +435,7 @@ struct CreateCharacterView: View {
                 Button("取消") {
                     presentationMode.wrappedValue.dismiss()
                 }
+                .foregroundColor(Color(hex: "6A7FDB"))
             }
             
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -301,6 +446,7 @@ struct CreateCharacterView: View {
                 }
                 .disabled(isSubmitDisabled)
                 .fontWeight(.bold)
+                .foregroundColor(isSubmitDisabled ? .gray : Color(hex: "6A7FDB"))
             }
         }
         .alert(isPresented: $showingError) {
@@ -359,23 +505,18 @@ struct CreateCharacterView: View {
         // 生成唯一ID
         let characterId = "custom_\(UUID().uuidString.prefix(8))"
         
-        // 处理头像 - 修复：使用默认头像而不是尝试生成自定义头像
-        let avatarName: String
-        if let _ = selectedImage {
-            // 如果用户选择了头像，使用默认头像命名方式，但不尝试保存图片
-            // 头像将会在后面的步骤中使用更安全的方法处理
-            avatarName = "default_avatar"
-        } else {
-            // 如果没有选择头像，使用默认头像
-            avatarName = "default_avatar"
-        }
+        // 处理头像 - 使用默认头像
+        let avatarName = "default_avatar"
         
-        print("尝试创建角色: \(name)")
+        // 处理角色名称，优化显示效果
+        let optimizedName = optimizeCharacterName(name)
+        
+        print("尝试创建角色: \(optimizedName)")
         
         // 创建新角色 - 确保所有必填字段都有值，减少可选参数
         let newCharacter = CharacterModel(
             id: characterId,
-            name: name,
+            name: optimizedName,  // 使用优化后的名称
             avatar: avatarName,
             era: eras[selectedEraIndex],
             profession: field,
@@ -394,9 +535,12 @@ struct CreateCharacterView: View {
         // 如果用户选择了头像，安全地保存头像
         if let image = selectedImage {
             // 使用更可靠的方法保存图片
+            print("📸 CreateCharacterView - 开始保存用户选择的头像")
             DispatchQueue.global(qos: .background).async {
                 self.safelySaveImage(image, forCharacterId: characterId)
             }
+        } else {
+            print("⚠️ CreateCharacterView - 用户未选择头像，使用默认头像")
         }
         
         // 发送通知，通知其他视图更新
@@ -421,7 +565,7 @@ struct CreateCharacterView: View {
         let prompt = """
         用户想要创建一个角色: \(characterSearchText)
         请提供这个角色的详细信息，包括：
-        1. 全名
+        1. 全名（优先使用中文名称）
         2. 职业/身份
         3. 地区/国家
         4. 简短介绍（100字以内）
@@ -432,7 +576,7 @@ struct CreateCharacterView: View {
         
         以JSON格式返回，格式如下：
         {
-          "name": "角色全名",
+          "name": "角色全名（如有英文名称，请放在括号内）",
           "field": "职业/身份",
           "region": "地区/国家",
           "introduction": "简短介绍",
@@ -445,62 +589,91 @@ struct CreateCharacterView: View {
         只返回JSON数据，不要有其他任何文字。
         """
         
-        // 调用API获取角色信息
+        // 使用URLSession直接调用API，避免使用Combine
         Task {
             do {
-                // 使用sendRequest方法替代fetchAIResponse
-                let responsePublisher = aiNetworkService.sendRequest(prompt: prompt)
-                
-                // 使用Combine异步等待结果
-                let response = try await withCheckedThrowingContinuation { continuation in
-                    responsePublisher
-                        .sink(
-                            receiveCompletion: { completion in
-                                switch completion {
-                                case .finished:
-                                    break
-                                case .failure(let error):
-                                    continuation.resume(throwing: error)
-                                }
-                            },
-                            receiveValue: { value in
-                                continuation.resume(returning: value)
-                            }
-                        )
-                        .store(in: &cancellables)
+                // 获取API配置
+                guard let apiKey = apiConfigManager.apiKey else {
+                    await MainActor.run {
+                        generationError = "未设置API密钥"
+                        isGeneratingInfo = false
+                    }
+                    return
                 }
                 
-                // 解析JSON响应
-                if let jsonData = response.data(using: .utf8) {
-                    do {
-                        let decoder = JSONDecoder()
-                        let characterInfo = try decoder.decode(CharacterInfo.self, from: jsonData)
-                        
-                        // 更新UI - 必须在主线程
-                        await MainActor.run {
-                            // 填充表单
-                            self.name = characterInfo.name
-                            self.field = characterInfo.field
-                            self.region = characterInfo.region
-                            self.introduction = characterInfo.introduction
-                            self.achievements = characterInfo.achievements
-                            self.mainWorks = characterInfo.mainWorks
+                // 创建URL请求
+                guard let url = URL(string: apiConfigManager.deepSeekEndpoint) else {
+                    await MainActor.run {
+                        generationError = "无效的API URL"
+                        isGeneratingInfo = false
+                    }
+                    return
+                }
+                
+                // 构建请求体
+                let requestBody: [String: Any] = [
+                    "model": apiConfigManager.modelName,
+                    "messages": [
+                        ["role": "system", "content": "你是一个角色信息生成助手，请根据用户的描述生成角色信息。"],
+                        ["role": "user", "content": prompt]
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 1000,
+                    "top_p": 0.95,
+                    "stream": false
+                ]
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+                request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+                
+                // 发送请求
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                // 检查HTTP响应
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await MainActor.run {
+                        generationError = "无效的响应"
+                        isGeneratingInfo = false
+                    }
+                    return
+                }
+                
+                // 检查状态码
+                if httpResponse.statusCode != 200 {
+                    await MainActor.run {
+                        generationError = "HTTP错误: \(httpResponse.statusCode)"
+                        isGeneratingInfo = false
+                    }
+                    return
+                }
+                
+                // 解析响应
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let choices = json["choices"] as? [[String: Any]],
+                   let firstChoice = choices.first,
+                   let message = firstChoice["message"] as? [String: Any],
+                   let content = message["content"] as? String {
+                    
+                    // 解析角色信息JSON
+                    if let jsonData = content.data(using: .utf8) {
+                        do {
+                            let decoder = JSONDecoder()
+                            let characterInfo = try decoder.decode(CharacterInfo.self, from: jsonData)
                             
-                            // 设置分类
-                            if let category = mapStringToCategory(characterInfo.category) {
-                                self.selectedCategory = category
+                            // 使用新的方法填充表单
+                            await fillFormWithCharacterInfo(characterInfo)
+                        } catch {
+                            await MainActor.run {
+                                self.generationError = "无法解析角色信息: \(error.localizedDescription)"
+                                self.isGeneratingInfo = false
                             }
-                            
-                            // 设置时代
-                            if let eraIndex = mapStringToEraIndex(characterInfo.era) {
-                                self.selectedEraIndex = eraIndex
-                            }
-                            
-                            self.isGeneratingInfo = false
                         }
-                    } catch {
+                    } else {
                         await MainActor.run {
-                            self.generationError = "无法解析角色信息: \(error.localizedDescription)"
+                            self.generationError = "无法解析API响应"
                             self.isGeneratingInfo = false
                         }
                     }
@@ -565,18 +738,48 @@ struct CreateCharacterView: View {
     
     // 安全地保存图像
     private func safelySaveImage(_ image: UIImage, forCharacterId: String) {
-        guard let data = image.jpegData(compressionQuality: 0.7) else { 
-            print("无法将图像转换为JPEG数据")
+        guard let data = image.jpegData(compressionQuality: 0.8) else { 
+            print("❌ CreateCharacterView - 无法将图像转换为JPEG数据")
             return 
         }
         
         do {
+            // 获取文档目录
             let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            
+            // 确保目录存在
+            if !FileManager.default.fileExists(atPath: documentsDirectory.path) {
+                try FileManager.default.createDirectory(at: documentsDirectory, withIntermediateDirectories: true)
+            }
+            
+            // 创建保存路径
             let fileURL = documentsDirectory.appendingPathComponent("\(forCharacterId).jpg")
+            
+            // 写入数据
             try data.write(to: fileURL)
-            print("图像安全保存成功: \(fileURL.path)")
+            print("✅ CreateCharacterView - 头像保存成功: \(fileURL.path)")
+            
+            // 验证文件是否已写入
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                if let savedData = try? Data(contentsOf: fileURL),
+                   let _ = UIImage(data: savedData) {
+                    print("✅ CreateCharacterView - 头像验证成功")
+                } else {
+                    print("⚠️ CreateCharacterView - 头像已保存但验证失败")
+                }
+            } else {
+                print("⚠️ CreateCharacterView - 头像保存后文件不存在")
+            }
+            
+            // 列出目录中的所有文件
+            if let files = try? FileManager.default.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil) {
+                print("📁 CreateCharacterView - 保存后文档目录中的文件:")
+                for file in files {
+                    print("   - \(file.lastPathComponent)")
+                }
+            }
         } catch {
-            print("保存图像失败: \(error)")
+            print("❌ CreateCharacterView - 保存头像失败: \(error)")
         }
     }
 
@@ -587,8 +790,22 @@ struct CreateCharacterView: View {
     
     // 保存角色到UserDefaults
     private func saveCharacterToUserDefaults(_ character: CharacterModel, achievements: [String], mainWorks: [String]) {
-        // 获取现有的自定义角色列表
-        var customCharacters = UserDefaults.standard.array(forKey: "CustomCharacters") as? [[String: Any]] ?? []
+        // 从CustomCharactersData中获取现有的自定义角色列表
+        var customCharacters: [[String: Any]] = []
+        
+        // 尝试加载现有数据
+        if let data = UserDefaults.standard.data(forKey: "CustomCharactersData") {
+            do {
+                if let existingCharacters = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                    customCharacters = existingCharacters
+                    print("成功加载现有角色数据，共\(customCharacters.count)个角色")
+                }
+            } catch {
+                print("加载现有角色数据失败: \(error)")
+                // 如果加载失败，使用空数组
+                customCharacters = []
+            }
+        }
         
         // 将新角色转换为字典 - 确保所有值都是属性列表兼容的
         var characterDict: [String: Any] = [
@@ -619,6 +836,7 @@ struct CreateCharacterView: View {
         
         // 添加到列表
         customCharacters.append(characterDict)
+        print("添加新角色后，共有\(customCharacters.count)个角色")
         
         // 确保所有嵌套数据都是属性列表兼容的
         let propertyListCustomCharacters = convertToPropertyList(customCharacters)
@@ -653,6 +871,87 @@ struct CreateCharacterView: View {
         } else {
             return String(describing: value) // 将其他类型转换为字符串
         }
+    }
+
+    // 从API响应填充表单
+    private func fillFormWithCharacterInfo(_ characterInfo: CharacterInfo) async {
+        await MainActor.run {
+            // 优化名称显示
+            let optimizedName = optimizeCharacterName(characterInfo.name)
+            
+            // 填充表单
+            self.name = optimizedName
+            self.field = characterInfo.field
+            self.region = characterInfo.region
+            self.introduction = characterInfo.introduction
+            self.achievements = characterInfo.achievements
+            self.mainWorks = characterInfo.mainWorks
+            
+            // 设置分类
+            if let category = mapStringToCategory(characterInfo.category) {
+                self.selectedCategory = category
+            }
+            
+            // 设置时代
+            if let eraIndex = mapStringToEraIndex(characterInfo.era) {
+                self.selectedEraIndex = eraIndex
+            }
+            
+            self.isGeneratingInfo = false
+        }
+    }
+
+    // 优化角色名称显示效果
+    private func optimizeCharacterName(_ originalName: String) -> String {
+        // 1. 检查是否有括号，提取括号前的内容
+        if let bracketRange = originalName.range(of: "（"), let startIndex = originalName.indices.first {
+            let nameBeforeBracket = String(originalName[startIndex..<bracketRange.lowerBound])
+            return nameBeforeBracket.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        if let bracketRange = originalName.range(of: "("), let startIndex = originalName.indices.first {
+            let nameBeforeBracket = String(originalName[startIndex..<bracketRange.lowerBound])
+            return nameBeforeBracket.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        // 2. 如果有中英文混合，优先提取中文部分
+        let chineseRange = originalName.range(of: "[\\p{Han}]+", options: .regularExpression)
+        if let range = chineseRange {
+            // 提取中文部分并添加上下文
+            let chineseStartIndex = originalName.startIndex
+            
+            // 如果中文部分在名字开头，则取到第一个非中文字符或结束
+            if range.lowerBound == originalName.startIndex {
+                // 找到第一个非中文字符的位置
+                var endIndex = range.upperBound
+                while endIndex < originalName.endIndex {
+                    let currentChar = String(originalName[endIndex])
+                    if !containsChineseCharacters(currentChar) {
+                        break
+                    }
+                    endIndex = originalName.index(after: endIndex)
+                }
+                return String(originalName[chineseStartIndex..<endIndex])
+            }
+            
+            // 如果中文在名字中间或结尾，取中文部分
+            return String(originalName[range])
+        }
+        
+        // 3. 处理名称长度，如果过长则截断
+        if originalName.count > 12 {
+            let endIndex = originalName.index(originalName.startIndex, offsetBy: 12)
+            return String(originalName[..<endIndex]) + "..."
+        }
+        
+        // 4. 默认直接返回原名称
+        return originalName
+    }
+    
+    // 检查字符串是否包含中文字符
+    private func containsChineseCharacters(_ text: String) -> Bool {
+        let pattern = "[\\p{Han}]"
+        return text.range(of: pattern, options: .regularExpression) != nil
     }
 }
 

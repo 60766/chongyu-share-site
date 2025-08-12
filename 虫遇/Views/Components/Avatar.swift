@@ -19,6 +19,9 @@ struct Avatar: View {
     // 边框宽度
     var borderWidth: CGFloat = 1
     
+    // 自定义头像
+    @State private var customImage: UIImage? = nil
+    
     // 头像服务
     private let avatarService = CharacterAvatarService.shared
     
@@ -44,9 +47,27 @@ struct Avatar: View {
         return result
     }
     
+    // 判断是否为自定义角色
+    private var isCustomCharacter: Bool {
+        return cleanCharacterId.hasPrefix("custom_")
+    }
+    
     var body: some View {
         Group {
-            if isKnownCharacter {
+            if let customImage = customImage {
+                // 显示从文档目录加载的自定义头像
+                Image(uiImage: customImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(borderColor, lineWidth: borderWidth)
+                    )
+                    .contentShape(Circle()) // 确保头像可点击
+                    .allowsHitTesting(true) // 明确允许点击事件
+            } else if isKnownCharacter {
                 // 已知角色交由服务处理
                 avatarService.getAvatarView(for: cleanCharacterId, name: name, category: category, size: size)
                     .onAppear {
@@ -73,6 +94,11 @@ struct Avatar: View {
         }
         .onAppear {
             print("🔄 Avatar - 组件加载: URL=\(url), name=\(name), isKnownCharacter=\(isKnownCharacter)")
+            
+            // 尝试加载自定义头像
+            if isCustomCharacter || url == "default_avatar" {
+                loadCustomAvatar()
+            }
         }
     }
     
@@ -207,6 +233,15 @@ struct Avatar: View {
         }
         .onAppear {
             print("⚠️ Avatar - 使用占位字母头像: \(initialLetter) (来自: \(name.isEmpty ? url : name)), 颜色: \(color)")
+        }
+    }
+    
+    // 从文档目录加载自定义头像
+    private func loadCustomAvatar() {
+        // 对于自定义角色，尝试从文档目录加载头像
+        let characterId = cleanCharacterId
+        if let image = CustomAvatarLoader.shared.loadCustomAvatar(characterId: characterId, avatarName: url) {
+            self.customImage = image
         }
     }
 }

@@ -24,6 +24,7 @@ struct ExploreView: View {
     @State private var selectedEra: String? = nil
     /// 是否显示创建角色视图
     @State private var showingCreateCharacter = false
+    @State private var showingMultiPersonChatSetup = false // 新增状态
     
     // TabBar管理器
     @ObservedObject private var tabBarManager = TabBarManager.shared
@@ -32,7 +33,7 @@ struct ExploreView: View {
     enum TabType: String, CaseIterable {
         case all = "全部"
         case popular = "热门"
-        case recent = "最近"
+        case manage = "管理" // 将"最近"改为"管理"
     }
     
     // 当前选中的选项卡
@@ -43,6 +44,23 @@ struct ExploreView: View {
     
     // 是否显示我的关注角色
     @State private var showingFavorites: Bool = false
+    
+    // 是否处于角色管理模式
+    @State private var isManagingCharacters: Bool = false
+    
+    // 添加确认删除对话框状态
+    @State private var showingDeleteConfirmation: Bool = false
+    @State private var characterToDelete: CharacterModel? = nil
+    
+    // 添加确认隐藏对话框状态
+    @State private var showingHideConfirmation: Bool = false
+    @State private var characterToHide: CharacterModel? = nil
+    
+    // 被隐藏的预设角色IDs
+    @State private var hiddenCharacters: [String] = []
+    
+    // 置顶角色的IDs
+    @State private var pinnedCharacters: [String] = []
     
     // 我的关注角色列表
     @State private var favoriteCharacters: [String] = [] // 存储角色ID
@@ -165,17 +183,17 @@ struct ExploreView: View {
                         VStack(alignment: .leading, spacing: 16) { // 调整整体间距为16pt
                             // 搜索框下方添加两个主要按钮 - 优化设计使其更突出
                             HStack(spacing: 12) { // 调整按钮之间的间距为12pt
-                                // 多人对话按钮 - 精致化设计
+                                // 梦幻联动按钮 - 精致化设计
                                 Button(action: {
-                                    // 处理多人对话功能
-                                    // TODO: 实现多人对话功能
+                                    // 处理梦幻联动功能
+                                    showingMultiPersonChatSetup = true
                                 }) {
                                     HStack(spacing: 8) {
                                         Image(systemName: "bubble.left.and.bubble.right.fill")
                                             .font(.system(size: 15, weight: .medium))
                                             .foregroundColor(Color(red: 160/255, green: 130/255, blue: 250/255))
                                         
-                                        Text("多人对话")
+                                        Text("梦幻联动")
                                             .font(.system(size: 15, weight: .semibold))
                                             .foregroundColor(.primary)
                                     }
@@ -389,16 +407,21 @@ struct ExploreView: View {
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 2)
                             
-                            // 选项卡视图 - 移到横线下方
+                            // 恢复底部标签栏的原有样式和效果
+                            // 底部标签栏 - 优化标签设计
                             HStack(spacing: 0) {
-                                ForEach(TabType.allCases, id: \.self) { tab in
+                                ForEach([TabType.all, .popular, .manage], id: \.self) { tab in
                                     Button(action: {
-                                        withAnimation(.easeInOut) {
-                                            selectedTab = tab
-                                            // 只有在非特殊模式下才重置显示模式
-                                            // 保持最近互动和我的关注模式下的显示状态
-                                            if !showingRecentInteractions && !showingFavorites {
-                                                resetDisplayMode()
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            self.selectedTab = tab
+                                            
+                                            // 如果点击"管理"标签，则切换管理模式
+                                            if tab == .manage {
+                                                // 直接切换管理模式，不改变当前分类
+                                                isManagingCharacters.toggle()
+                                            } else {
+                                                // 退出管理模式
+                                                isManagingCharacters = false
                                             }
                                         }
                                     }) {
@@ -411,7 +434,7 @@ struct ExploreView: View {
                                             }
                                             
                                             Text(tab.rawValue)
-                                                .font(.system(size: 13, weight: selectedTab == tab ? .semibold : .regular)) // 减小字号
+                                                .font(.system(size: 13, weight: selectedTab == tab ? .semibold : .regular))
                                                 .foregroundColor(selectedTab == tab ? Color(.label) : Color(.systemGray2))
                                                 .padding(.horizontal, 12) // 减小水平内边距
                                         }
@@ -420,9 +443,6 @@ struct ExploreView: View {
                                     .buttonStyle(PlainButtonStyle())
                                 }
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 0)
-                            .padding(.bottom, 1) // 减小底部间距，让选项卡更靠近卡片
                             
                             // 推荐角色 - 纵向网格布局
                             VStack(alignment: .leading, spacing: 0) {
@@ -510,18 +530,21 @@ struct ExploreView: View {
                                     }
                                 } else if selectedCategory == .all {
                                     // 准备数据
-                                    let characters = displayCharacters.prefix(12).map { $0 }
+                                    // 注释掉未使用的变量
+                                    // let characters = displayCharacters.prefix(12).map { $0 }
                                     
                                     // 角色卡片网格，不显示标题行
                                     LazyVGrid(
                                         columns: threeColumns,
                                         alignment: .center,
-                                        spacing: 8 // 进一步减小卡片垂直间距
+                                        spacing: 8
                                     ) {
-                                        ForEach(Array(characters.enumerated()), id: \.element.id) { index, character in
+                                        ForEach(displayCharacters, id: \.id) { character in
                                             improvedCharacterCard(for: character)
                                                 .frame(minWidth: 0, maxWidth: .infinity)
-                                                .id(character.id) // 确保每个卡片有唯一ID
+                                                .id(character.id)
+                                                // 添加动画修饰符
+                                                .animation(.easeInOut, value: displayCharacters.map { $0.id })
                                         }
                                     }
                                     .padding(.horizontal, 16)
@@ -619,10 +642,17 @@ struct ExploreView: View {
                     }
             }
         }
+        .fullScreenCover(isPresented: $showingMultiPersonChatSetup) { // 改为fullScreenCover
+            NavigationView { // 包裹NavigationView
+                MultiPersonChatSetupView()
+            }
+        }
         .onAppear {
             loadAllCharacters()
             loadRecentInteractions() // 加载最近互动数据
             loadFavoriteCharacters() // 加载关注列表
+            loadHiddenCharacters() // 加载隐藏角色
+            loadPinnedCharacters() // 加载置顶角色列表
             // 确保TabBar可见
             tabBarManager.ensureTabBarVisible()
             
@@ -648,47 +678,113 @@ struct ExploreView: View {
     // 加载所有角色
     private func loadAllCharacters() {
         // 加载预定义角色
-        self.characters = CharacterModel.getAllCharacters()
+        var allCharacters = CharacterModel.getAllCharacters()
         
         // 加载用户创建的角色
         loadUserCharacters()
         
         // 将用户创建的角色也添加到主角色列表中
-        self.characters.append(contentsOf: userCharacters)
+        allCharacters.append(contentsOf: userCharacters)
+        
+        // 更新角色列表
+        self.characters = allCharacters
         
         print("已加载 \(characters.count) 个角色，其中用户创建的角色有 \(userCharacters.count) 个")
     }
     
-    // 创建改进的角色卡片视图
+    // 完整重新实现improvedCharacterCard方法
     private func improvedCharacterCard(for character: CharacterModel) -> some View {
-        ImprovedCharacterCardView(character: character)
-            .onTap {
-                // 导航到角色详情页
-                navigateToCharacterDetail = character
-            }
-            .onChatTap {
-                // 添加聊天互动记录
-                addInteraction(for: character, type: .chat)
-                
-                // 导航到聊天页面
-                navigateToChatView = character
-            }
+        if isManagingCharacters {
+            // 管理模式，使用新的CharacterManagementView
+            return AnyView(
+                CharacterManagementView(
+                    character: character,
+                    isUserCreated: character.id.hasPrefix("custom_"),
+                    onDeleteOrHide: {
+                        // 根据角色类型选择适当的操作
+                        if character.id.hasPrefix("custom_") {
+                            // 用户创建的角色 - 删除
+                            characterToDelete = character
+                            showingDeleteConfirmation = true
+                        } else {
+                            // 预设角色 - 隐藏
+                            characterToHide = character
+                            showingHideConfirmation = true
+                        }
+                    }
+                )
+                .alert(isPresented: Binding<Bool>(
+                    get: { 
+                        character.id.hasPrefix("custom_") ? showingDeleteConfirmation : showingHideConfirmation 
+                    },
+                    set: { newValue in
+                        if character.id.hasPrefix("custom_") {
+                            showingDeleteConfirmation = newValue
+                        } else {
+                            showingHideConfirmation = newValue
+                        }
+                    }
+                )) {
+                    if character.id.hasPrefix("custom_") {
+                        // 用户创建的角色 - 删除确认
+                        return Alert(
+                            title: Text("删除角色"),
+                            message: Text("确定要删除角色\"\(characterToDelete?.name ?? "")\"吗？此操作不可恢复。"),
+                            primaryButton: .destructive(Text("删除")) {
+                                if let character = characterToDelete {
+                                    deleteCharacter(character)
+                                }
+                            },
+                            secondaryButton: .cancel(Text("取消"))
+                        )
+                    } else {
+                        // 预设角色 - 隐藏确认
+                        return Alert(
+                            title: Text("隐藏角色"),
+                            message: Text("确定要隐藏角色\"\(characterToHide?.name ?? "")\"吗？可在设置中恢复。"),
+                            primaryButton: .destructive(Text("隐藏")) {
+                                if let character = characterToHide {
+                                    hideCharacter(character)
+                                }
+                            },
+                            secondaryButton: .cancel(Text("取消"))
+                        )
+                    }
+                }
+            )
+        } else {
+            // 正常模式下使用标准卡片
+            return AnyView(
+                ImprovedCharacterCardView(character: character)
+                    .onTap {
+                        // 导航到角色详情页
+                        navigateToCharacterDetail = character
+                    }
+                    .onChatTap {
+                        // 添加聊天互动记录
+                        addInteraction(for: character, type: .chat)
+                        
+                        // 导航到聊天页面
+                        navigateToChatView = character
+                    }
+            )
+        }
     }
     
     /// 导航到角色详情页
-    private func navigateToCharacterDetail(_ character: CharacterModel) {
+    func navigateToCharacterDetail(_ character: CharacterModel) {
         // 直接导航，不处理TabBar
         navigateToCharacterDetail = character
     }
     
     /// 导航到聊天页面
-    private func navigateToCharacterChat(_ character: CharacterModel) {
+    func navigateToCharacterChat(_ character: CharacterModel) {
         // 直接导航，不处理TabBar
         navigateToChatView = character
     }
     
     // 分类视图辅助方法
-    private func categoryView(for category: CharacterCategory) -> some View {
+    func categoryView(for category: CharacterCategory) -> some View {
         VStack(spacing: 8) { // 图标和文字间距
             ZStack {
                 Circle()
@@ -716,10 +812,10 @@ struct ExploreView: View {
     
     /// 根据分类、时间轴和搜索文本过滤角色
     private var filteredCharacters: [CharacterModel] {
-        var result = characters
+        // 首先过滤掉所有被隐藏的角色
+        var result = characters.filter { !hiddenCharacters.contains($0.id) }
         
         // 如果是在"我的角色"模式下，只显示用户创建的角色
-        // 这个判断必须放在最前面，确保优先级最高
         if showingUserCharacters {
             return userCharacters
         }
@@ -780,107 +876,58 @@ struct ExploreView: View {
             .compactMap { id in characters.first { $0.id == id } }
     }
     
-    /// 根据当前状态获取应该显示的角色
+    // 在ExploreView中，找到displayCharacters计算属性，并将其修改为：
     private var displayCharacters: [CharacterModel] {
+        // 如果是“最近互动”模式，则直接返回按时间排序的列表，不应用任何置顶逻辑
         if showingRecentInteractions {
-            var result = recentInteractionCharacters
-            
-            // 在最近互动模式下也应用选项卡过滤
-            switch selectedTab {
-            case .all:
-                // 保持所有最近互动角色
-                break
-            case .popular:
-                // 按照互动类型筛选 - 优先展示点赞的角色
-                let likedCharacterIds = recentInteractions
-                    .filter { $0.interactionType == .like }
-                    .map { $0.characterId }
-                result = result.filter { likedCharacterIds.contains($0.id) }.uniqued()
-            case .recent:
-                // 按照互动时间排序 - 取最近7天的互动记录
-                let recentDate = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-                let recentCharacterIds = recentInteractions
-                    .filter { $0.timestamp >= recentDate }
-                    .map { $0.characterId }
-                result = result.filter { recentCharacterIds.contains($0.id) }.uniqued()
-            }
-            
-            return result
-        } else if showingFavorites {
-            var result = favoriteCharactersList
-            
-            // 在我的关注模式下也应用选项卡过滤
-            switch selectedTab {
-            case .all:
-                // 保持所有关注角色
-                break
-            case .popular:
-                // 按照热门程度排序，这里使用followerCount或interactionCount作为热门指标
-                // 由于这些属性在CharacterModel中可能不存在，我们可以使用随机排序模拟热门
-                let shuffled = result.shuffled()
-                // 确保结果是唯一的（不重复）
-                result = shuffled.count > 10 ? Array(shuffled.prefix(10)).uniqued() : shuffled.uniqued()
-            case .recent:
-                // 可以按照最近关注时间排序，但目前没有存储关注时间
-                // 这里可以使用最近互动记录来筛选
-                let recentInteractionIds = recentInteractions
-                    .prefix(20)
-                    .map { $0.characterId }
-                
-                // 筛选出既在关注列表中又有最近互动的角色
-                let recentFavorites = result.filter { character in
-                    recentInteractionIds.contains(character.id)
-                }
-                
-                // 如果有符合条件的角色，则使用这些角色，否则保持原样
-                if !recentFavorites.isEmpty {
-                    result = recentFavorites
-                }
-            }
-            
-            return result
-        } else if showingUserCharacters {
-            // 在"我的角色"模式下，根据选项卡和分类进行过滤
-            var result = userCharacters
-            
-            // 如果选择了特定分类，则过滤用户角色
+            return recentInteractionCharacters
+        }
+
+        var result: [CharacterModel]
+        
+        // 根据当前模式获取基础角色列表
+        if showingUserCharacters {
+            result = userCharacters
             if selectedCategory != .all {
                 result = result.filter { $0.category == selectedCategory }
             }
-            
-            // 根据选项卡进行排序
-            switch selectedTab {
-            case .all:
-                // 保持所有用户角色
-                break
-            case .popular:
-                // 随机排序模拟热门
-                result = result.shuffled()
-            case .recent:
-                // 按照ID倒序排列，假设ID中包含时间信息
-                result = result.sorted { $0.id > $1.id }
-            }
-            
-            return result
+        } else if showingFavorites {
+            result = favoriteCharactersList
         } else {
-            return filteredCharacters
+            result = filteredCharacters
         }
+        
+        // 根据选项卡进行排序
+        switch selectedTab {
+        case .all, .manage:
+            // 保持默认排序
+            break
+        case .popular:
+            // 对于热门排序，我们只随机排列未置顶的角色
+            let pinnedIds = CharacterPinManager.shared.pinnedCharacterIds
+            let pinnedChars = result.filter { pinnedIds.contains($0.id) }
+            let unpinnedChars = result.filter { !pinnedIds.contains($0.id) }.shuffled()
+            result = pinnedChars + unpinnedChars
+        }
+        
+        // 对除“最近互动”外的所有情况，应用置顶排序
+        return CharacterPinManager.shared.getSortedCharacters(characters: result, idKeyPath: \.id)
     }
     
     // 处理查看全部事件
-    private func handleViewAllTap() {
+    func handleViewAllTap() {
         // 查看全部角色
         selectedCategory = .all
         searchText = ""
     }
     
     // 处理创建角色事件
-    private func handleCreateCharacter() {
+    func handleCreateCharacter() {
         showingCreateCharacter = true
     }
     
     // 转换CharacterModel为Character（用于详情页）
-    private func convertToCharacter(_ characterModel: CharacterModel) -> Character {
+    func convertToCharacter(_ characterModel: CharacterModel) -> Character {
         // 创建一个新的Character实例
         let character = Character(
             id: characterModel.id,
@@ -903,7 +950,7 @@ struct ExploreView: View {
     }
     
     // 转换CharacterModel为CYChatCharacter（用于聊天页）
-    private func convertToChatCharacter(_ characterModel: CharacterModel) -> CYChatCharacter {
+    func convertToChatCharacter(_ characterModel: CharacterModel) -> CYChatCharacter {
         return CYChatCharacter(
             id: characterModel.id,
             name: characterModel.name,
@@ -954,7 +1001,7 @@ struct ExploreView: View {
     // MARK: - 最近互动相关方法
     
     /// 添加角色交互记录
-    private func addInteraction(for character: CharacterModel, type: CharacterInteraction.InteractionType) {
+    func addInteraction(for character: CharacterModel, type: CharacterInteraction.InteractionType) {
         // 检查是否已有该角色的互动记录
         let existingInteractionIndex = recentInteractions.firstIndex { 
             $0.characterId == character.id && $0.interactionType == type 
@@ -987,14 +1034,14 @@ struct ExploreView: View {
     }
     
     /// 保存最近互动记录到本地
-    private func saveRecentInteractions() {
+    func saveRecentInteractions() {
         if let data = try? JSONEncoder().encode(recentInteractions) {
             UserDefaults.standard.set(data, forKey: "recentInteractions")
         }
     }
     
     /// 从本地加载最近互动记录
-    private func loadRecentInteractions() {
+    func loadRecentInteractions() {
         if let data = UserDefaults.standard.data(forKey: "recentInteractions"),
            let interactions = try? JSONDecoder().decode([CharacterInteraction].self, from: data) {
             recentInteractions = interactions
@@ -1002,7 +1049,7 @@ struct ExploreView: View {
     }
     
     // 修改处理最近互动按钮点击的方法
-    private func handleRecentInteractionsTap() {
+    func handleRecentInteractionsTap() {
         withAnimation(.easeInOut) {
             // 切换最近互动显示状态
             showingRecentInteractions.toggle()
@@ -1017,7 +1064,7 @@ struct ExploreView: View {
     }
     
     // 修改处理我的关注按钮点击的方法
-    private func handleFavoritesTap() {
+    func handleFavoritesTap() {
         withAnimation(.easeInOut) {
             // 切换我的关注显示状态
             showingFavorites.toggle()
@@ -1032,7 +1079,7 @@ struct ExploreView: View {
     }
     
     /// 重置显示模式
-    private func resetDisplayMode() {
+    func resetDisplayMode() {
         withAnimation(.easeInOut) {
             showingRecentInteractions = false
             showingFavorites = false
@@ -1042,7 +1089,7 @@ struct ExploreView: View {
     }
     
     /// 添加角色到关注列表
-    private func toggleFavorite(for character: CharacterModel) {
+    func toggleFavorite(for character: CharacterModel) {
         if favoriteCharacters.contains(character.id) {
             // 如果已经在关注列表中，则移除
             favoriteCharacters.removeAll { $0 == character.id }
@@ -1075,19 +1122,19 @@ struct ExploreView: View {
     }
     
     /// 判断角色是否被关注
-    private func isFavorite(_ character: CharacterModel) -> Bool {
+    func isFavorite(_ character: CharacterModel) -> Bool {
         return favoriteCharacters.contains(character.id)
     }
     
     /// 保存关注列表到UserDefaults
-    private func saveFavoriteCharacters() {
+    func saveFavoriteCharacters() {
         if let encoded = try? JSONEncoder().encode(favoriteCharacters) {
             UserDefaults.standard.set(encoded, forKey: "favoriteCharacters")
         }
     }
     
     /// 从UserDefaults加载关注列表
-    private func loadFavoriteCharacters() {
+    func loadFavoriteCharacters() {
         if let savedFavorites = UserDefaults.standard.data(forKey: "favoriteCharacters"),
            let decoded = try? JSONDecoder().decode([String].self, from: savedFavorites) {
             favoriteCharacters = decoded
@@ -1095,7 +1142,7 @@ struct ExploreView: View {
     }
     
     /// 处理角色点赞
-    private func handleCharacterLike(for character: CharacterModel) {
+    func handleCharacterLike(for character: CharacterModel) {
         // 添加点赞互动记录
         addInteraction(for: character, type: .like)
         
@@ -1104,7 +1151,7 @@ struct ExploreView: View {
     }
     
     /// 处理角色评论
-    private func handleCharacterComment(for character: CharacterModel) {
+    func handleCharacterComment(for character: CharacterModel) {
         // 添加评论互动记录
         addInteraction(for: character, type: .comment)
         
@@ -1113,7 +1160,7 @@ struct ExploreView: View {
     }
     
     /// 处理角色聊天
-    private func handleCharacterChat(for character: CharacterModel) {
+    func handleCharacterChat(for character: CharacterModel) {
         // 添加聊天互动记录
         addInteraction(for: character, type: .chat)
         
@@ -1122,7 +1169,7 @@ struct ExploreView: View {
     }
 
     // 添加处理"我的角色"点击的方法
-    private func handleUserCharactersTap() {
+    func handleUserCharactersTap() {
         withAnimation(.easeInOut) {
             // 切换显示状态
             showingUserCharacters.toggle()
@@ -1186,6 +1233,110 @@ struct ExploreView: View {
             userCharacters = []
         }
     }
+
+    // 添加删除角色的方法
+    private func deleteCharacter(_ character: CharacterModel) {
+        print("删除角色: \(character.name), ID: \(character.id)")
+        
+        // 1. 从内存中删除
+        if let index = userCharacters.firstIndex(where: { $0.id == character.id }) {
+            userCharacters.remove(at: index)
+        }
+        
+        if let index = characters.firstIndex(where: { $0.id == character.id }) {
+            characters.remove(at: index)
+        }
+        
+        // 2. 从UserDefaults中删除
+        deleteCharacterFromUserDefaults(character.id)
+        
+        // 3. 删除头像文件
+        deleteCharacterImage(character.id)
+        
+        // 4. 发送通知，通知其他视图更新
+        NotificationCenter.default.post(
+            name: Notification.Name("CharacterDeleted"),
+            object: nil,
+            userInfo: ["characterId": character.id]
+        )
+        
+        // 如果删除后没有角色了，退出管理模式
+        if userCharacters.isEmpty {
+            isManagingCharacters = false
+        }
+    }
+    
+    // 从UserDefaults中删除角色
+    private func deleteCharacterFromUserDefaults(_ characterId: String) {
+        guard let data = UserDefaults.standard.data(forKey: "CustomCharactersData") else { return }
+        
+        do {
+            if var characterDicts = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                // 过滤掉要删除的角色
+                characterDicts = characterDicts.filter { dict in
+                    guard let id = dict["id"] as? String else { return true }
+                    return id != characterId
+                }
+                
+                // 保存更新后的数据
+                let updatedData = try JSONSerialization.data(withJSONObject: characterDicts)
+                UserDefaults.standard.set(updatedData, forKey: "CustomCharactersData")
+                print("成功从UserDefaults中删除角色: \(characterId)")
+            }
+        } catch {
+            print("从UserDefaults中删除角色失败: \(error)")
+        }
+    }
+    
+    // 删除角色图像文件
+    private func deleteCharacterImage(_ characterId: String) {
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let fileURL = documentsDirectory.appendingPathComponent("\(characterId).jpg")
+        
+        do {
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                try FileManager.default.removeItem(at: fileURL)
+                print("成功删除角色图像文件: \(fileURL.path)")
+            }
+        } catch {
+            print("删除角色图像文件失败: \(error)")
+        }
+    }
+
+    // 添加隐藏角色的方法
+    func hideCharacter(_ character: CharacterModel) {
+        print("隐藏角色: \(character.name), ID: \(character.id)")
+        
+        // 将角色ID添加到隐藏列表
+        if !hiddenCharacters.contains(character.id) {
+            hiddenCharacters.append(character.id)
+        }
+        
+        // 保存到UserDefaults
+        saveHiddenCharacters()
+        
+        // 重新加载角色列表，使隐藏生效
+        loadAllCharacters()
+    }
+
+    // 修改置顶状态切换方法，移除private修饰符
+    func togglePinStatus(for character: CharacterModel) {
+        if pinnedCharacters.contains(character.id) {
+            // 如果已经置顶，则取消置顶
+            pinnedCharacters.removeAll { $0 == character.id }
+            print("取消置顶角色: \(character.name)")
+        } else {
+            // 如果未置顶，则添加到置顶列表
+            pinnedCharacters.append(character.id)
+            print("置顶角色: \(character.name)")
+        }
+        
+        // 保存置顶状态
+        savePinnedCharacters()
+        
+        // 重新排序角色列表，让置顶角色显示在前面
+        // 不需要重新加载所有角色，因为filteredCharacters和displayCharacters会根据置顶状态重新排序
+    }
 }
 
 // MARK: - 数组扩展
@@ -1194,6 +1345,46 @@ extension Array where Element: Hashable {
     func uniqued() -> [Element] {
         var seen = Set<Element>()
         return filter { seen.insert($0).inserted }
+    }
+}
+
+// 在Array扩展后，Preview前，添加存储和加载隐藏角色的扩展方法
+extension ExploreView {
+    // 保存隐藏角色到UserDefaults
+    func saveHiddenCharacters() {
+        if let encoded = try? JSONEncoder().encode(hiddenCharacters) {
+            UserDefaults.standard.set(encoded, forKey: "HiddenCharacters")
+            print("保存了\(hiddenCharacters.count)个隐藏角色到UserDefaults")
+        }
+    }
+    
+    // 从UserDefaults加载隐藏角色
+    func loadHiddenCharacters() {
+        if let data = UserDefaults.standard.data(forKey: "HiddenCharacters"),
+           let decodedIds = try? JSONDecoder().decode([String].self, from: data) {
+            hiddenCharacters = decodedIds
+            print("从UserDefaults加载了\(hiddenCharacters.count)个隐藏角色")
+        }
+    }
+}
+
+// 在ExploreView扩展中修复private修饰符问题
+extension ExploreView {
+    // 保存置顶角色列表到UserDefaults
+    func savePinnedCharacters() {
+        if let encoded = try? JSONEncoder().encode(pinnedCharacters) {
+            UserDefaults.standard.set(encoded, forKey: "PinnedCharacters")
+            print("保存了\(pinnedCharacters.count)个置顶角色到UserDefaults")
+        }
+    }
+    
+    // 从UserDefaults加载置顶角色列表
+    func loadPinnedCharacters() {
+        if let data = UserDefaults.standard.data(forKey: "PinnedCharacters"),
+           let decodedIds = try? JSONDecoder().decode([String].self, from: data) {
+            pinnedCharacters = decodedIds
+            print("从UserDefaults加载了\(pinnedCharacters.count)个置顶角色")
+        }
     }
 }
 
@@ -1432,20 +1623,29 @@ struct MyCharactersView: View {
 // 角色网格项组件
 struct CharacterGridItem: View {
     let character: CharacterModel
+    @State private var customImage: UIImage? = nil
     
     var body: some View {
         VStack(spacing: 6) {
             // 角色头像
             ZStack {
-                if character.avatar == "default_avatar" {
-                    Image(systemName: "person.circle.fill")
+                if let customImage = customImage {
+                    // 显示从文档目录加载的自定义头像
+                    Image(uiImage: customImage)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: 100, height: 100)
                         .clipShape(Rectangle())
                         .cornerRadius(8)
+                } else if character.avatar == "default_avatar" || character.id.hasPrefix("custom_") {
+                    // 默认头像（如果自定义头像加载失败或未设置）
+                    Image(systemName: "person.circle.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 100, height: 100)
                         .foregroundColor(.gray)
                 } else {
+                    // 系统提供的头像
                     Image(character.avatar)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -1463,7 +1663,7 @@ struct CharacterGridItem: View {
                     .font(.system(size: 12))
                     .foregroundColor(Color(red: 0.9, green: 0.4, blue: 0.7))
                 
-                Text(character.name)
+                Text(formatDisplayName(character.name))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.primary)
                     .lineLimit(1)
@@ -1474,5 +1674,114 @@ struct CharacterGridItem: View {
             .cornerRadius(12)
         }
         .padding(.vertical, 8)
+        .onAppear {
+            // 尝试从文档目录加载自定义头像
+            loadCustomAvatar()
+        }
+    }
+    
+    // 格式化显示名称，处理过长或中英文混合的名称
+    private func formatDisplayName(_ name: String) -> String {
+        // 如果名称中包含括号，只显示括号前的部分
+        if let bracketRange = name.range(of: "（") ?? name.range(of: "(") {
+            let nameBeforeBracket = String(name[name.startIndex..<bracketRange.lowerBound])
+            return nameBeforeBracket.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        // 如果名称过长，截断显示
+        if name.count > 8 {
+            let endIndex = name.index(name.startIndex, offsetBy: 8)
+            return String(name[..<endIndex]) + "..."
+        }
+        
+        return name
+    }
+    
+    // 从文档目录加载自定义头像
+    private func loadCustomAvatar() {
+        // 记录尝试加载的信息
+        print("🔄 CharacterGridItem - 尝试加载头像: id=\(character.id), avatar=\(character.avatar)")
+        
+        // 只对自定义角色尝试加载头像
+        if character.id.hasPrefix("custom_") {
+            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentsDirectory.appendingPathComponent("\(character.id).jpg")
+            
+            // 直接从文件路径加载图像
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                if let imageData = try? Data(contentsOf: fileURL),
+                   let image = UIImage(data: imageData) {
+                    DispatchQueue.main.async {
+                        self.customImage = image
+                        print("✅ CharacterGridItem - 成功加载自定义头像: \(character.id)")
+                    }
+                } else {
+                    print("❌ CharacterGridItem - 无法加载自定义头像数据: \(character.id)")
+                }
+            } else {
+                print("⚠️ CharacterGridItem - 自定义头像文件不存在: \(character.id)")
+                
+                // 如果直接加载失败，尝试使用CustomAvatarLoader
+                if let image = CustomAvatarLoader.shared.loadCustomAvatar(characterId: character.id, avatarName: character.avatar) {
+                    DispatchQueue.main.async {
+                        self.customImage = image
+                        print("✅ CharacterGridItem - 通过CustomAvatarLoader成功加载: \(character.id)")
+                    }
+                }
+            }
+        } else {
+            print("ℹ️ CharacterGridItem - 非自定义角色: \(character.id)")
+        }
+    }
+} 
+
+// 修改ManagedCharacterCardView以支持不同的按钮样式
+struct ManagedCharacterCardView: View {
+    let character: CharacterModel
+    let isUserCreated: Bool
+    let onAction: () -> Void
+    let isPinned: Bool
+    let onTogglePin: () -> Void
+    
+    var body: some View {
+        // 使用ZStack将按钮覆盖在原有卡片上
+        ZStack(alignment: .topTrailing) {
+            // 使用原有的ImprovedCharacterCardView
+            ZStack(alignment: .topLeading) {
+                ImprovedCharacterCardView(character: character)
+                    // 禁用原有卡片的点击事件，避免与按钮冲突
+                    .allowsHitTesting(false)
+                
+                // 左上角添加置顶/取消置顶按钮
+                Button(action: onTogglePin) {
+                    ZStack {
+                        Circle()
+                            .fill(isPinned ? Color.yellow : Color.gray.opacity(0.8))
+                            .frame(width: 24, height: 24)
+                        
+                        Image(systemName: isPinned ? "pin.fill" : "pin")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .offset(x: 6, y: 6)
+                .padding(8)
+            }
+            
+            // 右上角保留原有的删除/隐藏按钮
+            Button(action: onAction) {
+                ZStack {
+                    Circle()
+                        .fill(isUserCreated ? Color.red : Color.orange)
+                        .frame(width: 24, height: 24)
+                    
+                    Image(systemName: isUserCreated ? "xmark" : "eye.slash")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white)
+                }
+            }
+            .offset(x: 6, y: -6)
+            .padding(8)
+        }
     }
 } 

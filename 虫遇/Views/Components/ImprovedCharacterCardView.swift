@@ -11,6 +11,8 @@ struct ImprovedCharacterCardView: View {
     var onTap: () -> Void = {}
     // 点击聊天按钮事件 - 进入聊天页面
     var onChatTap: () -> Void = {}
+    // 自定义头像
+    @State private var customImage: UIImage? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -31,8 +33,52 @@ struct ImprovedCharacterCardView: View {
                         )
                         .aspectRatio(1.0, contentMode: .fit) // 保持正方形比例
                     
-                    // 直接加载头像
-                    if let image = UIImage(named: character.avatar) {
+                    // 先尝试加载自定义头像
+                    if let customImage = customImage {
+                        Image(uiImage: customImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(minWidth: 0, maxWidth: .infinity)
+                            .aspectRatio(1.0, contentMode: .fill) // 保持正方形比例
+                            .clipped()
+                            .overlay(
+                                ZStack {
+                                    // 全图渐变
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.black.opacity(0.0),
+                                            Color.black.opacity(0.1),
+                                            Color.black.opacity(0.3)
+                                        ]),
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                    
+                                    // 右下角额外渐变
+                                    VStack {
+                                        Spacer()
+                                        HStack {
+                                            Spacer()
+                                            Rectangle()
+                                                .fill(
+                                                    RadialGradient(
+                                                        gradient: Gradient(colors: [
+                                                            Color.black.opacity(0.4),
+                                                            Color.clear
+                                                        ]),
+                                                        center: .bottomTrailing,
+                                                        startRadius: 5,
+                                                        endRadius: 60
+                                                    )
+                                                )
+                                                .frame(width: 80, height: 50)
+                                        }
+                                    }
+                                }
+                            )
+                    }
+                    // 然后尝试加载系统头像
+                    else if let image = UIImage(named: character.avatar) {
                         Image(uiImage: image)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -136,6 +182,17 @@ struct ImprovedCharacterCardView: View {
         )
         .shadow(color: Color.black.opacity(0.12), radius: 3, x: 0, y: 1.5)
         .padding(.vertical, 5)
+        .onAppear {
+            // 尝试加载自定义头像
+            loadCustomAvatar()
+        }
+    }
+    
+    // 加载自定义头像
+    private func loadCustomAvatar() {
+        if let image = CustomAvatarLoader.shared.loadCustomAvatar(characterId: character.id, avatarName: character.avatar) {
+            self.customImage = image
+        }
     }
 }
 
