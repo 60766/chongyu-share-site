@@ -299,29 +299,29 @@ struct SetChatThemeView: View {
     
     /// 开始自动滑动
     private func startAutoScroll() {
-        // 创建更快且有变化的自动滑动效果
-        Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
-            withAnimation(.linear(duration: 0.05)) {
-                // 第一行：向左移动，中等速度
-                scrollOffset -= 0.8
+        // 创建更慢且平缓的自动滑动效果
+        Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { _ in
+            withAnimation(.linear(duration: 0.08)) {
+                // 第一行：向左移动，慢速
+                scrollOffset -= 0.4
                 if scrollOffset <= -600 {
                     scrollOffset = 100
                 }
                 
-                // 第二行：向右移动，慢速
-                scrollOffset2 += 0.5
+                // 第二行：向右移动，很慢
+                scrollOffset2 += 0.25
                 if scrollOffset2 >= 600 {
                     scrollOffset2 = -200
                 }
                 
-                // 第三行：向左移动，快速
-                scrollOffset3 -= 1.2
+                // 第三行：向左移动，中等速度
+                scrollOffset3 -= 0.6
                 if scrollOffset3 <= -800 {
                     scrollOffset3 = 150
                 }
                 
-                // 第四行：向右移动，很慢
-                scrollOffset4 += 0.3
+                // 第四行：向右移动，极慢
+                scrollOffset4 += 0.15
                 if scrollOffset4 >= 500 {
                     scrollOffset4 = -250
                 }
