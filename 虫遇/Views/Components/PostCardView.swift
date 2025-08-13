@@ -730,11 +730,14 @@ struct PostCardView: View {
     private var previewComments: [DetailedCommentModel] {
         // 只在预览模式下限制评论数量
         if displayMode == .preview {
+            // 🔧 修复：使用getTopLevelComments()而不是直接访问post.comments
+            let topLevelComments = post.getTopLevelComments()
+            
             // 获取一条历史人物的评论
-            let virtualComments = post.comments.filter { $0.isVirtualCharacter }.prefix(1)
+            let virtualComments = topLevelComments.filter { $0.isVirtualCharacter }.prefix(1)
             
             // 获取一条高赞评论
-            let featuredComments = post.comments
+            let featuredComments = topLevelComments
                 .filter { $0.likes > 20 }
                 .filter { comment in !virtualComments.contains(where: { $0.id == comment.id }) }
                 .prefix(1)
@@ -1686,7 +1689,8 @@ struct PostCardView: View {
                         Spacer()
                 
                         // 虚拟角色参与统计
-                        let virtualCount = post.comments.filter { $0.isVirtualCharacter }.count
+                        // 🔧 修复：使用getTopLevelComments()统计虚拟角色，只计算顶级评论
+                        let virtualCount = post.getTopLevelComments().filter { $0.isVirtualCharacter }.count
                         if virtualCount > 0 {
                             HStack(spacing: 4) {
                                 Image(systemName: "sparkles")
@@ -1857,15 +1861,19 @@ struct PostCardView: View {
     
     // 获取精选评论 - 按照优先级排序
     private func getFeaturedComment() -> DetailedCommentModel? {
+        // 🔧 修复：使用getTopLevelComments()而不是直接访问post.comments
+        // 这确保只显示真正的顶级评论，过滤掉虚拟角色回复
+        let topLevelComments = post.getTopLevelComments()
+        
         // 优先选择有回复的虚拟角色评论
-        if let virtualComment = post.comments.first(where: { 
+        if let virtualComment = topLevelComments.first(where: { 
             $0.isVirtualCharacter && !$0.replies.isEmpty 
         }) {
             return virtualComment
         }
         
         // 其次选择点赞最多的虚拟角色评论
-        if let topVirtualComment = post.comments
+        if let topVirtualComment = topLevelComments
             .filter({ $0.isVirtualCharacter })
             .sorted(by: { $0.likes > $1.likes })
             .first {
@@ -1873,7 +1881,7 @@ struct PostCardView: View {
         }
         
         // 最后选择点赞最多的普通评论
-        return post.comments.sorted(by: { $0.likes > $1.likes }).first
+        return topLevelComments.sorted(by: { $0.likes > $1.likes }).first
     }
     
     // 评论按钮区

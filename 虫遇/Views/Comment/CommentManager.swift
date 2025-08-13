@@ -309,51 +309,70 @@ class CommentManager: ObservableObject {
     }
     
     /**
-     * 更新评论列表（严格对话流排序）
+     * 更新评论列表（只显示顶级评论，回复通过嵌套结构显示）
      */
     func updateCommentLists() {
         let allCommentsArray = currentPost.comments
         print("==== DEBUG: currentPost.comments ====")
         for c in allCommentsArray {
-            print("id=\(c.id), parentCommentId=\(String(describing: c.parentCommentId)), user=\(c.username), content=\(c.content)")
+            print("id=\(c.id), parentCommentId=\(String(describing: c.parentCommentId)), isVirtualCharacter=\(c.isVirtualCharacter), replyToUsername=\(String(describing: c.replyToUsername)), user=\(c.username), content=\(c.content.prefix(30))...")
         }
         print("==== END ====")
         
-        // 首先获取所有顶级评论并按时间倒序排序（新的在上方）
+        // 只获取真正的顶级评论并按时间倒序排序（新的在上方）
         let topLevelComments = allCommentsArray
-            .filter { $0.parentCommentId == nil }
+            .filter { comment in
+                // 必须是顶级评论（parentCommentId为nil）
+                guard comment.parentCommentId == nil else { 
+                    print("🔍 过滤非顶级评论：\(comment.username) - 父评论ID: \(comment.parentCommentId!)")
+                    return false 
+                }
+                
+                // 🔒 强化过滤：完全禁止虚拟角色回复出现在主评论列表中
+                // 只要是虚拟角色且有replyToUsername，无论任何情况都不显示在主列表
+                if comment.isVirtualCharacter && comment.replyToUsername != nil {
+                    print("🚫 严格过滤虚拟角色回复：\(comment.username) 回复给 \(comment.replyToUsername!) - 隐藏主评论中的重复评论")
+                    return false
+                }
+                
+                // 🔒 进一步强化：即使是虚拟角色的顶级评论，也要确保它不是用户评论的回复
+                // 检查这个虚拟角色评论是否实际上是对某个用户评论的回复
+                if comment.isVirtualCharacter {
+                    // 如果虚拟角色评论有replyToUsername，说明是回复，不应该显示在主列表
+                    if comment.replyToUsername != nil {
+                        print("🚫 过滤虚拟角色回复（有replyToUsername）：\(comment.username) -> \(comment.replyToUsername!)")
+                        return false
+                    }
+                    
+                    // 额外检查：查看是否存在同时间段内的用户评论，如果是，可能是对用户评论的回复
+                    let timeWindow: TimeInterval = 60 // 1分钟内
+                    let hasRecentUserComment = allCommentsArray.contains { userComment in
+                        !userComment.isVirtualCharacter && 
+                        abs(userComment.datePosted.timeIntervalSince(comment.datePosted)) < timeWindow
+                    }
+                    
+                    if hasRecentUserComment {
+                        print("🚫 过滤可能的虚拟角色回复（时间窗口检查）：\(comment.username)")
+                        return false
+                    }
+                    
+                    // 只有确实是邀请的角色评论才显示
+                    print("✅ 保留邀请角色评论：\(comment.username)")
+                }
+                
+                return true
+            }
             .sorted { $0.datePosted > $1.datePosted }
         
-        // 递归平铺：每个评论后紧跟所有直接回复它的评论（同级按时间正序）
-        func flatten(comment: DetailedCommentModel) -> [DetailedCommentModel] {
-            // 获取直接回复该评论的所有评论，并按时间正序排列
-            let directReplies = allCommentsArray
-                .filter { $0.parentCommentId == comment.id }
-                .sorted { $0.datePosted < $1.datePosted }
-            
-            var result: [DetailedCommentModel] = [comment]
-            
-            // 对每个直接回复，递归获取其所有子回复
-            for reply in directReplies {
-                result.append(contentsOf: flatten(comment: reply))
-            }
-            
-            return result
-        }
-        
-        // 平铺所有顶级评论及其回复
-        var flat: [DetailedCommentModel] = []
-        for topComment in topLevelComments {
-            flat.append(contentsOf: flatten(comment: topComment))
-        }
-        
-        print("==== DEBUG: allComments (平铺后) ====")
-        for c in flat {
-            print("id=\(c.id), parentCommentId=\(String(describing: c.parentCommentId)), user=\(c.username), content=\(c.content)")
+        print("==== DEBUG: 过滤后的顶级评论 ====")
+        for c in topLevelComments {
+            print("id=\(c.id), isVirtualCharacter=\(c.isVirtualCharacter), replyToUsername=\(String(describing: c.replyToUsername)), user=\(c.username), content=\(c.content.prefix(30))...")
         }
         print("==== END ====")
         
-        self.allComments = flat
+        // 直接使用顶级评论，不再平铺回复
+        // 回复将通过CommentThreadView的嵌套结构来显示
+        self.allComments = topLevelComments
         self.topLevelComments = topLevelComments
     }
     
@@ -841,6 +860,16 @@ class CommentManager: ObservableObject {
                                     // 更新评论列表
                                     self.updateCommentLists()
                                     
+                                    // 直接添加到虫洞通知
+                                    NotificationService.shared.createCommentNotification(
+                                        characterId: characterID,
+                                        characterName: characterDisplayName,
+                                        characterAvatar: characterAvatar,
+                                        commentContent: content,
+                                        postId: self.currentPost.id.uuidString,
+                                        postTitle: String(self.currentPost.content.prefix(30))
+                                    )
+                                    
                                     // 如果是作者回复，标记作者已回复此评论
                                     if characterID == authorCharacter {
                                         let commentAuthorReplyKey = "author_replied_\(targetCommentID.uuidString)"
@@ -1008,6 +1037,16 @@ class CommentManager: ObservableObject {
                             
                             // 更新评论列表
                             self.updateCommentLists()
+                            
+                            // 直接添加到虫洞通知
+                            NotificationService.shared.createCommentNotification(
+                                characterId: characterID,
+                                characterName: characterName,
+                                characterAvatar: characterAvatar,
+                                commentContent: cleanedResponse,
+                                postId: self.currentPost.id.uuidString,
+                                postTitle: String(self.currentPost.content.prefix(30))
+                            )
                              
                             // 查找根评论ID，确保评论在正确的嵌套层级显示
                             let rootCommentId: UUID

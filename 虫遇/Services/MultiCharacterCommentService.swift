@@ -15,6 +15,14 @@ class MultiCharacterCommentService {
     private let personalityManager = CharacterPersonalityManager.shared
     private var cancellables = Set<AnyCancellable>()
     
+    // 存储当前请求的上下文信息
+    private struct CommentRequestContext {
+        let userComment: String?
+        let originalPost: String?
+        let originalPostAuthor: String?
+    }
+    private var currentRequestContext: CommentRequestContext?
+    
     // 私有初始化方法
     private init() {}
     
@@ -42,6 +50,16 @@ class MultiCharacterCommentService {
         completion: @escaping (Result<[String: String], Error>) -> Void
     ) {
         print("🚀 开始批量生成角色评论 - 共\(characterIDs.count)个角色")
+        print("💭 用户评论: \(userComment ?? "无")")
+        print("📝 原帖内容: \(postContent.prefix(50))...")
+        print("👤 原帖作者: \(postAuthor ?? "无")")
+        
+        // 存储当前请求的上下文信息
+        currentRequestContext = CommentRequestContext(
+            userComment: userComment,
+            originalPost: postContent,
+            originalPostAuthor: postAuthor
+        )
         
         // 如果没有角色，直接返回空结果
         if characterIDs.isEmpty {
@@ -671,13 +689,27 @@ class MultiCharacterCommentService {
                 updatedCommentsMap[authorId] = "感谢你的评论，很高兴看到你的想法。"
                 
                 // 使用更新后的映射发送通知
-                sendCommentsNotifications(postId: postId, commentsMap: updatedCommentsMap, isInvited: isInvited)
+                sendCommentsNotifications(
+                    postId: postId, 
+                    commentsMap: updatedCommentsMap, 
+                    isInvited: isInvited,
+                    userComment: currentRequestContext?.userComment,
+                    originalPost: currentRequestContext?.originalPost,
+                    originalPostAuthor: currentRequestContext?.originalPostAuthor
+                )
                 return
             }
         }
         
         // 使用原始映射发送通知
-        sendCommentsNotifications(postId: postId, commentsMap: commentsMap, isInvited: isInvited)
+        sendCommentsNotifications(
+            postId: postId, 
+            commentsMap: commentsMap, 
+            isInvited: isInvited,
+            userComment: currentRequestContext?.userComment,
+            originalPost: currentRequestContext?.originalPost,
+            originalPostAuthor: currentRequestContext?.originalPostAuthor
+        )
     }
 
     /**
@@ -685,8 +717,11 @@ class MultiCharacterCommentService {
      * @param postId 帖子ID
      * @param commentsMap 角色ID到评论内容的映射
      * @param isInvited 是否为邀请的角色评论
+     * @param userComment 用户的原始评论内容
+     * @param originalPost 原帖内容
+     * @param originalPostAuthor 原帖作者
      */
-    private func sendCommentsNotifications(postId: String, commentsMap: [String: String], isInvited: Bool) {
+    private func sendCommentsNotifications(postId: String, commentsMap: [String: String], isInvited: Bool, userComment: String? = nil, originalPost: String? = nil, originalPostAuthor: String? = nil) {
         // 首先，直接将评论添加到帖子模型中，确保数据层面的更新
         self.directlyAddCommentsToPost(postId: postId, commentsMap: commentsMap)
         
@@ -696,16 +731,29 @@ class MultiCharacterCommentService {
         // 在主线程上执行UI更新
         DispatchQueue.main.async {
             // 发送通知，包含生成的评论内容映射
+            var userInfo: [String: Any] = [
+                "postID": postId,
+                "commentsMap": commentsMap,
+                "isInvited": isInvited,
+                "batchId": batchId,
+                "forceUpdate": true  // 添加强制更新标记
+            ]
+            
+            // 添加用户评论和原帖信息
+            if let userComment = userComment {
+                userInfo["userComment"] = userComment
+            }
+            if let originalPost = originalPost {
+                userInfo["originalPost"] = originalPost
+            }
+            if let originalPostAuthor = originalPostAuthor {
+                userInfo["originalPostAuthor"] = originalPostAuthor
+            }
+            
             NotificationCenter.default.post(
                 name: NSNotification.Name("CommentsGenerated"),
                 object: nil,
-                userInfo: [
-                    "postID": postId,
-                    "commentsMap": commentsMap,
-                    "isInvited": isInvited,
-                    "batchId": batchId,
-                    "forceUpdate": true  // 添加强制更新标记
-                ]
+                userInfo: userInfo
             )
             
             // 直接触发 PostViewModel 中的帖子刷新

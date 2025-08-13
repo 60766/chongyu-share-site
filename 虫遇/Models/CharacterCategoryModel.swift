@@ -5,7 +5,7 @@ import SwiftUI
  * 角色分类枚举
  * 用于对历史人物和虚构角色进行分类
  */
-enum CharacterCategory: String, CaseIterable {
+enum CharacterCategory: String, CaseIterable, Codable {
     case all = "全部"
     // 历史人物分类
     case historical = "历史人物"

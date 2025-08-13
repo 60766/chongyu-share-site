@@ -11,6 +11,10 @@ struct PostInteractionBar: View {
     var commentCount: Int
     @Binding var isBookmarked: Bool
     
+    // 通知相关参数
+    var postId: String?
+    var authorCharacterId: String?
+    
     // 回调函数
     var onCommentTap: () -> Void
     var onShareTap: () -> Void
@@ -33,9 +37,22 @@ struct PostInteractionBar: View {
                 // 视觉反馈 - 轻微缩放动画
                 withAnimation(DesignSystem.Animations.quick) {
                     likeScale = 1.2
+                    let wasLiked = isLiked
                     isLiked.toggle()
                     if isLiked {
                         likeCount += 1
+                        
+                        // 发送点赞通知（只在点赞时发送，取消点赞不发送）
+                        if let postId = postId, let authorCharacterId = authorCharacterId {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("PostLiked"),
+                                object: nil,
+                                userInfo: [
+                                    "postId": postId,
+                                    "authorCharacterId": authorCharacterId
+                                ]
+                            )
+                        }
                     } else {
                         likeCount -= 1
                     }
@@ -184,6 +201,8 @@ struct PostInteractionBar: View {
             likeCount: .constant(42),
             commentCount: 12,
             isBookmarked: .constant(false),
+            postId: "sample_post_1",
+            authorCharacterId: "einstein",
             onCommentTap: {},
             onShareTap: {}
         )
@@ -195,6 +214,8 @@ struct PostInteractionBar: View {
             likeCount: .constant(43),
             commentCount: 12,
             isBookmarked: .constant(true),
+            postId: "sample_post_2",
+            authorCharacterId: "shakespeare",
             onCommentTap: {},
             onShareTap: {}
         )
@@ -214,6 +235,8 @@ struct PostInteractionBar_Previews: PreviewProvider {
                 likeCount: .constant(42),
                 commentCount: 12,
                 isBookmarked: .constant(false),
+                postId: "preview_post",
+                authorCharacterId: "davinci",
                 onCommentTap: {},
                 onShareTap: {}
             )

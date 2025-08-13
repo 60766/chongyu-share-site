@@ -317,10 +317,14 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                     }
                 }
                 
-                // 如果没有找到父评论，作为顶级评论添加
+                // 如果没有找到父评论，检查是否为虚拟角色
                 if !found {
+                    if !isVirtualCharacter {
                     print("⚠️ 未找到父评论，作为顶级评论添加")
                     comments.insert(newComment, at: 0)
+                    } else {
+                        print("❌ 虚拟角色回复找不到父评论，丢弃回复 - 角色: \(username)")
+                    }
                 }
             }
         } else {
@@ -340,8 +344,8 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
     private func findAndAddReply(in replies: inout [DetailedCommentModel], parentId: UUID, reply: DetailedCommentModel) -> Bool {
         // 在当前层级查找父评论
         if let index = replies.firstIndex(where: { $0.id == parentId }) {
-            // 找到父评论，添加回复到其replies数组的开头
-            replies[index].replies.insert(reply, at: 0)
+            // 找到父评论，添加回复到其replies数组的末尾
+            replies[index].replies.append(reply)
             return true
         }
         
@@ -365,8 +369,8 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         if let index = comments.firstIndex(where: { $0.id == parentId }) {
             print("✅ 在顶级评论中找到父评论 - 索引: \(index), 用户名: \(comments[index].username)")
             
-            // 添加回复到该评论的replies数组的开头
-            comments[index].replies.insert(reply, at: 0)
+            // 添加回复到该评论的replies数组的末尾
+            comments[index].replies.append(reply)
             
             // 打印回复数量
             print("📊 该父评论现在有 \(comments[index].replies.count) 条回复")
@@ -400,6 +404,8 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         
         // 如果没有找到父评论，将回复作为顶级评论添加
         if !found {
+            // 只有非虚拟角色才能在找不到父评论时作为顶级评论添加
+            if !reply.isVirtualCharacter {
             print("⚠️ 未找到父评论，作为顶级评论添加")
             var newTopLevelComment = reply
             newTopLevelComment.parentCommentId = nil // 清除父评论ID，因为找不到父评论
@@ -409,13 +415,54 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             DispatchQueue.main.async {
                 // 直接发送对象变更通知，让SwiftUI自动刷新
                 self.objectWillChange.send()
+                }
+            } else {
+                print("❌ 阻止虚拟角色回复成为顶级评论 - 角色: \(reply.username), 找不到父评论ID: \(parentId)")
             }
         }
     }
     
     /// 获取顶级评论（不包含回复）
     func getTopLevelComments() -> [DetailedCommentModel] {
-        return comments
+        return comments.filter { comment in
+            // 必须是顶级评论（parentCommentId为nil）
+            guard comment.parentCommentId == nil else { 
+                return false 
+            }
+            
+            // 🔒 强化过滤：完全禁止虚拟角色回复出现在主评论列表中
+            // 只要是虚拟角色且有replyToUsername，无论任何情况都不显示在主列表
+            if comment.isVirtualCharacter && comment.replyToUsername != nil {
+                print("🚫 严格过滤虚拟角色回复：\(comment.username) 回复给 \(comment.replyToUsername!) - 隐藏主评论中的重复评论")
+                return false
+            }
+            
+            // 🔒 进一步强化：即使是虚拟角色的顶级评论，也要确保它不是用户评论的回复
+            if comment.isVirtualCharacter {
+                // 如果虚拟角色评论有replyToUsername，说明是回复，不应该显示在主列表
+                if comment.replyToUsername != nil {
+                    print("🚫 过滤虚拟角色回复（有replyToUsername）：\(comment.username) -> \(comment.replyToUsername!)")
+                    return false
+                }
+                
+                // 额外检查：查看是否存在同时间段内的用户评论，如果是，可能是对用户评论的回复
+                let timeWindow: TimeInterval = 60 // 1分钟内
+                let hasRecentUserComment = comments.contains { userComment in
+                    !userComment.isVirtualCharacter && 
+                    abs(userComment.datePosted.timeIntervalSince(comment.datePosted)) < timeWindow
+                }
+                
+                if hasRecentUserComment {
+                    print("🚫 过滤可能的虚拟角色回复（时间窗口检查）：\(comment.username)")
+                    return false
+                }
+                
+                // 只有确实是邀请的角色评论才显示
+                print("✅ 保留邀请角色评论：\(comment.username)")
+            }
+            
+            return true
+        }
     }
     
     /// 获取评论总数（包括回复）
@@ -593,12 +640,18 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                         }
                     }
                     
-                    // 如果没有找到父评论，将回复作为顶级评论添加
+                    // 如果没有找到父评论，检查是否为虚拟角色回复
                     if !found {
-                        print("⚠️ 未找到父评论 \(parentId)，将回复 \(reply.id) 作为顶级评论添加")
+                        if reply.isVirtualCharacter {
+                            // 虚拟角色回复找不到父评论时，丢弃该回复，不要转换为顶级评论
+                            print("❌ 虚拟角色回复找不到父评论，丢弃回复 - 角色: \(reply.username), 父评论ID: \(parentId)")
+                        } else {
+                            // 只有非虚拟角色的回复才能转换为顶级评论
+                            print("⚠️ 未找到父评论 \(parentId)，将用户回复 \(reply.id) 作为顶级评论添加")
                         var replyAsTopLevel = reply
                         replyAsTopLevel.parentCommentId = nil // 清除父评论ID
                         topLevelComments.append(replyAsTopLevel)
+                        }
                     }
                 }
             }
@@ -624,8 +677,8 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
     private func addReplyToNestedParent(in replies: inout [DetailedCommentModel], parentId: UUID, reply: DetailedCommentModel) -> Bool {
         // 在当前层级查找父评论
         if let index = replies.firstIndex(where: { $0.id == parentId }) {
-            // 找到父评论，添加回复到其replies数组的开头
-            replies[index].replies.insert(reply, at: 0)
+            // 找到父评论，添加回复到其replies数组的末尾
+            replies[index].replies.append(reply)
             return true
         }
         
@@ -735,7 +788,16 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             // 关键：强制刷新 comments 数组，确保 UI 刷新
             self.comments = self.comments.map { $0 } // 触发 SwiftUI 刷新
         } else {
-            print("🔵 添加为顶级评论")
+            // 允许非虚拟角色和邀请的虚拟角色发表顶级评论
+            // 邀请的虚拟角色评论特征：isVirtualCharacter=true 且 replyToUsername=nil
+            let isInvitedVirtualComment = comment.isVirtualCharacter && comment.replyToUsername == nil
+            
+            if !comment.isVirtualCharacter || isInvitedVirtualComment {
+                if isInvitedVirtualComment {
+                    print("🔵 添加邀请虚拟角色的顶级评论 - 角色: \(comment.username)")
+                } else {
+                    print("🔵 添加用户顶级评论")
+                }
             comments.insert(comment, at: 0)
             // 打印当前评论数量
             print("📊 添加后顶级评论数量: \(comments.count)")
@@ -743,6 +805,9 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             DispatchQueue.main.async {
                 // 直接发送对象变更通知，让SwiftUI自动刷新
                 self.objectWillChange.send()
+                }
+            } else {
+                print("❌ 阻止虚拟角色回复作为顶级评论 - 角色: \(comment.username), replyToUsername: \(comment.replyToUsername ?? "nil")")
             }
         }
     }

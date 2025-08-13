@@ -76,34 +76,18 @@ struct TabBarBackground: View {
     var body: some View {
         GeometryReader { geometry in
             if #available(iOS 15.0, *) {
-                // iOS 15 - 使用更轻的模糊效果和更亮的底色
-                ZStack {
-                    // 恢复白色背景，保留底部导航栏的白色效果
-                    Rectangle()
-                        .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.1))
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                    
-                    // 使用系统Material材质实现轻微的磨砂玻璃效果
-                    Rectangle()
-                        .fill(Material.ultraThinMaterial) // 保持最轻的材质确保下方内容清晰可见
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                }
-                .blur(radius: 0.01) // 保持几乎不可见的模糊效果
-                .allowsHitTesting(false) // 允许点击穿透
+                // iOS 15 - 使用更轻的模糊效果，移除白色背景层
+                Rectangle()
+                    .fill(Material.ultraThinMaterial) // 保持最轻的材质确保下方内容清晰可见
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .blur(radius: 0.01) // 保持几乎不可见的模糊效果
+                    .allowsHitTesting(false) // 允许点击穿透
             } else {
-                // iOS 14 - 使用更轻的模糊效果和更亮的底色
-                ZStack {
-                    // 恢复白色背景，保留底部导航栏的白色效果
-                    Rectangle()
-                        .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.1))
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                    
-                    // 核心模糊效果 - 极轻微模糊
-                    VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial)) // 保持最轻的模糊效果
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                }
-                .blur(radius: 0.01) // 保持几乎不可见的模糊效果
-                .allowsHitTesting(false) // 允许点击穿透
+                // iOS 14 - 使用更轻的模糊效果，移除白色背景层
+                VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial)) // 保持最轻的模糊效果
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .blur(radius: 0.01) // 保持几乎不可见的模糊效果
+                    .allowsHitTesting(false) // 允许点击穿透
             }
         }
         // 确保延伸到所有边缘

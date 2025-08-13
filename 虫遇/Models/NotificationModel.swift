@@ -5,7 +5,7 @@ import SwiftUI
  * 通知数据模型
  * 用于管理应用中的通知数据
  */
-struct NotificationModel: Identifiable {
+struct NotificationModel: Identifiable, Codable {
     let id = UUID()
     let type: NotificationType
     let avatar: String
@@ -18,8 +18,19 @@ struct NotificationModel: Identifiable {
     var character: CharacterInfo
     // 新增内容预览
     var previewContent: String?
+    // 新增关联信息（用于精确对应用户行为）
+    var relatedPostId: String?
+    var relatedCommentId: String?
+    var triggeredByAction: String
+    var isGenerated: Bool
     
-    struct CharacterInfo {
+    // 新增：用户触发内容（语境信息）
+    var userComment: String?        // 用户的评论内容
+    var userPost: String?           // 用户的帖子内容  
+    var originalPost: String?       // 原帖内容（如果是评论他人帖子的场景）
+    var originalPostAuthor: String? // 原帖作者（如果是评论他人帖子的场景）
+    
+    struct CharacterInfo: Codable {
         let name: String
         let era: String
         let category: CharacterCategory
@@ -82,7 +93,7 @@ struct NotificationModel: Identifiable {
         }
     }
     
-    enum NotificationType {
+    enum NotificationType: Codable {
         case comment     // 评论通知
         case like        // 点赞通知
         case follow      // 关注通知
@@ -134,7 +145,7 @@ struct NotificationModel: Identifiable {
     
     // 预设的通知数据
     static let sampleNotifications: [NotificationModel] = [
-        // 评论通知
+        // 评论通知 - 角色回复用户评论
         NotificationModel(
             type: .comment,
             avatar: "avatar1",
@@ -149,7 +160,15 @@ struct NotificationModel: Identifiable {
                 category: .scientist,
                 image: "einstein"
             ),
-            previewContent: "我认为宇宙是一个巨大的谜题，每发现一个规律，就会带来更多的问题。"
+            previewContent: nil,
+            relatedPostId: "sample_post_1",
+            relatedCommentId: nil,
+            triggeredByAction: "comment",
+            isGenerated: false,
+            userComment: "你好，对时间旅行很感兴趣",
+            userPost: nil,
+            originalPost: "在雅典卫城坍塌的拱门下发现螺旋状铭文时，我意识到自己或许才是被寻找的对象。那些被暴雨冲刷三千年的符号，最终指向的是深险者手掌的伤口形状。我们总在寻找答案，却忘了答案需要特定角度的裂痕才能显形——就像玛雅水晶头骨必须摔碎才能释放星图。",
+            originalPostAuthor: "劳拉·克罗夫特"
         ),
         
         // 关注通知
@@ -166,25 +185,42 @@ struct NotificationModel: Identifiable {
                 era: "16-17世纪",
                 category: .writer,
                 image: "shakespeare"
-            )
+            ),
+            previewContent: nil,
+            relatedPostId: nil,
+            relatedCommentId: nil,
+            triggeredByAction: "interaction",
+            isGenerated: false,
+            userComment: nil,
+            userPost: nil,
+            originalPost: nil,
+            originalPostAuthor: nil
         ),
         
-        // 点赞通知
+        // 点赞通知 - 角色评论用户帖子
         NotificationModel(
-            type: .like,
+            type: .comment,
             avatar: "avatar3",
             username: "达芬奇",
             content: "你分享的照片构图精妙，光影层次分明，有一种文艺复兴时期的美感...",
             time: "5小时前",
             isOnline: true,
-            actionText: "点赞",
+            actionText: "评论",
             character: CharacterInfo(
                 name: "达芬奇",
                 era: "文艺复兴",
                 category: .artist,
                 image: "davinci"
             ),
-            previewContent: "这幅作品的构图和用色让我想起了文艺复兴时期的经典风格。"
+            previewContent: nil,
+            relatedPostId: "sample_post_2",
+            relatedCommentId: nil,
+            triggeredByAction: "comment",
+            isGenerated: false,
+            userComment: nil,
+            userPost: "当双耳化作沉默的深渊，我在斑驳的墙影下聆听时间的回响",
+            originalPost: nil,
+            originalPostAuthor: nil
         ),
         
         // 系统通知
@@ -201,7 +237,16 @@ struct NotificationModel: Identifiable {
                 era: "20世纪初",
                 category: .scientist,
                 image: "curie"
-            )
+            ),
+            previewContent: nil,
+            relatedPostId: nil,
+            relatedCommentId: nil,
+            triggeredByAction: "system",
+            isGenerated: false,
+            userComment: nil,
+            userPost: nil,
+            originalPost: nil,
+            originalPostAuthor: nil
         )
     ]
 } 

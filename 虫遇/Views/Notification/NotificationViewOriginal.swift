@@ -18,8 +18,38 @@ struct NotificationView: View {
     // TabBar管理器
     @ObservedObject private var tabBarManager = TabBarManager.shared
     
-    // 通知数据
-    @State private var notifications: [NotificationModel] = NotificationModel.sampleNotifications
+    // 通知服务
+    @StateObject private var notificationService = NotificationService.shared
+    
+    // 创建测试通知的方法
+    private func createTestNotificationWithUserComment() {
+        let testNotification = NotificationModel(
+            type: .comment,
+            avatar: "einstein",
+            username: "爱因斯坦",
+            content: "非常有趣的观点！时间确实是一个相对的概念，在不同的参照系中会有不同的流逝速度。",
+            time: "刚刚",
+            isOnline: true,
+            actionText: "评论",
+            character: NotificationModel.CharacterInfo(
+                name: "爱因斯坦",
+                era: "20世纪",
+                category: .scientist,
+                image: "einstein"
+            ),
+            previewContent: nil,
+            relatedPostId: "test_post",
+            relatedCommentId: nil,
+            triggeredByAction: "comment",
+            isGenerated: true,
+            userComment: "我觉得时间旅行很神奇，想知道你对此有什么看法？",
+            userPost: nil,
+            originalPost: "时间是什么？我们真的能穿越时间吗？",
+            originalPostAuthor: "时间探索者"
+        )
+        
+        notificationService.addTestNotification(testNotification)
+    }
     
     // 通知选项卡类型
     enum NotificationTab: String, CaseIterable {
@@ -39,121 +69,124 @@ struct NotificationView: View {
         
         var color: Color {
             switch self {
-            case .all: return .primary
-            case .comments: return .blue
-            case .likes: return .pink
-            case .follows: return .orange
+            case .all: return Color.gray.opacity(0.75)
+            case .comments: return Color.blue.opacity(0.65)
+            case .likes: return Color.pink.opacity(0.65)
+            case .follows: return Color.green.opacity(0.65)
             }
         }
     }
     
     // 筛选后的通知
     private var filteredNotifications: [NotificationModel] {
-        notifications.filter { shouldShowNotification(type: $0.type, selectedTab: selectedTab) }
+        notificationService.notifications.filter { shouldShowNotification(type: $0.type, selectedTab: selectedTab) }
     }
     
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .top) {
-                // 背景层 - 添加微妙渐变
+                // 背景层 - 更加微妙的渐变
                 LinearGradient(
-                    gradient: Gradient(colors: [Color.clear, Color.clear]),
+                    gradient: Gradient(colors: [
+                        Color(.systemBackground),
+                        Color.gray.opacity(0.015)
+                    ]),
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // 顶部标题栏 - 动态效果
-                    HStack {
+                    // 测试按钮
+                    Button("📝 测试用户评论显示") {
+                        createTestNotificationWithUserComment()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.blue.opacity(0.1))
+                    .foregroundColor(.blue)
+                    .cornerRadius(8)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+                    
+                    // 顶部标题栏 - 增强层次感
+                    HStack(alignment: .center) {
                         ZStack(alignment: .topTrailing) {
                             Text("虫洞通知")
-                                .font(.system(size: 22, weight: .bold))
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
                                 .foregroundColor(.primary)
                             
                             if hasNewNotifications {
                                 Circle()
                                     .fill(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [Color.red, Color(red: 0.9, green: 0.2, blue: 0.3)]),
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
+                                        RadialGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.red.opacity(0.9),
+                                                Color.red.opacity(0.7)
+                                            ]),
+                                            center: .center,
+                                            startRadius: 1,
+                                            endRadius: 4
                                         )
                                     )
-                                    .frame(width: 10, height: 10)
+                                    .frame(width: 8, height: 8)
                                     .overlay(
                                         Circle()
-                                            .stroke(Color.white, lineWidth: 1.5)
+                                            .stroke(Color.white, lineWidth: 1)
                                     )
-                                    .shadow(color: Color.red.opacity(0.4), radius: 2, x: 0, y: 1)
-                                    .offset(x: 2, y: -2)
-                                    .scaleEffect(animateHeader ? 1.0 : 0.5)
+                                    .shadow(color: Color.red.opacity(0.4), radius: 3, x: 0, y: 1)
+                                    .offset(x: 4, y: -2)
+                                    .scaleEffect(animateHeader ? 1.0 : 0.3)
                                     .opacity(animateHeader ? 1.0 : 0.0)
+                                    .animation(
+                                        .spring(response: 0.5, dampingFraction: 0.6).delay(0.8),
+                                        value: animateHeader
+                                    )
                             }
                         }
                         
                         Spacer()
-                        
-                        // 已读按钮
-                        Button(action: {
-                            withAnimation(.spring()) {
-                                hasNewNotifications = false
-                            }
-                        }) {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 18))
-                                .foregroundColor(Color.green)
-                                .frame(width: 36, height: 36)
-                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                .background(Color.green.opacity(0.1))
-                        }
-                        .buttonStyle(ScaleButtonStyle())
-                        
-                        // 设置按钮
-                        Button(action: {
-                            // 打开设置
-                        }) {
-                            Image(systemName: "gearshape")
-                                .font(.system(size: 18))
-                                .foregroundColor(Color.primary)
-                                .frame(width: 36, height: 36)
-                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                .background(Color.gray.opacity(0.1))
-                        }
-                        .buttonStyle(ScaleButtonStyle())
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 16)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 20)
                     .background(
                         Rectangle()
-                            .fill(Color.white.opacity(scrollOffset > 20 ? 0.98 : 0))
-                            .shadow(color: Color.black.opacity(scrollOffset > 20 ? 0.05 : 0), radius: 8, x: 0, y: 4)
+                            .fill(.ultraThinMaterial)
+                            .opacity(scrollOffset > 30 ? 0.95 : 0)
+                            .animation(.easeInOut(duration: 0.2), value: scrollOffset > 30)
+                    )
+                    .overlay(
+                        Rectangle()
+                            .frame(height: 0.5)
+                            .foregroundColor(Color.gray.opacity(scrollOffset > 30 ? 0.2 : 0))
+                            .animation(.easeInOut(duration: 0.2), value: scrollOffset > 30),
+                        alignment: .bottom
                     )
                     .zIndex(100)
                     
-                    // 分类选项卡 - 增强视觉效果
+                    // 分类选项卡 - 精致化设计
                     TabSwitcherView(selectedTab: $selectedTab)
-                        .padding(.bottom, 8)
+                        .padding(.bottom, 12)
                         .background(
                             Rectangle()
-                                .fill(Color.white)
-                                .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 2)
+                                .fill(.regularMaterial)
+                                .opacity(0.3)
                         )
                     
-                    // 通知列表 - 添加滚动交互
+                    // 通知列表 - 优化间距和布局
                     ScrollView {
-                        // 下拉刷新指示器空间
+                        // 下拉刷新指示器
                         if isRefreshing {
                             HStack {
                                 Spacer()
                                 ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle())
-                                    .scaleEffect(1.3)
-                                    .padding()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .gray.opacity(0.6)))
+                                    .scaleEffect(1.1)
+                                    .padding(.vertical, 16)
                                 Spacer()
                             }
-                            .transition(.opacity)
+                            .transition(.move(edge: .top).combined(with: .opacity))
                         }
                         
                         // 偏好设置检测
@@ -165,60 +198,57 @@ struct NotificationView: View {
                         }
                         .frame(height: 0)
                         
-                        // 通知组群容器 - 确保内容填充全屏宽度
-                        VStack(alignment: .leading, spacing: 16) {
-                            // 虚拟角色通知组
-                            if notifications.contains(where: { $0.character.category.isVirtual }) {
-                                notificationGroup(
-                                    title: "虚拟角色的回应",
-                                    icon: "sparkles",
-                                    iconColor: .purple,
-                                    notifications: filteredNotifications.filter { $0.character.category.isVirtual }
-                                )
-                            }
-                            
-                            // 历史人物通知组
-                            if notifications.contains(where: { $0.character.category.isHistorical }) {
-                                notificationGroup(
-                                    title: "穿越时空的对话",
-                                    icon: "clock.arrow.circlepath",
-                                    iconColor: .blue,
-                                    notifications: filteredNotifications.filter { 
-                                        $0.character.category.isHistorical && $0.type != .system 
+                        // 扁平化通知列表 - 优化动画和间距
+                        LazyVStack(spacing: 6) {
+                            ForEach(Array(filteredNotifications.enumerated()), id: \.element.id) { index, notification in
+                                Group {
+                                    if notification.type == .system {
+                                        SystemNotificationView(notification: notification)
+                                    } else {
+                                        NotificationItemView(notification: notification)
                                     }
-                                )
-                            }
-                            
-                            // 系统通知组
-                            if filteredNotifications.contains(where: { $0.type == .system }) {
-                                notificationGroup(
-                                    title: "系统通知",
-                                    icon: "bell",
-                                    iconColor: .orange,
-                                    notifications: filteredNotifications.filter { $0.type == .system },
-                                    isSystemGroup: true
+                                }
+                                .id("\(notification.id)-\(selectedTab)")
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.96).combined(with: .opacity).combined(with: .move(edge: .top)),
+                                    removal: .scale(scale: 0.96).combined(with: .opacity)
+                                ))
+                                .animation(
+                                    .spring(response: 0.6, dampingFraction: 0.8).delay(Double(index) * 0.05),
+                                    value: selectedTab
                                 )
                             }
                             
                             // 确保内容不被TabBar遮挡的底部填充
                             Color.clear
-                                .frame(height: max(0, tabBarManager.fullBottomAreaHeight - (tabBarManager.bottomSafeAreaHeight * 0.8)))
+                                .frame(height: max(0, tabBarManager.fullBottomAreaHeight - (tabBarManager.bottomSafeAreaHeight * 0.5)))
                                 .id("bottomSpacer")
                         }
-                        .frame(width: geometry.size.width) // 确保内容填充整个宽度
+                        .padding(.top, 4)
+                        .padding(.horizontal, 2)
+                        .frame(width: geometry.size.width)
                     }
-                    .background(Color.clear) // 使用透明背景
+                    .background(Color.clear)
                     .coordinateSpace(name: "scrollView")
                     .onPreferenceChange(AppScrollOffsetPreferenceKey.self) { offset in
-                        withAnimation(.interactiveSpring()) {
+                        withAnimation(.interactiveSpring(response: 0.4, dampingFraction: 0.8)) {
                             scrollOffset = -offset
                             
                             // 下拉刷新逻辑
-                            if offset > 50 && !isRefreshing {
+                            if offset > 60 && !isRefreshing {
                                 isRefreshing = true
-                                // 模拟刷新操作
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                                    withAnimation {
+                                // 触觉反馈
+                                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                                impactFeedback.impactOccurred()
+                                
+                                // 刷新通知数据（重新加载本地通知）
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                                    // 这里可以添加一些随机的系统通知来模拟刷新效果
+                                    if Bool.random() {
+                                        notificationService.generateSystemWelcomeNotification()
+                                    }
+                                    
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                                         isRefreshing = false
                                     }
                                 }
@@ -227,13 +257,13 @@ struct NotificationView: View {
                     }
                 }
             }
-            .background(Color.clear) // 整体背景设为透明
+            .background(Color(.systemBackground))
             .onAppear {
-                // 设置UIScrollView的全局配置，确保延伸到底部
+                // 设置UIScrollView的全局配置
                 UIScrollView.appearance().contentInsetAdjustmentBehavior = .never
                 UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = false
                 
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.3)) {
+                withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.1)) {
                     animateHeader = true
                 }
             }
@@ -242,53 +272,8 @@ struct NotificationView: View {
                 UIScrollView.appearance().contentInsetAdjustmentBehavior = .automatic
                 UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = true
             }
-            .ignoresSafeArea(.all, edges: [.bottom]) // 确保忽略底部安全区域
-            .edgesIgnoringSafeArea(.bottom) // 双重保险确保内容延伸到底部
-        }
-    }
-    
-    // 通知分组视图构建器
-    private func notificationGroup(
-        title: String, 
-        icon: String, 
-        iconColor: Color, 
-        notifications: [NotificationModel],
-        isSystemGroup: Bool = false
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // 分组标题
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(iconColor)
-                
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(iconColor)
-                
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 4)
-            
-            // 通知列表
-            ForEach(notifications) { notification in
-                if isSystemGroup {
-                    SystemNotificationView(notification: notification)
-                        .id("\(notification.id)-\(selectedTab)")
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.95).combined(with: .opacity),
-                            removal: .opacity
-                        ))
-                } else {
-                    NotificationItemView(notification: notification)
-                        .id("\(notification.id)-\(selectedTab)")
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.95).combined(with: .opacity),
-                            removal: .opacity
-                        ))
-                }
-            }
+            .ignoresSafeArea(.all, edges: [.bottom])
+            .edgesIgnoringSafeArea(.bottom)
         }
     }
     
@@ -308,7 +293,7 @@ struct NotificationView: View {
 }
 
 /**
- * 标签切换视图
+ * 标签切换视图 - 精致化设计
  */
 struct TabSwitcherView: View {
     @Binding var selectedTab: NotificationView.NotificationTab
@@ -319,32 +304,55 @@ struct TabSwitcherView: View {
             HStack(spacing: 0) {
                 ForEach(NotificationView.NotificationTab.allCases, id: \.self) { tab in
                     Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        // 触觉反馈
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
+                        impactFeedback.impactOccurred()
+                        
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
                             selectedTab = tab
                         }
                     }) {
-                        VStack(spacing: 4) {
+                        VStack(spacing: 6) {
                             HStack(spacing: 6) {
                                 Image(systemName: tab.icon)
-                                    .font(.system(size: 12))
+                                    .font(.system(size: 13, weight: selectedTab == tab ? .semibold : .medium))
                                 
                                 Text(tab.rawValue)
-                                    .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .regular))
+                                    .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .medium, design: .rounded))
                             }
-                            .foregroundColor(selectedTab == tab ? tab.color : .gray)
-                            .padding(.vertical, 8)
+                            .foregroundColor(selectedTab == tab ? tab.color : .secondary.opacity(0.7))
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 4)
                             .frame(maxWidth: .infinity)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(selectedTab == tab ? tab.color.opacity(0.06) : Color.clear)
+                                    .animation(.easeInOut(duration: 0.2), value: selectedTab == tab)
+                            )
                             
-                            // 选中指示器
+                            // 选中指示器 - 更优雅的设计
+                            ZStack {
                             if selectedTab == tab {
-                                Rectangle()
-                                    .fill(tab.color)
+                                    Capsule()
+                                        .fill(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [
+                                                    tab.color.opacity(0.8),
+                                                    tab.color.opacity(0.6)
+                                                ]),
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
                                     .frame(height: 3)
+                                        .frame(width: 24)
                                     .matchedGeometryEffect(id: "underline", in: tabAnimation)
+                                        .shadow(color: tab.color.opacity(0.3), radius: 2, x: 0, y: 1)
                             } else {
                                 Rectangle()
                                     .fill(Color.clear)
                                     .frame(height: 3)
+                                }
                             }
                         }
                         .contentShape(Rectangle())
@@ -352,10 +360,24 @@ struct TabSwitcherView: View {
                     .buttonStyle(PlainButtonStyle())
                 }
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
             
-            Divider()
-                .background(Color.gray.opacity(0.2))
+            // 分割线
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.clear,
+                            Color.gray.opacity(0.12),
+                            Color.clear
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 0.5)
+                .padding(.horizontal, 20)
         }
     }
 }

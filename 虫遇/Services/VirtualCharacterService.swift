@@ -1205,8 +1205,8 @@ class VirtualCharacterService {
                                     print("  角色: \(newComment.username)")
                                     print("  头像: \(newComment.userAvatar)")
                                     
-                                    // 添加评论到帖子
-                                    postViewModel.posts[postIndex].comments.insert(newComment, at: 0)
+                                    // 使用addComment方法添加评论到帖子，确保应用过滤逻辑
+                                    postViewModel.posts[postIndex].addComment(newComment)
                                     
                                     // 发送真实通知更新UI
                                     NotificationCenter.default.post(
