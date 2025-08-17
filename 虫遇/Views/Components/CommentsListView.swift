@@ -278,6 +278,14 @@ struct CommentsListView: View {
         }
         // 恢复视图ID，但不使用refreshID，避免不必要的视图重建
         .id("comments_list_view_\(storageKey)")
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CommentLikeUpdated"))) { notification in
+            // 监听评论点赞更新通知，刷新评论列表显示
+            DispatchQueue.main.async {
+                // 强制刷新视图，确保点赞数更新
+                self.refreshID = UUID()
+                print("✅ CommentsListView: 收到CommentLikeUpdated通知，评论点赞数已刷新")
+            }
+        }
     }
     
     // 保存展开状态到UserDefaults
@@ -1355,11 +1363,11 @@ struct CommentItemView: View {
                     if let replyToUsername = comment.replyToUsername {
                         HStack(spacing: 4) {
                             Text("回复")
-                                .font(.system(size: 13))
+                                .font(.system(size: 15))
                                 .foregroundColor(.gray)
                             
                             Text(replyToUsername)
-                                .font(.system(size: 13, weight: .medium))
+                                .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(.gray)
                         }
                         .padding(.top, 2)

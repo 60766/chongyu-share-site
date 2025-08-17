@@ -3,6 +3,15 @@ import Combine
 import UIKit
 
 /**
+ * 角色回复数据结构
+ * 包含评论内容和点赞判断
+ */
+struct CharacterResponse {
+    let content: String
+    let shouldLike: Bool
+}
+
+/**
  * 多角色评论服务
  * 用于批量生成多个虚拟角色的评论，共用一次API调用
  */
@@ -18,6 +27,7 @@ class MultiCharacterCommentService {
     // 存储当前请求的上下文信息
     private struct CommentRequestContext {
         let userComment: String?
+        let userCommentId: String?
         let originalPost: String?
         let originalPostAuthor: String?
     }
@@ -33,6 +43,7 @@ class MultiCharacterCommentService {
      * @param postContent 帖子内容
      * @param postAuthor 帖子作者
      * @param userComment 用户评论内容，用于生成针对性回复
+     * @param userCommentId 用户评论ID，用于点赞
      * @param targetUsername 目标用户名，被回复的用户
      * @param authorCharacterId 帖子作者的角色ID，如果作者是虚拟角色
      * @param isInvited 是否为邀请的角色评论，默认为false
@@ -44,6 +55,7 @@ class MultiCharacterCommentService {
         postContent: String,
         postAuthor: String? = nil,
         userComment: String? = nil,
+        userCommentId: String? = nil,
         targetUsername: String? = nil,
         authorCharacterId: String? = nil,
         isInvited: Bool = false,
@@ -51,15 +63,34 @@ class MultiCharacterCommentService {
     ) {
         print("🚀 开始批量生成角色评论 - 共\(characterIDs.count)个角色")
         print("💭 用户评论: \(userComment ?? "无")")
+        print("💭 用户评论长度: \(userComment?.count ?? 0)")
+        print("💭 用户评论是否为nil: \(userComment == nil)")
+        print("💭 用户评论是否为空: \(userComment?.isEmpty ?? true)")
         print("📝 原帖内容: \(postContent.prefix(50))...")
         print("👤 原帖作者: \(postAuthor ?? "无")")
         
-        // 存储当前请求的上下文信息
-        currentRequestContext = CommentRequestContext(
+        // 🔍 添加详细的调试信息
+        if let userComment = userComment {
+            print("🔍 DEBUG: userComment有值")
+            print("🔍 DEBUG: userComment内容前20字符: \(String(userComment.prefix(20)))")
+            print("🔍 DEBUG: userComment完整内容: '\(userComment)'")
+        } else {
+            print("🔍 DEBUG: userComment为nil - 这是问题所在！")
+        }
+        
+        // 🔧 修复：创建独立的请求上下文，不覆盖全局变量
+        let requestContext = CommentRequestContext(
             userComment: userComment,
+            userCommentId: userCommentId,
             originalPost: postContent,
             originalPostAuthor: postAuthor
         )
+        
+        print("🔧 DEBUG: 创建独立的requestContext")
+        print("  - userComment: \(userComment ?? "nil")")
+        print("  - userCommentId: \(userCommentId ?? "nil")")
+        print("  - originalPost: \(postContent.prefix(30))...")
+        print("  - originalPostAuthor: \(postAuthor ?? "nil")")
         
         // 如果没有角色，直接返回空结果
         if characterIDs.isEmpty {
@@ -147,10 +178,12 @@ class MultiCharacterCommentService {
                     }
                     
                     // 添加评论到帖子
-                    self.addCommentsToPost(commentsMap: commentsMap, characterIDs: characterIDs, postId: postId, isInvited: isInvited)
+                    self.addCommentsToPost(commentsMap: commentsMap, characterIDs: characterIDs, postId: postId, isInvited: isInvited, requestContext: requestContext)
                     
                     print("✅ 批量评论生成完成，成功解析\(commentsMap.count)个角色的评论")
-                    completion(.success(commentsMap))
+                    // 转换为只包含评论内容的映射，保持向后兼容
+                    let contentOnlyMap = commentsMap.mapValues { $0.content }
+                    completion(.success(contentOnlyMap))
                 }
             )
             .store(in: &cancellables)
@@ -350,6 +383,20 @@ class MultiCharacterCommentService {
             - 严格按照[角色ID]方括号格式，不添加额外标点
             - 🚨严禁@其他角色，只能直接对用户说话
             - 🚨每个角色都要用"你"来称呼用户，表现出在和用户直接对话
+            
+            点赞判断：
+            在生成每个角色的回复后，请为每个角色额外判断：作为真实的这个角色，你会给用户的这条评论点赞吗？
+            在每个角色的回复后添加：
+            点赞：是 或 点赞：否
+            
+            输出格式示例：
+            [einstein]
+            这个思考很有逻辑性！
+            点赞：是
+            
+            [libai]
+            颇有诗意，真情流露。
+            点赞：是
             """
         } else {
             // 原始提示词（针对帖子内容的回复）
@@ -436,16 +483,16 @@ class MultiCharacterCommentService {
     }
     
     /**
-     * 解析API响应
+     * 解析API响应，包括评论内容和点赞判断
      * @param response API返回的响应内容
      * @param characterIDs 角色ID列表
-     * @return 角色ID到评论内容的映射
+     * @return 角色ID到CharacterResponse的映射
      */
-    private func parseAPIResponse(response: String, characterIDs: [String]) -> [String: String] {
-        print("🔍 开始解析批量API响应")
+    private func parseAPIResponse(response: String, characterIDs: [String]) -> [String: CharacterResponse] {
+        print("🔍 开始解析批量API响应（包括点赞判断）")
         print("📄 原始响应内容预览: \(response.prefix(100))...")
         
-        var result = [String: String]()
+        var result = [String: CharacterResponse]()
         var currentCharacterId: String? = nil
         var currentComment = ""
         
@@ -475,8 +522,9 @@ class MultiCharacterCommentService {
             if trimmedLine.hasPrefix("[") && trimmedLine.hasSuffix("]") {
                 // 保存之前处理的角色评论
                 if let id = currentCharacterId, !currentComment.isEmpty {
-                    result[id] = currentComment.trimmingCharacters(in: .whitespacesAndNewlines)
-                    print("✓ 已解析角色评论: \(id), 长度: \(result[id]?.count ?? 0)字符")
+                    let (content, shouldLike) = parseCharacterContent(currentComment)
+                    result[id] = CharacterResponse(content: content, shouldLike: shouldLike)
+                    print("✓ 已解析角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
                     currentComment = ""
                 }
                 
@@ -501,8 +549,9 @@ class MultiCharacterCommentService {
             else if normalizedCharacterIDs.contains(trimmedLine.lowercased()) {
                 // 保存之前处理的角色评论
                 if let id = currentCharacterId, !currentComment.isEmpty {
-                    result[id] = currentComment.trimmingCharacters(in: .whitespacesAndNewlines)
-                    print("✓ 已解析角色评论: \(id), 长度: \(result[id]?.count ?? 0)字符")
+                    let (content, shouldLike) = parseCharacterContent(currentComment)
+                    result[id] = CharacterResponse(content: content, shouldLike: shouldLike)
+                    print("✓ 已解析角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
                     currentComment = ""
                 }
                 
@@ -523,8 +572,9 @@ class MultiCharacterCommentService {
                     
                     // 保存之前的角色评论
                     if let id = currentCharacterId, !currentComment.isEmpty {
-                        result[id] = currentComment.trimmingCharacters(in: .whitespacesAndNewlines)
-                        print("✓ 已解析角色评论: \(id), 长度: \(result[id]?.count ?? 0)字符")
+                        let (content, shouldLike) = parseCharacterContent(currentComment)
+                        result[id] = CharacterResponse(content: content, shouldLike: shouldLike)
+                        print("✓ 已解析角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
                         currentComment = ""
                     }
                     
@@ -544,8 +594,9 @@ class MultiCharacterCommentService {
         
         // 处理最后一个角色
         if let id = currentCharacterId, !currentComment.isEmpty {
-            result[id] = currentComment.trimmingCharacters(in: .whitespacesAndNewlines)
-            print("✓ 已解析最后一个角色评论: \(id), 长度: \(result[id]?.count ?? 0)字符")
+            let (content, shouldLike) = parseCharacterContent(currentComment)
+            result[id] = CharacterResponse(content: content, shouldLike: shouldLike)
+            print("✓ 已解析最后一个角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
         }
         
         // 输出解析结果统计
@@ -570,14 +621,44 @@ class MultiCharacterCommentService {
         
         return result
     }
+    
+    /**
+     * 解析角色的评论内容，分离评论和点赞判断
+     * @param content 原始内容
+     * @return (评论内容, 是否点赞)
+     */
+    private func parseCharacterContent(_ content: String) -> (String, Bool) {
+        let lines = content.components(separatedBy: .newlines)
+        var commentLines: [String] = []
+        var shouldLike = false
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // 检查是否是点赞判断行
+            if trimmedLine.hasPrefix("点赞：") || trimmedLine.hasPrefix("点赞:") {
+                let likeDecision = trimmedLine.replacingOccurrences(of: "点赞：", with: "")
+                                             .replacingOccurrences(of: "点赞:", with: "")
+                                             .trimmingCharacters(in: .whitespacesAndNewlines)
+                shouldLike = (likeDecision == "是")
+                print("📝 解析点赞判断: \(likeDecision) -> \(shouldLike)")
+            } else if !trimmedLine.isEmpty {
+                // 普通评论行
+                commentLines.append(trimmedLine)
+            }
+        }
+        
+        let finalContent = commentLines.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        return (finalContent, shouldLike)
+    }
 
     /**
      * 后备解析方法 - 尝试使用更简单的方式解析API响应
      * 适用于无法通过标准方式解析的情况
      */
-    private func fallbackParseResponse(response: String, characterIDs: [String]) -> [String: String] {
+    private func fallbackParseResponse(response: String, characterIDs: [String]) -> [String: CharacterResponse] {
         print("🔄 使用后备解析方法")
-        var result = [String: String]()
+        var result = [String: CharacterResponse]()
         
         // 规范化角色ID列表（全部转为小写）以便于比较
         let normalizedCharacterIDs = characterIDs.map { $0.lowercased() }
@@ -602,8 +683,9 @@ class MultiCharacterCommentService {
                     let comment = commentLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
                     
                     if !comment.isEmpty {
-                        result[originalId] = comment
-                        print("✓ 后备方法解析到角色评论: \(originalId), 长度: \(comment.count)字符")
+                        let (content, shouldLike) = parseCharacterContent(comment)
+                        result[originalId] = CharacterResponse(content: content, shouldLike: shouldLike)
+                        print("✓ 后备方法解析到角色评论: \(originalId), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
                     }
                     break
                 }
@@ -647,8 +729,9 @@ class MultiCharacterCommentService {
                             commentText = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
                             
                             if !commentText.isEmpty {
-                                result[characterId] = commentText
-                                print("✓ 后备方法2解析到角色评论: \(characterId), 长度: \(commentText.count)字符")
+                                let (content, shouldLike) = parseCharacterContent(commentText)
+                                result[characterId] = CharacterResponse(content: content, shouldLike: shouldLike)
+                                print("✓ 后备方法2解析到角色评论: \(characterId), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
                                 break
                             }
                         }
@@ -667,8 +750,9 @@ class MultiCharacterCommentService {
      * @param characterIDs 角色ID列表
      * @param postId 帖子ID
      * @param isInvited 是否为邀请的角色评论，默认为false
+     * @param requestContext 请求上下文，包含用户评论和帖子信息
      */
-    private func addCommentsToPost(commentsMap: [String: String], characterIDs: [String], postId: String, isInvited: Bool = false) {
+    private func addCommentsToPost(commentsMap: [String: CharacterResponse], characterIDs: [String], postId: String, isInvited: Bool = false, requestContext: CommentRequestContext) {
         // 获取帖子数据
         let viewModel = PostViewModel.shared
         
@@ -682,20 +766,14 @@ class MultiCharacterCommentService {
         if !isInvited && characterIDs.count > 0 {
             let authorId = characterIDs[0]
             if !commentsMap.keys.contains(authorId) {
-                print("⚠️ 帖子作者(\(authorId))的评论未在API返回结果中，将添加默认回复")
+                print("⚠️ 帖子作者(\(authorId))的评论未在API返回结果中，跳过默认回复")
                 
-                // 创建一个修改后的评论映射，包含作者的默认回复
-                var updatedCommentsMap = commentsMap
-                updatedCommentsMap[authorId] = "感谢你的评论，很高兴看到你的想法。"
-                
-                // 使用更新后的映射发送通知
+                // 不添加默认回复，直接使用原始的评论映射
                 sendCommentsNotifications(
                     postId: postId, 
-                    commentsMap: updatedCommentsMap, 
+                    commentsMap: commentsMap, 
                     isInvited: isInvited,
-                    userComment: currentRequestContext?.userComment,
-                    originalPost: currentRequestContext?.originalPost,
-                    originalPostAuthor: currentRequestContext?.originalPostAuthor
+                    requestContext: requestContext
                 )
                 return
             }
@@ -706,49 +784,70 @@ class MultiCharacterCommentService {
             postId: postId, 
             commentsMap: commentsMap, 
             isInvited: isInvited,
-            userComment: currentRequestContext?.userComment,
-            originalPost: currentRequestContext?.originalPost,
-            originalPostAuthor: currentRequestContext?.originalPostAuthor
+            requestContext: requestContext
         )
     }
 
     /**
-     * 发送评论相关通知
+     * 发送评论相关通知，并处理点赞逻辑
      * @param postId 帖子ID
-     * @param commentsMap 角色ID到评论内容的映射
+     * @param commentsMap 角色ID到CharacterResponse的映射
      * @param isInvited 是否为邀请的角色评论
-     * @param userComment 用户的原始评论内容
-     * @param originalPost 原帖内容
-     * @param originalPostAuthor 原帖作者
+     * @param requestContext 请求上下文，包含用户评论和帖子信息
      */
-    private func sendCommentsNotifications(postId: String, commentsMap: [String: String], isInvited: Bool, userComment: String? = nil, originalPost: String? = nil, originalPostAuthor: String? = nil) {
+    private func sendCommentsNotifications(postId: String, commentsMap: [String: CharacterResponse], isInvited: Bool, requestContext: CommentRequestContext) {
         // 首先，直接将评论添加到帖子模型中，确保数据层面的更新
-        self.directlyAddCommentsToPost(postId: postId, commentsMap: commentsMap)
+        print("🔧 传递给directlyAddCommentsToPost的目标评论ID: \(requestContext.userCommentId ?? "nil")")
+        print("🔧 DEBUG: sendCommentsNotifications中的requestContext状态:")
+        print("  - userCommentId: \(requestContext.userCommentId ?? "nil")")
+        print("  - userComment: \(requestContext.userComment ?? "nil")")
+        self.directlyAddCommentsToPost(
+            postId: postId, 
+            commentsMap: commentsMap, 
+            requestContext: requestContext
+        )
         
             // 生成一个唯一的批次ID，用于区分不同的评论批次
             let batchId = UUID().uuidString
             
+        print("📤 MultiCharacterCommentService: 准备发送通知")
+        print("📤 userComment参数: '\(requestContext.userComment ?? "nil")'")
+        print("📤 userComment是否为nil: \(requestContext.userComment == nil)")
+        print("📤 userComment是否为空: \(requestContext.userComment?.isEmpty ?? true)")
+        print("📤 originalPost: \(requestContext.originalPost?.prefix(30) ?? "nil")")
+        print("📤 originalPostAuthor: \(requestContext.originalPostAuthor ?? "nil")")
+            
         // 在主线程上执行UI更新
         DispatchQueue.main.async {
+            // 转换commentsMap为只包含评论内容的映射，用于通知
+            let contentOnlyMap = commentsMap.mapValues { $0.content }
+            
             // 发送通知，包含生成的评论内容映射
             var userInfo: [String: Any] = [
                 "postID": postId,
-                "commentsMap": commentsMap,
+                "commentsMap": contentOnlyMap,
                 "isInvited": isInvited,
                 "batchId": batchId,
                 "forceUpdate": true  // 添加强制更新标记
             ]
             
             // 添加用户评论和原帖信息
-            if let userComment = userComment {
+            if let userComment = requestContext.userComment {
                 userInfo["userComment"] = userComment
+                print("✅ 添加userComment到通知userInfo: '\(userComment)'")
+            } else {
+                print("⚠️ userComment为nil，不添加到通知userInfo")
             }
-            if let originalPost = originalPost {
+            if let originalPost = requestContext.originalPost {
                 userInfo["originalPost"] = originalPost
             }
-            if let originalPostAuthor = originalPostAuthor {
+            if let originalPostAuthor = requestContext.originalPostAuthor {
                 userInfo["originalPostAuthor"] = originalPostAuthor
             }
+            
+            print("📤 最终userInfo内容:")
+            print("📤   userComment: '\(userInfo["userComment"] as? String ?? "nil")'")
+            print("📤   commentsMap: \(contentOnlyMap)")
             
             NotificationCenter.default.post(
                 name: NSNotification.Name("CommentsGenerated"),
@@ -815,12 +914,13 @@ class MultiCharacterCommentService {
     }
     
     /**
-     * 直接将评论添加到帖子模型中
+     * 直接将评论添加到帖子模型中，并处理点赞逻辑
      * 这是一个关键修复，确保评论在数据层面已经添加到帖子中
      * @param postId 帖子ID
-     * @param commentsMap 角色ID到评论内容的映射
+     * @param commentsMap 角色ID到CharacterResponse的映射
+     * @param requestContext 请求上下文，包含用户评论ID等信息
      */
-    private func directlyAddCommentsToPost(postId: String, commentsMap: [String: String]) {
+    private func directlyAddCommentsToPost(postId: String, commentsMap: [String: CharacterResponse], requestContext: CommentRequestContext) {
         let viewModel = PostViewModel.shared
         
         guard let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) else {
@@ -831,7 +931,7 @@ class MultiCharacterCommentService {
         // 创建评论模型并添加到帖子
         var newComments: [DetailedCommentModel] = []
         
-        for (characterID, content) in commentsMap {
+        for (characterID, response) in commentsMap {
             // 获取角色名称
             let characterName = characterDataManager.getAttribute(id: characterID, attribute: "name") ?? characterID
             
@@ -841,7 +941,7 @@ class MultiCharacterCommentService {
             // 检查是否已存在相同内容和角色的评论
             // 防止重复添加相同的评论
             let existingComment = viewModel.posts[postIndex].comments.first {
-                $0.characterID == characterID && $0.content == content
+                $0.characterID == characterID && $0.content == response.content
             }
             
             if existingComment != nil {
@@ -849,15 +949,43 @@ class MultiCharacterCommentService {
                 continue
             }
             
-            // 创建评论模型，使用稍微错开的时间戳，确保排序合理
-            // 生成一个稍微早于当前时间的时间戳（0-3秒之间的随机值）
-            let randomOffset = Double.random(in: 0...3)
-            let commentDate = Date().addingTimeInterval(-randomOffset)
+            // 处理点赞逻辑 - 🔧 使用传入的目标评论ID，确保点赞精确性
+            // 延迟点赞，模拟虚拟角色先回复再点赞的真实行为
+            print("🔧 DEBUG: 点赞逻辑检查")
+            print("  - response.shouldLike: \(response.shouldLike)")
+            print("  - targetUserCommentId: \(requestContext.userCommentId ?? "nil")")
+            print("  - characterID: \(characterID)")
+            print("  - characterName: \(characterName)")
+            
+            if response.shouldLike, let userCommentId = requestContext.userCommentId {
+                print("❤️ \(characterName)将对用户评论\(userCommentId)点赞（使用精确传递的ID）")
+                print("🔧 点赞详情 - 角色:\(characterID), 帖子:\(postId), 评论ID:\(userCommentId)")
+                
+                // 延迟2-8秒再进行点赞，模拟真实的点赞时机
+                let likeDelay = Double.random(in: 2...8)
+                DispatchQueue.main.asyncAfter(deadline: .now() + likeDelay) {
+                    print("🕐 \(characterName)延迟\(String(format: "%.1f", likeDelay))秒后开始点赞")
+                    VirtualCharacterLikeService.shared.processCharacterLike(
+                        characterId: characterID,
+                        postId: postId,
+                        commentId: userCommentId,
+                        userComment: requestContext.userComment
+                    )
+                }
+            } else if response.shouldLike {
+                print("⚠️ \(characterName)想要点赞，但没有提供目标评论ID")
+                print("🔧 点赞失败详情 - shouldLike:\(response.shouldLike), targetUserCommentId:\(requestContext.userCommentId ?? "nil")")
+            }
+            
+            // 创建评论模型，使用稍微延后的时间戳，确保虚拟角色回复在用户评论之后
+            // 生成一个稍微晚于当前时间的时间戳（1-5秒之间的随机值）
+            let randomOffset = Double.random(in: 1...5)
+            let commentDate = Date().addingTimeInterval(randomOffset)
             
             let comment = DetailedCommentModel(
                 username: characterName,
                 userAvatar: avatarPath,
-                content: content,
+                content: response.content,
                 datePosted: commentDate,
                 isVirtualCharacter: true,
                 characterID: characterID,

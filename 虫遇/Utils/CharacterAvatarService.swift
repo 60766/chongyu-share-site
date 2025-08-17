@@ -199,15 +199,9 @@ class CharacterAvatarService {
         // 标准化ID
         let normalizedId = characterId.lowercased()
         
-        // 检查是否是已知角色
-        if knownCharacters.contains(normalizedId) {
-            // 对于历史人物，返回完整的资源路径
-            print("✅ 已知角色，返回资源路径: HistoricalFigures/\(normalizedId)")
-            return "HistoricalFigures/\(normalizedId)"
-        }
-        
-        // 如果没有特定映射，直接使用角色ID作为头像名称
-        print("ℹ️ 使用标准化角色ID作为头像名称: \(normalizedId)")
+        // 对于Assets.xcassets中的图片，直接使用图片集名称
+        // 不需要路径前缀，因为iOS会自动在Asset Catalog中查找
+        print("✅ 返回标准化角色ID作为头像名称: \(normalizedId)")
         return normalizedId
     }
     

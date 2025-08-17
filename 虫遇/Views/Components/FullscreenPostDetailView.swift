@@ -1807,6 +1807,42 @@ struct FullscreenPostDetailView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PostLikeUpdated"))) { notification in
+            // 监听帖子点赞更新通知，刷新当前帖子的点赞数
+            if let postIdString = notification.userInfo?["postID"] as? String,
+               postIdString == viewModel.post.id.uuidString {
+                
+                print("❤️ 收到PostLikeUpdated通知，当前帖子点赞数需要更新")
+                
+                // 从PostViewModel获取最新的帖子数据
+                if let updatedPost = PostViewModel.shared.posts.first(where: { $0.id.uuidString == postIdString }) {
+                    DispatchQueue.main.async {
+                        // 更新当前帖子数据
+                        viewModel.updatePost(updatedPost)
+                        print("✅ 帖子详情页面点赞数已更新: \(updatedPost.likes)")
+                    }
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CommentLikeUpdated"))) { notification in
+            // 监听评论点赞更新通知，刷新当前帖子的评论点赞数
+            if let postIdString = notification.userInfo?["postID"] as? String,
+               postIdString == viewModel.post.id.uuidString {
+                
+                print("❤️ FullscreenPostDetailView: 收到CommentLikeUpdated通知，当前帖子的评论点赞数需要更新")
+                
+                // 从PostViewModel获取最新的帖子数据
+                if let updatedPost = PostViewModel.shared.posts.first(where: { $0.id.uuidString == postIdString }) {
+                    DispatchQueue.main.async {
+                        // 更新当前帖子数据，这会刷新所有评论的点赞数
+                        viewModel.updatePost(updatedPost)
+                        // 同时刷新评论管理器
+                        viewModel.commentManager.currentPost = updatedPost
+                        print("✅ FullscreenPostDetailView: 帖子详情页面评论点赞数已更新")
+                    }
+                }
+            }
+        }
     }
     
     // MARK: - 子视图组件

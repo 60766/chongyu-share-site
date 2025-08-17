@@ -55,7 +55,7 @@ struct CharacterPickerView: View {
             // 背景遮罩 - 使用带模糊效果的背景
             Color.black.opacity(0.5)
                 .background(.ultraThinMaterial)
-                .ignoresSafeArea()
+                .ignoresSafeArea(.all, edges: .bottom)
                 .onTapGesture {
                     withAnimation(.easeOut(duration: 0.2)) {
                         animateContent = false
@@ -215,7 +215,7 @@ struct CharacterPickerView: View {
             .scaleEffect(animateContent ? 1 : 0.95)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: animateContent)
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(.all, edges: .bottom)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 withAnimation {
@@ -1025,7 +1025,7 @@ struct HomeView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .ignoresSafeArea()
+                .ignoresSafeArea(.all, edges: .bottom)
                 .allowsHitTesting(false) // 背景不阻止点击事件
                 
                 // 主滚动视图
@@ -1570,29 +1570,7 @@ struct HomeView: View {
                 HapticFeedback.medium()
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("HomeViewShouldRefresh"))) { _ in
-            // 如果帖子为空，则重新加载
-            if postViewModel.posts.isEmpty {
-                // 先尝试让 PostViewModel 恢复数据
-                postViewModel.ensureDataExists()
-                
-                // 强制刷新 UI
-                Task { @MainActor in
-                    // 如果依然为空，直接加载示例数据
-                    if postViewModel.posts.isEmpty {
-                        postViewModel.posts = ModelData.samplePosts
-                    }
-                    
-                    // 强制刷新UI
-                self.forceRefreshID = UUID()
-                }
-            } else {
-                // 仍然触发一次刷新，确保UI正确显示
-                self.forceRefreshID = UUID()
-            }
-        }
-        .ignoresSafeArea(.all, edges: .bottom) // 确保内容可以延伸到底部安全区域
-        .edgesIgnoringSafeArea(.bottom) // 进一步确保内容延伸到底部边缘
+        
     }
     
     // 提取单个帖子卡片为独立方法

@@ -6,22 +6,24 @@ import SwiftUI
  * 用于管理应用中的通知数据
  */
 struct NotificationModel: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     let type: NotificationType
     let avatar: String
     let username: String
     let content: String?
     let time: String
+    let createdAt: Date  // 添加创建时间字段用于精确筛选
     let isOnline: Bool
     let actionText: String?
     // 新增关联角色类别
-    var character: CharacterInfo
+    var character: CharacterInfo?
     // 新增内容预览
     var previewContent: String?
+    
     // 新增关联信息（用于精确对应用户行为）
     var relatedPostId: String?
     var relatedCommentId: String?
-    var triggeredByAction: String
+    var triggeredByAction: String?
     var isGenerated: Bool
     
     // 新增：用户触发内容（语境信息）
@@ -29,6 +31,51 @@ struct NotificationModel: Identifiable, Codable {
     var userPost: String?           // 用户的帖子内容  
     var originalPost: String?       // 原帖内容（如果是评论他人帖子的场景）
     var originalPostAuthor: String? // 原帖作者（如果是评论他人帖子的场景）
+    
+    // 构造函数
+    init(
+        id: UUID = UUID(),
+        type: NotificationType,
+        avatar: String,
+        username: String,
+        content: String? = nil,
+        time: String,
+        createdAt: Date = Date(),
+        isOnline: Bool,
+        actionText: String? = nil,
+        character: CharacterInfo? = nil,
+        previewContent: String? = nil,
+        relatedPostId: String? = nil,
+        relatedCommentId: String? = nil,
+        triggeredByAction: String? = nil,
+        isGenerated: Bool = false,
+        userComment: String? = nil,
+        userPost: String? = nil,
+        originalPost: String? = nil,
+        originalPostAuthor: String? = nil
+    ) {
+        self.id = id
+        self.type = type
+        self.avatar = avatar
+        self.username = username
+        self.content = content
+        self.time = time
+        self.createdAt = createdAt
+        self.isOnline = isOnline
+        self.actionText = actionText
+        self.character = character
+        self.previewContent = previewContent
+        // 新增关联信息赋值
+        self.relatedPostId = relatedPostId
+        self.relatedCommentId = relatedCommentId
+        self.triggeredByAction = triggeredByAction
+        self.isGenerated = isGenerated
+        // 新增用户触发内容赋值
+        self.userComment = userComment
+        self.userPost = userPost
+        self.originalPost = originalPost
+        self.originalPostAuthor = originalPostAuthor
+    }
     
     struct CharacterInfo: Codable {
         let name: String
@@ -70,14 +117,39 @@ struct NotificationModel: Identifiable, Codable {
             }
         }
         
-        // 角色专属字体
+        // 角色专属字体格式 - 参考主页帖子正文样式
         var fontStyle: Font {
             switch category {
-            case .scientist: return .system(.body, design: .serif)
-            case .philosopher: return .system(.body, design: .serif).weight(.light)
-            case .writer: return .system(.body, design: .serif).weight(.medium)
-            case .artist: return .system(.body, design: .rounded)
-            default: return .system(.body)
+            case .scientist: return .system(size: 16, weight: .regular, design: .serif)
+            case .philosopher: return .system(size: 16, weight: .regular, design: .serif)
+            case .writer: return .system(size: 16, weight: .regular, design: .serif)
+            case .artist: return .system(size: 16, weight: .regular, design: .rounded)
+            case .animeCharacter: return .system(size: 16, weight: .regular, design: .rounded)
+            case .gameCharacter: return .system(size: 16, weight: .regular, design: .rounded)
+            case .fictionCharacter: return .system(size: 16, weight: .regular, design: .rounded)
+            case .movieCharacter: return .system(size: 16, weight: .regular, design: .rounded)
+            case .tvCharacter: return .system(size: 16, weight: .regular, design: .rounded)
+            case .mythCharacter: return .system(size: 16, weight: .regular, design: .serif)
+            case .vtuber: return .system(size: 16, weight: .regular, design: .rounded)
+            default: return .system(size: 16, weight: .regular, design: .rounded)
+            }
+        }
+        
+        // 角色专属字体格式（支持自定义字重）
+        func fontStyle(weight: Font.Weight = .regular) -> Font {
+            switch category {
+            case .scientist: return .system(size: 16, weight: weight, design: .serif)
+            case .philosopher: return .system(size: 16, weight: weight, design: .serif)
+            case .writer: return .system(size: 16, weight: weight, design: .serif)
+            case .artist: return .system(size: 16, weight: weight, design: .rounded)
+            case .animeCharacter: return .system(size: 16, weight: weight, design: .rounded)
+            case .gameCharacter: return .system(size: 16, weight: weight, design: .rounded)
+            case .fictionCharacter: return .system(size: 16, weight: weight, design: .rounded)
+            case .movieCharacter: return .system(size: 16, weight: weight, design: .rounded)
+            case .tvCharacter: return .system(size: 16, weight: weight, design: .rounded)
+            case .mythCharacter: return .system(size: 16, weight: weight, design: .serif)
+            case .vtuber: return .system(size: 16, weight: weight, design: .rounded)
+            default: return .system(size: 16, weight: weight, design: .rounded)
             }
         }
         
@@ -104,7 +176,7 @@ struct NotificationModel: Identifiable, Codable {
     var typeColor: Color {
         switch self.type {
         case .comment:
-            return .blue
+            return .warmAccentSecondary
         case .like:
             return .pink
         case .follow:
@@ -136,7 +208,7 @@ struct NotificationModel: Identifiable, Codable {
     // 响应按钮文字
     var responseButtonText: String {
         switch type {
-        case .comment: return "评论"
+        case .comment: return "回复"
         case .like: return "点赞"
         case .follow: return "关注"
         case .system: return ""

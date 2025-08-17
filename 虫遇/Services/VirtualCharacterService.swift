@@ -786,6 +786,7 @@ class VirtualCharacterService {
             postId: postId,
             postContent: postContent,
             postAuthor: finalPostAuthor,
+            userComment: "",  // 🔧 邀请评论模式：没有用户评论内容
             isInvited: true,  // 标记为邀请的角色评论
             completion: { [weak self] result in
             guard let self = self else {
@@ -840,17 +841,9 @@ class VirtualCharacterService {
                             ]
                         )
                         
-                        // 3. 通知评论已生成
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("CommentsGenerated"),
-                            object: nil,
-                            userInfo: [
-                                "postID": postId,
-                                "commentCount": commentsMap.count
-                            ]
-                        )
+                        // 注意：CommentsGenerated通知已在MultiCharacterCommentService中发送，这里不再重复发送
                         
-                        // 4. 全局刷新所有帖子
+                        // 3. 全局刷新所有帖子
                         NotificationCenter.default.post(
                             name: NSNotification.Name("GlobalPostsRefresh"),
                             object: nil

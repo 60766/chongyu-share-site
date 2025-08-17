@@ -6,12 +6,19 @@
 //
 
 import Testing
-@testable import __
+@testable import 虫遇
 
-struct __Tests {
+struct 虫遇Tests {
 
     @Test func example() async throws {
         // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    }
+    
+    @Test func testNotificationServiceExists() async throws {
+        // 测试 NotificationService 能够正常初始化
+        let service = NotificationService.shared
+        #expect(service != nil)
+        print("✅ NotificationService 初始化成功")
     }
 
 }

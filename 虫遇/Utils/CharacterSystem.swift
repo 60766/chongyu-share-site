@@ -404,9 +404,9 @@ class CharacterSystem {
                     print("加载角色数据库失败: \(error.localizedDescription)")
                 }
                 
-                // 备用方案：使用硬编码的示例数据
-                print("JSON加载失败，使用备用数据")
-                self.characterDatabase = self.sampleCharacterDatabase
+                // 备用方案：使用空数组
+                print("JSON加载失败，使用空数组")
+                self.characterDatabase = []
             }
             
             // 加载用户自定义角色
@@ -676,430 +676,10 @@ class CharacterSystem {
     // MARK: - 示例数据
     
     // 样例角色数据库 - 实际应用中应该从JSON文件加载
-    private let sampleCharacterDatabase: [CharacterIdentity] = [
-        // 历史人物
-        CharacterIdentity(
-            id: "libai",
-            name: "李白",
-            type: .historical,
-            era: "唐朝",
-            primaryField: "诗人",
-            briefDescription: "唐代伟大浪漫主义诗人，以自由奔放的想象和豪放的风格著称",
-            avatarName: "libai",
-            region: "中国",
-            contentAffinities: [
-                "古潮新语": 0.9, 
-                "穿越吐槽": 0.85, 
-                "日常心情": 0.8, 
-                "虫洞共鸣": 0.7, 
-                "时空记事": 0.75
-            ],
-            subtype: "poet"
-        ),
-        CharacterIdentity(
-            id: "einstein",
-            name: "爱因斯坦",
-            type: .historical,
-            era: "近代",
-            primaryField: "物理学家",
-            briefDescription: "相对论创立者，20世纪最伟大的科学家之一",
-            avatarName: "einstein",
-            region: "德国/美国",
-            contentAffinities: [
-                "古潮新语": 0.85, 
-                "穿越吐槽": 0.9, 
-                "日常心情": 0.6, 
-                "虫洞共鸣": 0.95, 
-                "时空记事": 0.8
-            ],
-            subtype: "scientist"
-        ),
-        CharacterIdentity(
-            id: "shakespeare",
-            name: "莎士比亚",
-            type: .historical,
-            era: "文艺复兴",
-            primaryField: "戏剧家、诗人",
-            briefDescription: "英国最伟大的戏剧家，作品包括《罗密欧与朱丽叶》《哈姆雷特》等",
-            avatarName: "shakespeare",
-            region: "英国",
-            contentAffinities: [
-                "古潮新语": 0.8, 
-                "穿越吐槽": 0.7, 
-                "日常心情": 0.85, 
-                "虫洞共鸣": 0.75, 
-                "时空记事": 0.8
-            ],
-            subtype: "writer"
-        ),
-        CharacterIdentity(
-            id: "cleopatra",
-            name: "克莱奥帕特拉",
-            type: .historical,
-            era: "古代",
-            primaryField: "埃及法老",
-            briefDescription: "埃及最后的法老，以美貌和智慧著称，在复杂的国际政治中游刃有余",
-            avatarName: "cleopatra",
-            region: "埃及",
-            contentAffinities: [
-                "古潮新语": 0.8, 
-                "穿越吐槽": 0.7, 
-                "日常心情": 0.85, 
-                "虫洞共鸣": 0.7, 
-                "时空记事": 0.9
-            ],
-            subtype: "ruler"
-        ),
-        
-        // 动漫角色
-        CharacterIdentity(
-            id: "doraemon",
-            name: "哆啦A梦",
-            type: .anime,
-            era: "22世纪",
-            primaryField: "猫型机器人",
-            briefDescription: "来自22世纪的猫型机器人，使用各种神奇道具帮助野比大雄解决问题",
-            avatarName: "doraemon",
-            region: "日本",
-            contentAffinities: [
-                "古潮新语": 0.7, 
-                "穿越吐槽": 0.9, 
-                "日常心情": 0.9, 
-                "虫洞共鸣": 0.7, 
-                "时空记事": 0.8
-            ],
-            subtype: "scifi"
-        ),
-        CharacterIdentity(
-            id: "naruto",
-            name: "漩涡鸣人",
-            type: .anime,
-            era: "忍者时代",
-            primaryField: "忍者、火影",
-            briefDescription: "木叶村的年轻忍者，拥有九尾妖狐，梦想成为火影，保护村子和朋友",
-            avatarName: "naruto",
-            region: "火之国",
-            contentAffinities: [
-                "古潮新语": 0.7, 
-                "穿越吐槽": 0.8, 
-                "日常心情": 0.9, 
-                "虫洞共鸣": 0.8, 
-                "时空记事": 0.7
-            ],
-            subtype: "shounen"
-        ),
-        
-        // 文学角色
-        CharacterIdentity(
-            id: "holmes",
-            name: "夏洛克·福尔摩斯",
-            type: .literary,
-            era: "维多利亚时代",
-            primaryField: "侦探",
-            briefDescription: "世界上最著名的虚构侦探，以惊人的观察力和推理能力解决复杂案件",
-            avatarName: "holmes",
-            region: "英国伦敦",
-            contentAffinities: [
-                "古潮新语": 0.7, 
-                "穿越吐槽": 0.8, 
-                "日常心情": 0.6, 
-                "虫洞共鸣": 0.85, 
-                "时空记事": 0.8
-            ],
-            subtype: "novel"
-        ),
-        CharacterIdentity(
-            id: "dongquixote",
-            name: "唐·吉诃德",
-            type: .literary,
-            era: "16世纪",
-            primaryField: "骑士冒险家",
-            briefDescription: "塞万提斯笔下的主角，一位沉浸在骑士幻想中的乡绅，与现实脱节但充满理想",
-            avatarName: "dongquixote",
-            region: "西班牙",
-            contentAffinities: [
-                "古潮新语": 0.75, 
-                "穿越吐槽": 0.95, 
-                "日常心情": 0.8, 
-                "虫洞共鸣": 0.7, 
-                "时空记事": 0.7
-            ],
-            subtype: "novel"
-        ),
-        
-        // 电影角色
-        CharacterIdentity(
-            id: "yoda",
-            name: "尤达大师",
-            type: .movie,
-            era: "银河共和国",
-            primaryField: "绝地武士",
-            briefDescription: "《星球大战》中的绝地大师，以独特言语方式和深厚智慧著称",
-            avatarName: "yoda",
-            region: "银河系",
-            contentAffinities: [
-                "古潮新语": 0.9, 
-                "穿越吐槽": 0.7, 
-                "日常心情": 0.6, 
-                "虫洞共鸣": 0.85, 
-                "时空记事": 0.8
-            ],
-            subtype: "scifi"
-        ),
-        CharacterIdentity(
-            id: "ironman",
-            name: "托尼·史塔克",
-            type: .movie,
-            era: "现代",
-            primaryField: "发明家、超级英雄",
-            briefDescription: "漫威电影宇宙中的钢铁侠，天才、亿万富翁、花花公子、慈善家",
-            avatarName: "ironman",
-            region: "美国",
-            contentAffinities: [
-                "古潮新语": 0.7, 
-                "穿越吐槽": 0.95, 
-                "日常心情": 0.8, 
-                "虫洞共鸣": 0.9, 
-                "时空记事": 0.7
-            ],
-            subtype: "superhero"
-        ),
-        
-        // 神话角色
-        CharacterIdentity(
-            id: "sunwukong",
-            name: "孙悟空",
-            type: .mythological,
-            era: "神话时代",
-            primaryField: "齐天大圣",
-            briefDescription: "中国古典名著《西游记》的主角，神通广大，性格桀骜不驯",
-            avatarName: "sunwukong",
-            region: "中国",
-            contentAffinities: [
-                "古潮新语": 0.8, 
-                "穿越吐槽": 0.95, 
-                "日常心情": 0.85, 
-                "虫洞共鸣": 0.8, 
-                "时空记事": 0.75
-            ],
-            subtype: "chinese"
-        ),
-        CharacterIdentity(
-            id: "zeus",
-            name: "宙斯",
-            type: .mythological,
-            era: "古希腊",
-            primaryField: "众神之王",
-            briefDescription: "希腊神话中的天神之王，掌管雷电，众神与人类命运的主宰者",
-            avatarName: "zeus",
-            region: "希腊",
-            contentAffinities: [
-                "古潮新语": 0.85, 
-                "穿越吐槽": 0.8, 
-                "日常心情": 0.7, 
-                "虫洞共鸣": 0.8, 
-                "时空记事": 0.9
-            ],
-            subtype: "greek"
-        ),
-        
-        // 游戏角色
-        CharacterIdentity(
-            id: "mario",
-            name: "马里奥",
-            type: .game,
-            era: "蘑菇王国",
-            primaryField: "水管工、冒险家",
-            briefDescription: "任天堂标志性角色，以勇气和坚持不懈营救公主，击败库巴",
-            avatarName: "mario",
-            region: "蘑菇王国",
-            contentAffinities: [
-                "古潮新语": 0.5, 
-                "穿越吐槽": 0.8, 
-                "日常心情": 0.9, 
-                "虫洞共鸣": 0.6, 
-                "时空记事": 0.5
-            ],
-            subtype: "adventure"
-        ),
-        CharacterIdentity(
-            id: "masterchief",
-            name: "士官长",
-            type: .game,
-            era: "26世纪",
-            primaryField: "超级战士",
-            briefDescription: "《光环》系列的主角，经过生物强化的斯巴达战士，保卫人类免受外星威胁",
-            avatarName: "masterchief",
-            region: "人类殖民地",
-            contentAffinities: [
-                "古潮新语": 0.6, 
-                "穿越吐槽": 0.7, 
-                "日常心情": 0.5, 
-                "虫洞共鸣": 0.85, 
-                "时空记事": 0.8
-            ],
-            subtype: "fps"
-        ),
-        
-        // 科幻角色
-        CharacterIdentity(
-            id: "spock",
-            name: "史波克",
-            type: .scifi,
-            era: "23世纪",
-            primaryField: "科学官、星舰大副",
-            briefDescription: "《星际迷航》中的瓦肯人，以逻辑思维和理性著称",
-            avatarName: "spock",
-            region: "瓦肯星",
-            contentAffinities: [
-                "古潮新语": 0.8, 
-                "穿越吐槽": 0.7, 
-                "日常心情": 0.5, 
-                "虫洞共鸣": 0.95, 
-                "时空记事": 0.85
-            ],
-            subtype: nil
-        ),
-        CharacterIdentity(
-            id: "drstrange",
-            name: "奇异博士",
-            type: .scifi,
-            era: "现代",
-            primaryField: "魔法师、前外科医生",
-            briefDescription: "漫威宇宙中的至尊法师，掌握强大魔法和多元宇宙知识",
-            avatarName: "drstrange",
-            region: "美国",
-            contentAffinities: [
-                "古潮新语": 0.85, 
-                "穿越吐槽": 0.9, 
-                "日常心情": 0.7, 
-                "虫洞共鸣": 0.95, 
-                "时空记事": 0.8
-            ],
-            subtype: nil
-        ),
-        
-        // 奇幻角色
-        CharacterIdentity(
-            id: "gandalf",
-            name: "甘道夫",
-            type: .fantasy,
-            era: "第三纪元",
-            primaryField: "巫师",
-            briefDescription: "《魔戒》中的伊斯塔瑞巫师，中土世界的守护者和指引者",
-            avatarName: "gandalf",
-            region: "中土世界",
-            contentAffinities: [
-                "古潮新语": 0.9, 
-                "穿越吐槽": 0.8, 
-                "日常心情": 0.7, 
-                "虫洞共鸣": 0.85, 
-                "时空记事": 0.9
-            ],
-            subtype: nil
-        ),
-        CharacterIdentity(
-            id: "daenerys",
-            name: "丹妮莉丝·坦格利安",
-            type: .fantasy,
-            era: "中世纪风格世界",
-            primaryField: "龙之母、征服者",
-            briefDescription: "《权力的游戏》中的角色，流亡公主，龙之母，追求重夺铁王座",
-            avatarName: "daenerys",
-            region: "维斯特洛大陆",
-            contentAffinities: [
-                "古潮新语": 0.7, 
-                "穿越吐槽": 0.8, 
-                "日常心情": 0.85, 
-                "虫洞共鸣": 0.75, 
-                "时空记事": 0.9
-            ],
-            subtype: nil
-        ),
-        
-        // 企业家
-        CharacterIdentity(
-            id: "jobs",
-            name: "史蒂夫·乔布斯",
-            type: .entrepreneur,
-            era: "现代",
-            primaryField: "科技创新",
-            briefDescription: "苹果公司联合创始人，改变了计算机、音乐、手机和平板电脑行业",
-            avatarName: "jobs",
-            region: "美国",
-            contentAffinities: [
-                "古潮新语": 0.8, 
-                "穿越吐槽": 0.7, 
-                "日常心情": 0.6, 
-                "虫洞共鸣": 0.9, 
-                "时空记事": 0.8
-            ],
-            subtype: "tech"
-        ),
-        CharacterIdentity(
-            id: "musk",
-            name: "埃隆·马斯克",
-            type: .entrepreneur,
-            era: "现代",
-            primaryField: "太空探索、电动汽车",
-            briefDescription: "特斯拉和SpaceX CEO，致力于可持续能源和星际移民计划",
-            avatarName: "musk",
-            region: "美国",
-            contentAffinities: [
-                "古潮新语": 0.7, 
-                "穿越吐槽": 0.8, 
-                "日常心情": 0.7, 
-                "虫洞共鸣": 0.9, 
-                "时空记事": 0.8
-            ],
-            subtype: "tech"
-        )
-    ]
+    private let sampleCharacterDatabase: [CharacterIdentity] = []
     
     // MARK: - CharacterDatabase管理
     
-    // 静态示例数据库，用于静态方法访问
-    private static let staticSampleDatabase: [CharacterIdentity] = [
-        // 历史人物
-        CharacterIdentity(
-            id: "libai",
-            name: "李白",
-            type: .historical,
-            era: "唐朝",
-            primaryField: "诗人",
-            briefDescription: "唐代伟大浪漫主义诗人，以自由奔放的想象和豪放的风格著称",
-            avatarName: "libai",
-            region: "中国",
-            contentAffinities: [
-                "古潮新语": 0.9, 
-                "穿越吐槽": 0.85, 
-                "日常心情": 0.8, 
-                "虫洞共鸣": 0.7, 
-                "时空记事": 0.75
-            ],
-            subtype: "poet"
-        ),
-        CharacterIdentity(
-            id: "einstein",
-            name: "爱因斯坦",
-            type: .historical,
-            era: "近代",
-            primaryField: "物理学家",
-            briefDescription: "相对论创立者，20世纪最伟大的科学家之一",
-            avatarName: "einstein",
-            region: "德国/美国",
-            contentAffinities: [
-                "古潮新语": 0.85, 
-                "穿越吐槽": 0.9, 
-                "日常心情": 0.6, 
-                "虫洞共鸣": 0.95, 
-                "时空记事": 0.8
-            ],
-            subtype: "scientist"
-        )
-        // 为简化示例，仅保留几个角色
-    ]
-
     /// 从JSON加载角色数据库
     /// - Parameter completion: 加载完成后的回调
     static func loadCharacterDatabaseFromJSON(completion: @escaping ([CharacterIdentity]?, Error?) -> Void) {
@@ -1139,7 +719,11 @@ class CharacterSystem {
     ///   - subtype: 子类型(可选)
     /// - Returns: 筛选后的角色列表
     static func filterCharacters(byType type: CharacterType?, subtype: String? = nil) -> [CharacterIdentity] {
-        var filteredCharacters = staticSampleDatabase
+        // 从JSON文件加载角色数据
+        var filteredCharacters: [CharacterIdentity] = []
+        
+        // 这里应该从JSON文件加载数据，暂时返回空数组
+        // TODO: 实现从JSON文件加载角色数据
         
         if let type = type {
             filteredCharacters = filteredCharacters.filter { $0.type == type }
@@ -1157,7 +741,11 @@ class CharacterSystem {
     static func getAllSubtypesByType() -> [CharacterType: Set<String>] {
         var subtypesByType: [CharacterType: Set<String>] = [:]
         
-        for character in staticSampleDatabase {
+        // 从JSON文件加载角色数据
+        // TODO: 实现从JSON文件加载角色数据
+        let characters: [CharacterIdentity] = []
+        
+        for character in characters {
             if let subtype = character.subtype {
                 var subtypes = subtypesByType[character.type] ?? Set<String>()
                 subtypes.insert(subtype)
@@ -1172,7 +760,11 @@ class CharacterSystem {
     /// - Parameter type: 角色类型
     /// - Returns: 子类型集合
     static func getSubtypes(forType type: CharacterType) -> Set<String> {
-        return staticSampleDatabase
+        // 从JSON文件加载角色数据
+        // TODO: 实现从JSON文件加载角色数据
+        let characters: [CharacterIdentity] = []
+        
+        return characters
             .filter { $0.type == type }
             .compactMap { $0.subtype }
             .reduce(into: Set<String>()) { $0.insert($1) }

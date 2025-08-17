@@ -112,13 +112,13 @@ struct CommentView: View {
                 
                 // 评论内容 - 增强排版和阅读体验
                 Text(comment.content)
-                    .font(.system(size: 15))
+                    .font(.system(size: comment.isVirtualCharacter ? 14.0 : 14, weight: comment.isVirtualCharacter ? .regular : .regular))
                     .foregroundColor(
                         comment.isVirtualCharacter ? 
-                            Color.primary.opacity(0.8) : 
+                            DesignSystem.Colors.primaryText : 
                             Color.primary.opacity(0.8)
                     )
-                    .lineSpacing(4) // 优化行间距
+                    .lineSpacing(comment.isVirtualCharacter ? 4.0 : 4) // 虚拟角色使用与普通评论相同的行间距
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 12)

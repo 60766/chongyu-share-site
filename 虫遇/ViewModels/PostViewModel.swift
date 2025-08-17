@@ -298,13 +298,12 @@ class PostViewModel: ObservableObject {
                         userInfo: ["characterId": characterID]
                     )
                     
-                    // 一次性生成回复 - AI回复应该回复到用户所回复的同一个父评论
+                    // 一次性生成回复
                     generateBatchReplies(
                         characterIDs: charactersToRespond, 
                         to: formattedContent, 
                         in: post,
-                        replyToId: parentId, // 使用原始的parentId，而不是userReplyId
-                        replyToUsername: replyToUsername, // 使用实际的回复对象用户名
+                        replyToId: userReplyId,
                         backgroundTaskID: backgroundTaskID
                     )
                 }
@@ -326,6 +325,13 @@ class PostViewModel: ObservableObject {
                 posts[index].comments.insert(newComment, at: 0)
                 
                 print("✅ 已添加用户评论，评论ID: \(userCommentId)")
+                
+                // 🆕 为用户评论创建通知
+                NotificationService.shared.createUserCommentNotification(
+                    commentContent: formattedContent,
+                    postId: post.id.uuidString,
+                    postTitle: post.content // 移除 .prefix(50).description
+                )
                 
                 // 准备要生成回复的角色列表
                 var charactersToRespond: [String] = []
@@ -364,8 +370,7 @@ class PostViewModel: ObservableObject {
                     characterIDs: charactersToRespond, 
                     to: formattedContent, 
                     in: post,
-                    replyToId: userCommentId, // AI回复嵌套在用户评论下
-                    replyToUsername: "当前用户", // AI回复用户的顶级评论
+                    replyToId: userCommentId,
                     backgroundTaskID: backgroundTaskID
                 )
             }
@@ -383,10 +388,9 @@ class PostViewModel: ObservableObject {
      * @param to 回复的内容
      * @param in 帖子对象
      * @param replyToId 回复到的评论ID
-     * @param replyToUsername 回复到的用户名
      * @param backgroundTaskID 后台任务ID
      */
-    private func generateBatchReplies(characterIDs: [String], to content: String, in post: UserPostModel, replyToId: UUID, replyToUsername: String, backgroundTaskID: UIBackgroundTaskIdentifier) {
+    private func generateBatchReplies(characterIDs: [String], to content: String, in post: UserPostModel, replyToId: UUID, backgroundTaskID: UIBackgroundTaskIdentifier) {
         // 如果没有角色需要回应，直接结束
         if characterIDs.isEmpty {
             if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
@@ -396,13 +400,17 @@ class PostViewModel: ObservableObject {
         }
         
         print("🔄 准备批量生成\(characterIDs.count)个角色的回复")
+        print("🔍 DEBUG: 传递给generateMultiCharacterComments的content参数: '\(content)'")
+        print("🔍 DEBUG: content长度: \(content.count)")
+        print("🔍 DEBUG: content是否为空: \(content.isEmpty)")
         
         // 使用MultiCharacterCommentService一次性生成多个角色的回复
         MultiCharacterCommentService.shared.generateMultiCharacterComments(
             characterIDs: characterIDs,
             postId: post.id.uuidString,
             postContent: post.content,
-            postAuthor: post.username
+            postAuthor: post.username,
+            userComment: content  // 🔧 重要修复：传递用户的评论内容
         ) { [weak self] result in
             guard let self = self else { return }
             
@@ -436,7 +444,7 @@ class PostViewModel: ObservableObject {
                             isVirtualCharacter: true,
                             characterID: firstCharacterId,
                             parentCommentId: replyToId,
-                            replyToUsername: replyToUsername
+                            replyToUsername: "当前用户"
                         )
                         
                         // 添加到帖子
@@ -482,7 +490,7 @@ class PostViewModel: ObservableObject {
                                 isVirtualCharacter: true,
                                 characterID: characterID,
                                 parentCommentId: replyToId,
-                                replyToUsername: replyToUsername
+                                replyToUsername: "当前用户"
                             )
                             
                             // 添加到帖子
@@ -868,7 +876,8 @@ class PostViewModel: ObservableObject {
             characterIDs: randomCharacters,
             postId: postId.uuidString,
             postContent: postContent,
-            postAuthor: post.username
+            postAuthor: post.username,
+            userComment: content  // 🔧 重要修复：传递用户的评论内容
         ) { [weak self] result in
             guard let self = self else { return }
             
@@ -892,9 +901,9 @@ class PostViewModel: ObservableObject {
                             characterID: characterID
                         )
                         
-                        // 使用addComment方法添加到帖子，确保应用过滤逻辑
+                        // 添加到帖子
                         print("📝 添加\(characterID)的回复到帖子")
-                        self.posts[postIndex].addComment(virtualReply)
+                        self.posts[postIndex].comments.insert(virtualReply, at: 0)
                         
                         // 发送通知刷新UI
                         NotificationCenter.default.post(
@@ -1020,7 +1029,8 @@ class PostViewModel: ObservableObject {
             characterIDs: charactersToRespond,
             postId: post.id.uuidString,
             postContent: postContent,
-            postAuthor: post.username
+            postAuthor: post.username,
+            userComment: replyContent  // 🔧 重要修复：传递用户的回复内容
         ) { [weak self] result in
             guard let self = self else { return }
             
@@ -1223,6 +1233,14 @@ class PostViewModel: ObservableObject {
         // 更新帖子
         posts[postIndex] = updatedPost
         
+        // 🆕 为用户回复创建通知
+        NotificationService.shared.createUserReplyNotification(
+            replyContent: commentContent,
+            replyToUsername: replyTo,
+            postId: postId.uuidString,
+            postTitle: post.content // 移除 .prefix(50).description
+        )
+        
         // 检查更新是否成功
         let updatedFlattenedComments = getFlattenedComments(forPost: updatedPost.id)
         if let updatedTargetComment = updatedFlattenedComments.first(where: { $0.id == commentId }),
@@ -1282,7 +1300,8 @@ class PostViewModel: ObservableObject {
             characterIDs: characterIDsToReply,
             postId: postId.uuidString,
             postContent: post.content,
-            postAuthor: post.username
+            postAuthor: post.username,
+            userComment: commentContent  // 🔧 重要修复：传递用户的回复内容
         ) { [weak self] result in
             guard let self = self else { return }
             
@@ -1315,13 +1334,13 @@ class PostViewModel: ObservableObject {
                             datePosted: Date().addingTimeInterval(Double.random(in: 30...60)),
                             isVirtualCharacter: true,
                             characterID: firstCharacterId,
-                            parentCommentId: userReplyId, // 回复用户评论ID
+                            parentCommentId: commentId, // 使用原始评论ID作为父评论ID
                             replyToUsername: "当前用户"   // 明确设置回复对象
                         )
                         
-                        // 添加到帖子 - 添加到用户评论下
-                        print("📝 添加\(firstCharacterId)的回复到用户评论ID: \(userReplyId)")
-                        self.posts[postIndex].addReplyToParent(parentId: userReplyId, reply: virtualReply)
+                        // 添加到帖子 - 添加到原始评论下
+                        print("📝 添加\(firstCharacterId)的回复到评论ID: \(commentId)")
+                        self.posts[postIndex].addReplyToParent(parentId: commentId, reply: virtualReply)
                         
                         // 发送通知刷新UI
                         NotificationCenter.default.post(
@@ -1350,13 +1369,13 @@ class PostViewModel: ObservableObject {
                                 datePosted: Date().addingTimeInterval(Double.random(in: 60...180)),
                                 isVirtualCharacter: true,
                                 characterID: characterID,
-                                parentCommentId: userReplyId, // 回复用户的评论，而不是原始评论
+                                parentCommentId: commentId, // 使用原始评论ID作为父评论ID
                                 replyToUsername: "当前用户"   // 明确设置回复对象
                             )
                             
                             // 添加到帖子
-                            print("📝 添加\(characterID)的回复到用户评论ID: \(userReplyId)")
-                            self.posts[postIndex].addReplyToParent(parentId: userReplyId, reply: virtualReply)
+                            print("📝 添加\(characterID)的回复到评论ID: \(commentId)")
+                            self.posts[postIndex].addReplyToParent(parentId: commentId, reply: virtualReply)
                             
                             // 发送通知刷新UI
                             NotificationCenter.default.post(
@@ -1417,7 +1436,7 @@ class PostViewModel: ObservableObject {
                                     let characterName = self.getCharacterName(for: characterID)
                                     let characterAvatar = self.getCharacterAvatar(for: characterID)
                                     
-                                    // 创建虚拟角色回复，回复用户的评论
+                                    // 创建虚拟角色回复，直接回复到原始的评论，而不是用户的回复
                                     let virtualReply = DetailedCommentModel(
                                         username: characterName,
                                         userAvatar: characterAvatar,
@@ -1425,17 +1444,17 @@ class PostViewModel: ObservableObject {
                                         datePosted: Date().addingTimeInterval(Double.random(in: 30...120)),
                                         isVirtualCharacter: true,
                                         characterID: characterID,
-                                        parentCommentId: userReplyId, // 回复用户的评论ID
+                                        parentCommentId: commentId, // 使用原始评论ID作为父评论ID
                                         replyToUsername: "当前用户"   // 明确设置回复对象
                                     )
                                     
-                                    // 添加到帖子 - 添加到用户评论下
+                                    // 添加到帖子 - 添加到原始评论下
                                     if let postIndex = self.posts.firstIndex(where: { $0.id == postId }) {
-                                        print("📝 添加虚拟角色回复到用户评论下，用户评论ID: \(userReplyId)")
+                                        print("📝 添加虚拟角色回复到原始评论下，原始评论ID: \(commentId)")
                                         
                                         // 使用临时变量来创建帖子副本
                                         let updatedPost = self.posts[postIndex]
-                                        updatedPost.addReplyToParent(parentId: userReplyId, reply: virtualReply)
+                                        updatedPost.addReplyToParent(parentId: commentId, reply: virtualReply)
                                         
                                         // 更新帖子数组
                                         self.posts[postIndex] = updatedPost
@@ -2245,7 +2264,7 @@ class PostViewModel: ObservableObject {
         for i in 0..<comments.count {
             // 检查当前评论是否是目标父评论
             if comments[i].id == parentId {
-                comments[i].replies.append(reply)
+                comments[i].replies.insert(reply, at: 0)
                 print("🔍 ViewModel: 找到目标评论，ID: \(parentId)，用户名: \(comments[i].username)，添加回复成功")
                 return true
             }

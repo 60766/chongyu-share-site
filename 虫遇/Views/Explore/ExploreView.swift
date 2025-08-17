@@ -123,7 +123,7 @@ struct ExploreView: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .ignoresSafeArea()
+            .ignoresSafeArea(.all, edges: .bottom)
             
             // 主内容区
             VStack(spacing: 0) {
@@ -597,7 +597,7 @@ struct ExploreView: View {
                 NavigationView {
                     CharacterDetailView(character: convertToCharacter(character))
                 }
-                .edgesIgnoringSafeArea(.all)
+                .ignoresSafeArea(.all, edges: .bottom)
                 
                 // 添加一个透明视图，确保底部导航栏区域不被覆盖
                 VStack {
@@ -606,7 +606,7 @@ struct ExploreView: View {
                         .fill(Color.clear)
                         .frame(height: tabBarManager.fullBottomAreaHeight)
                 }
-                .edgesIgnoringSafeArea(.bottom)
+                .ignoresSafeArea(.all, edges: .bottom)
             }
         }
         .fullScreenCover(item: $navigateToChatView) { character in
@@ -616,7 +616,7 @@ struct ExploreView: View {
                 NavigationView {
                     ChatView(character: convertToChatCharacter(character))
                 }
-                .edgesIgnoringSafeArea(.all)
+                .ignoresSafeArea(.all, edges: .bottom)
                 
                 // 添加一个透明视图，确保底部导航栏区域不被覆盖
                 VStack {
@@ -625,7 +625,7 @@ struct ExploreView: View {
                         .fill(Color.clear)
                         .frame(height: tabBarManager.fullBottomAreaHeight)
                 }
-                .edgesIgnoringSafeArea(.bottom)
+                .ignoresSafeArea(.all, edges: .bottom)
             }
         }
         .sheet(isPresented: $showingCreateCharacter) {

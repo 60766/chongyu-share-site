@@ -889,6 +889,23 @@ struct PostCardView: View {
             images: post.images,
             initialIndex: selectedImageIndex
         )
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PostLikeUpdated"))) { notification in
+            // 监听帖子点赞更新通知，刷新当前卡片的点赞数
+            if let postIdString = notification.userInfo?["postID"] as? String,
+               postIdString == post.id.uuidString {
+                
+                print("❤️ PostCardView: 收到PostLikeUpdated通知，当前帖子点赞数需要更新")
+                
+                // 从PostViewModel获取最新的帖子数据并更新本地状态
+                if let updatedPost = PostViewModel.shared.posts.first(where: { $0.id.uuidString == postIdString }) {
+                    DispatchQueue.main.async {
+                        // 更新本地点赞状态，触发UI刷新
+                        isLiked = updatedPost.isLikedByCurrentUser
+                        print("✅ PostCardView: 帖子卡片点赞数已更新: \(updatedPost.likes)")
+                    }
+                }
+            }
+        }
     }
     
     // MARK: - 子视图组件
@@ -1749,7 +1766,7 @@ struct PostCardView: View {
                                 
                                 // 评论内容
                                 Text(featuredComment.content)
-                                    .font(.system(size: 14))
+                                    .font(.system(size: featuredComment.isVirtualCharacter ? 14.0 : 14, weight: featuredComment.isVirtualCharacter ? .regular : .regular))
                                     .foregroundColor(DesignSystem.Colors.primaryText)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
@@ -1795,7 +1812,7 @@ struct PostCardView: View {
                                                 .font(.system(size: 10))
                                                 .foregroundColor(CharacterAvatarService.shared.getCharacterTagColor(for: featuredComment.characterID ?? "").opacity(0.8))
                                         }
-                    } else {
+                                    } else {
                                         Text("点击查看更多")
                                             .font(.system(size: 11))
                                             .foregroundColor(.secondary.opacity(0.7))

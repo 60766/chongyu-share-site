@@ -59,11 +59,21 @@ class NotificationService: ObservableObject {
     
     @objc private func handleCommentGenerated(_ notification: Notification) {
         print("📨 NotificationService: 收到评论生成通知")
+        print("📨 当前通知数量: \(self.notifications.count)")
         
         guard let userInfo = notification.userInfo,
               let postId = userInfo["postID"] as? String,
               let commentsMap = userInfo["commentsMap"] as? [String: String] else {
             print("❌ NotificationService: 评论生成通知数据无效")
+            print("❌ userInfo: \(notification.userInfo ?? [:])")
+            return
+        }
+        
+        // 检查是否为邀请的虚拟角色评论
+        let isInvited = userInfo["isInvited"] as? Bool ?? false
+        
+        if isInvited {
+            print("🚫 NotificationService: 这是邀请虚拟角色的评论，跳过创建通知")
             return
         }
         
@@ -74,14 +84,16 @@ class NotificationService: ObservableObject {
         
         print("📨 NotificationService: 处理\(commentsMap.count)个角色的评论通知")
         print("📝 用户评论: \(userComment ?? "无")")
-        print("📄 原帖内容: \(originalPost ?? "无")")
-        print("👤 原帖作者: \(originalPostAuthor ?? "无")")
-        print("🔍 UserInfo 完整内容: \(userInfo)")
+        print("📝 用户评论是否为空: \(userComment?.isEmpty ?? true)")
+        print("📝 用户评论长度: \(userComment?.count ?? 0)")
+        print("📝 原帖ID: \(postId)")
+        print("📝 角色评论: \(commentsMap)")
         
-        // 为每个AI生成的评论创建通知
-        DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1...3)) {
+        // 为每个AI生成的评论创建通知 - 🔧 移除延迟，立即创建通知
+        DispatchQueue.main.async {
             for (characterId, commentContent) in commentsMap {
                 print("📨 NotificationService: 为角色\(characterId)创建评论通知")
+                print("🔍 传递给createCommentNotification的userComment: '\(userComment ?? "nil")'")
                 self.createCommentNotification(
                     characterId: characterId,
                     content: commentContent,
@@ -91,6 +103,7 @@ class NotificationService: ObservableObject {
                     originalPostAuthor: originalPostAuthor
                 )
             }
+            print("📨 NotificationService: 评论通知创建完成，新的通知数量: \(self.notifications.count)")
         }
     }
     
@@ -149,30 +162,41 @@ class NotificationService: ObservableObject {
         print("   角色: \(character.name)")
         print("   AI回复: \(content.prefix(30))...")
         print("   用户评论: \(userComment?.prefix(30) ?? "无")...")
-        print("   原帖: \(originalPost?.prefix(30) ?? "无")...")
+        print("   用户评论完整内容: '\(userComment ?? "nil")'")
+        print("   用户评论是否为nil: \(userComment == nil)")
+        print("   用户评论是否为空: \(userComment?.isEmpty ?? true)")
+        print("   原帖: \(originalPost?.prefix(42) ?? "无")...")
         print("   原帖作者: \(originalPostAuthor ?? "无")")
-        print("   📝 完整用户评论: \(userComment ?? "无")")
-        print("   📄 完整原帖内容: \(originalPost ?? "无")")
+        print("   原帖内容长度: \(originalPost?.count ?? 0)")
         
         let notification = NotificationModel(
             type: .comment,
             avatar: character.image,
             username: character.name,
-            content: content, // 使用完整内容，显示组件会处理长度
+            content: content,
             time: formatTimeAgo(Date()),
             isOnline: Bool.random(),
             actionText: "评论",
             character: character,
-            previewContent: nil, // 不使用previewContent，因为我们有更详细的上下文
+            previewContent: originalPost, // 直接使用完整的 originalPost
             relatedPostId: postId,
             relatedCommentId: nil,
             triggeredByAction: "comment",
             isGenerated: true,
             userComment: userComment,
-            userPost: nil,
+            userPost: originalPost, // 确保 userPost 也是完整的
             originalPost: originalPost,
             originalPostAuthor: originalPostAuthor
         )
+        
+        print("🔔 NotificationModel创建完成:")
+        print("   NotificationModel.userComment: '\(notification.userComment ?? "nil")'")
+        print("   NotificationModel.originalPost: '\(notification.originalPost ?? "nil")'")
+        print("   NotificationModel.originalPostAuthor: '\(notification.originalPostAuthor ?? "nil")'")
+        print("   NotificationModel.previewContent: '\(notification.previewContent ?? "nil")'")
+        print("   NotificationModel.previewContent长度: \(notification.previewContent?.count ?? 0)")
+        print("   是否应该显示用户上下文: \((notification.userComment != nil && !notification.userComment!.isEmpty) || (notification.userPost != nil && !notification.userPost!.isEmpty))")
+        print("   是否应该显示原帖信息: \(notification.originalPost != nil && !notification.originalPost!.isEmpty && notification.userComment != nil)")
         
         addNotification(notification)
     }
@@ -210,6 +234,53 @@ class NotificationService: ObservableObject {
         addNotification(notification)
     }
     
+    /**
+     * 创建虚拟角色点赞通知（公开方法）
+     * @param characterId 角色ID
+     * @param characterName 角色名称
+     * @param characterAvatar 角色头像
+     * @param postId 帖子ID
+     * @param postTitle 帖子标题
+     * @param userComment 用户评论内容
+     */
+    func createLikeNotification(
+        characterId: String,
+        characterName: String,
+        characterAvatar: String,
+        postId: String,
+        postTitle: String,
+        userComment: String? = nil
+    ) {
+        // 获取角色信息
+        guard let character = getCharacterInfo(characterId: characterId) else {
+            print("❌ 无法获取角色\(characterId)的详细信息")
+            return
+        }
+        
+        let notification = NotificationModel(
+            type: .like,
+            avatar: characterAvatar,
+            username: characterName,
+            content: nil,  // 不显示额外文字，只显示点赞动作
+            time: formatTimeAgo(Date()),
+            isOnline: Bool.random(),
+            actionText: "点赞",
+            character: character,
+            previewContent: nil,  // 不显示原帖内容，只显示用户评论
+            relatedPostId: postId,
+            relatedCommentId: nil,
+            triggeredByAction: "like",
+            isGenerated: true,
+            userComment: userComment,  // 保留用户评论，会在userContextView中显示
+            userPost: nil,
+            originalPost: nil,
+            originalPostAuthor: nil
+        )
+        
+        addNotification(notification)
+        print("📨 创建虚拟角色点赞通知: \(characterName)点赞了您的内容")
+    }
+    
     private func createFollowNotification(characterId: String) {
         guard let character = getCharacterInfo(characterId: characterId) else { return }
         
@@ -244,11 +315,13 @@ class NotificationService: ObservableObject {
         characterAvatar: String,
         commentContent: String,
         postId: String,
-        postTitle: String
+        postTitle: String,
+        userComment: String? = nil  // 🔧 添加用户评论参数
     ) {
         print("💬 NotificationService: 直接创建评论通知")
         print("   角色: \(characterName)")
         print("   评论内容: \(commentContent.prefix(30))...")
+        print("   用户评论: \(userComment?.prefix(30) ?? "无")...")  // 🔧 添加调试信息
         
         let notification = NotificationModel(
             type: .comment,
@@ -264,15 +337,86 @@ class NotificationService: ObservableObject {
                 category: .historical,
                 image: characterAvatar
             ),
-            previewContent: postTitle,
+            previewContent: postTitle, // 确保这里也是完整的 postTitle
             relatedPostId: postId,
             relatedCommentId: nil,
             triggeredByAction: "comment",
             isGenerated: false,
-            userComment: nil,
+            userComment: userComment,  // 🔧 设置用户评论
             userPost: nil,
             originalPost: nil,
             originalPostAuthor: nil
+        )
+        
+        addNotification(notification)
+    }
+    
+    /**
+     * 为用户自己的评论创建通知
+     * 这样用户可以在通知中心看到自己发表的评论
+     */
+    func createUserCommentNotification(
+        commentContent: String,
+        postId: String,
+        postTitle: String
+    ) {
+        print("👤 NotificationService: 创建用户评论通知")
+        print("   评论内容: \(commentContent.prefix(30))...")
+        
+        let notification = NotificationModel(
+            type: .comment,
+            avatar: "person.circle.fill", // 用户头像
+            username: "当前用户",
+            content: commentContent,
+            time: formatTimeAgo(Date()),
+            isOnline: true, // 用户总是在线
+            actionText: "评论了",
+            character: nil, // 用户不是角色
+            previewContent: postTitle, // 确保这里是完整的 postTitle
+            relatedPostId: postId,
+            relatedCommentId: nil,
+            triggeredByAction: "user_comment",
+            isGenerated: false,
+            userComment: commentContent, // 标记为用户评论
+            userPost: nil,
+            originalPost: postTitle,
+            originalPostAuthor: "当前用户"
+        )
+        
+        addNotification(notification)
+    }
+    
+    /**
+     * 为用户回复他人评论创建通知
+     */
+    func createUserReplyNotification(
+        replyContent: String,
+        replyToUsername: String,
+        postId: String,
+        postTitle: String
+    ) {
+        print("👤 NotificationService: 创建用户回复通知")
+        print("   回复内容: \(replyContent.prefix(30))...")
+        print("   回复对象: \(replyToUsername)")
+        
+        let notification = NotificationModel(
+            type: .comment,
+            avatar: "person.circle.fill", // 用户头像
+            username: "当前用户",
+            content: replyContent,
+            time: formatTimeAgo(Date()),
+            isOnline: true, // 用户总是在线
+            actionText: "回复了 \(replyToUsername)",
+            character: nil, // 用户不是角色
+            previewContent: postTitle, // 确保这里是完整的 postTitle
+            relatedPostId: postId,
+            relatedCommentId: nil,
+            triggeredByAction: "user_reply",
+            isGenerated: false,
+            userComment: replyContent, // 标记为用户回复
+            userPost: nil,
+            originalPost: postTitle,
+            originalPostAuthor: "当前用户"
         )
         
         addNotification(notification)
@@ -312,63 +456,163 @@ class NotificationService: ObservableObject {
         addNotification(notification)
     }
     
+    // 添加更多系统通知的方法
+    func generateAdditionalSystemNotifications() {
+        // 检查是否已经有系统通知了
+        let hasSystemNotifications = notifications.contains { $0.type == .system }
+        
+        if !hasSystemNotifications {
+            // 生成欢迎通知
+            generateSystemWelcomeNotification()
+            
+            // 生成功能介绍通知
+            let featureNotification = NotificationModel(
+                type: .system,
+                avatar: "system",
+                username: "功能介绍",
+                content: "你可以与历史上的著名人物对话，体验跨越时空的思想碰撞！",
+                time: formatTimeAgo(Date().addingTimeInterval(-3600)), // 1小时前
+                isOnline: false,
+                actionText: nil,
+                character: NotificationModel.CharacterInfo(
+                    name: "助手",
+                    era: "现代",
+                    category: .all,
+                    image: "davinci"
+                ),
+                previewContent: nil,
+                relatedPostId: nil,
+                relatedCommentId: nil,
+                triggeredByAction: "system",
+                isGenerated: false,
+                userComment: nil,
+                userPost: nil,
+                originalPost: nil,
+                originalPostAuthor: nil
+            )
+            
+            addNotification(featureNotification)
+            
+            // 生成更新通知
+            let updateNotification = NotificationModel(
+                type: .system,
+                avatar: "system",
+                username: "版本更新",
+                content: "新增了更多历史人物，快来探索吧！",
+                time: formatTimeAgo(Date().addingTimeInterval(-7200)), // 2小时前
+                isOnline: false,
+                actionText: nil,
+                character: NotificationModel.CharacterInfo(
+                    name: "系统",
+                    era: "现代",
+                    category: .all,
+                    image: "shakespeare"
+                ),
+                previewContent: nil,
+                relatedPostId: nil,
+                relatedCommentId: nil,
+                triggeredByAction: "system",
+                isGenerated: false,
+                userComment: nil,
+                userPost: nil,
+                originalPost: nil,
+                originalPostAuthor: nil
+            )
+            
+            addNotification(updateNotification)
+        }
+    }
+    
     // MARK: - 辅助方法
     
     private func getCharacterEra(_ characterId: String) -> String {
-        switch characterId.lowercased() {
-        case "kongzi": return "春秋时期"
-        case "einstein": return "现代"
-        case "shakespeare": return "文艺复兴"
-        case "davinci": return "文艺复兴"
-        case "curie": return "现代"
-        case "newton": return "近代"
-        case "mozart": return "古典主义"
-        case "aristotle": return "古希腊"
-        case "plato": return "古希腊"
-        case "socrates": return "古希腊"
-        default: return "未知时代"
+        // 从CharacterSystem中查找角色的era信息
+        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        if let character = allCharacters.first(where: { $0.id == characterId }) {
+            return character.era
         }
+        
+        // 如果找不到，返回默认值
+        return "未知时代"
     }
     
     private func addNotification(_ notification: NotificationModel) {
         // 添加调试输出
         print("🔔 NotificationService: 添加新通知")
         print("   类型: \(notification.type)")
-        print("   发送者: \(notification.character.name)")
+        print("   发送者: \(notification.character?.name ?? "用户")")
         print("   内容: \(notification.content?.prefix(30) ?? "无内容")...")
         print("   当前通知总数: \(notifications.count + 1)")
         
         DispatchQueue.main.async {
+            // 检查是否存在重复通知 - 使用更严格的去重条件
+            let isDuplicate = self.notifications.contains { existingNotification in
+                // 基本条件：同一角色、同一类型、同一帖子
+                let basicMatch = existingNotification.character?.name == notification.character?.name &&
+                       existingNotification.type == notification.type &&
+                               existingNotification.relatedPostId == notification.relatedPostId
+                
+                // 评论通知需要额外检查内容是否相同
+                if notification.type == .comment {
+                    return basicMatch && existingNotification.content == notification.content
+                }
+                
+                return basicMatch
+            }
+            
+            if isDuplicate {
+                print("⚠️ NotificationService: 发现重复通知，跳过添加")
+                print("   角色: \(notification.character?.name ?? "未知")")
+                print("   类型: \(notification.type)")
+                print("   帖子ID: \(notification.relatedPostId ?? "未知")")
+                return
+            }
+            
+            // 确保在主线程上更新并触发 @Published 通知
+            self.objectWillChange.send()
             self.notifications.insert(notification, at: 0)
             self.saveNotifications()
+            print("✅ NotificationService: 通知已添加，当前总数: \(self.notifications.count)")
         }
     }
     
     private func getCharacterInfo(characterId: String) -> NotificationModel.CharacterInfo? {
-        // 这里需要根据实际的角色数据获取角色信息
-        // 暂时返回示例数据，实际使用时需要查询角色数据库
-        let sampleCharacters: [String: NotificationModel.CharacterInfo] = [
-            "einstein": NotificationModel.CharacterInfo(
-                name: "爱因斯坦",
-                era: "20世纪",
-                category: .scientist,
-                image: "einstein"
-            ),
-            "shakespeare": NotificationModel.CharacterInfo(
-                name: "莎士比亚",
-                era: "16-17世纪",
-                category: .writer,
-                image: "shakespeare"
-            ),
-            "davinci": NotificationModel.CharacterInfo(
-                name: "达芬奇",
-                era: "文艺复兴",
-                category: .artist,
-                image: "davinci"
-            )
-        ]
+        // 从CharacterSystem获取角色信息
+        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        guard let character = allCharacters.first(where: { $0.id == characterId }) else {
+            print("⚠️ NotificationService: 未找到角色ID: \(characterId)")
+            return nil
+        }
         
-        return sampleCharacters[characterId]
+        // 根据角色类型映射到通知类别
+        let category: CharacterCategory = {
+            switch character.type {
+            case .historical:
+                // 根据领域进一步分类
+                if character.primaryField.contains("科学") || character.primaryField.contains("物理") || character.primaryField.contains("数学") {
+                    return .scientist
+                } else if character.primaryField.contains("诗") || character.primaryField.contains("文学") || character.primaryField.contains("作家") {
+                    return .writer
+                } else if character.primaryField.contains("艺术") || character.primaryField.contains("画") {
+                    return .artist
+                } else {
+                    return .historical
+                }
+            case .literary, .movie, .anime, .game, .scifi, .fantasy:
+                return .fictionCharacter
+            case .mythological:
+                return .mythCharacter
+            default:
+                return .historical
+            }
+        }()
+        
+        return NotificationModel.CharacterInfo(
+            name: character.name,
+            era: character.era,
+            category: category,
+            image: character.avatarName
+        )
     }
     
     private func formatTimeAgo(_ date: Date) -> String {
@@ -379,6 +623,37 @@ class NotificationService: ObservableObject {
     }
     
     // MARK: - 数据持久化
+    
+    // 清理重复的通知
+    func cleanupDuplicateNotifications() {
+        var cleanedNotifications: [NotificationModel] = []
+        
+        for notification in notifications {
+            let isDuplicate = cleanedNotifications.contains { existingNotification in
+                let basicMatch = existingNotification.character?.name == notification.character?.name &&
+                               existingNotification.type == notification.type &&
+                               existingNotification.relatedPostId == notification.relatedPostId
+                
+                if notification.type == .comment {
+                    return basicMatch && existingNotification.content == notification.content
+                }
+                
+                return basicMatch
+            }
+            
+            if !isDuplicate {
+                cleanedNotifications.append(notification)
+            } else {
+                print("🗑️ 清理重复通知: \(notification.character?.name ?? "未知") - \(notification.type)")
+            }
+        }
+        
+        if cleanedNotifications.count != notifications.count {
+            print("🧹 清理完成，从 \(notifications.count) 条通知减少到 \(cleanedNotifications.count) 条")
+            notifications = cleanedNotifications
+            saveNotifications()
+        }
+    }
     
     private func saveNotifications() {
         do {
@@ -401,6 +676,9 @@ class NotificationService: ObservableObject {
             let decoder = JSONDecoder()
             notifications = try decoder.decode([NotificationModel].self, from: data)
             print("📂 加载了 \(notifications.count) 条本地通知")
+            
+            // 加载后清理重复通知
+            cleanupDuplicateNotifications()
         } catch {
             print("❌ 加载通知失败: \(error)")
             notifications = []
@@ -434,10 +712,12 @@ class NotificationService: ObservableObject {
      * 清除所有通知（重装应用效果）
      */
     func clearAllNotifications() {
-        notifications.removeAll()
-        characterInteractionCount.removeAll()
-        UserDefaults.standard.removeObject(forKey: notificationsKey)
-        UserDefaults.standard.removeObject(forKey: interactionCountKey)
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+            self.notifications.removeAll()
+            self.saveNotifications()
+            print("🗑️ 已清空所有通知")
+        }
     }
     
     /**
@@ -459,37 +739,13 @@ class NotificationService: ObservableObject {
         addNotification(notification)
     }
     
-    /**
-     * 添加包含用户评论的测试通知
-     */
-    func addTestNotificationWithUserComment() {
-        let testNotification = NotificationModel(
-            type: .comment,
-            avatar: "hawking",
-            username: "霍金",
-            content: "你的观点很有意思！黑洞确实是宇宙中最神秘的现象之一。我在研究中发现，黑洞不仅会吞噬物质，还会通过霍金辐射慢慢蒸发。",
-            time: formatTimeAgo(Date()),
-            isOnline: true,
-            actionText: "评论",
-            character: NotificationModel.CharacterInfo(
-                name: "霍金",
-                era: "现代",
-                category: .scientist,
-                image: "hawking"
-            ),
-            previewContent: nil,
-            relatedPostId: "test_post",
-            relatedCommentId: nil,
-            triggeredByAction: "comment",
-            isGenerated: true,
-            userComment: "老师，我对黑洞的理论很感兴趣，请问黑洞真的会永远存在吗？",
-            userPost: nil,
-            originalPost: "在探索宇宙深处的过程中，我们发现了许多令人震撼的现象。黑洞作为宇宙中最极端的天体，挑战着我们对时空的理解。",
-            originalPostAuthor: "爱因斯坦"
-        )
-        
-        addNotification(testNotification)
-        print("✅ 已添加包含用户评论的测试通知")
+    // MARK: - 公共方法
+    
+    // 手动清理重复通知
+    func manualCleanupDuplicates() {
+        DispatchQueue.main.async {
+            self.cleanupDuplicateNotifications()
+        }
     }
 }
 

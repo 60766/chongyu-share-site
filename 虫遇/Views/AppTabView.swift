@@ -25,15 +25,7 @@ struct AppTabView: View {
                 HomeView()
                     .tag(0)
                     .onAppear {
-                        // 当切换到首页时，确保数据存在
                         if selectedTab == 0 {
-                            // 发送通知，告诉HomeView需要刷新
-                            NotificationCenter.default.post(
-                                name: NSNotification.Name("HomeViewShouldRefresh"),
-                                object: nil
-                            )
-                            
-                            // 确保TabBar可见
                             ensureTabBarVisible()
                         }
                     }
@@ -63,16 +55,14 @@ struct AppTabView: View {
                     .onAppear {
                         // 确保TabBar可见
                         ensureTabBarVisible()
+                        
+                        // ProfileView在onAppear中自行重置状态
                     }
             }
             .onChange(of: selectedTab) { oldValue, newValue in
                 // 特殊处理：当切换回首页时，确保数据恢复
                 if newValue == 0 {
-                    // 发送通知让首页刷新
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("HomeViewShouldRefresh"), 
-                        object: nil
-                    )
+                    // HomeView将自行在onAppear中处理刷新
                 }
                 
                 // 特殊处理：如果尝试选择中间标签(2)，则不执行任何操作
@@ -86,14 +76,9 @@ struct AppTabView: View {
             }
             // 改用TabViewStyle禁用水平滑动翻页功能
             .tabViewStyle(.automatic)
-            // 确保TabView内容区域延伸到全屏
-            .ignoresSafeArea()
             // 确保内容区域无白线分割
             .background(Color.clear)
-            // 移除禁用滑动手势的修饰符，这是导致点击问题的主要原因
-            // .simultaneousGesture(DragGesture().onChanged { _ in })
-            // 移除可能导致底部导航栏问题的修饰符
-            // .contentShape(Rectangle())
+            
         }
         // 将TabBar作为overlay添加
         .overlay(alignment: .bottom) {
@@ -119,17 +104,12 @@ struct AppTabView: View {
                         .opacity(tabBarManager.isVisible && tabBarManager.showFloatingButtons ? 1 : 0) // 与导航栏和浮动按钮状态关联
                     }
                 }
-                // 确保延伸到底部边缘
-                .edgesIgnoringSafeArea(.bottom)
                 // 将导航栏层级提高，但保持下方内容可见
                 .zIndex(1)
             }
         }
-        // 确保整个视图都忽略底部安全区域
-        .ignoresSafeArea(.all, edges: .bottom)
         .overlay(
             PublishPanelView(isVisible: $showPublishPanel)
-                .ignoresSafeArea(.all, edges: .bottom)
                 .environment(\.colorScheme, .light) // 显式设置亮色模式
         )
         // 调试入口 - 长按顶部区域可以打开调试视图
@@ -152,8 +132,8 @@ struct AppTabView: View {
                     })
             }
         }
-        // 不再需要手动更新安全区域高度，TabBarManager现在会自动计算
-        .edgesIgnoringSafeArea(.bottom) // 确保视图能延伸到屏幕底部
+        // 统一的安全区域设置 - 只设置一次，移除所有重复设置
+        .ignoresSafeArea(.all, edges: .bottom)
         .environmentObject(tabBarManager) // 确保TabBarManager在所有子视图中可用
         .onAppear {
             // 添加通知监听，处理返回首页的请求

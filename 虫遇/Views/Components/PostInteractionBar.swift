@@ -37,7 +37,7 @@ struct PostInteractionBar: View {
                 // 视觉反馈 - 轻微缩放动画
                 withAnimation(DesignSystem.Animations.quick) {
                     likeScale = 1.2
-                    let wasLiked = isLiked
+                    let _ = isLiked // 记录之前的状态但不使用
                     isLiked.toggle()
                     if isLiked {
                         likeCount += 1

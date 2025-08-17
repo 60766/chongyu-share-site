@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 import UIKit
 
+
+
 // 添加一个新的UIKit桥接组件来处理点击事件
 struct TouchableView: UIViewRepresentable {
     var action: () -> Void
@@ -161,98 +163,95 @@ struct ProfileView: View {
             // 主内容
             GeometryReader { geometry in
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 12) {
                         // 顶部区域：用户名和头像
                         VStack(spacing: 0) {
                             HStack {
                                 Text("我的空间")
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundColor(.primaryColor)
-                                    .tracking(-0.5) // 紧凑排版
+                                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.primary)
+                                    .tracking(-0.3) // 减少字间距，更精致
                                 
                                 Spacer()
+                                
+                                // 设置按钮 - 更现代的设计
+                                Button(action: {
+                                    print("⭐ 设置按钮被点击")
+                                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                                    generator.impactOccurred()
+                                    isSettingsPresented = true
+                                }) {
+                                    Image(systemName: "gearshape")
+                                        .font(.system(size: 18, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                        .frame(width: 36, height: 36)
+                                        .background(
+                                            Circle()
+                                                .fill(Color(.systemGray6))
+                                                .opacity(0.8)
+                                        )
+                                }
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 16)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16) // 增加顶部间距，符合iOS规范
                             .padding(.bottom, 16)
                         }
                         
-                        // 用户信息卡片 - 增强设计、与APP统一风格
+                        // 用户信息卡片 - 简化设计，更现代
                         VStack(spacing: 0) {
-                            // 卡片顶部 - 星空背景
+                            // 简化的头部背景
                             ZStack(alignment: .top) {
-                                // 背景渐变
+                                // 渐变背景 - 更柔和的颜色
                                 Rectangle()
                                     .fill(
                                         LinearGradient(
                                             gradient: Gradient(colors: [
-                                                Color.primaryColor,
-                                                Color.primaryColor.opacity(0.8)
+                                                Color(.systemBlue).opacity(0.1),
+                                                Color(.systemBlue).opacity(0.05)
                                             ]),
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         )
                                     )
-                                    .frame(height: 110)
+                                    .frame(height: 80)
                                     .overlay(
-                                        // 星空效果
-                                        ZStack {
-                                            ForEach(0..<20, id: \.self) { i in
+                                        // 简化的装饰元素
+                                        HStack {
+                                            Spacer()
                                                 Circle()
-                                                    .fill(Color.white)
-                                                    .frame(width: i % 3 == 0 ? 2 : 1)
-                                                    .position(
-                                                        x: CGFloat.random(in: 0...UIScreen.main.bounds.width - 40),
-                                                        y: CGFloat.random(in: 0...100)
-                                                    )
-                                                    .opacity(Double.random(in: 0.3...0.7))
-                                            }
+                                                .fill(Color(.systemBlue).opacity(0.08))
+                                                .frame(width: 120, height: 120)
+                                                .offset(x: 60, y: -30)
                                         }
                                     )
                             }
                             
                             // 用户信息内容
-                            VStack(spacing: 10) {
-                                // 用户头像 - 带星轨环绕效果
+                            VStack(spacing: 12) {
+                                // 用户头像 - 简化设计
                                 ZStack {
-                                    // 星轨环绕效果
-                                    Circle()
-                                        .strokeBorder(
-                                            AngularGradient(
-                                                gradient: Gradient(colors: [
-                                                    Color.primaryColor.opacity(0.2),
-                                                    Color.primaryColor,
-                                                    Color.primaryColor.opacity(0.2)
-                                                ]),
-                                                center: .center
-                                            ),
-                                            lineWidth: 2
-                                        )
-                                        .frame(width: 110, height: 110)
-                                        .rotationEffect(.degrees(35))
-                                    
-                                    // 头像外圈光晕
+                                    // 头像背景
                                     Circle()
                                         .fill(Color.white)
-                                        .frame(width: 100, height: 100)
-                                        .shadow(color: Color.primaryColor.opacity(0.2), radius: 15)
+                                        .frame(width: 90, height: 90)
+                                        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
                                     
                                     // 头像图片
                                     Image(systemName: "person.circle.fill")
                                         .resizable()
                                         .aspectRatio(contentMode: .fit)
-                                        .frame(width: 90, height: 90)
-                                        .foregroundColor(Color.primaryColor)
+                                        .frame(width: 80, height: 80)
+                                        .foregroundColor(Color(.systemBlue))
                                         .background(Color.white)
                                         .clipShape(Circle())
                                 }
-                                .offset(y: -55)
-                                .padding(.bottom, -55)
+                                .offset(y: -35)
+                                .padding(.bottom, -35)
                                 
-                                // 用户名和等级
-                                VStack(spacing: 4) {
+                                // 用户名和等级 - 优化排版
+                                VStack(spacing: 6) {
                                     Text("历史探索者")
-                                        .font(.system(size: 22, weight: .bold))
+                                        .font(.system(size: 20, weight: .semibold, design: .rounded))
                                         .foregroundColor(.primary)
                                         .onTapGesture {
                                             // 检测连续点击以触发调试菜单
@@ -282,134 +281,135 @@ struct ProfileView: View {
                                             generator.notificationOccurred(.success)
                                         }
                                     
-                                    // 等级标签 - 可点击查看详情
+                                    // 等级标签 - 更精致的设计
                                     Button(action: { showLevelDetails.toggle() }) {
-                                        HStack(spacing: 5) {
-                                            // 等级图标
-                                            HStack(spacing: 2) {
+                                        HStack(spacing: 6) {
                                                 Text("Lv.8")
-                                                    .font(.system(size: 14, weight: .medium))
+                                                .font(.system(size: 12, weight: .semibold, design: .rounded))
                                                     .foregroundColor(.white)
-                                            }
                                             .padding(.horizontal, 8)
-                                            .padding(.vertical, 3)
-                                            .background(Color.primaryColor)
-                                            .cornerRadius(10)
+                                                .padding(.vertical, 4)
+                                                .background(
+                                                    Capsule()
+                                                        .fill(Color(.systemBlue))
+                                                )
                                             
                                             Text("穿越时空的历史探索者")
-                                                .font(.system(size: 14))
+                                                .font(.system(size: 14, weight: .medium, design: .rounded))
                                                 .foregroundColor(.secondary)
                                             
                                             Image(systemName: "info.circle")
                                                 .font(.system(size: 12))
-                                                .foregroundColor(.secondary)
+                                                .foregroundColor(Color(.tertiaryLabel))
                                         }
                                     }
                                 }
                                 
-                                // 成就勋章栏
-                                HStack(spacing: 20) {
+                                // 成就勋章栏 - 重新设计
+                                HStack(spacing: 16) {
                                     ForEach(userAchievements.prefix(3)) { achievement in
                                         VStack(spacing: 6) {
                                             ZStack {
-                                                // 成就背景
+                                                // 成就背景 - 更柔和
                                                 Circle()
                                                     .fill(
                                                         LinearGradient(
                                                             gradient: Gradient(colors: [
-                                                                Color.primaryColor,
-                                                                Color.primaryColor.opacity(0.7)
+                                                                Color(.systemBlue).opacity(0.15),
+                                                                Color(.systemBlue).opacity(0.08)
                                                             ]),
                                                             startPoint: .topLeading,
                                                             endPoint: .bottomTrailing
                                                         )
                                                     )
-                                                    .frame(width: 44, height: 44)
-                                                    .shadow(color: Color.primaryColor.opacity(0.2), radius: 4, x: 0, y: 2)
+                                                    .frame(width: 40, height: 40)
                                                 
                                                 // 成就图标
                                                 Image(systemName: achievement.icon)
-                                                    .font(.system(size: 20))
-                                                    .foregroundColor(.white)
+                                                    .font(.system(size: 18, weight: .medium))
+                                                    .foregroundColor(Color(.systemBlue))
                                             }
                                             
                                             Text(achievement.name)
-                                                .font(.system(size: 12))
+                                                .font(.system(size: 11, weight: .medium, design: .rounded))
                                                 .foregroundColor(.secondary)
                                                 .lineLimit(1)
                                         }
                                         .frame(maxWidth: .infinity)
                                     }
                                 }
-                                .padding(.vertical, 10)
+                                .padding(.vertical, 8)
                                 
-                                // 查看全部成就按钮
+                                // 查看全部成就按钮 - 更现代的设计
                                 Button(action: { showAchievements.toggle() }) {
                                     Text("查看全部成就")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.primaryColor)
+                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                        .foregroundColor(Color(.systemBlue))
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)
-                                        .background(Color.primaryColor.opacity(0.1))
-                                        .cornerRadius(18)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color(.systemBlue).opacity(0.08))
+                                        )
                                 }
-                                .padding(.bottom, 6)
+                                .padding(.bottom, 4)
                             }
-                            .padding(.horizontal, 20)
-                            .background(Color.white)
+                            .padding(.horizontal, 16)
+                            .background(Color(.systemBackground))
                         }
                         .cornerRadius(20)
-                        .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
-                        .padding(.horizontal, 20)
+                        .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+                        .padding(.horizontal, 16)
                         
-                        // 时空旅行统计数据 - 重新设计为与探索页类似的卡片风格
-                        HStack(spacing: 12) {
+                        // 统计数据 - 统一设计风格
+                        HStack(spacing: 10) {
                             ForEach([
-                                ("动态", "128", "square.text.square"),
-                                ("获赞", "1.2K", "heart.fill"),
-                                ("好友", "12", "person.2.fill")
-                            ], id: \.0) { title, value, icon in
-                                VStack(spacing: 8) {
-                                    // 图标容器
+                                ("动态", "128", "square.text.square", Color(.systemBlue)),
+                                ("获赞", "1.2K", "heart.fill", Color(.systemPink)),
+                                ("好友", "12", "person.2.fill", Color(.systemGreen))
+                            ], id: \.0) { title, value, icon, color in
+                                VStack(spacing: 10) {
+                                    // 图标容器 - 更精致
                                     ZStack {
                                         Circle()
-                                            .fill(Color.primaryColor.opacity(0.1))
-                                            .frame(width: 50, height: 50)
+                                            .fill(color.opacity(0.1))
+                                            .frame(width: 44, height: 44)
                                         
                                         Image(systemName: icon)
-                                            .font(.system(size: 20))
-                                            .foregroundColor(.primaryColor)
+                                            .font(.system(size: 18, weight: .medium))
+                                            .foregroundColor(color)
                                     }
                                     
-                                    // 数值 - 大数字
+                                    // 数值 - 优化字体
                                     Text(value)
-                                        .font(.system(size: 20, weight: .bold))
+                                        .font(.system(size: 18, weight: .bold, design: .rounded))
                                         .foregroundColor(.primary)
                                     
-                                    // 标题
+                                    // 标题 - 更小更精致
                                     Text(title)
-                                        .font(.system(size: 14))
+                                        .font(.system(size: 12, weight: .medium, design: .rounded))
                                         .foregroundColor(.secondary)
                                 }
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Color.white)
+                                .padding(.vertical, 14)
+                                .background(Color(.systemBackground))
                                 .cornerRadius(16)
-                                .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
+                                .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 16)
                         
-                        // 时空旅行里程碑 - 重新设计为与探索页相似的卡片风格
+                        // 时空旅行里程 - 现代化设计
                         VStack(alignment: .leading, spacing: 0) {
                             // 标题区域
                             HStack {
-                                HStack(spacing: 6) {
+                                HStack(spacing: 8) {
                                     Image(systemName: "clock.arrow.circlepath")
-                                        .foregroundColor(.primaryColor)
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(Color(.systemBlue))
                                     
                                     Text("时空旅行里程")
-                                        .font(.system(size: 18, weight: .semibold))
+                                        .font(.system(size: 17, weight: .semibold, design: .rounded))
                                         .foregroundColor(.primary)
                                 }
                                 
@@ -419,131 +419,117 @@ struct ProfileView: View {
                                     // 查看全部时间线
                                 }) {
                                     Text("查看全部")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.primaryColor)
+                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                        .foregroundColor(Color(.systemBlue))
                                 }
                             }
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, 16)
                             .padding(.top, 16)
                             .padding(.bottom, 12)
                             
-                            // 分隔线 - 使用渐变色减淡
-                            Rectangle()
-                                .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.gray.opacity(0.1),
-                                            Color.gray.opacity(0.05)
-                                        ]), 
-                                        startPoint: .leading, 
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(height: 1)
-                                .padding(.horizontal, 20)
-                            
-                            // 时间线 - 更现代的设计
-                            VStack(spacing: 0) {
+                            // 时间线 - 简化设计
+                            VStack(spacing: 8) {
                                 ForEach(timelineEvents) { event in
-                                    // 改用现代化的时间线视图
-                                    HStack(alignment: .top, spacing: 15) {
-                                        // 日期 - 更醒目的日期标签
+                                    HStack(alignment: .top, spacing: 12) {
+                                        // 日期标签 - 更精致
                                         Text(event.date.components(separatedBy: "-").last ?? "")
-                                            .font(.system(size: 14, weight: .medium))
+                                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                            .foregroundColor(Color(.systemBlue))
                                             .padding(.horizontal, 8)
                                             .padding(.vertical, 4)
-                                            .background(Color.primaryColor.opacity(0.1))
-                                            .cornerRadius(8)
-                                            .frame(width: 50)
+                                            .background(
+                                                Capsule()
+                                                    .fill(Color(.systemBlue).opacity(0.1))
+                                            )
+                                            .frame(width: 44)
                                         
-                                        // 时间线轴 - 更光滑的设计
+                                        // 时间线点
                                         VStack(spacing: 0) {
-                                            // 上半圆
                                             Circle()
-                                                .fill(Color.primaryColor)
-                                                .frame(width: 12, height: 12)
+                                                .fill(Color(.systemBlue))
+                                                .frame(width: 8, height: 8)
                                             
-                                            // 线条
+                                            if event.id != timelineEvents.last?.id {
                                             Rectangle()
-                                                .fill(Color.primaryColor.opacity(0.3))
-                                                .frame(width: 2)
-                                                .frame(maxHeight: .infinity)
+                                                    .fill(Color(.systemBlue).opacity(0.2))
+                                                    .frame(width: 1.5)
+                                                    .frame(height: 40)
+                                            }
                                         }
-                                        .frame(height: 70)
                                         
-                                        // 事件内容 - 卡片式设计
-                                        VStack(alignment: .leading, spacing: 6) {
-                                            HStack(spacing: 8) {
+                                        // 事件内容
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            HStack(spacing: 6) {
                                                 Image(systemName: event.icon)
+                                                    .font(.system(size: 10, weight: .medium))
                                                     .foregroundColor(.white)
-                                                    .font(.system(size: 12))
-                                                    .padding(6)
-                                                    .background(Color.primaryColor)
-                                                    .clipShape(Circle())
+                                                    .padding(4)
+                                                    .background(
+                                                        Circle()
+                                                            .fill(Color(.systemBlue))
+                                                    )
                                                 
                                                 Text(event.title)
-                                                    .font(.system(size: 16, weight: .semibold))
+                                                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                                                    .foregroundColor(.primary)
                                                     .lineLimit(1)
                                             }
                                             
                                             Text(event.description)
-                                                .font(.system(size: 14))
+                                                .font(.system(size: 13, weight: .regular, design: .rounded))
                                                 .foregroundColor(.secondary)
                                                 .lineLimit(2)
                                         }
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.trailing, 10)
+                                        
+                                        Spacer()
                                     }
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 12)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 5)
                                 }
                             }
-                            .padding(.top, 8)
                             .padding(.bottom, 16)
                         }
-                        .background(Color.white)
+                        .background(Color(.systemBackground))
                         .cornerRadius(20)
-                        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
+                        .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
+                        .padding(.horizontal, 16)
                         
-                        // 内容标签选择器 - 现代化设计
+                        // 内容标签选择器 - 精致设计
                         VStack(spacing: 0) {
-                            // 标签栏
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 30) {
+                            HStack(spacing: 0) {
                                     ForEach(Array(tabOptions.enumerated()), id: \.element) { index, tab in
                                         Button(action: {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                                 selectedTabIndex = index
                                             }
                                         }) {
-                                            VStack(spacing: 8) {
+                                        VStack(spacing: 6) {
                                                 Text(tab)
-                                                    .font(.system(size: 16, weight: selectedTabIndex == index ? .semibold : .regular))
-                                                    .foregroundColor(selectedTabIndex == index ? Color.primaryColor : .secondary)
+                                                .font(.system(size: 15, weight: selectedTabIndex == index ? .semibold : .medium, design: .rounded))
+                                                .foregroundColor(selectedTabIndex == index ? Color(.systemBlue) : .secondary)
                                                 
-                                                // 增强的选中指示器
+                                            // 精致的指示器
                                                 if selectedTabIndex == index {
-                                                    RoundedRectangle(cornerRadius: 2)
-                                                        .fill(Color.primaryColor)
-                                                        .frame(width: 20, height: 4)
+                                                Capsule()
+                                                    .fill(Color(.systemBlue))
+                                                    .frame(width: 24, height: 3)
                                                         .matchedGeometryEffect(id: "tabIndicator", in: namespace)
                                                 } else {
-                                                    Rectangle()
+                                                Capsule()
                                                         .fill(Color.clear)
-                                                        .frame(width: 20, height: 4)
+                                                    .frame(width: 24, height: 3)
                                                 }
                                             }
                                         }
+                                    .frame(maxWidth: .infinity)
                                         .buttonStyle(PlainButtonStyle())
                                     }
                                 }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                        }
-                        .background(Color.white)
+                        .background(Color(.systemBackground))
                         
                         // 内容区域 - 现代化设计，增强视觉反馈
                         ZStack {
@@ -594,50 +580,18 @@ struct ProfileView: View {
                                 .transition(.opacity.combined(with: .move(edge: .trailing)))
                             }
                         }
-                        .frame(height: 300)
-                        .background(
-                            Color.white
-                                .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: -1)
-                        )
-                        .animation(.spring(response: 0.3), value: selectedTabIndex)
+                        .frame(minHeight: 280)
+                        .background(Color(.systemBackground))
+                        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedTabIndex)
                     }
                     .cornerRadius(20)
-                    .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
-                    .padding(.horizontal, 20)
+                    .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
+                    .padding(.horizontal, 12)
                 }
                 .edgesIgnoringSafeArea(.bottom)
             }
             
-            // 新的纯SwiftUI实现的设置按钮 - 放在ZStack最上层
-            VStack {
-                HStack {
-                    Spacer()
-                    
-                    Button(action: {
-                        print("⭐ 设置按钮被点击 - SwiftUI原生")
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
-                        isSettingsPresented = true
-                    }) {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 22))
-                            .foregroundColor(.gray)
-                            .frame(width: 44, height: 44)
-                            .background(
-                                Circle()
-                                    .fill(Color.white)
-                                    .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
-                            )
-                            // 加大点击区域但保持视觉大小不变
-                            .contentShape(Circle().scale(1.5))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.top, 16)
-                    .padding(.trailing, 20)
-                }
-                
-                Spacer()
-            }
+
             .zIndex(999) // 确保按钮在ZStack的最上层
         }
         .fullScreenCover(isPresented: $isSettingsPresented) {
@@ -737,7 +691,7 @@ struct ProfileView: View {
                         .foregroundColor(Color.gray.opacity(0.7))
                 }
             }
-            .padding(.horizontal, 20)
+        .padding(.horizontal, 12)
             .padding(.top, 16)
             .padding(.bottom, 16)
             .background(Color.white)
@@ -789,7 +743,7 @@ struct ProfileView: View {
                             .frame(width: UIScreen.main.bounds.width * 0.3, height: 8)
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 16)
                 .background(Color.white)
                 .shadow(color: Color.black.opacity(0.03), radius: 3, x: 0, y: 2)
@@ -891,7 +845,7 @@ struct ProfileView: View {
                         .foregroundColor(Color.gray.opacity(0.7))
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 12)
             .padding(.top, 16)
             .padding(.bottom, 16)
             .background(Color.white)
@@ -995,7 +949,7 @@ struct ProfileView: View {
                                 Color.white
                             )
                     )
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 12)
                     .padding(.top, 20)
                     
                     // 等级特权卡片
@@ -1021,15 +975,62 @@ struct ProfileView: View {
                         .cornerRadius(16)
                         .shadow(color: Color.black.opacity(0.05), radius: 4)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 20)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
                 }
             }
             .background(
                 Color(red: 246/255, green: 248/255, blue: 252/255)
             )
         }
+
         .edgesIgnoringSafeArea(.bottom)
+        .id("ProfileView-\(selectedTabIndex)") // 添加ID确保视图正确刷新
+        .onAppear {
+            // 页面出现时重置状态，确保每次进入都是一致的布局
+            resetPageState()
+        }
+
+        .onDisappear {
+            // 页面消失时清理状态
+            cleanupPageState()
+        }
+    }
+    
+    // MARK: - 页面状态管理
+    
+    /// 重置页面状态，确保每次进入都是一致的布局
+    private func resetPageState() {
+        // 重置标签索引到第一个
+        selectedTabIndex = 0
+        
+        // 重置其他可能影响布局的状态
+        showAchievements = false
+        showLevelDetails = false
+        isSettingsPresented = false
+        isFollowListPresented = false
+        
+        // 重置调试相关状态
+        isDebugMenuPresented = false
+        debugTapCount = 0
+        lastTapTime = nil
+        
+        // 状态重置 - 使用简化方案，避免直接操作UIScrollView
+        // SwiftUI会自动处理视图重建，这里主要重置状态变量
+        
+        print("✅ ProfileView状态已重置")
+    }
+    
+    /// 清理页面状态
+    private func cleanupPageState() {
+        // 清理可能的悬挂状态
+        showAchievements = false
+        showLevelDetails = false
+        isSettingsPresented = false
+        isFollowListPresented = false
+        isDebugMenuPresented = false
+        
+        print("🧹 ProfileView状态已清理")
     }
     
     // 简单的空内容提示视图
@@ -1052,34 +1053,49 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    // 增强的空内容提示视图
+    // 现代化空状态视图
     private func enhancedEmptyContentView(icon: String, message: String, description: String, buttonTitle: String, buttonAction: @escaping () -> Void) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
+            // 图标容器 - 更现代的设计
+            ZStack {
+                Circle()
+                    .fill(Color(.systemBlue).opacity(0.08))
+                    .frame(width: 80, height: 80)
+                
             Image(systemName: icon)
-                .font(.system(size: 40))
-                .foregroundColor(.gray.opacity(0.5))
+                    .font(.system(size: 32, weight: .medium))
+                    .foregroundColor(Color(.systemBlue).opacity(0.6))
+            }
             
+            VStack(spacing: 8) {
             Text(message)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.secondary)
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
             
             Text(description)
-                .font(.system(size: 14))
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+                    .lineLimit(3)
+                    .padding(.horizontal, 16)
+            }
             
             Button(action: buttonAction) {
                 Text(buttonTitle)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.primaryColor)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.primaryColor.opacity(0.1))
-                    .cornerRadius(18)
+                    .padding(.vertical, 10)
+                    .background(
+                        Capsule()
+                            .fill(Color(.systemBlue))
+                    )
+                    .shadow(color: Color(.systemBlue).opacity(0.3), radius: 4, x: 0, y: 2)
             }
+            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.vertical, 24)
     }
 }
 

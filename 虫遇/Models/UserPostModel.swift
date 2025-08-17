@@ -276,15 +276,17 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
     }
     
     /// 添加评论或回复
-    func addComment(username: String, userAvatar: String, content: String, parentCommentId: UUID? = nil, replyToUsername: String? = nil, isVirtualCharacter: Bool = false, characterID: String? = nil, userId: String? = nil, isCurrentUser: Bool = false) {
-        let commentId = UUID()
-        print("🔵 创建新评论 - ID: \(commentId), 用户: \(username), 是否为回复: \(parentCommentId != nil)")
+    func addComment(username: String, userAvatar: String, content: String, parentCommentId: UUID? = nil, replyToUsername: String? = nil, isVirtualCharacter: Bool = false, characterID: String? = nil, userId: String? = nil, isCurrentUser: Bool = false, commentId: UUID? = nil) {
+        // 🔧 使用提供的ID或生成新的ID
+        let finalCommentId = commentId ?? UUID()
+        print("🔵 创建新评论 - ID: \(finalCommentId), 用户: \(username), 是否为回复: \(parentCommentId != nil)")
+        print("🔧 评论ID来源: \(commentId != nil ? "外部提供" : "内部生成")")
         let userIdentifier = userId ?? UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
         if isCurrentUser {
             UserDefaults.standard.set(userIdentifier, forKey: "current_user_id")
         }
         let newComment = DetailedCommentModel(
-            id: commentId,
+            id: finalCommentId,  // 🔧 使用确定的ID
             username: username,
             userAvatar: userAvatar,
             content: content,
