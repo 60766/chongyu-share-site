@@ -322,10 +322,13 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                 // 如果没有找到父评论，检查是否为虚拟角色
                 if !found {
                     if !isVirtualCharacter {
-                    print("⚠️ 未找到父评论，作为顶级评论添加")
-                    comments.insert(newComment, at: 0)
+                        print("⚠️ 未找到父评论，作为顶级评论添加")
+                        comments.insert(newComment, at: 0)
                     } else {
-                        print("❌ 虚拟角色回复找不到父评论，丢弃回复 - 角色: \(username)")
+                        // 🔧 修复：虚拟角色回复找不到父评论时，不应该添加到顶级评论列表
+                        // 这会导致重复显示问题
+                        print("❌ 阻止虚拟角色回复成为顶级评论 - 角色: \(username), 找不到父评论ID: \(parentId)")
+                        print("🔧 原因：虚拟角色回复应该只作为回复存在，不应该成为顶级评论")
                     }
                 }
             }
@@ -406,8 +409,17 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         
         // 如果没有找到父评论，将回复作为顶级评论添加
         if !found {
-            // 只有非虚拟角色才能在找不到父评论时作为顶级评论添加
-            if !reply.isVirtualCharacter {
+            // 🔧 关键修复：虚拟角色回复绝对不能成为顶级评论
+            if reply.isVirtualCharacter {
+                // 虚拟角色回复找不到父评论时，不应该添加到顶级评论列表
+                // 这会导致重复显示问题
+                print("❌ 阻止虚拟角色回复成为顶级评论 - 角色: \(reply.username), 找不到父评论ID: \(parentId)")
+                print("🔧 原因：虚拟角色回复应该只作为回复存在，不应该成为顶级评论")
+                print("🔧 解决方案：丢弃这条回复，避免重复显示")
+                return
+            }
+            
+            // 只有非虚拟角色的用户评论才能在找不到父评论时作为顶级评论添加
             print("⚠️ 未找到父评论，作为顶级评论添加")
             var newTopLevelComment = reply
             newTopLevelComment.parentCommentId = nil // 清除父评论ID，因为找不到父评论
@@ -417,9 +429,6 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             DispatchQueue.main.async {
                 // 直接发送对象变更通知，让SwiftUI自动刷新
                 self.objectWillChange.send()
-                }
-            } else {
-                print("❌ 阻止虚拟角色回复成为顶级评论 - 角色: \(reply.username), 找不到父评论ID: \(parentId)")
             }
         }
     }
@@ -432,14 +441,7 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                 return false 
             }
             
-            // 🔒 强化过滤：完全禁止虚拟角色回复出现在主评论列表中
-            // 只要是虚拟角色且有replyToUsername，无论任何情况都不显示在主列表
-            if comment.isVirtualCharacter && comment.replyToUsername != nil {
-                print("🚫 严格过滤虚拟角色回复：\(comment.username) 回复给 \(comment.replyToUsername!) - 隐藏主评论中的重复评论")
-                return false
-            }
-            
-            // 🔒 进一步强化：即使是虚拟角色的顶级评论，也要确保它不是用户评论的回复
+            // 🔧 修复：只过滤真正的回复，不过滤用户评论
             if comment.isVirtualCharacter {
                 // 如果虚拟角色评论有replyToUsername，说明是回复，不应该显示在主列表
                 if comment.replyToUsername != nil {
@@ -447,20 +449,12 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                     return false
                 }
                 
-                // 额外检查：查看是否存在同时间段内的用户评论，如果是，可能是对用户评论的回复
-                let timeWindow: TimeInterval = 60 // 1分钟内
-                let hasRecentUserComment = comments.contains { userComment in
-                    !userComment.isVirtualCharacter && 
-                    abs(userComment.datePosted.timeIntervalSince(comment.datePosted)) < timeWindow
-                }
+                // 🔧 关键修复：移除时间窗口检查，避免过滤用户刚发布的评论
+                // 时间窗口检查会导致用户刚发布的评论被错误过滤
+                // 现在只依赖replyToUsername来判断是否为回复
                 
-                if hasRecentUserComment {
-                    print("🚫 过滤可能的虚拟角色回复（时间窗口检查）：\(comment.username)")
-                    return false
-                }
-                
-                // 只有确实是邀请的角色评论才显示
-                print("✅ 保留邀请角色评论：\(comment.username)")
+                // 虚拟角色的顶级评论（邀请评论）应该显示
+                print("✅ 保留虚拟角色顶级评论：\(comment.username)")
             }
             
             return true

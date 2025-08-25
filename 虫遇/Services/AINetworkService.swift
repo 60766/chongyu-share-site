@@ -62,6 +62,10 @@ class AINetworkService {
         let isARKAPI = APIConfigManager.shared.deepSeekEndpoint.contains("ark.cn-beijing.volces.com")
         let apiType = isARKAPI ? "ARK API" : "DeepSeek API"
         
+        // 使用红色背景的醒目日志标记
+        print("🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴")
+        print("🚨🚨🚨 【虚拟角色评论生成】API请求开始 🚨🚨🚨")
+        print("🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴")
         print("🔄 准备\(apiType)请求 - 端点: \(APIConfigManager.shared.deepSeekEndpoint)")
         print("🔄 使用模型: \(APIConfigManager.shared.modelName)")
         print("🔑 API密钥格式: \(apiKey.hasPrefix("sk-") ? "DeepSeek格式(sk-...)" : "ARK格式(UUID)")")
@@ -70,7 +74,7 @@ class AINetworkService {
         let requestBody: [String: Any] = [
             "model": APIConfigManager.shared.modelName,
             "messages": [
-                ["role": "system", "content": "你是一个智能助手，能够以历史人物的身份回答问题。请保持回答简洁、有深度，并体现历史人物的语言风格和思想特点。不要使用现代网络用语，避免使用表情符号，保持历史真实性。"],
+                ["role": "system", "content": "你是一个智能助手，能够以各种角色的身份回答问题。请保持回答简洁、有深度，并体现角色的语言风格和特点。不要使用现代网络用语，避免使用表情符号，保持角色的真实性。"],
                 ["role": "user", "content": prompt]
             ],
             "temperature": 0.7,
@@ -88,15 +92,32 @@ class AINetworkService {
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-            // 打印请求体内容以便诊断
+            
+            // 🔴🔴🔴 超级醒目的API请求内容日志 🔴🔴🔴
+            print("\n🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨")
+            print("🚨🚨🚨                    【API请求详细内容】                    🚨🚨🚨")
+            print("🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨")
+            print("📍 API端点: \(url.absoluteString)")
+            print("🤖 使用模型: \(APIConfigManager.shared.modelName)")
+            print("🌡️ 温度参数: 0.7")
+            print("🎯 最大Token: 800")
+            print("📊 Top-p参数: 0.95")
+            print("\n🔴 ===== 系统提示词 =====")
+            print("你是一个智能助手，能够以各种角色的身份回答问题。请保持回答简洁、有深度，并体现角色的语言风格和特点。不要使用现代网络用语，避免使用表情符号，保持角色的真实性。")
+            print("\n🔴 ===== 用户提示词（角色生成指令）=====")
+            print(prompt)
+            print("\n🔴 ===== 完整JSON请求体 =====")
             if let requestBodyString = String(data: request.httpBody!, encoding: .utf8) {
-                print("📤 请求体内容: \(requestBodyString)")
+                print(requestBodyString)
             }
+            print("🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨")
+            print("")
+            
         } catch {
             return Fail(error: AINetworkError.requestFailed(error)).eraseToAnyPublisher()
         }
         
-        print("发送请求到\(apiType)...")
+        print("🚀🚀🚀 正在发送请求到\(apiType)... 🚀🚀🚀")
         
         // 创建自定义URLSessionConfiguration，设置更长的超时时间
         let sessionConfig = URLSessionConfiguration.default
@@ -120,11 +141,17 @@ class AINetworkService {
                     return Fail(error: AINetworkError.invalidResponse).eraseToAnyPublisher()
                 }
                 
+                // 🔴🔴🔴 超级醒目的API响应日志 🔴🔴🔴
+                print("\n🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+                print("🎉🎉🎉 【虚拟角色评论生成】API响应接收 🎉🎉🎉")
+                print("🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
                 print("📥 收到\(apiType)响应 - 状态码: \(httpResponse.statusCode)")
                 
                 // 打印完整响应内容
                 if let responseString = String(data: data, encoding: .utf8) {
-                    print("📥 响应内容: \(responseString)")
+                    print("\n🟢 ===== API完整响应内容 =====")
+                    print(responseString)
+                    print("🟢 ===== 响应内容结束 =====\n")
                 }
                 
                 if httpResponse.statusCode != 200 {
@@ -151,15 +178,24 @@ class AINetworkService {
                        let firstChoice = choices.first,
                        let message = firstChoice["message"] as? [String: Any],
                        let content = message["content"] as? String {
+                        // 🔴🔴🔴 超级醒目的解析成功日志 🔴🔴🔴
+                        print("\n💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚")
+                        print("🎊🎊🎊 【虚拟角色评论】成功生成！🎊🎊🎊")
+                        print("💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚")
                         print("✅ 成功解析\(apiType)响应")
-                        print("📝 回复内容长度: \(content.count)字符")
-                        
-                        // 不再检查模板语言
-                        print("👍 API返回内容已成功获取")
+                        print("📝 原始回复内容长度: \(content.count)字符")
+                        print("\n💚 ===== 生成的角色评论原始内容 =====")
+                        print(content)
+                        print("💚 ===== 角色评论原始内容结束 =====")
                         
                         // 处理可能存在的前导和尾随空格和换行符
                         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
-                        print("🔍 处理后内容长度: \(trimmedContent.count)字符")
+                        print("\n🔍 处理后内容长度: \(trimmedContent.count)字符")
+                        print("\n💚 ===== 最终角色评论内容 =====")
+                        print(trimmedContent)
+                        print("💚 ===== 最终角色评论内容结束 =====")
+                        print("💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚")
+                        print("👍 虚拟角色评论生成完成！即将添加到评论列表\n")
                         
                         return Just(trimmedContent)
                             .setFailureType(to: AINetworkError.self)

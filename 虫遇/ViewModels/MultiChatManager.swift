@@ -400,8 +400,19 @@ class MultiChatManager: ObservableObject {
     
     /// 按需创建会话（仅在有AI消息时创建）
     private func createSessionIfNeeded() {
+        print("🔍 检查会话创建需求:")
+        print("  - currentSession存在: \(currentSession != nil)")
+        print("  - modelContext存在: \(modelContext != nil)")
+        print("  - characters数量: \(characters.count)")
+        print("  - theme: \"\(theme)\"")
+        
         // 如果会话已存在或没有ModelContext，则不创建
-        guard currentSession == nil, let modelContext = modelContext else { return }
+        guard currentSession == nil, let modelContext = modelContext else { 
+            print("  - 跳过会话创建（已存在或缺少ModelContext）")
+            return 
+        }
+        
+        print("  - 开始创建新会话...")
         
         // 创建新的聊天会话
         currentSession = dataService.createChatSession(
@@ -413,18 +424,24 @@ class MultiChatManager: ObservableObject {
             modelContext: modelContext
         )
         
-        print("✅ 按需创建聊天会话: \(currentSession?.id ?? "unknown")")
+        print("✅ 按需创建聊天会话: \(currentSession?.id ?? "创建失败")")
     }
     
     /// 保存消息到数据库
     private func saveMessage(_ message: ChatMessage, messageType: String) {
+        print("🔍 开始保存消息 - 类型: \(message.isUserMessage ? "用户" : "AI"), 内容: \"\(String(message.content.prefix(30)))...\"")
+        
         guard let modelContext = modelContext else {
             print("⚠️ 无法保存消息：缺少ModelContext")
             return
         }
         
+        print("🔍 保存前会话状态: currentSession=\(currentSession?.id ?? "nil")")
+        
         // 确保会话已创建（无论是用户消息还是AI消息）
         createSessionIfNeeded()
+        
+        print("🔍 保存后会话状态: currentSession=\(currentSession?.id ?? "nil")")
         
         // 如果是AI消息，保存之前未保存的用户消息（向后兼容）
         if !message.isUserMessage {
@@ -432,7 +449,7 @@ class MultiChatManager: ObservableObject {
         }
         
         guard let sessionId = currentSession?.id else {
-            print("⚠️ 无法保存消息：缺少会话ID")
+            print("❌ 无法保存消息：缺少会话ID，会话创建可能失败")
             return
         }
         

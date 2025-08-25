@@ -1839,6 +1839,13 @@ struct HomeView: View {
                 isVirtualCharacter: true,
                 characterID: "\(character.id)"
             )
+                
+                // 🔧 重要修复：保存帖子数据到持久化存储
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("SavePostData"),
+                    object: nil,
+                    userInfo: ["postID": post.id.uuidString]
+                )
             
             // 如果正在查看的是同一帖子，也更新 selectedPost
             selectedPost = postViewModel.posts[index]
@@ -1885,6 +1892,13 @@ struct HomeView: View {
                     content: trimmedContent
                 )
             }
+            
+            // 🔧 重要修复：保存帖子数据到持久化存储
+            NotificationCenter.default.post(
+                name: NSNotification.Name("SavePostData"),
+                object: nil,
+                userInfo: ["postID": post.id.uuidString]
+            )
             
             // 如果正在查看的是同一帖子，也更新 selectedPost
             if selectedPost?.id == post.id {
@@ -2330,8 +2344,8 @@ struct HomeView: View {
                             
                             // 每生成一种类型的帖子就立即更新UI显示
                             Task { @MainActor in
-                                // 将当前类型生成的帖子添加到视图模型的最前面
-                                self.postViewModel.posts.insert(contentsOf: posts, at: 0)
+                                // 使用专门的方法添加AI帖子，确保触发持久化保存
+                                self.postViewModel.addAIPosts(posts)
                                 
                                 // 通知系统显示新内容
                                 NotificationCenter.default.post(

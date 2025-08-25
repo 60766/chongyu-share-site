@@ -439,36 +439,60 @@ class CharacterAvatarService {
      * @return 角色类别
      */
     private func getCategory(for characterId: String) -> String {
-        // 角色ID到类别的映射 - 这里可以根据需要扩展
-        let categoryMap: [String: String] = [
-            // 科学家
-            "einstein": "scientist", "newton": "scientist", "curie": "scientist", "tesla": "scientist", "hawking": "scientist", "darwin": "scientist",
-            // 哲学家
-            "socrates": "philosopher", "plato": "philosopher", "aristotle": "philosopher", "kongzi": "philosopher", "freud": "philosopher", "jung": "philosopher", "kant": "philosopher", "laozi": "philosopher", "zhuangzi": "philosopher",
-            // 艺术家
-            "davinci": "artist", "mozart": "artist", "beethoven": "artist", "van_gogh": "artist", "monet": "artist", "picasso": "artist", "zhangdaqian": "artist",
-            // 作家
-            "shakespeare": "writer", "libai": "writer", "tolstoy": "writer", "marquez": "writer", "luxun": "writer", "kawabata": "writer", "sanmao": "writer",
-            // 虚构人物
-            "hermione": "fiction", "daenerys": "fiction", "holmes": "fiction", "sherlock": "fiction", "harry_potter": "fiction", "drstrange": "fiction", "doctor": "fiction", "joker": "fiction",
-            "ironman": "fiction", "spiderman": "fiction", "blackwidow": "fiction", "terminator": "fiction", "neo": "fiction", "frodo": "fiction", "obiwan": "fiction",
-            "legolas": "fiction", "drhouse": "fiction", "kirk": "fiction", "thanos": "fiction", "deadpool": "fiction", "darth_vader": "fiction", "jack_sparrow": "fiction",
-            "maximus": "fiction", "amelie": "fiction", "ip_man": "fiction", "ethan_hunt": "fiction", "forrest_gump": "fiction", "walter_white": "fiction",
-            "tyrion_lannister": "fiction", "eleven": "fiction", "sheldon_cooper": "fiction", "sherlock_bbc": "fiction", "michael_scott": "fiction",
-            "raymond_reddington": "fiction", "thomas_shelby": "fiction", "zhen_huan": "fiction", "saul_goodman": "fiction",
-            // ACG
-            "geralt": "acg", "link": "acg", "lara": "acg", "lixiaoyao": "acg", "mario": "acg", "master_chief": "acg", "kratos": "acg",
-            "solid_snake": "acg", "cloud_strife": "acg", "ezio_auditore": "acg", "aloy": "acg", "2b": "acg", "agent_47": "acg", "ellie": "acg",
-            "genshin_traveler": "acg", "zhongli": "acg", "naruto": "acg", "hatsune": "acg", "walle": "acg", "doraemon": "acg", "sanji": "acg",
-            "chihiro": "acg", "goku": "acg", "sailor_moon": "acg", "light_yagami": "acg", "spike_spiegel": "acg", "totoro": "acg", "lelouch": "acg",
-            "inuyasha": "acg", "edward_elric": "acg", "saitama": "acg", "hatsune_miku": "acg", "luffy": "acg", "conan": "acg", "saber": "acg",
-            "nezuko": "acg", "levi": "acg", "jinx": "acg", "kirby": "acg", "pikachu": "acg", "eren": "acg", "tanjiro": "acg",
-            // 默认历史人物
+        // 首先尝试从角色库中直接获取数据
+        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        if let character = allCharacters.first(where: { $0.id.lowercased() == characterId.lowercased() }) {
+            // 根据角色类型返回对应的分类
+            switch character.type {
+            case .historical:
+                // 历史人物按subtype细分
+                if let subtype = character.subtype {
+                    switch subtype.lowercased() {
+                    case "scientist": return "scientist"
+                    case "philosopher": return "philosopher"
+                    case "writer", "author": return "writer"
+                    case "artist", "painter", "musician": return "artist"
+                    default: return "historical"
+                    }
+                }
+                return "historical"
+            case .literary, .movie, .tv, .scifi, .fantasy:
+                return "fiction"
+            case .anime, .game:
+                return "acg"
+            case .mythological:
+                return "mythology"
+            case .entrepreneur:
+                return "entrepreneur"
+            case .custom:
+                return "custom"
+            case .unknown:
+                // 对于未知类型，尝试从subtype判断
+                if let subtype = character.subtype {
+                    switch subtype.lowercased() {
+                    case "scientist": return "scientist"
+                    case "philosopher": return "philosopher"
+                    case "writer", "author": return "writer"
+                    case "artist", "painter", "musician": return "artist"
+                    case "fiction", "character": return "fiction"
+                    case "anime", "manga", "game": return "acg"
+                    default: return "historical"
+                    }
+                }
+                return "historical"
+            }
+        }
+        
+        // 如果无法从角色库获取，使用备用映射（仅保留少量关键角色）
+        let fallbackCategoryMap: [String: String] = [
+            // 备用映射，只保留一些重要的角色
+            "einstein": "scientist", "kongzi": "philosopher", "shakespeare": "writer", 
+            "davinci": "artist", "sherlock": "fiction", "naruto": "acg"
         ]
         
         // 确保ID为小写，以便正确匹配
         let normalizedId = characterId.lowercased()
-        return categoryMap[normalizedId] ?? "historical"
+        return fallbackCategoryMap[normalizedId] ?? "historical"
     }
     
     /**
@@ -512,7 +536,9 @@ class CharacterAvatarService {
             "mythology": "神话",
             "fiction": "虚构人物",
             "acg": "动漫游戏",
-            "film": "影视角色"
+            "film": "影视角色",
+            "entrepreneur": "企业家",
+            "custom": "自定义角色"
         ]
         
         let category = getCategory(for: characterId)
@@ -532,7 +558,9 @@ class CharacterAvatarService {
             "mythology": .yellow,
             "fiction": .cyan,
             "acg": .pink,
-            "film": .indigo
+            "film": .indigo,
+            "entrepreneur": .teal,
+            "custom": .gray
         ]
         
         let category = getCategory(for: characterId)

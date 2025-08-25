@@ -418,78 +418,30 @@ class AIPromptGenerator {
     }
     
     /**
-     * 获取角色特征
+     * 获取角色特征 - 使用与AI生成帖子内容相同的数据源
      */
     private func getCharacterTraits(_ characterID: String) -> AIPromptCharacterTraits {
-        switch characterID.lowercased() {
-        case "李白", "libai":
-            return AIPromptCharacterTraits(
-                name: "李白",
-                description: "浪漫豪放的诗人，喜欢饮酒，追求自由，擅长用华丽意象表达情感",
-                speechPatterns: ["醉", "月", "诗", "酒", "山水", "豪情"]
-            )
-        case "爱因斯坦", "einstein":
-            return AIPromptCharacterTraits(
-                name: "爱因斯坦",
-                description: "富有好奇心的物理学家，喜欢思考实验，善用比喻解释复杂概念",
-                speechPatterns: ["相对", "时间", "空间", "想象力", "好奇心"]
-            )
-        case "莎士比亚", "shakespeare":
-            return AIPromptCharacterTraits(
-                name: "莎士比亚",
-                description: "文学大师，对人性有深刻洞察，语言华丽，善用隐喻",
-                speechPatterns: ["生存", "死亡", "爱情", "悲剧", "喜剧", "命运"]
-            )
-        case "达芬奇", "davinci":
-            return AIPromptCharacterTraits(
-                name: "达芬奇",
-                description: "全能天才，艺术家和科学家，注重细节，观察力敏锐",
-                speechPatterns: ["比例", "和谐", "观察", "设计", "自然", "艺术"]
-            )
-        case "孔子", "kongzi":
-            return AIPromptCharacterTraits(
-                name: "孔子",
-                description: "儒家思想创始人，注重伦理道德，言简意赅，常用比喻",
-                speechPatterns: ["仁", "礼", "君子", "学而", "中庸", "道"]
-            )
-        case "牛顿", "newton":
-            return AIPromptCharacterTraits(
-                name: "牛顿",
-                description: "严谨的科学家，注重实证和逻辑，表达精确",
-                speechPatterns: ["力", "质量", "运动", "定律", "证明", "观察"]
-            )
-        case "居里夫人", "curie":
-            return AIPromptCharacterTraits(
-                name: "居里夫人",
-                description: "坚韧不拔的科学家，两次获得诺贝尔奖，以严谨的科学态度和执着的探索精神著称",
-                speechPatterns: ["科学", "研究", "发现", "证据", "坚持", "探索", "理性"]
-            )
-        case "福尔摩斯", "holmes":
-            return AIPromptCharacterTraits(
-                name: "福尔摩斯",
-                description: "逻辑严密、冷静、观察敏锐的侦探，善于从细节推理",
-                speechPatterns: ["观察", "推理", "证据", "细节", "基本演绎法", "华生"]
-            )
-        case "鸣人", "naruto":
-            return AIPromptCharacterTraits(
-                name: "鸣人",
-                description: "热血、坚韧、充满决心的忍者，不放弃是他的忍道",
-                speechPatterns: ["我的忍道", "相信自己", "不放弃", "说到做到"]
-            )
-        case "孙悟空", "goku", "sunwukong":
-            return AIPromptCharacterTraits(
-                name: "孙悟空",
-                description: "热情、直率、乐观的武道家，追求变得更强",
-                speechPatterns: ["修炼", "变强", "战斗", "超越自我", "吃饭"]
-            )
-        default:
+        // 从CharacterSystem获取角色完整信息
+        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        guard let character = allCharacters.first(where: { $0.id == characterID }) else {
+            // 如果找不到角色，返回默认信息
             return AIPromptCharacterTraits(
                 name: characterID,
-                description: "有趣的历史人物",
+                description: "一个有趣的角色",
                 speechPatterns: []
             )
         }
+        
+        // 构建角色描述，使用与AI生成帖子内容相同的格式
+        let description = "\(character.type.displayName)，专长领域是\(character.primaryField)。\(character.briefDescription)"
+        
+        return AIPromptCharacterTraits(
+            name: character.name,
+            description: description,
+            speechPatterns: [] // 直接使用空数组，不使用通用模板
+        )
     }
+
 }
 
 /**

@@ -120,6 +120,13 @@ class ResonanceContentGenerator {
             
             // 将新帖子添加到数组开头，确保最新的帖子显示在最前面
             posts.insert(post, at: 0)
+            
+            // 同时添加到PostViewModel以实现持久化
+            DispatchQueue.main.async {
+                // 转换为UserPostModel
+                let userPost = self.convertToUserPostModel(post)
+                PostViewModel.shared.addAIPosts([userPost])
+            }
         }
         
         // 通知内容生成完成
@@ -2466,6 +2473,42 @@ class ResonanceContentGenerator {
             description: traits.trait,
             speechPatterns: traits.expressionPatterns,
             experiences: [traits.field, traits.lifeExperience]
+        )
+    }
+    
+    /**
+     * 将ResonanceContentGenerator.Post转换为UserPostModel
+     * @param post ResonanceContentGenerator的Post对象
+     * @return UserPostModel对象
+     */
+    private func convertToUserPostModel(_ post: Post) -> UserPostModel {
+        // 转换评论
+        let userComments = post.comments.map { comment in
+            DetailedCommentModel(
+                id: UUID(uuidString: comment.id) ?? UUID(),
+                username: comment.author,
+                userAvatar: comment.authorAvatar,
+                content: comment.content,
+                datePosted: comment.timestamp,
+                isVirtualCharacter: !comment.isUserComment,
+                characterID: comment.isUserComment ? nil : UUID().uuidString,
+                likes: comment.likes,
+                isLikedByCurrentUser: false
+            )
+        }
+        
+        return UserPostModel(
+            id: UUID(uuidString: post.id) ?? UUID(),
+            username: post.author,
+            userAvatar: post.authorAvatar,
+            content: post.content,
+            images: [], // ResonanceContentGenerator的Post没有图片字段
+            datePosted: post.timestamp,
+            likes: post.likes,
+            comments: userComments,
+            isLikedByCurrentUser: false,
+            isBookmarkedByCurrentUser: false,
+            source: "resonance" // 标识来源为共鸣内容生成器
         )
     }
 } 

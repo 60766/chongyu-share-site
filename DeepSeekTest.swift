@@ -17,7 +17,7 @@ func testDeepSeekAPI() {
       -d '{
         "model": "\(modelName)",
         "messages": [
-          {"role": "system", "content": "你是一个智能助手，能够以历史人物的身份回答问题。"},
+          {"role": "system", "content": "你是一个智能助手，能够以各种角色的身份回答问题。"},
           {"role": "user", "content": "\(prompt)"}
         ],
         "temperature": 0.7,

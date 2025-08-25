@@ -587,6 +587,11 @@ public struct WormholeExplorationView: View {
             if generatedPosts.count > 0 {
                 posts += generatedPosts
                 
+                // 将生成的帖子添加到PostViewModel中以实现持久化
+                DispatchQueue.main.async {
+                    PostViewModel.shared.addAIPosts(generatedPosts)
+                }
+                
                 // 更新已生成类型的状态
                 var updatedGeneratedTypes = generatedTypes
                 updatedGeneratedTypes.insert(typeManager.selectedIndex)
@@ -621,6 +626,16 @@ public struct WormholeExplorationView: View {
                 // 尝试创建备用帖子
                 if let backupPosts = createBackupPosts(for: typeManager.selectedIndex) {
                     posts += backupPosts
+                
+                // 将备用帖子也添加到PostViewModel中以实现持久化
+                DispatchQueue.main.async {
+                    PostViewModel.shared.addAIPosts(backupPosts)
+                }
+                    
+                    // 将备用帖子也添加到PostViewModel中以实现持久化
+                    DispatchQueue.main.async {
+                        PostViewModel.shared.addAIPosts(backupPosts)
+                    }
                     
                     // 更新已生成类型的状态
                     var updatedGeneratedTypes = generatedTypes

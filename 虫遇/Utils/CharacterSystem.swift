@@ -30,6 +30,7 @@ class CharacterSystem {
         case historical = "historical"   // 历史人物
         case literary = "literary"       // 文学角色
         case movie = "movie"             // 电影角色
+        case tv = "tv"                   // 电视剧角色
         case anime = "anime"             // 动漫角色
         case game = "game"               // 游戏角色
         case mythological = "mythological" // 神话角色
@@ -50,6 +51,7 @@ class CharacterSystem {
             case .historical: return "历史人物"
             case .literary: return "文学角色"
             case .movie: return "电影角色"
+            case .tv: return "电视剧角色"
             case .anime: return "动漫角色"
             case .game: return "游戏角色"
             case .mythological: return "神话角色"

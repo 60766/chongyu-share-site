@@ -586,9 +586,19 @@ struct CommentInputView: View {
             }
             
             // 监听键盘隐藏通知
-            NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { notification in
-                handleKeyboardNotification(notification, isShowing: false)
-            }
+            NotificationCenter.default.addObserver(
+                forName: UIResponder.keyboardWillHideNotification,
+                object: nil,
+                queue: .main
+            ) { _ in
+                    // 使用异步方式更新状态，避免在视图更新过程中修改状态
+                    DispatchQueue.main.async {
+                        self.keyboardHeight = 0
+                        self.keyboardVisible = false
+                        self.bottomPadding = 0
+                        self.viewOffset = 0
+                    }
+                }
             
             // 监听回复按钮点击通知，激活输入框
             NotificationCenter.default.addObserver(forName: NSNotification.Name("FocusCommentInput"), object: nil, queue: .main) { _ in
@@ -697,9 +707,12 @@ struct CommentInputView: View {
         let minHeight: CGFloat = 36 // 最小高度从38减小到36
         let maxHeight: CGFloat = isExpanded ? 200 : 100 // 根据是否展开设置最大高度
         
-        // 使用动画更新高度，并限制最大高度
-        withAnimation(.easeInOut(duration: 0.2)) {
-            textViewHeight = min(max(minHeight, newSize.height), maxHeight)
+        // 使用异步方式更新状态，避免在视图更新过程中修改状态
+        DispatchQueue.main.async {
+            // 使用动画更新高度，并限制最大高度
+            withAnimation(.easeInOut(duration: 0.2)) {
+                self.textViewHeight = min(max(minHeight, newSize.height), maxHeight)
+            }
         }
     }
     
@@ -750,13 +763,16 @@ struct CommentInputView: View {
     
     // 插入@提及
     private func insertMention(_ character: CommentCharacter) {
-        // 如果评论框为空，直接添加@用户名，否则添加空格+@用户名
-        if commentManager.commentText.isEmpty {
-            commentManager.commentText = "@\(character.name) "
-        } else if commentManager.commentText.last == " " {
-            commentManager.commentText += "@\(character.name) "
-        } else {
-            commentManager.commentText += " @\(character.name) "
+        // 使用异步方式更新状态，避免在视图更新过程中修改状态
+        DispatchQueue.main.async {
+            // 如果评论框为空，直接添加@用户名，否则添加空格+@用户名
+            if self.commentManager.commentText.isEmpty {
+                self.commentManager.commentText = "@\(character.name) "
+            } else if self.commentManager.commentText.last == " " {
+                self.commentManager.commentText += "@\(character.name) "
+            } else {
+                self.commentManager.commentText += " @\(character.name) "
+            }
         }
         
         // 触发触感反馈
@@ -828,11 +844,13 @@ struct CommentInputView: View {
             object: nil,
             queue: .main
         ) { _ in
-            // 直接重置状态，不使用动画
-            self.keyboardHeight = 0
-            self.keyboardVisible = false
-            self.bottomPadding = 0
-            self.viewOffset = 0
+            // 使用异步方式更新状态，避免在视图更新过程中修改状态
+            DispatchQueue.main.async {
+                self.keyboardHeight = 0
+                self.keyboardVisible = false
+                self.bottomPadding = 0
+                self.viewOffset = 0
+            }
         }
     }
     
@@ -852,8 +870,10 @@ struct CommentInputView: View {
     
     // 激活输入框并弹出键盘的方法
     private func focusInputField() {
-        // 设置焦点状态
-        textFieldFocused = true
+        // 使用异步方式更新状态，避免在视图更新过程中修改状态
+        DispatchQueue.main.async {
+            self.textFieldFocused = true
+        }
         
         // 延迟一点点时间确保状态已更新
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -865,14 +885,17 @@ struct CommentInputView: View {
     // 处理键盘显示和隐藏的通知
     private func handleKeyboardNotification(_ notification: Notification, isShowing: Bool) {
         if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-            keyboardHeight = keyboardFrame.height
-            keyboardVisible = isShowing
-            
-            // 调整底部内边距，避免被键盘遮挡
-            bottomPadding = keyboardFrame.height
-            
-            // 更新视图偏移量以避免键盘遮挡
-            updateViewOffset()
+            // 使用异步方式更新状态，避免在视图更新过程中修改状态
+            DispatchQueue.main.async {
+                self.keyboardHeight = keyboardFrame.height
+                self.keyboardVisible = isShowing
+                
+                // 调整底部内边距，避免被键盘遮挡
+                self.bottomPadding = keyboardFrame.height
+                
+                // 更新视图偏移量以避免键盘遮挡
+                self.updateViewOffset()
+            }
         }
     }
 }

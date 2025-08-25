@@ -108,9 +108,28 @@ class CommentLoader: ObservableObject {
         DispatchQueue.main.async {
             // 检查是否与当前加载的帖子匹配
             if let currentID = self.currentPostID, currentID == postID {
-                print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，即将刷新评论")
-                self.refreshComments()
-                    } else {
+                print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，即将同步最新评论数据")
+                
+                // 🔧 修复：从PostViewModel获取最新的评论数据，而不是使用本地缓存
+                if let post = PostViewModel.shared.posts.first(where: { $0.id == postID }) {
+                    print("🔄 CommentLoader: 从PostViewModel同步最新评论数据，评论数量: \(post.comments.count)")
+                    
+                    // 检查是否有重复评论并清理
+                    let uniqueComments = self.removeDuplicateComments(post.comments)
+                    if uniqueComments.count != post.comments.count {
+                        print("🔧 CommentLoader: 检测到重复评论，已清理，从 \(post.comments.count) 条减少到 \(uniqueComments.count) 条")
+                    }
+                    
+                    // 更新本地评论数据
+                    self.allComments = uniqueComments
+                    
+                    // 刷新显示
+                    self.refreshComments()
+                } else {
+                    print("⚠️ CommentLoader: 未找到对应的帖子，使用本地缓存刷新")
+                    self.refreshComments()
+                }
+            } else {
                 print("ℹ️ CommentLoader: 评论更新通知与当前加载的帖子不匹配")
                 print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
                 print("  通知帖子ID: \(postIDString)")
@@ -123,60 +142,31 @@ class CommentLoader: ObservableObject {
     }
     
     // 处理角色回复生成完成的通知
+    // 🔧 修复重复显示问题：PostViewModel已经通过addReplyToParent添加了回复，这里不需要重复添加
     @objc private func handleCharacterReplyGenerated(_ notification: Notification) {
         // 提取通知中的帖子ID和回复内容
         guard let userInfo = notification.userInfo,
               let postID = userInfo["postID"] as? String,
-              let characterID = userInfo["characterID"] as? String,
-              let replyContent = userInfo["reply"] as? String else {
+              let characterID = userInfo["characterID"] as? String else {
             print("⚠️ CommentLoader: 收到角色回复生成通知，但缺少必要信息")
             return
         }
         
-        // 检查是否为邀请的角色评论
-        let isInvited = userInfo["isInvited"] as? Bool ?? false
-        
-        print("📣 CommentLoader: 收到角色回复生成通知 - 帖子ID: \(postID), 角色ID: \(characterID), 是否邀请: \(isInvited)")
-        print("💬 回复内容: \"\(String(replyContent.prefix(50)))...\"")
+        print("📣 CommentLoader: 收到角色回复生成通知 - 帖子ID: \(postID), 角色ID: \(characterID)")
+        print("ℹ️ 回复已通过PostViewModel添加到帖子中，这里只刷新UI显示")
         
         // 检查是否与当前加载的帖子匹配
         if let currentID = currentPostID, currentID.uuidString == postID {
-            print("✅ CommentLoader: 帖子ID匹配当前加载的帖子")
+            print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，刷新评论显示")
             
-            // 在主线程执行UI更新
+            // 在主线程执行UI更新，只刷新显示，不重复添加评论
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 
-                // 如果是邀请的角色评论，检查是否已经存在相同角色ID的评论
-                if isInvited {
-                    // 检查是否已经存在该角色的评论
-                    let existingComment = self.allComments.first { comment in
-                        comment.isVirtualCharacter && 
-                        comment.characterID == characterID &&
-                        comment.parentCommentId == nil // 顶级评论
-                    }
-                    
-                    if existingComment != nil {
-                        print("⚠️ CommentLoader: 已存在该角色的邀请评论，跳过添加")
-                        return
-                    }
-                }
+                // 刷新评论显示，显示PostViewModel已添加的回复
+                self.refreshComments()
                 
-                // 创建虚拟角色评论对象
-                let comment = DetailedCommentModel(
-                    username: self.getCharacterName(for: characterID),
-                    userAvatar: self.getCharacterAvatar(for: characterID),
-                    content: replyContent,
-                    datePosted: Date(),
-                    isVirtualCharacter: true,
-                    characterID: characterID,
-                    likes: 0
-                )
-                
-                // 添加到评论列表
-                self.addComment(comment)
-                
-                print("✅ CommentLoader: 角色回复已添加到评论列表")
+                print("✅ CommentLoader: 评论显示已刷新，回复应该正确显示")
             }
         } else {
             print("ℹ️ CommentLoader: 角色回复通知与当前加载的帖子不匹配")
@@ -258,14 +248,20 @@ class CommentLoader: ObservableObject {
                     return
                 }
                 
-                // 重新加载评论
+                // 重新加载评论，避免重复
                 let preloadCount = min(5, self.allComments.count)
                 let preloadedComments = Array(self.allComments.prefix(preloadCount))
                 
-                self.loadedComments = preloadedComments
-                self.currentPage = 1
-                self.hasMoreComments = preloadCount < self.allComments.count
-                self.isPreloaded = true
+                // 检查是否与当前加载的评论相同
+                if self.loadedComments != preloadedComments {
+                    self.loadedComments = preloadedComments
+                    self.currentPage = 1
+                    self.hasMoreComments = preloadCount < self.allComments.count
+                    self.isPreloaded = true
+                    print("✅ CommentLoader: 评论列表已更新")
+                } else {
+                    print("ℹ️ CommentLoader: 评论列表无变化，跳过更新")
+                }
                 self.isLoading = false
                 
                 // 打印刷新后的评论信息
@@ -369,10 +365,16 @@ class CommentLoader: ObservableObject {
                 let preloadCount = min(3, self.allComments.count)
                 let preloadedComments = Array(self.allComments.prefix(preloadCount))
                 
-                self.loadedComments = preloadedComments
-                self.currentPage = 1
-                self.hasMoreComments = preloadCount < self.allComments.count
-                self.isPreloaded = true
+                // 🔧 修复：检查是否与当前加载的评论相同，避免重复设置
+                if self.loadedComments != preloadedComments {
+                    self.loadedComments = preloadedComments
+                    self.currentPage = 1
+                    self.hasMoreComments = preloadCount < self.allComments.count
+                    self.isPreloaded = true
+                    print("✅ CommentLoader: 预加载完成，加载了 \(preloadedComments.count) 条评论")
+                } else {
+                    print("ℹ️ CommentLoader: 预加载跳过，评论列表无变化")
+                }
                 self.isLoading = false
             } catch {
                 // 错误处理
@@ -433,8 +435,17 @@ class CommentLoader: ObservableObject {
                 let safeEndIndex = min(endIndex, self.allComments.count)
                 let newComments = Array(self.allComments[startIndex..<safeEndIndex])
                 
-                // 不使用分批加载和动画，直接添加所有评论
-                self.loadedComments.append(contentsOf: newComments)
+                // 🔧 修复：检查是否重复添加评论，避免重复显示
+                let existingCommentIds = Set(self.loadedComments.map { $0.id })
+                let uniqueNewComments = newComments.filter { !existingCommentIds.contains($0.id) }
+                
+                if !uniqueNewComments.isEmpty {
+                    // 不使用分批加载和动画，直接添加所有新评论
+                    self.loadedComments.append(contentsOf: uniqueNewComments)
+                    print("✅ CommentLoader: 加载下一页，添加了 \(uniqueNewComments.count) 条新评论")
+                } else {
+                    print("ℹ️ CommentLoader: 加载下一页，没有新评论需要添加")
+                }
                 
                 // 更新状态
                 self.currentPage += 1
@@ -469,19 +480,22 @@ class CommentLoader: ObservableObject {
         isLoading = true
         errorMessage = nil
         
+        // 🔧 修复：使用真实的评论数据而不是模拟数据
+        // 从 allComments 数组获取数据，这个数组应该与 PostViewModel 保持同步
+        let availableComments = self.allComments
+        
         // 模拟网络延迟
         DispatchQueue.main.asyncAfter(deadline: .now() + (isInitialLoad ? 0.5 : 0.8)) {
-            // 使用虚拟数据（实际应用中应当从API获取）
             var newComments: [DetailedCommentModel] = []
             
             // 内容量基于分页加载
             let start = (self.currentPage - 1) * self.pageSize
-            let end = min(start + self.pageSize, ModelData.sampleComments.count)
+            let end = min(start + self.pageSize, availableComments.count)
             
-            if start < ModelData.sampleComments.count {
+            if start < availableComments.count {
                 for i in start..<end {
-                    if i < ModelData.sampleComments.count {
-                        let comment = ModelData.sampleComments[i]
+                    if i < availableComments.count {
+                        let comment = availableComments[i]
                         newComments.append(comment)
                     }
                 }
@@ -510,7 +524,7 @@ class CommentLoader: ObservableObject {
                 }
                 
                 // 更新分页状态
-                self.hasMoreComments = end < ModelData.sampleComments.count
+                self.hasMoreComments = end < availableComments.count
                 self.currentPage += 1
                 self.isInitialLoad = false
             }
@@ -519,9 +533,15 @@ class CommentLoader: ObservableObject {
         }
     }
     
-    // 模拟添加评论
+    // 添加评论（避免重复）
     func addComment(_ comment: DetailedCommentModel) {
         print("➕ CommentLoader: 添加新评论...")
+        
+        // 🔧 修复：检查是否已存在相同ID的评论，避免重复添加
+        if allComments.contains(where: { $0.id == comment.id }) {
+            print("⚠️ CommentLoader: 评论已存在，跳过重复添加 - ID: \(comment.id)")
+            return
+        }
         
         // 添加到所有评论列表
         allComments.insert(comment, at: 0)
@@ -537,7 +557,6 @@ class CommentLoader: ObservableObject {
         let characterInfo = comment.isVirtualCharacter ? "(角色ID: \(comment.characterID ?? "未知"))" : ""
         print("✅ CommentLoader: 新\(commentType)已添加\(characterInfo)")
         print("📝 评论内容: \(comment.content)")
-        print("👤 评论者: \(comment.username)")
         print("📊 CommentLoader: 当前评论总数: \(allComments.count), 已加载: \(loadedComments.count)")
         
         // 如果有帖子ID，发送通知以更新其他可能显示此帖子的视图
@@ -605,6 +624,23 @@ class CommentLoader: ObservableObject {
         default:
             return "person.circle.fill"
         }
+    }
+    
+    // 🔧 新增：清理重复评论的方法
+    private func removeDuplicateComments(_ comments: [DetailedCommentModel]) -> [DetailedCommentModel] {
+        var uniqueComments: [DetailedCommentModel] = []
+        var seenIds = Set<UUID>()
+        
+        for comment in comments {
+            if !seenIds.contains(comment.id) {
+                uniqueComments.append(comment)
+                seenIds.insert(comment.id)
+            } else {
+                print("🔧 CommentLoader: 检测到重复评论ID: \(comment.id), 用户名: \(comment.username), 内容: \(comment.content.prefix(20))...")
+            }
+        }
+        
+        return uniqueComments
     }
 }
 
@@ -2328,20 +2364,9 @@ struct PostCardView: View {
         }
     }
     
-    // 获取角色类别标签
+    // 获取角色类别标签 - 统一使用CharacterAvatarService
     private func getCharacterCategory(for characterID: String) -> String {
-        switch characterID.lowercased() {
-        case "einstein": return "科学家"
-        case "shakespeare": return "文学家"
-        case "davinci": return "艺术家"
-        case "confucius": return "哲学家"
-        case "curie": return "科学家"
-        case "libai": return "诗人"
-        case "newton": return "物理学家"
-        case "goku", "naruto": return "动漫角色" 
-        case "holmes": return "侦探"
-        default: return "历史人物"
-        }
+        return CharacterAvatarService.shared.getCharacterCategoryTag(for: characterID)
     }
     
     // 用户头像视图
@@ -2659,10 +2684,8 @@ struct PostCardView: View {
                 // 如果是回复评论，使用回调
                 onAddComment?(post, trimmedText, replyingToComment.id.uuidString)
                 
-                // 更新本地评论加载器
-                if let updatedPost = viewModel.posts.first(where: { $0.id == post.id }) {
-                    commentLoader.initialize(with: updatedPost.comments, postID: updatedPost.id)
-                }
+                // 不需要重新初始化评论加载器，因为这会清空已加载的评论
+                // 回调函数会处理数据更新，评论加载器会自动反映变化
                     } else {
                 // 如果是新评论
                 let newComment = DetailedCommentModel(

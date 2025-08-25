@@ -61,6 +61,7 @@ class MultiCharacterCommentService {
         isInvited: Bool = false,
         completion: @escaping (Result<[String: String], Error>) -> Void
     ) {
+        print("🚀🚀🚀 === MULTICHARACTER COMMENT SERVICE 方法被调用 === 🚀🚀🚀")
         print("🚀 开始批量生成角色评论 - 共\(characterIDs.count)个角色")
         print("💭 用户评论: \(userComment ?? "无")")
         print("💭 用户评论长度: \(userComment?.count ?? 0)")
@@ -114,7 +115,30 @@ class MultiCharacterCommentService {
             isInvited: isInvited
         )
         
+        print("📤📤📤 === 即将发送 BATCH API 请求 === 📤📤📤")
         print("📤 准备发送批量API请求 - 提示词长度: \(batchPrompt.count)字符")
+        
+        // 🔍 添加详细的批量API请求调试信息
+        print("\n📋 ===== 批量角色评论API请求详细内容 =====")
+        print("🎭 目标角色: \(characterIDs.joined(separator: ", "))")
+        print("📝 帖子内容: \(postContent)")
+        print("👤 帖子作者: \(postAuthor ?? "无")")
+        if let userComment = userComment {
+            print("💬 用户评论: \(userComment)")
+            print("🎯 回复对象: \(targetUsername ?? "无")")
+        } else {
+            print("💬 用户评论: 无（新发布的帖子）")
+        }
+        print("🏷️ 是否邀请评论: \(isInvited ? "是" : "否")")
+        print("\n🔷 完整提示词内容:")
+        print("=====================================")
+        print(batchPrompt)
+        print("=====================================")
+        print("🔷 提示词统计:")
+        print("  - 总字符数: \(batchPrompt.count)")
+        print("  - 总行数: \(batchPrompt.components(separatedBy: .newlines).count)")
+        print("  - 包含角色数: \(characterIDs.count)")
+        print("=====================================\n")
         
         // 添加超时保护
         let timeoutInterval: TimeInterval = 60.0
@@ -138,6 +162,7 @@ class MultiCharacterCommentService {
             }
         
         // 调用API生成批量评论
+        print("🔥🔥🔥 === 正在调用 AINetworkService.sendRequest === 🔥🔥🔥")
         AINetworkService.shared.sendRequest(prompt: batchPrompt)
             .sink(
                 receiveCompletion: { completionStatus in
@@ -161,11 +186,41 @@ class MultiCharacterCommentService {
                     
                     print("✅ 批量API返回成功!")
                     
+                    // 🔍 添加详细的API响应调试信息
+                    print("\n📥 ===== 批量角色评论API响应详细内容 =====")
+                    print("🔷 响应统计:")
+                    print("  - 响应长度: \(output.count)字符")
+                    print("  - 响应行数: \(output.components(separatedBy: .newlines).count)")
+                    print("\n🔷 完整响应内容:")
+                    print("=====================================")
+                    print(output)
+                    print("=====================================\n")
+                    
                     // 解析API返回的批量评论结果
                     let commentsMap = self.parseAPIResponse(response: output, characterIDs: characterIDs)
                     
+                    // 🔍 添加详细的解析结果调试信息
+                    print("\n📊 ===== 批量评论解析结果 =====")
+                    print("🎯 请求的角色: \(characterIDs.joined(separator: ", "))")
+                    print("✅ 成功解析的角色: \(commentsMap.keys.joined(separator: ", "))")
+                    print("🔷 解析详情:")
+                    for (characterId, response) in commentsMap {
+                        let characterName = self.characterDataManager.getName(for: characterId) ?? characterId
+                        print("  - \(characterName) (\(characterId)): \"\(response.content.prefix(30))...\"")
+                        print("    点赞: \(response.shouldLike ? "是" : "否")")
+                    }
+                    
                     // 检查是否有角色的评论未能成功解析
                     let missingCharacters = characterIDs.filter { !commentsMap.keys.contains($0) }
+                    
+                    if !missingCharacters.isEmpty {
+                        print("❌ 未能解析的角色: \(missingCharacters.joined(separator: ", "))")
+                        for missingId in missingCharacters {
+                            let missingName = self.characterDataManager.getName(for: missingId) ?? missingId
+                            print("  - \(missingName) (\(missingId))")
+                        }
+                    }
+                    print("=====================================\n")
                     
                     if !missingCharacters.isEmpty && commentsMap.isEmpty {
                         // 如果所有角色都没有成功解析，返回错误
@@ -217,12 +272,11 @@ class MultiCharacterCommentService {
             let isAuthor = id == authorCharacterId
             let authorMark = isAuthor ? "（帖子作者）" : ""
             
-            // 尝试获取角色的性格特点
+            // 尝试获取角色的完整信息 - 使用与AI生成帖子内容相同的数据源
             var traits = ""
-            if let personality = personalityManager.getPersonality(for: id) {
-                let tone = personality.tone
-                let knowledgeAreas = personality.knowledgeAreas.joined(separator: "、")
-                traits = "（性格特点：\(tone)，专业领域：\(knowledgeAreas)）"
+            let allCharacters = CharacterSystem.shared.getAllCharacters()
+            if let character = allCharacters.first(where: { $0.id == id }) {
+                traits = "（类型：\(character.type.displayName)，专业领域：\(character.primaryField)）"
             }
             
             return "- \(name) (ID: \(id)) （@时使用：@\(name)） \(authorMark) \(traits)"
@@ -399,7 +453,99 @@ class MultiCharacterCommentService {
             点赞：是
             """
         } else {
-            // 原始提示词（针对帖子内容的回复）
+            // 🎯 专门针对用户发布帖子的提示词（使用作者判断）
+            if postAuthor == "当前用户" {
+                // 用户发布的帖子，生成更加友好和鼓励性的评论
+                
+                // 获取当前时间戳作为随机因子
+                let currentTime = Date().timeIntervalSince1970
+                
+                // 生成随机情绪状态
+                let emotions = ["积极", "平静", "专注", "好奇", "温和", "愉悦", "深思", "轻松"]
+                let randomEmotion = emotions.randomElement() ?? "平静"
+                
+                // 生成互动深度
+                let interactionLevels = ["初次相遇", "熟悉朋友", "知己", "老友"]
+                let interactionDepth = interactionLevels.randomElement() ?? "熟悉朋友"
+                
+                prompt = """
+                你需要为以下角色分别生成对用户帖子的评论：
+
+                🎭 参与评论的角色：
+                \(characterInfo)
+
+                【角色评论生成】
+
+                帖子内容："\(postContent)"
+                帖子作者：用户
+
+                【评论任务】
+                请为每个角色以其独特视角和个性对这条帖子进行评论，要求：
+
+                1. 建立连接点：
+                   - 找到帖子内容与角色的经历、知识或价值观的联系
+                   - 从角色的时代背景和专业角度提供独特见解
+                   - 与帖子作者建立思想上的对话
+
+                2. 展现个性：
+                   - 使用符合角色身份的表达方式
+                   - 体现角色的思维特点和价值观
+                   - 避免刻板印象，展现真实个性
+
+                3. 创造价值：
+                   - 提供用户没想到的角度或观点
+                   - 分享相关的个人经历或感悟
+                   - 引发用户进一步思考
+
+                【表达要求】
+                • 评论长度：25-50字，简短有力
+                • 语言风格：自然流畅，像真人对话
+                • 避免固定句式开头，如"作为[角色]"
+                • 不要重复引用帖子内容
+                • 可以在适当情况下直接称呼用户"你"
+
+                【风格指导】
+                • 保持克制：避免过度情绪化或戏剧化表达
+                • 真实自然：像朋友间的真诚交流
+                • 有个性：体现角色的独特视角，但不要刻意标新立异
+                • 有温度：让用户感受到被理解和关注
+
+                【避免事项】
+                • 不要使用模板化的礼貌用语
+                • 避免空洞的赞美或泛泛而谈
+                • 不要过度解释或说教
+                • 避免使用过于正式或古板的语言
+                • 严格禁止@其他角色，只能对用户说话
+                • 严格禁止添加注释、解释或括号说明
+
+                【随机因子】
+                当前时间：\(currentTime)
+                随机情绪：\(randomEmotion)
+                互动深度：\(interactionDepth)
+
+                格式要求：
+                - 🚨必须使用角色信息中的英文ID，如[tolstoy]、[einstein]、[libai]
+                - 🚨禁止使用中文名称作为ID
+                - 严格按照[角色ID]方括号格式
+
+                点赞判断：
+                在生成每个角色的回复后，请为每个角色判断：作为这个角色，你会给用户的这条帖子点赞吗？
+                在每个角色的回复后添加：
+                点赞：是 或 点赞：否
+
+                输出格式示例：
+                [einstein]
+                这个想法很有趣，让我想起了相对论的某个洞察。
+                点赞：是
+
+                [libai]
+                哈哈，你这感受我懂，当年我也有过类似的体验。
+                点赞：是
+
+                请基于以上要求，生成自然、有个性、有价值的评论。
+                """
+                        } else {
+                // 原始提示词（针对其他帖子内容的回复）
             prompt = """
             你需要为以下角色分别生成评论回复。每个角色都有自己的风格和特点。针对同一个帖子内容，生成每个角色独特的回复。
 
@@ -476,6 +622,7 @@ class MultiCharacterCommentService {
             - 🚨严禁@其他角色，只能直接对帖子作者说话
             - 🚨每个角色都要用"你"来称呼作者，表现出在和作者直接对话
             """
+             }
         }
         
         print("📋 构建批量提示词，包含\(characterIDs.count)个角色")
@@ -957,14 +1104,17 @@ class MultiCharacterCommentService {
             print("  - characterID: \(characterID)")
             print("  - characterName: \(characterName)")
             
-            if response.shouldLike, let userCommentId = requestContext.userCommentId {
-                print("❤️ \(characterName)将对用户评论\(userCommentId)点赞（使用精确传递的ID）")
-                print("🔧 点赞详情 - 角色:\(characterID), 帖子:\(postId), 评论ID:\(userCommentId)")
-                
+            if response.shouldLike {
                 // 延迟2-8秒再进行点赞，模拟真实的点赞时机
                 let likeDelay = Double.random(in: 2...8)
+                
+                if let userCommentId = requestContext.userCommentId {
+                    // 有用户评论ID，说明是对用户评论的点赞
+                    print("❤️ \(characterName)将对用户评论\(userCommentId)点赞（使用精确传递的ID）")
+                    print("🔧 评论点赞详情 - 角色:\(characterID), 帖子:\(postId), 评论ID:\(userCommentId)")
+                    
                 DispatchQueue.main.asyncAfter(deadline: .now() + likeDelay) {
-                    print("🕐 \(characterName)延迟\(String(format: "%.1f", likeDelay))秒后开始点赞")
+                        print("🕐 \(characterName)延迟\(String(format: "%.1f", likeDelay))秒后开始对评论点赞")
                     VirtualCharacterLikeService.shared.processCharacterLike(
                         characterId: characterID,
                         postId: postId,
@@ -972,15 +1122,43 @@ class MultiCharacterCommentService {
                         userComment: requestContext.userComment
                     )
                 }
-            } else if response.shouldLike {
-                print("⚠️ \(characterName)想要点赞，但没有提供目标评论ID")
-                print("🔧 点赞失败详情 - shouldLike:\(response.shouldLike), targetUserCommentId:\(requestContext.userCommentId ?? "nil")")
+                } else {
+                    // 没有用户评论ID，说明是虚拟角色对用户帖子的评论，应该对帖子点赞
+                    print("❤️ \(characterName)将对用户帖子\(postId)点赞（虚拟角色评论用户帖子）")
+                    print("🔧 帖子点赞详情 - 角色:\(characterID), 帖子:\(postId)")
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + likeDelay) {
+                        print("🕐 \(characterName)延迟\(String(format: "%.1f", likeDelay))秒后开始对帖子点赞")
+                        VirtualCharacterLikeService.shared.processPostLike(
+                            characterId: characterID,
+                            postId: postId,
+                            userPostContent: requestContext.originalPost
+                        )
+                    }
+                }
             }
             
             // 创建评论模型，使用稍微延后的时间戳，确保虚拟角色回复在用户评论之后
             // 生成一个稍微晚于当前时间的时间戳（1-5秒之间的随机值）
             let randomOffset = Double.random(in: 1...5)
             let commentDate = Date().addingTimeInterval(randomOffset)
+            
+            // 🔧 关键修复：设置正确的父评论ID和回复对象
+            // 如果这是对用户评论的回复，应该设置parentCommentId和replyToUsername
+            let parentCommentId: UUID?
+            let replyToUsername: String?
+            
+            if let userCommentId = requestContext.userCommentId {
+                // 这是对用户评论的回复，设置父评论ID
+                parentCommentId = UUID(uuidString: userCommentId)
+                replyToUsername = "当前用户"
+                print("🔧 设置虚拟角色回复的父评论ID: \(userCommentId)")
+            } else {
+                // 这是邀请的虚拟角色评论，或者是虚拟角色对帖子的评论
+                parentCommentId = nil
+                replyToUsername = nil
+                print("🔧 虚拟角色评论作为顶级评论（邀请评论或帖子评论）")
+            }
             
             let comment = DetailedCommentModel(
                 username: characterName,
@@ -989,7 +1167,9 @@ class MultiCharacterCommentService {
                 datePosted: commentDate,
                 isVirtualCharacter: true,
                 characterID: characterID,
-                likes: Int.random(in: 1...5)
+                parentCommentId: parentCommentId,
+                replyToUsername: replyToUsername,
+                likes: 0
             )
             
             newComments.append(comment)
@@ -1000,18 +1180,18 @@ class MultiCharacterCommentService {
             return
         }
         
-        // 按照原有的排序规则添加评论到帖子模型
-        // 首先获取当前帖子的评论
-        var currentComments = viewModel.posts[postIndex].comments
+        // 🔧 关键修复：使用addComment方法正确添加评论，确保回复被添加到父评论中
+        // 而不是直接操作评论数组
+        for comment in newComments {
+            viewModel.posts[postIndex].addComment(comment)
+        }
         
-        // 添加新评论
-        currentComments.append(contentsOf: newComments)
-        
-        // 按时间排序，保持一致的排列方式（较新的评论在前）
-        currentComments.sort { $0.datePosted > $1.datePosted }
-        
-        // 更新帖子的评论
-        viewModel.posts[postIndex].comments = currentComments
+        // 🔧 重要修复：保存帖子数据到持久化存储
+        NotificationCenter.default.post(
+            name: NSNotification.Name("SavePostData"),
+            object: nil,
+            userInfo: ["postID": postId]
+        )
         
         print("✅ 已直接添加 \(newComments.count) 条评论到帖子模型，并保持原有排序方式")
     }
@@ -1113,7 +1293,7 @@ class MultiCharacterCommentService {
             characterID: id, // 使用原始ID
             parentCommentId: parentCommentId,
             replyToUsername: replyToUsername,
-            likes: Int.random(in: 1...5)
+            likes: 0
         )
         
         print("✅ 成功创建评论: \(name), 头像路径: \(avatarPath)")

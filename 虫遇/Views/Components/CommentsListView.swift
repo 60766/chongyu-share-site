@@ -4,73 +4,33 @@ import SwiftUI
 // import Avatar 不需要导入，因为是同一个模块内的组件
 
 /**
- * 获取角色对应的颜色 - 工具函数
+ * 获取角色对应的颜色 - 统一使用CharacterAvatarService
  */
 func getCharacterColor(for id: String) -> Color {
-    switch id {
-    case "einstein": return .blue
-    case "shakespeare": return .purple
-    case "davinci": return .green
-    case "goku", "sunwukong", "naruto": return .orange
-    case "holmes": return .indigo
-    case "kongzi": return .green
-    case "libai": return .orange
-    case "newton": return .teal
-    default: return .teal
-    }
+    return CharacterAvatarService.shared.getCharacterTagColor(for: id)
 }
 
 /**
- * 获取角色类别 - 工具函数
+ * 获取角色类别 - 统一使用CharacterAvatarService
  */
 func getCharacterCategory(for id: String) -> String {
-    switch id {
-    case "einstein": return "科学家"
-    case "shakespeare": return "文学家"
-    case "davinci": return "艺术家"
-    case "kongzi": return "哲学家"
-    case "libai": return "诗人"
-    case "newton": return "科学家"
-    case "goku", "sunwukong", "naruto": return "动漫角色"
-    case "holmes": return "小说人物"
-    default: return "历史人物"
-    }
+    return CharacterAvatarService.shared.getCharacterCategoryTag(for: id)
 }
 
 /**
- * 根据角色ID获取标签颜色
+ * 根据角色ID获取标签颜色 - 统一使用CharacterAvatarService
  */
 func getTagColor(for characterID: String?) -> Color {
-    guard let id = characterID?.lowercased() else { return .teal }
-    
-    switch id {
-    case "einstein": return .blue
-    case "shakespeare": return .purple
-    case "davinci": return .green
-    case "goku", "sunwukong", "naruto": return .orange
-    case "holmes": return .indigo
-    case "kongzi": return .green
-    case "libai": return .orange
-    case "newton": return .teal
-    default: return .teal
-    }
+    guard let id = characterID else { return .teal }
+    return CharacterAvatarService.shared.getCharacterTagColor(for: id)
 }
 
 /**
- * 获取角色类别标签文本
+ * 获取角色类别标签文本 - 统一使用CharacterAvatarService
  */
 func getCharacterTag(for characterID: String?) -> String {
-    guard let id = characterID?.lowercased() else { return "历史人物" }
-    
-    switch id {
-    case "einstein", "newton": return "科学家"
-    case "shakespeare", "libai": return "文学家"
-    case "davinci": return "艺术家"
-    case "kongzi": return "哲学家"
-    case "goku", "sunwukong", "naruto": return "动漫角色"
-    case "holmes": return "小说人物"
-    default: return "历史人物"
-    }
+    guard let id = characterID else { return "历史人物" }
+    return CharacterAvatarService.shared.getCharacterCategoryTag(for: id)
 }
 
 /**

@@ -55,6 +55,8 @@ struct PublishPanelView: View {
     @State private var isShowingSuccessToast: Bool = false
     /// 潜在回复的角色列表(用于成功提示)
     @State private var potentialRespondingCharacters: [CharacterModel] = []
+    /// 是否正在发布中（防止重复发布）
+    @State private var isPublishing: Bool = false
     /// 文本编辑器焦点状态
     @FocusState private var isTextEditorFocused: Bool
     
@@ -556,10 +558,14 @@ struct PublishPanelView: View {
             // 发布按钮 - 增大尺寸
             Button(action: handlePublishButtonTapped) {
                 HStack(spacing: 8) {
-                    Text("发布")
+                    Text(isPublishing ? "发布中..." : "发布")
                         .font(.system(size: 16, weight: .medium))
                     
-                    if hasValidContent {
+                    if isPublishing {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else if hasValidContent {
                         Image(systemName: "paperplane.fill")
                             .font(.system(size: 14, weight: .medium))
                             .offset(x: -1, y: -1)
@@ -570,12 +576,12 @@ struct PublishPanelView: View {
                 .padding(.vertical, 10)
                 .background(
                     Capsule()
-                        .fill(hasValidContent ? Color.primaryColor : Color.gray.opacity(0.3))
+                        .fill(isPublishing ? Color.primaryColor.opacity(0.8) : (hasValidContent ? Color.primaryColor : Color.gray.opacity(0.3)))
                 )
                 .foregroundColor(.white)
                 .shadow(color: hasValidContent ? Color.primaryColor.opacity(0.2) : Color.clear, radius: 3, x: 0, y: 1)
             }
-            .disabled(!hasValidContent)
+            .disabled(!hasValidContent || isPublishing)
             .buttonStyle(SpringyButtonStyle())
         }
         .padding(.horizontal, 16)
@@ -595,6 +601,10 @@ struct PublishPanelView: View {
         impactFeedback.impactOccurred()
         
         guard hasValidContent else { return }
+        guard !isPublishing else { 
+            print("⚠️ 按钮点击被忽略：正在发布中")
+            return 
+        }
         
         // 如果没有选择角色，自动添加推荐角色
         if selectedCharacters.isEmpty {
@@ -659,6 +669,18 @@ struct PublishPanelView: View {
     
     // 发布内容
     private func publishContent() {
+        // 防止重复发布
+        guard !isPublishing else {
+            print("⚠️ 正在发布中，忽略重复请求")
+            return
+        }
+        
+        isPublishing = true
+        print("🚀 === 开始发布内容 ===")
+        print("📝 内容: \(contentText.prefix(50))...")
+        print("📸 图片数量: \(selectedImages.count)")
+        print("🎭 选中角色数量: \(selectedCharacters.count)")
+        
         // 确保概率总和为100%
         normalizeCharacterProbabilities()
         
@@ -674,9 +696,11 @@ struct PublishPanelView: View {
         
         // 将PostData转换为UserPostModel并添加到PostViewModel
         let userPost = createUserPostFromPostData(postData)
+        print("📄 已创建用户帖子模型")
         
         // 添加到PostViewModel，使其显示在主页
         PostViewModel.shared.addPosts([userPost])
+        print("📂 已添加帖子到PostViewModel")
         
         // 发送通知，告知HomeView有新帖子
         NotificationCenter.default.post(
@@ -684,30 +708,40 @@ struct PublishPanelView: View {
             object: nil,
             userInfo: ["count": 1]
         )
-        
-        // 生成可能回复的角色
-        generatePotentialRespondingCharacters()
+        print("📢 已发送新帖子通知")
         
         // 先关闭发布面板
+        print("📱 关闭发布面板")
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             isVisible = false
         }
         
+        // ✅ 异步调用AI生成真实的虚拟角色评论，避免阻塞UI
+        DispatchQueue.global(qos: .userInitiated).async {
+            print("🔄 开始异步生成AI评论")
+            generateAICommentsForUserPost(userPost)
+        }
+        
         // 延迟一段时间后显示发布成功提示
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { // 从0.5秒缩短为0.2秒
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            print("📱 显示发布成功提示")
             withAnimation {
                 isShowingSuccessToast = true
             }
             
-            // 1秒后关闭提示（从3秒缩短为1秒）
+            // 1秒后关闭提示
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                print("📱 关闭发布成功提示")
                 withAnimation {
                     isShowingSuccessToast = false
                 }
                 
                 // 成功发布后重置面板状态
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    print("📱 重置发布面板状态")
                     resetPanelState()
+                    isPublishing = false // 重置发布状态
+                    print("✅ 发布流程完成")
                 }
             }
         }
@@ -715,30 +749,8 @@ struct PublishPanelView: View {
     
     // 将PostData转换为UserPostModel
     private func createUserPostFromPostData(_ postData: PostData) -> UserPostModel {
-        // 创建评论
-        var comments: [DetailedCommentModel] = []
-        
-        // 为选中的角色创建初始评论
-        for character in postData.characters {
-            // 获取角色回复概率
-            let probability = postData.characterProbabilities[character.id] ?? 0
-            
-            // 如果概率大于0，添加评论
-            if probability > 0 {
-                let comment = DetailedCommentModel(
-                    id: UUID(),
-                    username: character.name,
-                    userAvatar: character.avatar,
-                    content: generateInitialComment(from: character, about: postData.content),
-                    datePosted: Date().addingTimeInterval(Double.random(in: 60...300)), // 1-5分钟后
-                    isVirtualCharacter: true,
-                    characterID: character.id,
-                    likes: Int.random(in: 0...10),
-                    isLikedByCurrentUser: false
-                )
-                comments.append(comment)
-            }
-        }
+        // 创建用户帖子时不包含任何预设评论，等待AI生成
+        let comments: [DetailedCommentModel] = []
         
         // 处理图片 - 将UIImage转换为图片URL或标识符
         var imageIdentifiers: [String] = []
@@ -752,7 +764,7 @@ struct PublishPanelView: View {
             }
         }
         
-        // 创建用户帖子
+        // 创建用户帖子（无预设评论）
         let userPost = UserPostModel(
             id: UUID(uuidString: postData.id) ?? UUID(),
             username: "当前用户", // 使用当前用户名
@@ -761,7 +773,7 @@ struct PublishPanelView: View {
             images: imageIdentifiers, // 添加图片标识符
             datePosted: postData.timestamp,
             likes: 0,
-            comments: comments,
+            comments: comments, // 空评论数组，等待AI生成
             isLikedByCurrentUser: false,
             isBookmarkedByCurrentUser: false,
             contentType: "user_post", // 用户发布的内容
@@ -782,20 +794,6 @@ struct PublishPanelView: View {
         }
         
         return nil
-    }
-    
-    // 为角色生成初始评论
-    private func generateInitialComment(from character: CharacterModel, about content: String) -> String {
-        // 根据不同角色类型生成不同风格的评论
-        let comments = [
-            "作为\(character.profession)，我认为这个观点很有意思。",
-            "从\(character.era)的角度来看，这确实值得思考。",
-            "这让我想起了我在\(character.era)时期的一些经历。",
-            "如果用\(character.profession)的视角分析，这个问题有更深层次的含义。",
-            "我很欣赏你的想法，这在\(character.era)时期是很前卫的。"
-        ]
-        
-        return comments.randomElement() ?? "这个观点很有趣，请继续分享。"
     }
     
     // 将概率转换为字典
@@ -823,62 +821,168 @@ struct PublishPanelView: View {
         }
     }
     
-    // 生成可能回复的角色
-    private func generatePotentialRespondingCharacters() {
-        // 基于概率选择角色
-        var selectedForResponse: [CharacterModel] = []
+    // ✅ 为用户发布的帖子生成AI评论
+    private func generateAICommentsForUserPost(_ userPost: UserPostModel) {
+        print("🚀 开始为用户帖子生成AI评论")
+        print("📝 帖子内容: \(userPost.content.prefix(50))...")
+        print("🎭 选中的角色数量: \(selectedCharacters.count)")
         
+        // 基于概率和智能选择，确定要评论的角色
+        let selectedCharacterIDs = selectCharactersForResponse()
+        
+        guard !selectedCharacterIDs.isEmpty else {
+            print("⚠️ 没有选中任何角色进行评论")
+            return
+        }
+        
+        print("🎯 将生成评论的角色: \(selectedCharacterIDs)")
+        
+        // 创建超时处理
+        var hasCompleted = false
+        let timeoutWorkItem = DispatchWorkItem {
+            if !hasCompleted {
+                print("⏰ AI评论生成超时（30秒），跳过评论生成")
+                hasCompleted = true
+            }
+        }
+        
+        // 30秒后超时
+        DispatchQueue.global().asyncAfter(deadline: .now() + 30, execute: timeoutWorkItem)
+        
+        // 使用MultiCharacterCommentService生成AI评论
+        MultiCharacterCommentService.shared.generateMultiCharacterComments(
+            characterIDs: selectedCharacterIDs,
+            postId: userPost.id.uuidString,
+            postContent: userPost.content,
+            postAuthor: userPost.username,
+            userComment: nil, // 新发布的帖子，无用户评论
+            userCommentId: nil,
+            targetUsername: nil,
+            authorCharacterId: nil,
+            isInvited: false
+        ) { result in
+            // 检查是否已超时
+            guard !hasCompleted else {
+                print("⚠️ AI评论生成已超时，忽略响应")
+                return
+            }
+            
+            hasCompleted = true
+            timeoutWorkItem.cancel() // 取消超时任务
+            
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let commentsDict):
+                    print("✅ AI评论生成成功，共\(commentsDict.count)条")
+                    PublishPanelView.handleGeneratedComments(commentsDict, for: userPost)
+                case .failure(let error):
+                    print("❌ AI评论生成失败: \(error.localizedDescription)")
+                    // 即使失败也不影响发布流程
+                }
+            }
+        }
+    }
+    
+    // 智能选择要评论的角色 - 使用角色轮换系统
+    private func selectCharactersForResponse() -> [String] {
+        print("🔄 开始使用角色轮换系统选择回复角色")
+        
+        // 使用角色轮换系统开始新的生成会话
+        CharacterRotationSystem.shared.beginNewGenerationSession()
+        
+        // 优先考虑用户手动选择的角色
+        var manuallySelectedCharacters: [String] = []
+        
+        // 如果用户设置了概率，基于概率筛选
+        if !selectedCharacters.isEmpty && !characterProbabilities.isEmpty {
         // 确保概率总和正确
         normalizeCharacterProbabilities()
         
         // 基于概率添加角色
         for i in 0..<min(selectedCharacters.count, characterProbabilities.count) {
             let prob = Int(characterProbabilities[i])
-            if Int.random(in: 1...100) <= prob {
-                selectedForResponse.append(selectedCharacters[i])
+                if prob > 0 && Int.random(in: 1...100) <= prob {
+                    manuallySelectedCharacters.append(selectedCharacters[i].id)
+                }
             }
         }
         
-        // 如果回复的角色不足3个，添加更多角色直到达到3个
-        if selectedForResponse.count < 3 {
-            // 首先从已选择但未被添加的角色中选择
-            let remainingSelectedCharacters = selectedCharacters.filter { character in
-                !selectedForResponse.contains { $0.id == character.id }
+        // 计算需要额外选择的角色数量
+        let targetCount = 3 // 目标总数为3个角色
+        let additionalNeeded = max(0, targetCount - manuallySelectedCharacters.count)
+        
+        var finalSelectedCharacters = manuallySelectedCharacters
+        
+        if additionalNeeded > 0 {
+            // 使用角色轮换系统获取额外的角色
+            let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: additionalNeeded)
+            
+            // 转换为字符串ID并排除已经手动选择的角色
+            let additionalCharacterIds = rotationCharacters
+                .map { $0.id }
+                .filter { !manuallySelectedCharacters.contains($0) }
+                .prefix(additionalNeeded)
+            
+            finalSelectedCharacters.append(contentsOf: additionalCharacterIds)
+            
+            print("🎯 角色轮换系统补充了\(additionalCharacterIds.count)个角色")
             }
             
-            for character in remainingSelectedCharacters {
-                if selectedForResponse.count >= 3 {
-                    break
-                }
-                selectedForResponse.append(character)
-            }
+        // 如果仍然不足（极端情况），使用轮换系统重新选择
+        if finalSelectedCharacters.count < 2 {
+            print("⚠️ 角色数量不足，使用轮换系统重新选择")
+            let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: targetCount)
+            finalSelectedCharacters = rotationCharacters.map { $0.id }
+        }
+        
+        // 限制最多3个角色
+        let result = Array(finalSelectedCharacters.prefix(3))
+        
+        print("✅ 最终选择的回复角色: \(result.count)个")
+        print("👥 角色列表: \(result.joined(separator: ", "))")
+        
+        return result
+    }
+    
+    // 处理生成的AI评论
+    private static func handleGeneratedComments(_ commentsDict: [String: String], for userPost: UserPostModel) {
+        print("🔄 开始处理生成的AI评论")
+        
+        var newComments: [DetailedCommentModel] = []
+        
+        for (characterID, commentContent) in commentsDict {
+            // 获取角色信息
+            let characterDataManager = CharacterDataManager.shared
+            let characterName = characterDataManager.getName(for: characterID) ?? characterID.capitalized
+            let characterAvatar = CharacterAvatarService.shared.getAvatarName(for: characterID)
             
-            // 如果仍然不足3个，从所有角色中随机添加
-            if selectedForResponse.count < 3 {
-                let allCharacters = CharacterModel.sampleCharacters
-                let additionalNeeded = 3 - selectedForResponse.count
-                
-                // 过滤掉已经在回复列表中的角色
-                let availableCharacters = allCharacters.filter { character in
-                    !selectedForResponse.contains { $0.id == character.id }
-                }
-                
-                // 随机选择额外角色
-                var additionalCharacters: [CharacterModel] = []
-                for _ in 0..<additionalNeeded {
-                    if let randomCharacter = availableCharacters.filter({ character in
-                        !additionalCharacters.contains { $0.id == character.id }
-                    }).randomElement() {
-                        additionalCharacters.append(randomCharacter)
+            // 创建评论
+            let comment = DetailedCommentModel(
+                id: UUID(),
+                username: characterName,
+                userAvatar: characterAvatar,
+                content: commentContent,
+                datePosted: Date().addingTimeInterval(Double.random(in: 30...180)), // 30秒到3分钟后
+                isVirtualCharacter: true,
+                characterID: characterID,
+                likes: Int.random(in: 0...5),
+                isLikedByCurrentUser: false
+            )
+            
+            newComments.append(comment)
+            print("📝 创建评论: \(characterName) -> \(commentContent.prefix(30))...")
                     }
-                }
-                
-                selectedForResponse.append(contentsOf: additionalCharacters)
-            }
-        }
         
-        // 更新状态
-        potentialRespondingCharacters = selectedForResponse
+        // 将评论添加到帖子中
+        if let postIndex = PostViewModel.shared.posts.firstIndex(where: { $0.id == userPost.id }) {
+            PostViewModel.shared.posts[postIndex].comments.append(contentsOf: newComments)
+            print("✅ 已将\(newComments.count)条AI评论添加到帖子中")
+            
+            // 触发UI更新
+            PostViewModel.shared.objectWillChange.send()
+        } else {
+            print("⚠️ 未找到对应的帖子进行评论更新")
+        }
     }
     
     // 重置面板状态

@@ -76,6 +76,11 @@ class CommentManager: ObservableObject {
     // 用户清除标记字典 - 记录哪些帖子的草稿被用户明确清除
     private var userClearedDictionary: [UUID: Bool] = [:]
     
+    // 🔧 新增：评论保护机制
+    private var commentProtectionTimer: Timer?
+    private var protectedCommentIds: Set<UUID> = []
+    private let commentProtectionQueue = DispatchQueue(label: "comment.protection", qos: .userInitiated)
+    
     /**
      * 初始化评论管理器
      * @param post 当前帖子
@@ -219,6 +224,9 @@ class CommentManager: ObservableObject {
                     
                     // 添加到帖子作为顶级评论
                     self.currentPost.addComment(virtualComment)
+                    
+                    // 🔧 重要修复：保存帖子数据到持久化存储
+                    self.savePostData()
                     
                     print("✅ 邀请的虚拟角色评论已添加为顶级评论 - 角色: \(characterID)")
                 }
@@ -712,23 +720,34 @@ class CommentManager: ObservableObject {
             print("👥 @提及的角色将参与回复: \(CharacterDataManager.shared.getName(for: mentionedCharacter) ?? mentionedCharacter)")
         }
         
-        // 3. 从其他角色中随机选择，补足到总共4-5个角色（包括作者和@提及的）
-        // 使用CharacterDataManager获取所有可用角色ID
-        let allCharacterIds = CharacterDataManager.shared.getAllCharacterIds()
-        let availableCharacters = allCharacterIds.filter { 
-            $0 != authorCharacter && 
-            !otherSelectedCharacters.contains($0) 
-        }
+        // 3. 使用角色轮换系统选择额外角色，确保均衡分配
+        print("🔄 使用角色轮换系统选择回复角色")
+        
+        // 开始新的生成会话
+        CharacterRotationSystem.shared.beginNewGenerationSession()
         
         // 确定需要额外选择的角色数量
         let totalCharactersNeeded = 4 // 总共需要4个角色（包括作者）
         let additionalNeeded = max(0, totalCharactersNeeded - otherSelectedCharacters.count - (authorCharacter != nil ? 1 : 0))
         
-        if additionalNeeded > 0 && !availableCharacters.isEmpty {
-            // 随机选择额外角色
-            let additionalCharacters = Array(availableCharacters.shuffled().prefix(additionalNeeded))
+        if additionalNeeded > 0 {
+            // 使用角色轮换系统获取额外角色
+            let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: additionalNeeded)
+            
+                         // 过滤掉已经选择的角色（作者和@提及的角色）
+             var excludedCharacters = Set<String>()
+             if let author = authorCharacter {
+                 excludedCharacters.insert(author)
+             }
+             excludedCharacters.formUnion(otherSelectedCharacters)
+             
+             let additionalCharacters = rotationCharacters
+                 .map { $0.id }
+                 .filter { !excludedCharacters.contains($0) }
+                 .prefix(additionalNeeded)
+            
             otherSelectedCharacters.append(contentsOf: additionalCharacters)
-            print("🎲 随机选择了\(additionalCharacters.count)个额外角色参与回复")
+            print("🎯 角色轮换系统选择了\(additionalCharacters.count)个额外角色参与回复")
         }
         
         // 合并所有选定的角色，确保作者在列表中
@@ -766,10 +785,11 @@ class CommentManager: ObservableObject {
         }
         
         // 确保列表不为空
-        if allSelectedCharacters.isEmpty && !availableCharacters.isEmpty {
-            // 如果列表为空，随机选择4个角色
-            allSelectedCharacters = Array(availableCharacters.shuffled().prefix(4))
-            print("⚠️ 角色列表为空，随机选择了\(allSelectedCharacters.count)个角色")
+        if allSelectedCharacters.isEmpty {
+            // 如果列表为空，使用角色轮换系统选择4个角色
+            let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: 4)
+            allSelectedCharacters = rotationCharacters.map { $0.id }
+            print("⚠️ 角色列表为空，角色轮换系统选择了\(allSelectedCharacters.count)个角色")
         }
         
         print("👥 最终选择的回复角色: \(allSelectedCharacters.joined(separator: ", "))")
@@ -861,11 +881,16 @@ class CommentManager: ObservableObject {
                                         print("�� 孔子评论详情 - isVirtualCharacter: \(virtualReply.isVirtualCharacter), characterID: \(virtualReply.characterID ?? "nil")")
                                     }
                                     
-                                    // 添加到帖子
-                                    self.currentPost.addComment(virtualReply)
+                                    // 🔧 关键修复：注释掉手动添加评论的代码，避免重复添加
+                                    // 现在由MultiCharacterCommentService统一处理评论添加，避免重复
+                                    print("🔧 CommentManager: 跳过手动添加评论，由MultiCharacterCommentService统一处理")
                                     
-                                    // 更新评论列表
-                                    self.updateCommentLists()
+                                    // 注释掉以下代码以避免重复添加：
+                                    // self.addCommentSafely(virtualReply)
+                                    // self.currentPost.addComment(virtualReply)
+                                    // self.updateCommentLists()
+                                    // self.debugCommentState()
+                                    // self.restoreLostVirtualComments()
                                     
                                     // 直接添加到虫洞通知
                                                                     NotificationService.shared.createCommentNotification(
@@ -969,13 +994,20 @@ class CommentManager: ObservableObject {
         let characterName = getCharacterName(for: characterID)
         let characterAvatar = getCharacterAvatar(for: characterID)
         
-        // 获取角色特性 - 修复类型不匹配问题
-        let characterTraits = personalityManager.getPersonality(for: characterID) ?? 
-            CharacterPersonality(
-                tone: "有智慧的",
-                knowledgeAreas: ["历史", "文化"],
-                speechPatterns: []
-            )
+        // 获取角色完整信息 - 使用与AI生成帖子内容相同的数据源
+        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        guard let character = allCharacters.first(where: { $0.id == characterID }) else {
+            print("⚠️ CommentManager: 未找到角色ID: \(characterID)，使用默认信息")
+            return
+        }
+        
+        // 获取角色类型描述
+        let characterTypeDescription = getCharacterTypeDescription(for: characterID)
+        
+        // 构建角色描述，使用与AI生成帖子内容相同的格式
+        let characterDescription = """
+        你是\(character.name)，一个\(characterTypeDescription)，专长领域是\(character.primaryField)。
+        """
         
         // 构建专门的提示词，用于生成对用户回复的回应
         let prompt = """
@@ -983,7 +1015,7 @@ class CommentManager: ObservableObject {
         - 如果有关联，请结合帖子内容和上下文，按照下方要求生成回复。
         - 如果没有关联（用户只是单纯和你闲聊或提问），请直接根据你的个性、知识和风格自由回复用户，不必强行拉回帖子主题。
 
-        你是\(characterName)，一个\(characterTraits.tone)的历史人物，专长领域是\(characterTraits.knowledgeAreas.joined(separator: "、"))。
+        \(characterDescription)
 
         帖子主题："\(currentPost.content)"
 
@@ -1042,6 +1074,9 @@ class CommentManager: ObservableObject {
                             
                             // 添加到帖子
                             self.currentPost.addComment(virtualReply)
+                            
+                            // 🔧 重要修复：保存帖子数据到持久化存储
+                            self.savePostData()
                             
                             // 更新评论列表
                             self.updateCommentLists()
@@ -1554,6 +1589,151 @@ class CommentManager: ObservableObject {
         
         // 立即保存草稿，不使用防抖
         saveDraft(text)
+    }
+    
+    // MARK: - 辅助方法
+    
+    /**
+     * 保存帖子数据到持久化存储
+     * 确保虚拟角色评论和回复被持久化保存
+     */
+    private func savePostData() {
+        // 通知PostViewModel保存数据
+        NotificationCenter.default.post(
+            name: NSNotification.Name("SavePostData"),
+            object: nil,
+            userInfo: ["postID": currentPost.id.uuidString]
+        )
+        print("💾 已发送保存帖子数据通知 - 帖子ID: \(currentPost.id.uuidString)")
+    }
+    
+    /**
+     * 获取角色类型描述
+     * @param characterID 角色ID
+     * @return 角色类型的中文描述
+     */
+    private func getCharacterTypeDescription(for characterID: String) -> String {
+        // 获取所有角色列表
+        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        
+        // 查找指定ID的角色
+        guard let character = allCharacters.first(where: { $0.id == characterID }) else {
+            print("⚠️ CommentManager: 未找到角色ID: \(characterID)，使用默认描述")
+            return "智能助手"
+        }
+        
+        // 根据角色类型返回相应的中文描述
+        switch character.type {
+        case .historical:
+            return "历史人物"
+        case .literary:
+            return "文学角色"
+        case .movie:
+            return "电影角色"
+        case .tv:
+            return "电视剧角色"
+        case .anime:
+            return "动漫角色"
+        case .game:
+            return "游戏角色"
+        case .mythological:
+            return "神话角色"
+        case .entrepreneur:
+            return "企业家"
+        case .scifi:
+            return "科幻角色"
+        case .fantasy:
+            return "奇幻角色"
+        case .custom:
+            return "自定义角色"
+        case .unknown:
+            return "角色"
+        }
+    }
+    
+    /**
+     * 保护评论不被意外清除
+     * @param commentId 需要保护的评论ID
+     * @param duration 保护时长（秒）
+     */
+    private func protectComment(_ commentId: UUID, duration: TimeInterval = 10.0) {
+        commentProtectionQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async {
+                // 添加到保护列表
+                self.protectedCommentIds.insert(commentId)
+                
+                // 设置保护期
+                self.commentProtectionTimer?.invalidate()
+                self.commentProtectionTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { _ in
+                    self.protectedCommentIds.remove(commentId)
+                    print("🛡️ 评论保护期结束: \(commentId)")
+                }
+                
+                print("🛡️ 评论已保护: \(commentId), 保护期: \(duration)秒")
+            }
+        }
+    }
+    
+    /**
+     * 检查评论是否被保护
+     * @param commentId 评论ID
+     * @return 是否被保护
+     */
+    private func isCommentProtected(_ commentId: UUID) -> Bool {
+        return protectedCommentIds.contains(commentId)
+    }
+    
+    /**
+     * 安全添加评论（带保护机制）
+     * @param comment 要添加的评论
+     */
+    private func addCommentSafely(_ comment: DetailedCommentModel) {
+        // 立即保护新添加的评论
+        protectComment(comment.id)
+        
+        // 检查是否已存在
+        if !allComments.contains(where: { $0.id == comment.id }) {
+            allComments.append(comment)
+            print("✅ 安全添加评论: \(comment.username) - \(comment.content.prefix(20))...")
+        } else {
+            print("⚠️ 评论已存在，跳过添加: \(comment.id)")
+        }
+    }
+    
+    /**
+     * 调试：监控评论状态变化
+     */
+    private func debugCommentState() {
+        let virtualComments = allComments.filter { $0.isVirtualCharacter }
+        let userComments = allComments.filter { !$0.isVirtualCharacter }
+        
+        print("🔍 评论状态监控:")
+        print("- 总评论数: \(allComments.count)")
+        print("- 虚拟角色评论: \(virtualComments.count)")
+        print("- 用户评论: \(userComments.count)")
+        print("- 受保护评论: \(protectedCommentIds.count)")
+        
+        for comment in virtualComments {
+            let isProtected = isCommentProtected(comment.id)
+            print("  🤖 \(comment.username): \(isProtected ? "🛡️受保护" : "⚠️未保护")")
+        }
+    }
+    
+    /**
+     * 恢复丢失的虚拟角色评论
+     */
+    private func restoreLostVirtualComments() {
+        let currentVirtualComments = allComments.filter { $0.isVirtualCharacter }
+        let expectedVirtualComments = currentPost.comments.filter { $0.isVirtualCharacter }
+        
+        for expectedComment in expectedVirtualComments {
+            if !currentVirtualComments.contains(where: { $0.id == expectedComment.id }) {
+                print("🔄 恢复丢失的虚拟角色评论: \(expectedComment.username)")
+                addCommentSafely(expectedComment)
+            }
+        }
     }
 }
 

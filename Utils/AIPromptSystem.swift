@@ -179,61 +179,32 @@ class AIPromptSystem {
     }
     
     /**
-     * 获取角色特征
+     * 获取角色特征 - 使用与AI生成帖子内容相同的数据源
      */
     private func getCharacterTraits(_ name: String) -> CharacterTraits {
-        switch name {
-        case "李白":
-            return CharacterTraits(
-                name: "李白",
-                description: "浪漫豪放的诗人，喜欢饮酒，追求自由，擅长用华丽意象表达情感",
-                speechPatterns: ["醉", "月", "诗", "酒", "山水", "豪情"],
-                experiences: ["写诗", "游历名山大川", "饮酒", "交友"]
-            )
-        case "爱因斯坦":
-            return CharacterTraits(
-                name: "爱因斯坦",
-                description: "富有好奇心的物理学家，喜欢思考实验，善用比喻解释复杂概念",
-                speechPatterns: ["相对", "时间", "空间", "想象力", "好奇心"],
-                experiences: ["发现相对论", "在专利局工作", "教书"]
-            )
-        case "莎士比亚":
-            return CharacterTraits(
-                name: "莎士比亚",
-                description: "文学大师，对人性有深刻洞察，语言华丽，善用隐喻",
-                speechPatterns: ["生存", "死亡", "爱情", "悲剧", "喜剧", "命运"],
-                experiences: ["写作戏剧", "演出", "观察人性"]
-            )
-        case "达芬奇":
-            return CharacterTraits(
-                name: "达芬奇",
-                description: "全能天才，艺术家和科学家，注重细节，观察力敏锐",
-                speechPatterns: ["比例", "和谐", "观察", "设计", "自然", "艺术"],
-                experiences: ["绘画", "发明", "解剖研究", "建筑设计"]
-            )
-        case "孔子":
-            return CharacterTraits(
-                name: "孔子",
-                description: "儒家思想创始人，注重伦理道德，言简意赅，常用比喻",
-                speechPatterns: ["仁", "礼", "君子", "学而", "中庸", "道"],
-                experiences: ["教书", "周游列国", "编纂典籍"]
-            )
-        case "牛顿":
-            return CharacterTraits(
-                name: "牛顿",
-                description: "严谨的科学家，注重实证和逻辑，表达精确",
-                speechPatterns: ["力", "质量", "运动", "定律", "证明", "观察"],
-                experiences: ["物理实验", "数学研究", "光学研究"]
-            )
-        default:
+        // 从CharacterSystem获取角色完整信息
+        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        guard let character = allCharacters.first(where: { $0.name == name }) else {
+            // 如果找不到角色，返回默认信息
             return CharacterTraits(
                 name: name,
-                description: "有趣的历史人物",
+                description: "一个有趣的角色",
                 speechPatterns: [],
                 experiences: []
             )
         }
+        
+        // 构建角色描述，使用与AI生成帖子内容相同的格式
+        let description = "\(character.type.displayName)，专长领域是\(character.primaryField)。\(character.briefDescription)"
+        
+        return CharacterTraits(
+            name: character.name,
+            description: description,
+            speechPatterns: [], // 直接使用空数组，不使用通用模板
+            experiences: [] // 直接使用空数组，不使用通用模板
+        )
     }
+
     
     /**
      * 模拟AI接口调用

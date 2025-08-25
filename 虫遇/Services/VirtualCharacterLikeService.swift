@@ -12,14 +12,14 @@ class VirtualCharacterLikeService {
     private init() {}
     
     /**
-     * 处理虚拟角色的点赞
+     * 处理虚拟角色对评论的点赞
      * @param characterId 角色ID
      * @param postId 帖子ID
      * @param commentId 评论ID
      * @param userComment 用户的评论内容（用于通知）
      */
     func processCharacterLike(characterId: String, postId: String, commentId: String, userComment: String? = nil) {
-        print("🔧 VirtualCharacterLikeService.processCharacterLike 开始")
+        print("🔧 VirtualCharacterLikeService.processCharacterLike 开始（评论点赞）")
         print("🔧 参数 - 角色:\(characterId), 帖子:\(postId), 评论:\(commentId)")
         DispatchQueue.main.async {
             // 1. 更新评论的点赞数
@@ -31,6 +31,28 @@ class VirtualCharacterLikeService {
             self.sendLikeNotification(characterId: characterId, postId: postId, userComment: userComment)
             
             print("❤️ 虚拟角色\(characterId)已对用户评论\(commentId)点赞")
+        }
+    }
+    
+    /**
+     * 处理虚拟角色对帖子的点赞
+     * @param characterId 角色ID  
+     * @param postId 帖子ID
+     * @param userPostContent 用户的帖子内容（用于通知）
+     */
+    func processPostLike(characterId: String, postId: String, userPostContent: String? = nil) {
+        print("🔧 VirtualCharacterLikeService.processPostLike 开始（帖子点赞）")
+        print("🔧 参数 - 角色:\(characterId), 帖子:\(postId)")
+        DispatchQueue.main.async {
+            // 1. 更新帖子的点赞数
+            print("🔧 开始更新帖子点赞数...")
+            self.updatePostLikeCount(postId: postId)
+            
+            // 2. 发送点赞通知到虫洞
+            print("🔧 开始发送帖子点赞通知...")
+            self.sendPostLikeNotification(characterId: characterId, postId: postId, userPostContent: userPostContent)
+            
+            print("❤️ 虚拟角色\(characterId)已对用户帖子\(postId)点赞")
         }
     }
     
@@ -190,6 +212,83 @@ class VirtualCharacterLikeService {
         )
         
         print("📨 已发送点赞通知: \(characterName)点赞了您的内容")
+    }
+    
+    /**
+     * 更新帖子的点赞数
+     * @param postId 帖子ID
+     */
+    private func updatePostLikeCount(postId: String) {
+        let viewModel = PostViewModel.shared
+        
+        if let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) {
+            let currentPost = viewModel.posts[postIndex]
+            
+            print("🎯 虚拟角色点赞目标帖子ID: \(postId)")
+            print("🎯 帖子当前点赞数: \(currentPost.likes)")
+            
+            // 检查帖子是否为用户发布的帖子
+            if currentPost.username == "当前用户" || currentPost.characterID == nil {
+                print("✅ 找到目标用户帖子 - ID: \(currentPost.id), 作者: \(currentPost.username)")
+                
+                // 更新帖子点赞数
+                let updatedPost = currentPost.updateLikes(delta: 1)
+                
+                // 更新帖子
+                viewModel.posts[postIndex] = updatedPost
+                
+                // 发送UI更新通知
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PostLikeUpdated"),
+                    object: nil,
+                    userInfo: [
+                        "postID": postId
+                    ]
+                )
+                
+                print("📈 帖子\(postId)点赞数已更新: \(currentPost.likes) -> \(updatedPost.likes)")
+            } else {
+                print("⚠️ 指定的帖子ID \(postId) 对应的是虚拟角色帖子，不能点赞")
+            }
+        } else {
+            print("❌ 未找到帖子\(postId)，无法更新帖子点赞数")
+        }
+    }
+    
+    /**
+     * 发送帖子点赞通知到虫洞
+     * @param characterId 角色ID
+     * @param postId 帖子ID
+     * @param userPostContent 用户帖子内容
+     */
+    private func sendPostLikeNotification(characterId: String, postId: String, userPostContent: String? = nil) {
+        // 获取角色信息
+        guard let characterName = CharacterDataManager.shared.getName(for: characterId) else {
+            print("❌ 无法获取角色\(characterId)的名称")
+            return
+        }
+        
+        let characterAvatar = CharacterAvatarService.shared.getAvatarName(for: characterId)
+        
+        // 获取帖子标题（取帖子内容的前面部分作为标题）
+        var postTitle = "您的帖子"
+        if let userPostContent = userPostContent {
+            postTitle = String(userPostContent.prefix(42))
+        } else if let post = PostViewModel.shared.posts.first(where: { $0.id.uuidString == postId }) {
+            postTitle = String(post.content.prefix(42))
+        }
+        
+        // 创建帖子点赞通知
+        NotificationService.shared.createLikeNotification(
+            characterId: characterId,
+            characterName: characterName,
+            characterAvatar: characterAvatar,
+            postId: postId,
+            postTitle: postTitle,
+            userComment: nil // 帖子点赞不需要评论内容
+        )
+        
+        print("📨 已发送帖子点赞通知: \(characterName)点赞了您的帖子")
     }
 }
 

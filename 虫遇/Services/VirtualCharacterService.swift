@@ -421,6 +421,14 @@ class VirtualCharacterService {
         // 构建提示词
         let prompt: String
         
+        // 🔴🔴🔴 超级醒目的角色评论生成开始日志 🔴🔴🔴
+        print("\n🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
+        print("🚨🚨🚨 【虚拟角色评论生成】开始处理！🚨🚨🚨")
+        print("🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
+        print("👤 目标角色ID: \(characterID)")
+        print("📝 帖子内容预览: \"\(String(postContent.prefix(100)))...\"")
+        print("🔄 后台任务ID: \(backgroundTaskID)")
+        
         // 尝试从个性化管理器获取提示词
         if let enhancedPrompt = personalityManager.generateEnhancedPrompt(
             characterId: characterID.lowercased(),
@@ -429,26 +437,30 @@ class VirtualCharacterService {
         ) {
             // 使用增强提示词
             prompt = enhancedPrompt
-            print("🎭 使用个性化提示词生成评论，长度: \(prompt.count)字符")
+            print("\n🎭 ✅ 使用个性化提示词生成评论")
+            print("📏 提示词长度: \(prompt.count)字符")
+            print("\n🟡 ===== 个性化提示词内容 =====")
+            print(prompt)
+            print("🟡 ===== 个性化提示词结束 =====")
         } else {
             // 使用传统方式生成提示词
             // 分析帖子内容
             let _ = semanticProcessor.analyze(comment: "", postContent: postContent)
             
-            // 获取基本角色特性（从CharacterPersonality获取，但可能不完整）
+            // 获取基本角色特性 - 使用与AI生成帖子内容相同的数据源
             var figureTraits = VCCharacterPersonality(
                 tone: "友好专业",
                 knowledgeAreas: ["一般知识"],
                 speechPatterns: ["我认为"]
             )
             
-            // 尝试从个性化管理器获取角色特性
-            if let personality = personalityManager.getPersonality(for: characterID.lowercased()) {
-                // 将CharacterPersonality转换为VCCharacterPersonality
+            // 尝试从CharacterSystem获取角色完整信息
+            let allCharacters = CharacterSystem.shared.getAllCharacters()
+            if let character = allCharacters.first(where: { $0.id == characterID }) {
                 figureTraits = VCCharacterPersonality(
-                    tone: personality.tone,
-                    knowledgeAreas: personality.knowledgeAreas,
-                    speechPatterns: personality.speechPatterns
+                    tone: "\(character.type.displayName)风格",
+                    knowledgeAreas: [character.primaryField],
+                    speechPatterns: ["我认为", "从我的角度来看"]
                 )
             }
             
@@ -469,14 +481,33 @@ class VirtualCharacterService {
             5. 评论长度控制在100字以内，简短有力
             """
             
-            print("📝 使用传统提示词生成评论，长度: \(prompt.count)字符")
+            print("\n📝 ⚠️ 使用传统提示词生成评论（个性化提示词不可用）")
+            print("📏 传统提示词长度: \(prompt.count)字符")
+            print("\n🟡 ===== 传统提示词内容 =====")
+            print(prompt)
+            print("🟡 ===== 传统提示词结束 =====")
         }
+        
+        print("\n🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
+        print("🚀🚀🚀 准备发送API请求生成角色评论... 🚀🚀🚀")
+        print("🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
         
         // 调用API生成评论
         return AINetworkService.shared.sendRequest(prompt: prompt)
             .handleEvents(
                 receiveOutput: { output in
-                    print("✅ 成功生成角色评论: \"\(output.prefix(50))...\"")
+                    // 🔴🔴🔴 超级醒目的评论生成成功日志 🔴🔴🔴
+                    print("\n🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊")
+                    print("🌟🌟🌟 【虚拟角色服务】评论生成成功！🌟🌟🌟")
+                    print("🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊")
+                    print("✅ 角色[\(characterID)]成功生成评论")
+                    print("📝 评论内容预览: \"\(output.prefix(80))...\"")
+                    print("📏 评论完整长度: \(output.count)字符")
+                    print("\n🎊 ===== 完整评论内容 =====")
+                    print(output)
+                    print("🎊 ===== 评论内容结束 =====")
+                    print("🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊")
+                    print("💾 正在存储到记忆管理器...\n")
                     
                     // 存储到记忆
                     let memoryKey = "post_\(postContent.prefix(50).hashValue)"
@@ -1167,6 +1198,13 @@ class VirtualCharacterService {
                                     // 将回复添加到父评论下
                                     post.addReplyToParent(parentId: parentId, reply: replyComment)
                                     
+                                    // 🔧 重要修复：保存帖子数据到持久化存储
+                                    NotificationCenter.default.post(
+                                        name: NSNotification.Name("SavePostData"),
+                                        object: nil,
+                                        userInfo: ["postID": post.id.uuidString]
+                                    )
+                                    
                                     // 发送真实通知更新UI
                                     NotificationCenter.default.post(
                                         name: NSNotification.Name("PostCommentsUpdated"),
@@ -1200,6 +1238,13 @@ class VirtualCharacterService {
                                     
                                     // 使用addComment方法添加评论到帖子，确保应用过滤逻辑
                                     postViewModel.posts[postIndex].addComment(newComment)
+                                    
+                                    // 🔧 重要修复：保存帖子数据到持久化存储
+                                    NotificationCenter.default.post(
+                                        name: NSNotification.Name("SavePostData"),
+                                        object: nil,
+                                        userInfo: ["postID": post.id.uuidString]
+                                    )
                                     
                                     // 发送真实通知更新UI
                                     NotificationCenter.default.post(

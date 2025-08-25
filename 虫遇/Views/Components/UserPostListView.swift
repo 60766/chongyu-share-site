@@ -280,6 +280,13 @@ struct UserPostListView: View {
             }
         }
         
+        // 🔧 重要修复：保存帖子数据到持久化存储
+        NotificationCenter.default.post(
+            name: NSNotification.Name("SavePostData"),
+            object: nil,
+            userInfo: ["postID": post.id.uuidString]
+        )
+        
         // 这里可以添加网络请求，将评论同步到服务器
     }
     

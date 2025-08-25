@@ -142,22 +142,25 @@ struct AutoSizingTextView: UIViewRepresentable {
         }
         
         func textViewDidChange(_ textView: UITextView) {
-            parent.text = textView.text
+            // 使用异步方式更新状态，避免在视图更新过程中修改状态
+            DispatchQueue.main.async { [self] in
+                parent.text = textView.text
+            }
             // 使用防抖动方式计算高度
             parent.calculateAndUpdateHeight(textView)
         }
         
         func textViewDidBeginEditing(_ textView: UITextView) {
-            // 使用动画过渡状态
-            UIView.animate(withDuration: 0.25) {
+            // 使用异步方式更新状态，避免在视图更新过程中修改状态
+            DispatchQueue.main.async { [self] in
                 self.parent.isFocused = true
             }
             parent.calculateAndUpdateHeight(textView)
         }
         
         func textViewDidEndEditing(_ textView: UITextView) {
-            // 使用动画过渡状态
-            UIView.animate(withDuration: 0.25) {
+            // 使用异步方式更新状态，避免在视图更新过程中修改状态
+            DispatchQueue.main.async { [self] in
                 self.parent.isFocused = false
             }
         }

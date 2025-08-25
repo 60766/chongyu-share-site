@@ -140,7 +140,12 @@ struct NotificationItemView: View {
                         case .comment:
                             Text("\(effectiveCharacter.speechStyle)回复了你")
                         case .like:
+                            // 根据是否有用户评论内容来判断是对评论还是对帖子的点赞
+                            if notification.userComment != nil && !notification.userComment!.isEmpty {
                             Text("点赞了你的评论")
+                            } else {
+                                Text("点赞了你的动态")
+                            }
                         case .follow:
                             Text("通过时空虫洞关注了你")
                         case .system:

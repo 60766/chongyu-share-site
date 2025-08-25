@@ -49,22 +49,63 @@ class PostViewModel: ObservableObject {
     // 取消令牌
     private var cancellables = Set<AnyCancellable>()
     
-    // 持久化数据的键
-    private let postsStubKey = "persistedPostsStub"
+    // 存储键
+    private let postsStubKey = "PostsStub_v1"
+    private let userPostsKey = "UserPosts_v1" // 专门存储用户帖子的键
+    private let aiPostsKey = "AIPosts_v1" // 新增：专门存储AI生成帖子的键
     
-    // 评论数据
+    // 评论数据（用于显示最新的帖子详情）
     @Published var comments: [DetailedCommentModel] = []
     
     /**
-     * 初始化视图模型
-     * 加载示例帖子数据
+     * 初始化PostViewModel
      */
     init() {
-        // 首先尝试从持久化存储恢复帖子
-        if !tryRestorePersistedPosts() {
-            // 如果没有持久化的帖子，加载示例帖子
-            loadSamplePosts()
+        // 初始化时先设置一个空数组，确保didSet不会在初始化过程中被触发
+        _ = [UserPostModel]()
+        
+        // 1. 恢复用户帖子
+        let userPosts = restoreUserPostsData()
+        
+        // 2. 恢复AI生成的帖子
+        let aiPosts = restoreAIPostsData()
+        
+        // 3. 加载示例帖子
+        let samplePosts = ModelData.samplePosts
+        
+        // 4. 合并所有帖子并去重
+        var allPostsDict: [UUID: UserPostModel] = [:]
+        
+        // 添加用户帖子（优先级最高）
+        for post in userPosts {
+            allPostsDict[post.id] = post
         }
+        
+        // 添加AI帖子（如果ID不冲突）
+        for post in aiPosts {
+            if allPostsDict[post.id] == nil {
+                allPostsDict[post.id] = post
+            }
+        }
+        
+        // 添加示例帖子（如果ID不冲突）
+        for post in samplePosts {
+            if allPostsDict[post.id] == nil {
+                allPostsDict[post.id] = post
+            }
+        }
+        
+        // 按时间倒序排列
+        let uniquePosts = Array(allPostsDict.values).sorted { $0.datePosted > $1.datePosted }
+        
+        // 一次性设置，触发didSet保存
+        self.posts = uniquePosts
+        
+        print("🚀 PostViewModel初始化完成:")
+        print("   - 用户帖子: \(userPosts.count) 条")
+        print("   - AI帖子: \(aiPosts.count) 条") 
+        print("   - 示例帖子: \(samplePosts.count) 条")
+        print("   - 总计: \(uniquePosts.count) 条")
         
         // 监听 PostCommentsUpdated 通知，强制刷新 comments
         NotificationCenter.default.addObserver(forName: NSNotification.Name("PostCommentsUpdated"), object: nil, queue: .main) { [weak self] notification in
@@ -77,6 +118,16 @@ class PostViewModel: ObservableObject {
                 // 如果你有 @Published var comments: [DetailedCommentModel]，请同步刷新
                 // self.comments = self.posts[currentPostIndex].comments
             }
+        }
+        
+        // 🔧 监听保存帖子数据通知，确保虚拟角色评论和回复被持久化保存
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("SavePostData"), object: nil, queue: .main) { [weak self] notification in
+            guard let self = self else { return }
+            
+            // 立即保存所有帖子数据
+            self.saveUserPosts()
+            self.saveAIPosts()
+            print("💾 收到保存通知，已保存帖子数据")
         }
     }
     
@@ -102,6 +153,167 @@ class PostViewModel: ObservableObject {
         
         // 保存到UserDefaults
         UserDefaults.standard.set(postsStub, forKey: postsStubKey)
+        
+        // 新增：单独保存用户帖子和AI帖子的完整数据
+        saveUserPosts()
+        saveAIPosts()
+    }
+    
+    /**
+     * 保存用户帖子到持久化存储
+     */
+    private func saveUserPosts() {
+        let userPosts = posts.filter { $0.source == "user" }
+        
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(userPosts)
+            UserDefaults.standard.set(data, forKey: userPostsKey)
+            print("✅ 成功保存 \(userPosts.count) 条用户帖子到持久化存储")
+        } catch {
+            print("❌ 保存用户帖子失败: \(error.localizedDescription)")
+        }
+    }
+    
+    /**
+     * 保存AI生成的帖子到持久化存储
+     */
+    private func saveAIPosts() {
+        // AI生成的帖子包括：wormhole, onekey, virtual, ai等来源
+        let aiPosts = posts.filter { post in
+            guard let source = post.source else { return false }
+            return source != "user" && source != "sample" // 排除用户帖子和示例帖子
+        }
+        
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(aiPosts)
+            UserDefaults.standard.set(data, forKey: aiPostsKey)
+            print("✅ 成功保存 \(aiPosts.count) 条AI生成帖子到持久化存储")
+            
+            // 打印各种来源的统计
+            let sourceStats = Dictionary(grouping: aiPosts, by: { $0.source ?? "未知" })
+            for (source, posts) in sourceStats {
+                print("   - \(source): \(posts.count) 条")
+            }
+        } catch {
+            print("❌ 保存AI生成帖子失败: \(error.localizedDescription)")
+        }
+    }
+    
+    /**
+     * 从持久化存储恢复用户帖子
+     */
+    private func restoreUserPosts() {
+        guard let data = UserDefaults.standard.data(forKey: userPostsKey) else {
+            print("🔍 没有找到持久化的用户帖子数据")
+            return
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let userPosts = try decoder.decode([UserPostModel].self, from: data)
+            
+            // 将用户帖子按时间倒序添加到帖子列表的前面（最新的在最前面）
+            let sortedUserPosts = userPosts.sorted { $0.datePosted > $1.datePosted }
+            
+            for post in sortedUserPosts {
+                if !posts.contains(where: { $0.id == post.id }) {
+                    posts.insert(post, at: 0)
+                }
+            }
+            
+            print("✅ 成功恢复 \(userPosts.count) 条用户帖子，当前总帖子数: \(posts.count)")
+        } catch {
+            print("❌ 恢复用户帖子失败: \(error.localizedDescription)")
+        }
+    }
+    
+    /**
+     * 从持久化存储恢复用户帖子数据（返回数据而不修改posts数组）
+     */
+    private func restoreUserPostsData() -> [UserPostModel] {
+        guard let data = UserDefaults.standard.data(forKey: userPostsKey) else {
+            print("🔍 没有找到持久化的用户帖子数据")
+            return []
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let userPosts = try decoder.decode([UserPostModel].self, from: data)
+            print("✅ 成功读取 \(userPosts.count) 条用户帖子")
+            return userPosts
+        } catch {
+            print("❌ 恢复用户帖子失败: \(error.localizedDescription)")
+            return []
+        }
+    }
+    
+    /**
+     * 从持久化存储恢复AI生成的帖子
+     */
+    private func restoreAIPosts() {
+        guard let data = UserDefaults.standard.data(forKey: aiPostsKey) else {
+            print("🔍 没有找到持久化的AI生成帖子数据")
+            return
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let aiPosts = try decoder.decode([UserPostModel].self, from: data)
+            
+            // 将AI帖子按时间倒序添加到帖子列表（但在用户帖子之后）
+            let sortedAIPosts = aiPosts.sorted { $0.datePosted > $1.datePosted }
+            
+            for post in sortedAIPosts {
+                if !posts.contains(where: { $0.id == post.id }) {
+                    posts.append(post) // AI帖子添加到末尾，保持用户帖子在前面
+                }
+            }
+            
+            print("✅ 成功恢复 \(aiPosts.count) 条AI生成帖子，当前总帖子数: \(posts.count)")
+            
+            // 打印恢复的AI帖子来源统计
+            let sourceStats = Dictionary(grouping: aiPosts, by: { $0.source ?? "未知" })
+            for (source, posts) in sourceStats {
+                print("   - 恢复 \(source): \(posts.count) 条")
+            }
+        } catch {
+            print("❌ 恢复AI生成帖子失败: \(error.localizedDescription)")
+        }
+    }
+    
+    /**
+     * 从持久化存储恢复AI生成的帖子数据（返回数据而不修改posts数组）
+     */
+    private func restoreAIPostsData() -> [UserPostModel] {
+        guard let data = UserDefaults.standard.data(forKey: aiPostsKey) else {
+            print("🔍 没有找到持久化的AI生成帖子数据")
+            return []
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let aiPosts = try decoder.decode([UserPostModel].self, from: data)
+            
+            // 打印恢复的AI帖子来源统计
+            let sourceStats = Dictionary(grouping: aiPosts, by: { $0.source ?? "未知" })
+            for (source, posts) in sourceStats {
+                print("   - 读取 \(source): \(posts.count) 条")
+            }
+            
+            print("✅ 成功读取 \(aiPosts.count) 条AI生成帖子")
+            return aiPosts
+        } catch {
+            print("❌ 恢复AI生成帖子失败: \(error.localizedDescription)")
+            return []
+        }
     }
     
     /**
@@ -182,7 +394,16 @@ class PostViewModel: ObservableObject {
      * 加载示例帖子
      */
     private func loadSamplePosts() {
-        self.posts = ModelData.samplePosts
+        let samplePosts = ModelData.samplePosts
+        
+        // 添加示例帖子到现有帖子列表，避免重复
+        for samplePost in samplePosts {
+            if !posts.contains(where: { $0.id == samplePost.id }) {
+                posts.append(samplePost)
+            }
+        }
+        
+        print("📦 加载了 \(samplePosts.count) 条示例帖子，当前总帖子数: \(posts.count)")
     }
     
     /**
@@ -321,8 +542,20 @@ class PostViewModel: ObservableObject {
                 // 保存顶级评论的ID，用于后续回复
                 let userCommentId = newComment.id
                 
+                // 🔧 保护现有评论，防止被意外清除
+                let existingComments = posts[index].comments
+                
                 // 添加评论到帖子
                 posts[index].comments.insert(newComment, at: 0)
+                
+                // 确保虚拟角色评论没有被清除
+                let virtualComments = existingComments.filter { $0.isVirtualCharacter }
+                for virtualComment in virtualComments {
+                    if !posts[index].comments.contains(where: { $0.id == virtualComment.id }) {
+                        print("🛡️ 恢复被清除的虚拟角色评论: \(virtualComment.username)")
+                        posts[index].comments.append(virtualComment)
+                    }
+                }
                 
                 print("✅ 已添加用户评论，评论ID: \(userCommentId)")
                 
@@ -360,9 +593,13 @@ class PostViewModel: ObservableObject {
                     availableCharacters.removeAll { $0 == authorId.lowercased() }
                 }
                 
-                // 随机选择1-2个角色
+                // 使用角色轮换系统选择角色
+                print("🔄 使用角色轮换系统选择回复角色")
+                CharacterRotationSystem.shared.beginNewGenerationSession()
+                
                 let replyCount = Int.random(in: 1...2)
-                let selectedCharacters = Array(availableCharacters.shuffled().prefix(replyCount))
+                let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: replyCount)
+                let selectedCharacters = rotationCharacters.map { $0.id }
                 charactersToRespond.append(contentsOf: selectedCharacters)
                 
                 // 一次性生成所有角色的回复
@@ -447,8 +684,21 @@ class PostViewModel: ObservableObject {
                             replyToUsername: "当前用户"
                         )
                         
-                        // 添加到帖子
+                        // 🔧 安全添加回复（带保护机制）
                         print("📝 添加\(firstCharacterId)的回复到评论ID: \(replyToId)")
+                        
+                        // 确保帖子索引仍然有效
+                        guard postIndex < self.posts.count else {
+                            print("⚠️ 帖子索引无效，跳过添加回复")
+                            return
+                        }
+                        
+                        // 检查父评论是否还存在
+                        guard self.posts[postIndex].comments.contains(where: { $0.id == replyToId }) else {
+                            print("⚠️ 父评论不存在，跳过添加回复")
+                            return
+                        }
+                        
                         self.posts[postIndex].addReplyToParent(parentId: replyToId, reply: virtualReply)
                         
                         // 发送通知刷新UI
@@ -493,8 +743,21 @@ class PostViewModel: ObservableObject {
                                 replyToUsername: "当前用户"
                             )
                             
-                            // 添加到帖子
+                            // 🔧 安全添加回复（带保护机制）
                             print("📝 添加\(characterID)的回复到评论ID: \(replyToId)")
+                            
+                            // 确保帖子索引仍然有效
+                            guard postIndex < self.posts.count else {
+                                print("⚠️ 帖子索引无效，跳过添加回复")
+                                return
+                            }
+                            
+                            // 检查父评论是否还存在
+                            guard self.posts[postIndex].comments.contains(where: { $0.id == replyToId }) else {
+                                print("⚠️ 父评论不存在，跳过添加回复")
+                                return
+                            }
+                            
                             self.posts[postIndex].addReplyToParent(parentId: replyToId, reply: virtualReply)
                             
                             // 发送通知刷新UI
@@ -772,15 +1035,35 @@ class PostViewModel: ObservableObject {
         // 使用布尔测试直接检查帖子是否存在
         guard posts.contains(where: { $0.id == post.id }) else { return }
         
-        print("🚀 开始生成虚拟角色评论 - 角色ID: \(characterID), 帖子内容: \"\(String(post.content.prefix(50)))...\"")
+        // 🔴🔴🔴 超级醒目的视图模型层日志 🔴🔴🔴
+        print("\n🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
+        print("📱📱📱 【PostViewModel】用户发帖后触发虚拟角色评论 📱📱📱")
+        print("🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
+        print("🚀 开始生成虚拟角色评论")
+        print("👤 目标角色ID: \(characterID)")
+        print("👤 目标角色名称: \(character.name)")
+        print("📄 帖子ID: \(post.id.uuidString)")
+        print("👥 帖子作者: \(post.username)")
+        print("📝 帖子内容: \"\(String(post.content.prefix(100)))...\"")
+        print("📏 帖子完整长度: \(post.content.count)字符")
         
         // 检查API配置
         if let apiKey = APIConfigManager.shared.apiKey {
-            print("✅ API密钥已配置: \(apiKey.prefix(5))...")
+            print("\n✅ API配置检查通过")
+            print("🔑 API密钥已配置: \(apiKey.prefix(8))...")
             print("🌐 当前API端点: \(APIConfigManager.shared.deepSeekEndpoint)")
+            print("🤖 使用模型: \(APIConfigManager.shared.modelName)")
         } else {
-            print("⚠️ 警告: API密钥未配置，将导致API调用失败")
+            print("\n❌ ⚠️ 警告: API密钥未配置，将导致API调用失败")
         }
+        
+        print("\n🔵 ===== 准备调用VirtualCharacterService =====")
+        print("📞 调用方法: inviteCharactersToComment")
+        print("📋 参数详情:")
+        print("  - characterIDs: [\(characterID)]")
+        print("  - postId: \(post.id.uuidString)")
+        print("  - postAuthor: \(post.username)")
+        print("🔵 ===== 开始服务调用 =====")
         
         // 使用统一的inviteCharactersToComment方法，确保所有角色评论生成都使用相同的批量生成流程
         virtualCharacterService.inviteCharactersToComment(
@@ -789,7 +1072,10 @@ class PostViewModel: ObservableObject {
             postAuthor: post.username
         )
         
-        print("📝 已请求生成角色评论，通知已发送")
+        print("🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
+        print("📤 已向VirtualCharacterService发送评论生成请求")
+        print("⏳ 等待虚拟角色评论生成完成...")
+        print("🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
     }
     
     /**
@@ -864,9 +1150,13 @@ class PostViewModel: ObservableObject {
         let postContent = post.content
         let postId = post.id
         
-        // 此处简单实现：随机选择1-2个角色回复
-        let characters = ["einstein", "shakespeare", "davinci", "goku", "holmes", "naruto"]
-        let randomCharacters = Array(characters.shuffled().prefix(Int.random(in: 1...2)))
+        // 使用角色轮换系统选择角色回复
+        print("🔄 使用角色轮换系统选择回复角色")
+        CharacterRotationSystem.shared.beginNewGenerationSession()
+        
+        let replyCount = Int.random(in: 1...2)
+        let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: replyCount)
+        let randomCharacters = rotationCharacters.map { $0.id }
         
         // 使用批量API调用生成回复
         print("🚀 开始批量生成\(randomCharacters.count)个角色的回复")
@@ -1067,6 +1357,10 @@ class PostViewModel: ObservableObject {
                         print("📝 添加\(characterID)的回复到用户回复ID: \(userReply.id)")
                         self.posts[postIndex].addReplyToParent(parentId: userReply.id, reply: virtualReply)
                         
+                        // 🔧 重要修复：保存帖子数据到持久化存储
+                        self.saveUserPosts()
+                        self.saveAIPosts()
+                        
                         // 发送通知刷新UI
                         NotificationCenter.default.post(
                             name: NSNotification.Name("PostCommentsUpdated"),
@@ -1118,6 +1412,10 @@ class PostViewModel: ObservableObject {
                                     
                                     // 添加到帖子
                                     self.posts[postIndex].addReplyToParent(parentId: userReply.id, reply: virtualReply)
+                                    
+                                    // 🔧 重要修复：保存帖子数据到持久化存储
+                                    self.saveUserPosts()
+                                    self.saveAIPosts()
                                     
                                     // 发送通知刷新UI
                                     NotificationCenter.default.post(
@@ -1944,24 +2242,33 @@ class PostViewModel: ObservableObject {
     }
     
     /**
-     * 添加帖子到数据模型
+     * 添加帖子到数据模型（通过整体赋值触发didSet保存）
      * @param newPosts 要添加的帖子数组
      */
     func addPosts(_ newPosts: [UserPostModel]) {
         print("🌀 开始添加帖子到数据模型，帖子数量: \(newPosts.count)")
         
-        // 为了避免重复添加，检查每个帖子的ID
-        for post in newPosts {
-            if !posts.contains(where: { $0.id == post.id }) {
-                // 将新帖子插入到数组开头，而不是追加到末尾
-                posts.insert(post, at: 0)
-                print("✅ 添加帖子成功: \(post.id), 作者: \(post.username), 位置: 最前面")
-            } else {
-                print("⚠️ 跳过已存在的帖子: \(post.id)")
-            }
+        // 过滤掉重复的帖子
+        let uniqueNewPosts = newPosts.filter { newPost in
+            !posts.contains(where: { $0.id == newPost.id })
         }
         
-        print("🌀 帖子添加完成，当前总帖子数: \(posts.count)")
+        guard !uniqueNewPosts.isEmpty else {
+            print("⚠️ 所有帖子都已存在，跳过添加")
+            return
+        }
+        
+        // 通过整体赋值触发didSet，确保持久化保存
+        let updatedPosts = uniqueNewPosts + posts
+        posts = updatedPosts
+        
+        print("✅ 成功添加 \(uniqueNewPosts.count) 条新帖子，当前总帖子数: \(posts.count)")
+        
+        // 打印新增帖子的来源统计
+        let sourceStats = Dictionary(grouping: uniqueNewPosts, by: { $0.source ?? "未知" })
+        for (source, posts) in sourceStats {
+            print("   - 新增 \(source): \(posts.count) 条")
+        }
     }
     
     /**
@@ -2482,5 +2789,116 @@ class PostViewModel: ObservableObject {
             // 如果没有关注的角色，返回基于互动分数排序的角色
             return Array(sortedByInteraction.prefix(5))
         }
+    }
+    
+    /**
+     * 添加AI生成的帖子到列表（会触发持久化保存）
+     * @param newPosts 要添加的新帖子数组
+     */
+    func addAIPosts(_ newPosts: [UserPostModel]) {
+        let currentPosts = posts
+        let updatedPosts = newPosts + currentPosts
+        
+        // 通过整体赋值触发didSet，确保持久化保存
+        posts = updatedPosts
+        
+        print("✅ 添加了 \(newPosts.count) 条AI帖子，当前总帖子数: \(posts.count)")
+        
+        // 打印新增帖子的来源统计
+        let sourceStats = Dictionary(grouping: newPosts, by: { $0.source ?? "未知" })
+        for (source, posts) in sourceStats {
+            print("   - 新增 \(source): \(posts.count) 条")
+        }
+    }
+    
+    /**
+     * 添加用户帖子到列表（会触发持久化保存）
+     * @param newPost 要添加的用户帖子
+     */
+    func addUserPost(_ newPost: UserPostModel) {
+        var currentPosts = posts
+        currentPosts.insert(newPost, at: 0)
+        
+        // 通过整体赋值触发didSet，确保持久化保存
+        posts = currentPosts
+        
+        print("✅ 添加了1条用户帖子，当前总帖子数: \(posts.count)")
+    }
+    
+    /**
+     * 为帖子生成虚拟角色回复
+     * 当用户添加评论后，自动生成虚拟角色的回复
+     * @param post 目标帖子
+     * @param commentId 用户评论的ID
+     */
+    func generateVirtualCharacterReplyForPost(_ post: UserPostModel, commentId: UUID) {
+        // 🔧 修复重复添加问题：注释掉PostViewModel中的重复逻辑
+        // 现在由MultiCharacterCommentService统一处理，避免重复添加
+        print("🔧 PostViewModel: 虚拟角色回复生成已由MultiCharacterCommentService统一处理，跳过重复生成")
+        return
+        
+        // 以下是原来的逻辑，现在已注释掉
+        /*
+        // 获取可用的虚拟角色ID列表
+        let availableCharacterIds = self.getAvailableVirtualCharacterIds()
+        
+        // 随机选择1-3个角色进行回复
+        let numberOfReplies = Int.random(in: 1...min(3, availableCharacterIds.count))
+        let selectedCharacterIds = Array(availableCharacterIds.shuffled().prefix(numberOfReplies))
+        
+        print("🎭 为帖子生成虚拟角色回复，选择 \(numberOfReplies) 个角色")
+        
+        // 为每个选中的角色生成回复
+        for (index, characterID) in selectedCharacterIds.enumerated() {
+            // 添加累加的延迟，让回复看起来更自然
+            let delay = Double.random(in: 2.0...4.0) + Double(index) * 2.0
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                guard let self = self else { return }
+                
+                if let postIndex = self.posts.firstIndex(where: { $0.id == post.id }) {
+                    // 获取原始评论内容，用于生成回复
+                    let commentContent = self.getCommentContent(commentId: commentId, in: post)
+                    
+                    self.generateVirtualCharacterReply(
+                        characterID: characterID,
+                        toComment: commentContent,
+                        inPost: post.content,
+                        completion: { result in
+                            if case .success(let content) = result {
+                                print("✅ 单独生成角色回复 - \(self.getCharacterName(for: characterID)): \(content.prefix(30))...")
+                                
+                                // 创建虚拟角色回复
+                                let virtualReply = DetailedCommentModel(
+                                    username: self.getCharacterName(for: characterID),
+                                    userAvatar: self.getCharacterAvatar(for: characterID),
+                                    content: content,
+                                    datePosted: Date().addingTimeInterval(Double.random(in: 60...180)),
+                                    isVirtualCharacter: true,
+                                    characterID: characterID,
+                                    parentCommentId: commentId,
+                                    replyToUsername: "当前用户"
+                                )
+                                
+                                // 添加到帖子
+                                print("📝 添加虚拟角色回复到用户评论ID: \(commentId)")
+                                self.posts[postIndex].addReplyToParent(parentId: commentId, reply: virtualReply)
+                                
+                                // 发送通知刷新UI
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("PostCommentsUpdated"),
+                                    object: nil,
+                                    userInfo: ["postID": post.id.uuidString]
+                                )
+                                
+                                // 添加震动反馈
+                                self.hapticFeedback()
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        */
     }
 }
