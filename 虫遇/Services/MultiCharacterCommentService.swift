@@ -61,24 +61,6 @@ class MultiCharacterCommentService {
         isInvited: Bool = false,
         completion: @escaping (Result<[String: String], Error>) -> Void
     ) {
-        print("🚀🚀🚀 === MULTICHARACTER COMMENT SERVICE 方法被调用 === 🚀🚀🚀")
-        print("🚀 开始批量生成角色评论 - 共\(characterIDs.count)个角色")
-        print("💭 用户评论: \(userComment ?? "无")")
-        print("💭 用户评论长度: \(userComment?.count ?? 0)")
-        print("💭 用户评论是否为nil: \(userComment == nil)")
-        print("💭 用户评论是否为空: \(userComment?.isEmpty ?? true)")
-        print("📝 原帖内容: \(postContent.prefix(50))...")
-        print("👤 原帖作者: \(postAuthor ?? "无")")
-        
-        // 🔍 添加详细的调试信息
-        if let userComment = userComment {
-            print("🔍 DEBUG: userComment有值")
-            print("🔍 DEBUG: userComment内容前20字符: \(String(userComment.prefix(20)))")
-            print("🔍 DEBUG: userComment完整内容: '\(userComment)'")
-        } else {
-            print("🔍 DEBUG: userComment为nil - 这是问题所在！")
-        }
-        
         // 🔧 修复：创建独立的请求上下文，不覆盖全局变量
         let requestContext = CommentRequestContext(
             userComment: userComment,
@@ -86,12 +68,6 @@ class MultiCharacterCommentService {
             originalPost: postContent,
             originalPostAuthor: postAuthor
         )
-        
-        print("🔧 DEBUG: 创建独立的requestContext")
-        print("  - userComment: \(userComment ?? "nil")")
-        print("  - userCommentId: \(userCommentId ?? "nil")")
-        print("  - originalPost: \(postContent.prefix(30))...")
-        print("  - originalPostAuthor: \(postAuthor ?? "nil")")
         
         // 如果没有角色，直接返回空结果
         if characterIDs.isEmpty {
@@ -115,31 +91,6 @@ class MultiCharacterCommentService {
             isInvited: isInvited
         )
         
-        print("📤📤📤 === 即将发送 BATCH API 请求 === 📤📤📤")
-        print("📤 准备发送批量API请求 - 提示词长度: \(batchPrompt.count)字符")
-        
-        // 🔍 添加详细的批量API请求调试信息
-        print("\n📋 ===== 批量角色评论API请求详细内容 =====")
-        print("🎭 目标角色: \(characterIDs.joined(separator: ", "))")
-        print("📝 帖子内容: \(postContent)")
-        print("👤 帖子作者: \(postAuthor ?? "无")")
-        if let userComment = userComment {
-            print("💬 用户评论: \(userComment)")
-            print("🎯 回复对象: \(targetUsername ?? "无")")
-        } else {
-            print("💬 用户评论: 无（新发布的帖子）")
-        }
-        print("🏷️ 是否邀请评论: \(isInvited ? "是" : "否")")
-        print("\n🔷 完整提示词内容:")
-        print("=====================================")
-        print(batchPrompt)
-        print("=====================================")
-        print("🔷 提示词统计:")
-        print("  - 总字符数: \(batchPrompt.count)")
-        print("  - 总行数: \(batchPrompt.components(separatedBy: .newlines).count)")
-        print("  - 包含角色数: \(characterIDs.count)")
-        print("=====================================\n")
-        
         // 添加超时保护
         let timeoutInterval: TimeInterval = 60.0
         let timer = Timer.publish(every: timeoutInterval, on: .main, in: .common).autoconnect()
@@ -147,7 +98,6 @@ class MultiCharacterCommentService {
         
         timerCancellable = timer
             .sink { _ in
-                print("⚠️ 批量生成评论请求超时")
                 timerCancellable?.cancel()
                 
                 // 在主线程上调用完成回调
@@ -1216,6 +1166,9 @@ class MultiCharacterCommentService {
             // 创建一个临时副本并重新赋值，强制 SwiftUI 刷新
             let tempPost = viewModel.posts[postIndex]
             viewModel.posts[postIndex] = tempPost
+            
+            // 🎯 关键节点5：虚拟角色评论刷新后保存
+            viewModel.saveAtCriticalPoint(reason: "虚拟角色评论刷新")
             
             print("🔍 延迟刷新时检查到 \(viewModel.posts[postIndex].comments.count) 条评论")
         }

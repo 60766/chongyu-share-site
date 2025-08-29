@@ -299,22 +299,22 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         )
         
         if let parentId = parentCommentId {
-            print("🔵 添加为回复 - 父评论ID: \(parentId)")
+            // 移除调试输出，避免在视图渲染时重复打印
             
             // 在顶级评论中查找父评论
             if let index = comments.firstIndex(where: { $0.id == parentId }) {
-                print("✅ 在顶级评论中找到父评论 - 索引: \(index)")
+                // 移除调试输出，避免在视图渲染时重复打印
                 
                 // 添加回复到父评论的replies数组
                 comments[index].replies.insert(newComment, at: 0)
-                print("📊 添加回复到父评论 - 回复数: \(comments[index].replies.count)")
+                // 移除调试输出，避免在视图渲染时重复打印
             } else {
                 // 在所有评论的嵌套回复中查找父评论
                 var found = false
                 for i in 0..<comments.count {
                     if findAndAddReply(in: &comments[i].replies, parentId: parentId, reply: newComment) {
                         found = true
-                        print("✅ 在嵌套回复中找到父评论并添加回复")
+                        // 移除调试输出，避免在视图渲染时重复打印
                         break
                     }
                 }
@@ -322,19 +322,18 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                 // 如果没有找到父评论，检查是否为虚拟角色
                 if !found {
                     if !isVirtualCharacter {
-                        print("⚠️ 未找到父评论，作为顶级评论添加")
+                        // 移除调试输出，避免在视图渲染时重复打印
                         comments.insert(newComment, at: 0)
                     } else {
                         // 🔧 修复：虚拟角色回复找不到父评论时，不应该添加到顶级评论列表
                         // 这会导致重复显示问题
-                        print("❌ 阻止虚拟角色回复成为顶级评论 - 角色: \(username), 找不到父评论ID: \(parentId)")
-                        print("🔧 原因：虚拟角色回复应该只作为回复存在，不应该成为顶级评论")
+                        // 移除调试输出，避免在视图渲染时重复打印
                     }
                 }
             }
         } else {
             // 如果是顶级评论，添加到comments数组的开头
-            print("🔵 添加为顶级评论")
+            // 移除调试输出，避免在视图渲染时重复打印
             comments.insert(newComment, at: 0)
         }
         
@@ -368,18 +367,16 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
     
     /// 添加回复到指定的父评论
     func addReplyToParent(parentId: UUID, reply: DetailedCommentModel) {
-        print("🔍 尝试添加回复到父评论 - 父评论ID: \(parentId), 回复ID: \(reply.id)")
+        // 移除调试输出，避免在视图渲染时重复打印
         
         // 优先在顶级评论中查找父评论
         if let index = comments.firstIndex(where: { $0.id == parentId }) {
-            print("✅ 在顶级评论中找到父评论 - 索引: \(index), 用户名: \(comments[index].username)")
+            // 移除调试输出，避免在视图渲染时重复打印
             
             // 添加回复到该评论的replies数组的末尾
             comments[index].replies.append(reply)
             
-            // 打印回复数量
-            print("📊 该父评论现在有 \(comments[index].replies.count) 条回复")
-            print("📊 回复内容: \"\(reply.content.prefix(30))...\"")
+            // 移除调试输出，避免在视图渲染时重复打印
             
             // 简化通知机制 - 只发送对象变更通知
             DispatchQueue.main.async {
@@ -396,7 +393,7 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         for i in 0..<comments.count {
             if findAndAddReply(in: &comments[i].replies, parentId: parentId, reply: reply) {
                 found = true
-                print("✅ 在嵌套回复中找到父评论并添加回复")
+                // 移除调试输出，避免在视图渲染时重复打印
                 
                 // 简化通知机制 - 只发送对象变更通知
                 DispatchQueue.main.async {
@@ -413,14 +410,12 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             if reply.isVirtualCharacter {
                 // 虚拟角色回复找不到父评论时，不应该添加到顶级评论列表
                 // 这会导致重复显示问题
-                print("❌ 阻止虚拟角色回复成为顶级评论 - 角色: \(reply.username), 找不到父评论ID: \(parentId)")
-                print("🔧 原因：虚拟角色回复应该只作为回复存在，不应该成为顶级评论")
-                print("🔧 解决方案：丢弃这条回复，避免重复显示")
+                // 移除调试输出，避免在视图渲染时重复打印
                 return
             }
             
             // 只有非虚拟角色的用户评论才能在找不到父评论时作为顶级评论添加
-            print("⚠️ 未找到父评论，作为顶级评论添加")
+            // 移除调试输出，避免在视图渲染时重复打印
             var newTopLevelComment = reply
             newTopLevelComment.parentCommentId = nil // 清除父评论ID，因为找不到父评论
             comments.append(newTopLevelComment) // 改为append，保持时间顺序
@@ -445,7 +440,7 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             if comment.isVirtualCharacter {
                 // 如果虚拟角色评论有replyToUsername，说明是回复，不应该显示在主列表
                 if comment.replyToUsername != nil {
-                    print("🚫 过滤虚拟角色回复（有replyToUsername）：\(comment.username) -> \(comment.replyToUsername!)")
+                // 移除调试输出，避免在视图渲染时重复打印
                     return false
                 }
                 
@@ -454,7 +449,7 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                 // 现在只依赖replyToUsername来判断是否为回复
                 
                 // 虚拟角色的顶级评论（邀请评论）应该显示
-                print("✅ 保留虚拟角色顶级评论：\(comment.username)")
+                // 移除调试输出，避免在视图渲染时重复打印
             }
             
             return true
@@ -776,10 +771,10 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
      * 直接添加一个DetailedCommentModel对象作为评论
      */
     func addComment(_ comment: DetailedCommentModel) {
-        print("🔵 添加评论对象 - ID: \(comment.id), 用户: \(comment.username), 是否为回复: \(comment.parentCommentId != nil)")
+        // 移除调试输出，避免在视图渲染时重复打印
         
         if let parentId = comment.parentCommentId {
-            print("🔵 添加为回复 - 父评论ID: \(parentId)")
+            // 移除调试输出，避免在视图渲染时重复打印
             addReplyToParent(parentId: parentId, reply: comment)
             // 关键：强制刷新 comments 数组，确保 UI 刷新
             self.comments = self.comments.map { $0 } // 触发 SwiftUI 刷新
@@ -790,20 +785,19 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             
             if !comment.isVirtualCharacter || isInvitedVirtualComment {
                 if isInvitedVirtualComment {
-                    print("🔵 添加邀请虚拟角色的顶级评论 - 角色: \(comment.username)")
+                    // 移除调试输出，避免在视图渲染时重复打印
                 } else {
-                    print("🔵 添加用户顶级评论")
+                    // 移除调试输出，避免在视图渲染时重复打印
                 }
             comments.insert(comment, at: 0)
-            // 打印当前评论数量
-            print("📊 添加后顶级评论数量: \(comments.count)")
+            // 移除调试输出，避免在视图渲染时重复打印
             // 简化通知机制 - 只发送对象变更通知
             DispatchQueue.main.async {
                 // 直接发送对象变更通知，让SwiftUI自动刷新
                 self.objectWillChange.send()
                 }
             } else {
-                print("❌ 阻止虚拟角色回复作为顶级评论 - 角色: \(comment.username), replyToUsername: \(comment.replyToUsername ?? "nil")")
+                // 移除调试输出，避免在视图渲染时重复打印
             }
         }
     }

@@ -25,12 +25,18 @@ class PostViewModel: ObservableObject {
     // 帖子数据
     @Published var posts: [UserPostModel] = [] {
         didSet {
-            // 当帖子数据变化时，保存持久化的存根数据，确保可以恢复
-            savePersistentPostsStub()
+            // 移除自动保存，改为在关键节点手动触发保存
+            // savePersistentPostsStub() // 注释掉自动保存
+            
             // 同步 comments 为当前 post 的完整树结构
             if let currentPost = posts.first {
                 self.comments = currentPost.getTopLevelComments()
             }
+            
+            // 添加数据一致性检查（仅在debug模式下）
+            #if DEBUG
+            validateDataConsistency()
+            #endif
         }
     }
     
@@ -56,6 +62,11 @@ class PostViewModel: ObservableObject {
     
     // 评论数据（用于显示最新的帖子详情）
     @Published var comments: [DetailedCommentModel] = []
+    
+    // 数据一致性状态
+    @Published var isDataConsistent: Bool = true
+    private var lastSaveTimestamp: Date = Date()
+    private var pendingSaveOperation: DispatchWorkItem?
     
     /**
      * 初始化PostViewModel
@@ -170,9 +181,8 @@ class PostViewModel: ObservableObject {
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(userPosts)
             UserDefaults.standard.set(data, forKey: userPostsKey)
-            print("✅ 成功保存 \(userPosts.count) 条用户帖子到持久化存储")
         } catch {
-            print("❌ 保存用户帖子失败: \(error.localizedDescription)")
+            // 保存失败，静默处理
         }
     }
     
@@ -191,15 +201,8 @@ class PostViewModel: ObservableObject {
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(aiPosts)
             UserDefaults.standard.set(data, forKey: aiPostsKey)
-            print("✅ 成功保存 \(aiPosts.count) 条AI生成帖子到持久化存储")
-            
-            // 打印各种来源的统计
-            let sourceStats = Dictionary(grouping: aiPosts, by: { $0.source ?? "未知" })
-            for (source, posts) in sourceStats {
-                print("   - \(source): \(posts.count) 条")
-            }
         } catch {
-            print("❌ 保存AI生成帖子失败: \(error.localizedDescription)")
+            // 保存失败，静默处理
         }
     }
     
@@ -235,7 +238,7 @@ class PostViewModel: ObservableObject {
     /**
      * 从持久化存储恢复用户帖子数据（返回数据而不修改posts数组）
      */
-    private func restoreUserPostsData() -> [UserPostModel] {
+    func restoreUserPostsData() -> [UserPostModel] {
         guard let data = UserDefaults.standard.data(forKey: userPostsKey) else {
             print("🔍 没有找到持久化的用户帖子数据")
             return []
@@ -291,7 +294,7 @@ class PostViewModel: ObservableObject {
     /**
      * 从持久化存储恢复AI生成的帖子数据（返回数据而不修改posts数组）
      */
-    private func restoreAIPostsData() -> [UserPostModel] {
+    func restoreAIPostsData() -> [UserPostModel] {
         guard let data = UserDefaults.standard.data(forKey: aiPostsKey) else {
             print("🔍 没有找到持久化的AI生成帖子数据")
             return []
@@ -585,21 +588,33 @@ class PostViewModel: ObservableObject {
                     )
                 }
                 
-                // 2. 添加1-2个随机角色
-                var availableCharacters = ["einstein", "shakespeare", "davinci", "kongzi", "newton", "libai"]
-                
-                // 排除作者（如果有）
-                if let authorId = authorCharacterId {
-                    availableCharacters.removeAll { $0 == authorId.lowercased() }
-                }
-                
-                // 使用角色轮换系统选择角色
+                // 2. 使用角色轮换系统智能选择角色
                 print("🔄 使用角色轮换系统选择回复角色")
                 CharacterRotationSystem.shared.beginNewGenerationSession()
                 
                 let replyCount = Int.random(in: 1...2)
                 let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: replyCount)
-                let selectedCharacters = rotationCharacters.map { $0.id }
+                
+                // 过滤掉作者角色（如果有）
+                let filteredCharacters = rotationCharacters.filter { character in
+                    guard let authorId = authorCharacterId else { return true }
+                    return character.id.lowercased() != authorId.lowercased()
+                }
+                
+                // 如果过滤后角色不足，重新选择更多角色
+                var selectedCharacters = filteredCharacters.map { $0.id }
+                if selectedCharacters.count < replyCount {
+                    let additionalNeeded = replyCount - selectedCharacters.count
+                    let additionalCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: additionalNeeded + 2)
+                        .filter { character in
+                            !selectedCharacters.contains(character.id) && 
+                            character.id.lowercased() != (authorCharacterId?.lowercased() ?? "")
+                        }
+                        .prefix(additionalNeeded)
+                    
+                    selectedCharacters.append(contentsOf: additionalCharacters.map { $0.id })
+                }
+                
                 charactersToRespond.append(contentsOf: selectedCharacters)
                 
                 // 一次性生成所有角色的回复
@@ -1283,24 +1298,35 @@ class PostViewModel: ObservableObject {
         if Bool.random() {
             print("🤖 另一个虚拟角色将加入讨论")
             
-            // 获取所有可用角色ID
-            var availableCharacters = ["einstein", "shakespeare", "davinci", "kongzi", "libai"]
+            // 使用角色轮换系统智能选择角色
+            CharacterRotationSystem.shared.beginNewGenerationSession()
             
-            // 排除已经回复的角色
-            if let originalCharacterID = originalComment.characterID?.lowercased() {
-                availableCharacters.removeAll { $0 == originalCharacterID }
-            }
+            // 获取一个额外的角色
+            let additionalCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: 3)
             
-            // 排除帖子作者(如果作者不是被回复的角色)
-            if let authorCharacterId = getCharacterIdByName(post.username)?.lowercased(),
-               originalComment.characterID?.lowercased() != authorCharacterId {
-                availableCharacters.removeAll { $0 == authorCharacterId }
+            // 过滤掉已经回复的角色和帖子作者
+            let filteredCharacters = additionalCharacters.filter { character in
+                let characterId = character.id.lowercased()
+                
+                // 排除已经回复的角色
+                if let originalCharacterID = originalComment.characterID?.lowercased(),
+                   characterId == originalCharacterID {
+                    return false
+                }
+                
+                // 排除帖子作者
+                if let authorCharacterId = getCharacterIdByName(post.username)?.lowercased(),
+                   characterId == authorCharacterId {
+                    return false
+                }
+                
+                return true
             }
             
             // 如果还有可用角色，随机选择一个
-            if !availableCharacters.isEmpty {
-                let selectedCharacter = availableCharacters.randomElement()!
-                charactersToRespond.append(selectedCharacter)
+            if let selectedCharacter = filteredCharacters.first {
+                charactersToRespond.append(selectedCharacter.id)
+                print("🤖 选择了角色: \(selectedCharacter.id) 加入讨论")
             }
         }
         
@@ -2242,32 +2268,59 @@ class PostViewModel: ObservableObject {
     }
     
     /**
-     * 添加帖子到数据模型（通过整体赋值触发didSet保存）
-     * @param newPosts 要添加的帖子数组
+     * 添加新帖子到列表
+     * 优化版本：减少不必要的通知和刷新
      */
     func addPosts(_ newPosts: [UserPostModel]) {
-        print("🌀 开始添加帖子到数据模型，帖子数量: \(newPosts.count)")
+        guard !newPosts.isEmpty else { return }
         
-        // 过滤掉重复的帖子
-        let uniqueNewPosts = newPosts.filter { newPost in
-            !posts.contains(where: { $0.id == newPost.id })
+        print("📝 PostViewModel: 开始添加 \(newPosts.count) 个新帖子")
+        
+        // 过滤出真正的新帖子（避免重复添加）
+        let uniquePosts = newPosts.filter { newPost in
+            !posts.contains { $0.id == newPost.id }
         }
         
-        guard !uniqueNewPosts.isEmpty else {
-            print("⚠️ 所有帖子都已存在，跳过添加")
+        guard !uniquePosts.isEmpty else {
+            print("📝 PostViewModel: 所有帖子都已存在，跳过添加")
             return
         }
         
-        // 通过整体赋值触发didSet，确保持久化保存
-        let updatedPosts = uniqueNewPosts + posts
-        posts = updatedPosts
+        // 将新帖子添加到列表前面（最新的在最前面）
+        posts.insert(contentsOf: uniquePosts, at: 0)
         
-        print("✅ 成功添加 \(uniqueNewPosts.count) 条新帖子，当前总帖子数: \(posts.count)")
+        // 验证添加是否成功
+        let newCount = posts.count
+        let addedCount = uniquePosts.count
+        print("📝 PostViewModel: 添加后帖子数量 = \(newCount)，实际增加 \(addedCount)")
         
-        // 打印新增帖子的来源统计
-        let sourceStats = Dictionary(grouping: uniqueNewPosts, by: { $0.source ?? "未知" })
-        for (source, posts) in sourceStats {
-            print("   - 新增 \(source): \(posts.count) 条")
+        // 检查第一篇帖子是否就是新添加的第一篇
+        if let firstNewPost = uniquePosts.first, let firstPost = posts.first {
+            let isFirstPostMatch = firstNewPost.id == firstPost.id
+            print("📊 PostViewModel: 第一篇帖子ID匹配检查 = \(isFirstPostMatch ? "✅成功" : "❌失败")")
+        }
+        
+        // 🔧 优化：只发送一次精确的增量更新通知，不触发objectWillChange
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // 发送精确的增量更新通知，包含新帖子的详细信息
+            let userInfo: [String: Any] = [
+                "newPostsCount": uniquePosts.count,
+                "newPostIds": uniquePosts.map { $0.id.uuidString },
+                "newPosts": uniquePosts, // 直接传递新帖子数据
+                "timestamp": Date().timeIntervalSince1970,
+                "updateType": "incremental"
+            ]
+            
+            // 只发送一个通知，避免重复
+            NotificationCenter.default.post(
+                name: NSNotification.Name("PostsIncrementallyUpdated"),
+                object: self,
+                userInfo: userInfo
+            )
+            
+            print("📱 PostViewModel: 已发送增量更新通知，添加了 \(uniquePosts.count) 个新帖子")
         }
     }
     
@@ -2900,5 +2953,176 @@ class PostViewModel: ObservableObject {
             }
         }
         */
+    }
+    
+    /**
+     * 添加单个新帖子（优化版本）
+     * 专门用于用户发布新帖子，避免全量刷新
+     */
+    func addSinglePost(_ newPost: UserPostModel) {
+        // 检查是否已存在
+        guard !posts.contains(where: { $0.id == newPost.id }) else {
+            return
+        }
+        
+        // 将新帖子添加到列表前面
+        posts.insert(newPost, at: 0)
+        
+        // 🎯 关键节点1：用户发布新帖子后立即保存
+        saveAtCriticalPoint(reason: "用户发布新帖子")
+        
+        // 🔧 优化：只发送精确的单帖子更新通知，不触发objectWillChange
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // 发送单帖子更新通知
+            let userInfo: [String: Any] = [
+                "newPostId": newPost.id.uuidString,
+                "newPostContent": newPost.content.prefix(50),
+                "newPost": newPost, // 直接传递新帖子数据
+                "timestamp": Date().timeIntervalSince1970,
+                "updateType": "singlePost"
+            ]
+            
+            NotificationCenter.default.post(
+                name: NSNotification.Name("SinglePostAdded"),
+                object: self,
+                userInfo: userInfo
+            )
+        }
+    }
+    
+    // MARK: - 数据一致性验证和优化保存
+    
+    /**
+     * 验证内存数据与持久化数据的一致性
+     */
+    private func validateDataConsistency() {
+        guard !posts.isEmpty else {
+            isDataConsistent = true
+            return
+        }
+        
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            
+            // 读取持久化的用户帖子
+            let savedUserPosts = self.restoreUserPostsData()
+            let savedAIPosts = self.restoreAIPostsData()
+            
+            // 获取当前内存中的用户帖子和AI帖子
+            let currentUserPosts = self.posts.filter { $0.source == "user" }
+            let currentAIPosts = self.posts.filter { post in
+                guard let source = post.source else { return false }
+                return source != "user" && source != "sample"
+            }
+            
+            // 检查数据一致性
+            let userPostsConsistent = self.arePostsEqual(currentUserPosts, savedUserPosts)
+            let aiPostsConsistent = self.arePostsEqual(currentAIPosts, savedAIPosts)
+            
+            let consistent = userPostsConsistent && aiPostsConsistent
+            
+            DispatchQueue.main.async {
+                self.isDataConsistent = consistent
+                
+                if !consistent {
+                    print("⚠️ 数据一致性检查失败:")
+                    print("   - 用户帖子一致性: \(userPostsConsistent)")
+                    print("   - AI帖子一致性: \(aiPostsConsistent)")
+                    print("   - 内存用户帖子数: \(currentUserPosts.count), 持久化: \(savedUserPosts.count)")
+                    print("   - 内存AI帖子数: \(currentAIPosts.count), 持久化: \(savedAIPosts.count)")
+                    
+                    // 触发同步保存
+                    self.scheduleSaveOperation(reason: "数据不一致")
+                }
+            }
+        }
+    }
+    
+    /**
+     * 比较两个帖子数组是否相等
+     */
+    private func arePostsEqual(_ posts1: [UserPostModel], _ posts2: [UserPostModel]) -> Bool {
+        guard posts1.count == posts2.count else { return false }
+        
+        let ids1 = Set(posts1.map { $0.id })
+        let ids2 = Set(posts2.map { $0.id })
+        
+        return ids1 == ids2
+    }
+    
+    /**
+     * 调度保存操作（防抖处理）
+     */
+    private func scheduleSaveOperation(reason: String) {
+        // 取消之前的保存操作
+        pendingSaveOperation?.cancel()
+        
+        // 创建新的保存操作
+        pendingSaveOperation = DispatchWorkItem { [weak self] in
+            self?.performSaveOperation(reason: reason)
+        }
+        
+        // 延迟执行保存操作（防抖：500ms）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: pendingSaveOperation!)
+    }
+    
+    /**
+     * 执行实际的保存操作
+     */
+    private func performSaveOperation(reason: String) {
+        guard !posts.isEmpty else {
+            return
+        }
+        
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            
+            // 分别保存用户帖子和AI帖子
+            self.saveUserPosts()
+            self.saveAIPosts()
+            
+            // 保存简化的存根数据
+            self.savePersistentPostsStub()
+            
+            DispatchQueue.main.async {
+                self.lastSaveTimestamp = Date()
+                self.isDataConsistent = true
+            }
+        }
+    }
+    
+    /**
+     * 在关键节点触发保存
+     */
+    func saveAtCriticalPoint(reason: String) {
+        scheduleSaveOperation(reason: reason)
+    }
+    
+    /**
+     * 强制立即保存（用于应用退出等场景）
+     */
+    func forceSave(reason: String = "强制保存") {
+        print("🚨 强制保存: \(reason)")
+        
+        // 取消延迟保存
+        pendingSaveOperation?.cancel()
+        
+        // 立即执行保存
+        performSaveOperation(reason: reason)
+    }
+    
+    /**
+     * 获取数据一致性状态信息
+     */
+    func getDataConsistencyInfo() -> String {
+        let timeSinceLastSave = Date().timeIntervalSince(lastSaveTimestamp)
+        return """
+        数据一致性状态: \(isDataConsistent ? "✅" : "❌")
+        距离上次保存: \(String(format: "%.1f", timeSinceLastSave))秒
+        内存帖子数: \(posts.count)
+        待保存操作: \(pendingSaveOperation != nil ? "是" : "否")
+        """
     }
 }

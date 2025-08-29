@@ -13,8 +13,8 @@ struct ContentPreferencesView: View {
     let contentTypeManager = ContentTypeManager.shared
     let weightManager = ContentTypeWeightManager.shared
     
-    // 重新加载标识符
-    @State private var refreshID = UUID()
+    // 移除强制刷新的refreshID，使用SwiftUI的自然更新机制
+    // @State private var refreshID = UUID() // 已移除
     
     // 内容类型列表
     @State private var contentTypes: [ContentGeneratorService.ContentType] = []
@@ -61,7 +61,7 @@ struct ContentPreferencesView: View {
         .onAppear {
             loadContentTypes()
         }
-        .id(refreshID) // 用于强制刷新视图
+        // .id(refreshID) // 已移除，使用SwiftUI的自然更新机制
         .alert(isPresented: $showingResetAllConfirmation) {
             Alert(
                 title: Text("恢复所有内容类型"),
@@ -175,7 +175,7 @@ struct ContentPreferencesView: View {
         let typeName = type.rawValue
         successMessage = "已恢复\"\(typeName)\"的权重"
         showSuccessToast = true
-        refreshID = UUID() // 强制刷新视图
+        // refreshID = UUID() // 已移除，使用SwiftUI的自然更新机制
         
         // 3秒后隐藏提示
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
@@ -188,7 +188,7 @@ struct ContentPreferencesView: View {
         weightManager.resetWeight()
         successMessage = "已恢复所有内容类型的权重"
         showSuccessToast = true
-        refreshID = UUID() // 强制刷新视图
+        // refreshID = UUID() // 已移除，使用SwiftUI的自然更新机制
         
         // 3秒后隐藏提示
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {

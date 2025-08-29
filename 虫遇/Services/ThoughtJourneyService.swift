@@ -518,7 +518,7 @@ class ThoughtJourneyService: ObservableObject {
         
         var contextStrings: [String] = []
         
-        for (sessionId, chats) in sessionGroups {
+        for (_, chats) in sessionGroups {
             if let firstChat = chats.first {
                 var sessionInfo = ""
                 
@@ -542,7 +542,6 @@ class ThoughtJourneyService: ObservableObject {
                     }
                     
                     // 构建完整的对话上下文
-                    let _ = firstChat.sessionId ?? "unknown"
                     let fullConversation = buildFullConversationContext(
                         for: firstChat.sessionId ?? "unknown", 
                         characterName: firstChat.characterName,

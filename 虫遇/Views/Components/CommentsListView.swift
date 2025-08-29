@@ -51,8 +51,8 @@ struct CommentsListView: View {
     // 使用AppStorage持久化存储展开状态，确保在视图刷新时保持状态
     @State private var expandedComments = Set<UUID>() // 跟踪已展开的评论
     
-    // 添加一个状态变量用于控制视图刷新
-    @State private var refreshID = UUID()
+    // 移除强制刷新的refreshID，使用SwiftUI的自然更新机制
+    // @State private var refreshID = UUID() // 已移除
     
     // 添加一个状态变量，用于跟踪是否正在刷新
     @State private var isRefreshing = false
@@ -196,7 +196,7 @@ struct CommentsListView: View {
                 ) { _ in
                     // 只更新refreshID，不做任何滚动操作
                     DispatchQueue.main.async {
-                        self.refreshID = UUID()
+                        // self.refreshID = UUID() // 已移除
                     }
                 }
             }
@@ -218,7 +218,7 @@ struct CommentsListView: View {
                 self.initializeWaveAnimationState()
                 
                 // 强制刷新视图
-                self.refreshID = UUID()
+                // self.refreshID = UUID() // 已移除
             }
             
             // 初始刷新一次，确保视图正确显示
@@ -242,7 +242,7 @@ struct CommentsListView: View {
             // 监听评论点赞更新通知，刷新评论列表显示
             DispatchQueue.main.async {
                 // 强制刷新视图，确保点赞数更新
-                self.refreshID = UUID()
+                // self.refreshID = UUID() // 已移除
                 print("✅ CommentsListView: 收到CommentLikeUpdated通知，评论点赞数已刷新")
             }
         }
@@ -508,9 +508,9 @@ struct CommentsListView: View {
             self.saveExpandedCommentsState()
             
             // 更新刷新ID，触发视图更新
-            withAnimation(.none) {
-                self.refreshID = UUID()
-            }
+            // withAnimation(.none) { // 已移除
+            //     self.refreshID = UUID()
+            // }
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -536,7 +536,7 @@ struct CommentsListView: View {
             self.initializeWaveAnimationState()
             
             // 更新refreshID，触发视图内部更新
-            self.refreshID = UUID()
+            // self.refreshID = UUID() // 已移除
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -636,9 +636,9 @@ struct CommentsListView: View {
             }
             
             // 更新刷新ID，触发视图更新
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.refreshID = UUID()
-            }
+            // withAnimation(.easeInOut(duration: 0.3)) { // 已移除
+            //     self.refreshID = UUID()
+            // }
             
             // 使用短延迟确保视图已更新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -681,7 +681,7 @@ struct CommentsListView: View {
                 // 强制刷新视图
                 DispatchQueue.main.async {
                     // 更新刷新ID，触发视图更新
-                    self.refreshID = UUID()
+                    // self.refreshID = UUID() // 已移除
                     
                     // 发送额外通知确保评论列表刷新
                     NotificationCenter.default.post(
@@ -1026,8 +1026,8 @@ struct CommentThreadView: View {
     
     @State private var likedComments = Set<UUID>()
     
-    // 添加一个状态变量用于控制视图刷新
-    @State private var refreshID = UUID()
+    // 移除强制刷新的refreshID，使用SwiftUI的自然更新机制
+    // @State private var refreshID = UUID() // 已移除
     
     // 添加一个状态变量，用于跟踪是否正在刷新
     @State private var isRefreshing = false
@@ -1137,7 +1137,7 @@ struct CommentThreadView: View {
         
         // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
         DispatchQueue.main.async {
-            self.refreshID = UUID()
+            // self.refreshID = UUID() // 已移除
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -1239,9 +1239,9 @@ struct CommentThreadView: View {
         // 使用DispatchQueue.main.async避免在视图更新过程中修改状态
         DispatchQueue.main.async {
             // 使用一个特殊的ID，确保视图更新但不会导致滚动位置变化
-            withAnimation(.none) {
-                self.refreshID = UUID()
-            }
+            // withAnimation(.none) { // 已移除
+            //     self.refreshID = UUID()
+            // }
             
             // 设置短暂延迟后重置刷新状态，避免频繁刷新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {

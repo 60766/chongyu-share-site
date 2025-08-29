@@ -214,7 +214,8 @@ class CharacterRotationSystem {
         var result: [CharacterSystem.CharacterIdentity] = []
         
         // 如果是一个新的生成会话，清除当前选择
-        if currentSelectionIds.count >= count * 2 {
+        // 降低阈值，使会话更频繁地重置，增加角色多样性
+        if currentSelectionIds.count >= count + 2 {
             beginNewGenerationSession()
         }
         
@@ -226,8 +227,8 @@ class CharacterRotationSystem {
             }
             
             // 排除最近使用的前N个角色（实现冷却期）
-            // 冷却角色数量根据总角色数量动态调整
-            let coolingCount = min(recentlyUsedCharacterIds.count, allCharacters.count / 4)
+            // 冷却角色数量根据总角色数量动态调整，但不要过于严格
+            let coolingCount = min(recentlyUsedCharacterIds.count, max(5, allCharacters.count / 8))
             let coolingCharacterIds = coolingCount > 0 ? recentlyUsedCharacterIds.prefix(coolingCount) : []
             
             return !coolingCharacterIds.contains(character.id)
@@ -297,7 +298,15 @@ class CharacterRotationSystem {
             markCharacterUsed(characterId: character.id, type: character.type)
         }
         
-        print("🔄 角色轮换系统选择了\(result.count)个角色，已排除最近使用的\(min(recentlyUsedCharacterIds.count, allCharacters.count / 4))个角色")
+        // 添加详细的调试信息
+        let coolingCount = min(recentlyUsedCharacterIds.count, max(5, allCharacters.count / 8))
+        let selectedIds = result.map { $0.id }
+        let uniqueTypes = Set(result.map { $0.type })
+        
+        print("🔄 角色轮换系统选择了\(result.count)个角色：\(selectedIds.joined(separator: ", "))")
+        print("📊 角色类型分布：\(uniqueTypes.map { "\($0)" }.joined(separator: ", "))")
+        print("❄️ 冷却期角色数量：\(coolingCount)/\(recentlyUsedCharacterIds.count)")
+        print("📈 总角色库大小：\(allCharacters.count)，当前可用：\(allCharacters.count - coolingCount)")
         
         return result
     }
@@ -312,7 +321,8 @@ class CharacterRotationSystem {
         let allCharacters = CharacterSystem.shared.getAllCharacters()
         
         // 如果是一个新的生成会话，清除当前选择
-        if currentSelectionIds.count >= count * 2 {
+        // 降低阈值，使会话更频繁地重置，增加角色多样性
+        if currentSelectionIds.count >= count + 2 {
             beginNewGenerationSession()
         }
         
@@ -535,5 +545,69 @@ class CharacterRotationSystem {
      */
     func getAllDislikedCharacters() -> [String] {
         return Array(userDislikes)
+    }
+    
+    // MARK: - 测试和调试方法
+    
+    /**
+     * 获取最近使用的角色ID列表（用于测试）
+     */
+    func getRecentlyUsedCharacters() -> [String] {
+        return recentlyUsedCharacterIds
+    }
+    
+    /**
+     * 获取当前选择中的角色ID集合（用于测试）
+     */
+    func getCurrentSelectionIds() -> Set<String> {
+        return currentSelectionIds
+    }
+    
+    /**
+     * 获取当前周期中已使用的角色ID集合（用于测试）
+     */
+    func getCurrentCycleUsedIds() -> Set<String> {
+        return currentCycleUsedIds
+    }
+    
+    /**
+     * 获取当前周期编号（用于测试）
+     */
+    func getCurrentCycleNumber() -> Int {
+        return currentCycleNumber
+    }
+    
+    /**
+     * 获取角色使用计数（用于测试）
+     */
+    func getUsageCount() -> [String: Int] {
+        return usageCount
+    }
+    
+    /**
+     * 获取类型使用计数（用于测试）
+     */
+    func getTypeUsageCount() -> [CharacterSystem.CharacterType: Int] {
+        return typeUsageCount
+    }
+    
+    /**
+     * 获取系统状态摘要（用于测试和调试）
+     */
+    func getSystemStatus() -> String {
+        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        let coolingCount = min(recentlyUsedCharacterIds.count, max(5, allCharacters.count / 8))
+        
+        return """
+        系统状态摘要：
+        - 总角色数量：\(allCharacters.count)
+        - 当前模式：\(currentMode)
+        - 冷却期角色数量：\(coolingCount)/\(recentlyUsedCharacterIds.count)
+        - 当前选择中角色数量：\(currentSelectionIds.count)
+        - 当前周期编号：\(currentCycleNumber)
+        - 当前周期已使用角色数量：\(currentCycleUsedIds.count)
+        - 用户关注角色数量：\(userFavorites.count)
+        - 用户不喜欢角色数量：\(userDislikes.count)
+        """
     }
 }

@@ -4,6 +4,7 @@ import SwiftUI
  * 通用头像组件
  * 支持多种头像来源：URL、系统图标、本地图片
  * 自动识别角色ID并使用CharacterAvatarService获取头像
+ * 🔧 优化：添加缓存感知，避免重复渲染
  */
 struct Avatar: View {
     // 头像URL、系统图标名称或角色ID
@@ -22,29 +23,52 @@ struct Avatar: View {
     // 自定义头像
     @State private var customImage: UIImage? = nil
     
+    // 🔧 优化：缓存计算结果，避免重复计算
+    @State private var cachedCleanCharacterId: String = ""
+    @State private var cachedIsKnownCharacter: Bool = false
+    @State private var hasInitialized: Bool = false
+    
     // 头像服务
     private let avatarService = CharacterAvatarService.shared
     
     // 从url中提取干净的角色ID (例如 "HistoricalFigures/hermione" -> "hermione")
     private var cleanCharacterId: String {
-        if let lastComponent = url.split(separator: "/").last {
-            let cleaned = String(lastComponent)
-            print("🔍 Avatar - cleanCharacterId: 原始URL: \(url), 提取ID: \(cleaned)")
-            return cleaned
+        // 🔧 优化：使用缓存，避免重复计算
+        if cachedCleanCharacterId.isEmpty {
+            let result: String
+            if let lastComponent = url.split(separator: "/").last {
+                result = String(lastComponent)
+            } else {
+                result = url
+            }
+            
+            // 异步更新缓存，避免在视图更新时修改状态
+            DispatchQueue.main.async {
+                if self.cachedCleanCharacterId.isEmpty {
+                    self.cachedCleanCharacterId = result
+                }
+            }
+            return result
         }
-        print("🔍 Avatar - cleanCharacterId: 原始URL: \(url), 提取ID: \(url) (无路径)")
-        return url
+        return cachedCleanCharacterId
     }
     
     // 判断是否为已知角色
     private var isKnownCharacter: Bool {
-        guard !cleanCharacterId.isEmpty else { 
-            print("🔍 Avatar - isKnownCharacter: cleanCharacterId为空，返回false")
-            return false 
+        // 🔧 优化：使用缓存，避免重复计算
+        if !hasInitialized {
+            // 使用临时变量避免在计算属性中修改状态
+            let tempIsKnown = avatarService.isKnownCharacter(id: cleanCharacterId)
+            // 异步更新缓存状态，避免在计算属性中修改状态
+            DispatchQueue.main.async {
+                if !self.hasInitialized {
+                    self.cachedIsKnownCharacter = tempIsKnown
+                    self.hasInitialized = true
+                }
+            }
+            return tempIsKnown
         }
-        let result = avatarService.isKnownCharacter(id: cleanCharacterId)
-        print("🔍 Avatar - 检查是否为已知角色: \(cleanCharacterId), 结果: \(result)")
-        return result
+        return cachedIsKnownCharacter
     }
     
     // 判断是否为自定义角色
@@ -70,9 +94,6 @@ struct Avatar: View {
             } else if isKnownCharacter {
                 // 已知角色交由服务处理
                 avatarService.getAvatarView(for: cleanCharacterId, name: name, category: category, size: size)
-                    .onAppear {
-                        print("✅ Avatar - 已知角色 \(cleanCharacterId)，交由CharacterAvatarService处理")
-                    }
                     .contentShape(Circle()) // 确保头像可点击
                     .allowsHitTesting(true) // 明确允许点击事件
             } else if url.starts(with: "http") {
@@ -93,7 +114,14 @@ struct Avatar: View {
             }
         }
         .onAppear {
-            print("🔄 Avatar - 组件加载: URL=\(url), name=\(name), isKnownCharacter=\(isKnownCharacter)")
+            // 🔧 优化：只在首次加载时输出日志，避免重复
+            if !hasInitialized {
+                print("🔄 Avatar - 组件加载: URL=\(url), name=\(name)")
+                // 异步更新状态，避免在视图更新期间修改状态
+                DispatchQueue.main.async {
+                    self.hasInitialized = true
+                }
+            }
             
             // 尝试加载自定义头像
             if isCustomCharacter || url == "default_avatar" {
@@ -116,15 +144,17 @@ struct Avatar: View {
                         Circle()
                             .stroke(borderColor, lineWidth: borderWidth)
                     )
-                    .onAppear {
-                        print("✅ Avatar - 直接加载图片成功: \(url), 尺寸: \(image.size)")
-                    }
+                    // 🔧 优化：移除重复的日志输出
+                    // .onAppear {
+                    //     print("✅ Avatar - 直接加载图片成功: \(url), 尺寸: \(image.size)")
+                    // }
             } else {
                 // 如果直接加载失败，则使用占位符
                 placeholderImage
-                    .onAppear {
-                        print("⚠️ Avatar - 直接加载图片失败 \(url)，使用占位符")
-                    }
+                // 🔧 优化：移除重复的日志输出
+                // .onAppear {
+                //     print("⚠️ Avatar - 直接加载图片失败 \(url)，使用占位符")
+                // }
             }
         }
     }
@@ -136,26 +166,30 @@ struct Avatar: View {
             case .empty:
                 ProgressView()
                     .frame(width: size, height: size)
-                    .onAppear {
-                        print("🔄 Avatar - 远程图片加载中: \(url)")
-                    }
+                    // 🔧 优化：移除重复的日志输出
+                    // .onAppear {
+                    //     print("🔄 Avatar - 远程图片加载中: \(url)")
+                    // }
             case .success(let image):
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .onAppear {
-                        print("✅ Avatar - 远程图片加载成功: \(url)")
-                    }
+                    // 🔧 优化：移除重复的日志输出
+                    // .onAppear {
+                    //     print("✅ Avatar - 远程图片加载成功: \(url)")
+                    // }
             case .failure:
                 placeholderImage
-                    .onAppear {
-                        print("❌ Avatar - 远程图片加载失败: \(url)")
-                    }
+                // 🔧 优化：移除重复的日志输出
+                // .onAppear {
+                //     print("❌ Avatar - 远程图片加载失败: \(url)")
+                // }
             @unknown default:
                 placeholderImage
-                    .onAppear {
-                        print("⚠️ Avatar - 远程图片未知状态: \(url)")
-                    }
+                // 🔧 优化：移除重复的日志输出
+                // .onAppear {
+                //     print("⚠️ Avatar - 远程图片未知状态: \(url)")
+                // }
             }
         }
         .frame(width: size, height: size)
@@ -179,15 +213,17 @@ struct Avatar: View {
                     Circle()
                         .stroke(borderColor, lineWidth: borderWidth)
                 )
-                .onAppear {
-                    print("✅ Avatar - 本地图片加载成功: \(url)")
-                }
+                // 🔧 优化：移除重复的日志输出
+                // .onAppear {
+                //     print("✅ Avatar - 本地图片加载成功: \(url)")
+                // }
             } else {
                 // 图片加载失败，显示占位符
                 placeholderImage
-                    .onAppear {
-                        print("❌ Avatar - 本地图片加载失败: \(url)")
-                    }
+                // 🔧 优化：移除重复的日志输出
+                // .onAppear {
+                //     print("❌ Avatar - 本地图片加载失败: \(url)")
+                // }
             }
         }
     }
@@ -207,9 +243,6 @@ struct Avatar: View {
             Circle()
                 .stroke(borderColor, lineWidth: borderWidth)
         )
-        .onAppear {
-            print("ℹ️ Avatar - 使用系统图标: person.circle.fill")
-        }
     }
     
     // 占位图像
@@ -230,9 +263,6 @@ struct Avatar: View {
             Circle()
                 .stroke(color.opacity(0.7), lineWidth: 1.5)
                 .frame(width: size, height: size)
-        }
-        .onAppear {
-            print("⚠️ Avatar - 使用占位字母头像: \(initialLetter) (来自: \(name.isEmpty ? url : name)), 颜色: \(color)")
         }
     }
     

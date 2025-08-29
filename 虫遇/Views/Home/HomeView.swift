@@ -987,9 +987,6 @@ struct HomeView: View {
     // 通知管理器
     @StateObject private var notificationManager: HomeViewNotificationManager
     
-    // 添加强制刷新状态
-    @State private var forceRefreshID = UUID()
-    
     // 添加存储subscribers的属性
     @State private var cancellables = Set<AnyCancellable>()
     
@@ -1114,7 +1111,6 @@ struct HomeView: View {
                         
                         // 内容区域
                         contentSection
-                            .id(forceRefreshID) // 添加动态ID实现强制刷新
                     }
                 }
                 .scrollDismissesKeyboard(.immediately)
@@ -1155,8 +1151,8 @@ struct HomeView: View {
                                 if !Task.isCancelled {
                                     // 在主线程更新UI状态
                                     await MainActor.run {
-                                        // 强制刷新视图
-                                        forceRefreshID = UUID()
+                                        // 不再强制刷新视图，让SwiftUI自然处理数据变化
+                                        // forceRefreshID = UUID()
                                         
                                         // 成功生成时的触觉反馈
                                         HapticFeedback.success()
@@ -1264,11 +1260,11 @@ struct HomeView: View {
                 
                 // 在视图重新出现时添加延迟检查，防止切换回来显示空白
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    // 二次确认数据存在并触发UI刷新
+                    // 二次确认数据存在
                     if postViewModel.posts.isEmpty {
                         postViewModel.posts = ModelData.samplePosts
-                        // 生成新的刷新ID触发界面更新
-                        forceRefreshID = UUID()
+                        // 不再强制刷新，让SwiftUI自然处理数据变化
+                        // forceRefreshID = UUID()
                     }
                 }
                 
@@ -1282,16 +1278,15 @@ struct HomeView: View {
                 // 注册为publisher的订阅者，确保数据变化时能收到通知
                 postViewModel.objectWillChange
                     .sink { _ in
-                        // 强制刷新视图
-                        forceRefreshID = UUID()
+                        // 不再强制刷新视图，让SwiftUI自然处理数据变化
+                        // forceRefreshID = UUID()
                     }
                     .store(in: &cancellables)
                 
-                // 添加定时刷新机制，确保UI显示最新数据
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    // 强制发出objectWillChange信号，确保视图刷新
-                    forceRefreshID = UUID()
-                }
+                // 移除定时刷新机制，让SwiftUI自然管理视图更新
+                // DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                //     forceRefreshID = UUID()
+                // }
             }
             .onDisappear {
                 // 在视图消失时清理资源
@@ -1508,9 +1503,10 @@ struct HomeView: View {
                 // 帖子列表
                 ForEach(Array(postViewModel.posts.enumerated()), id: \.element.id) { index, post in
                     postCardView(for: post, at: index)
-                        .id("\(post.id)_\(forceRefreshID)") // 在强制刷新时更新视图ID
+                        // 移除强制刷新ID，让SwiftUI自然管理视图更新
+                        // .id("\(post.id)_\(forceRefreshID)")
                 }
-                .id("\(postViewModel.posts.count)_\(forceRefreshID)") // 当帖子数量变化或forceRefreshID变化时，整个ForEach会重新创建
+                .id("\(postViewModel.posts.count)") // 只依赖帖子数量变化
                 
                 // 如果列表为空，显示加载提示
                 if postViewModel.posts.isEmpty {
@@ -1543,16 +1539,16 @@ struct HomeView: View {
             loadSampleData()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PostsUpdated"))) { _ in
-            // 强制刷新视图
-            self.forceRefreshID = UUID()
+            // 不再强制刷新整个视图，让SwiftUI自然处理数据变化
+            print("🏠 HomeView: 收到PostsUpdated通知，但不再强制刷新")
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NewPostsGenerated"))) { _ in
-            // 强制刷新视图
-                self.forceRefreshID = UUID()
+            // 不再强制刷新整个视图，让SwiftUI自然处理数据变化
+            print("🏠 HomeView: 收到NewPostsGenerated通知，但不再强制刷新")
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NewPostGenerated"))) { _ in
-            // 单篇帖子生成时刷新视图
-            self.forceRefreshID = UUID()
+            // 不再强制刷新整个视图，让SwiftUI自然处理数据变化
+            print("🏠 HomeView: 收到NewPostGenerated通知，但不再强制刷新")
             
             // 如果列表滚动到顶部，确保新帖子可见
             if self.scrollOffset < 50 {
@@ -1560,17 +1556,40 @@ struct HomeView: View {
                 HapticFeedback.light()
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NewPostsGenerated"))) { notification in
-            // 批量帖子生成时刷新视图
-            self.forceRefreshID = UUID()
-            
-            // 如果列表滚动到顶部，确保新帖子可见
+        // 处理新的增量更新通知
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PostsIncrementallyUpdated"))) { notification in
+            if let count = notification.userInfo?["newPostsCount"] as? Int,
+               let postIds = notification.userInfo?["newPostIds"] as? [String],
+               let _ = notification.userInfo?["newPosts"] as? [UserPostModel] {
+                print("🏠 postsListView: 收到增量更新通知，\(count)个新帖子")
+                print("🏠 postsListView: 新帖子IDs: \(postIds)")
+                
+                // 🔧 优化：只处理新帖子，不触发全量刷新
+                // 新帖子已经通过@Published自动添加到posts数组中
+                // 这里只需要处理UI相关的逻辑，比如滚动到顶部提示
             if self.scrollOffset < 50 {
                 // 轻微震动提示新帖子出现
-                HapticFeedback.medium()
+                    HapticFeedback.light()
+                }
             }
         }
-        
+        // 处理单帖子添加通知
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SinglePostAdded"))) { notification in
+            if let postId = notification.userInfo?["newPostId"] as? String,
+               let content = notification.userInfo?["newPostContent"] as? String,
+               let _ = notification.userInfo?["newPost"] as? UserPostModel {
+                print("🏠 postsListView: 收到单帖子添加通知")
+                print("🏠 postsListView: 新帖子ID: \(postId), 内容: \(content)")
+                
+                // 🔧 优化：只处理新帖子，不触发全量刷新
+                // 新帖子已经通过@Published自动添加到posts数组中
+                // 这里只需要处理UI相关的逻辑
+                if self.scrollOffset < 50 {
+                    // 轻微震动提示新帖子出现
+                    HapticFeedback.light()
+            }
+        }
+        }
     }
     
     // 提取单个帖子卡片为独立方法
@@ -2353,8 +2372,8 @@ struct HomeView: View {
                                     object: nil
                                 )
                                 
-                                // 强制刷新视图
-                                self.forceRefreshID = UUID()
+                                // 不再强制刷新视图，让SwiftUI自然处理数据变化
+                                // self.forceRefreshID = UUID()
                                 
                                 print("🎉 UI更新完成，新增\(posts.count)篇\(contentType.rawValue)类型帖子")
                                 
@@ -2540,8 +2559,8 @@ struct HomeView: View {
             selectedPost = updatedPost
         }
         
-        // 强制刷新UI
-        forceRefreshID = UUID()
+        // 不再强制刷新UI，让SwiftUI自然处理数据变化
+        // forceRefreshID = UUID()
         
         // 显示成功提示
         ToastManager.shared.showToast(message: "帖子已更新")
@@ -2560,8 +2579,8 @@ struct HomeView: View {
             selectedPost = nil
         }
         
-        // 强制刷新UI
-        forceRefreshID = UUID()
+        // 不再强制刷新UI，让SwiftUI自然处理数据变化
+        // forceRefreshID = UUID()
         
         // 显示成功提示
         ToastManager.shared.showToast(message: "帖子已删除")
@@ -2600,8 +2619,8 @@ struct HomeView: View {
         // 合并两组帖子
         postViewModel.posts = pinnedItems + unpinnedItems
         
-        // 强制刷新UI
-        forceRefreshID = UUID()
+        // 不再强制刷新UI，让SwiftUI自然处理数据变化
+        // forceRefreshID = UUID()
     }
     
     // 分享内容

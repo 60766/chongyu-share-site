@@ -969,16 +969,6 @@ class AchievementEvaluator: ObservableObject {
         case .unknown:
             return .historical // 未知类型默认归为历史人物
         }
-        
-        // 处理可能的其他类型（如果CharacterType枚举中没有但JSON中存在）
-        // 通过字符串比较来处理
-        let typeString = String(describing: character.type).lowercased()
-        if typeString.contains("tv") {
-            return .tvCharacter // 电视剧角色
-        } else if typeString.contains("vtuber") {
-            return .vtuber // 虚拟主播
-        }
-        return .historical // 兜底处理
     }
     
     /// 映射历史人物的子类型

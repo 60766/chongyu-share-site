@@ -2568,7 +2568,7 @@ struct FullscreenPostDetailView: View {
                     )
                 }
             )
-            .id("comments-list-\(viewModel.commentsRefreshTrigger)")
+            // .id("comments-list-\(viewModel.commentsRefreshTrigger)") // 已移除，使用SwiftUI的自然更新机制
             .padding(.top, 4)
             
             // 底部提示文字
@@ -3194,7 +3194,8 @@ struct FullscreenPostDetailView: View {
 class FullscreenPostDetailViewModel: ObservableObject {
     @Published var post: UserPostModel
     @Published var commentManager: CommentManager
-    @Published var commentsRefreshTrigger = UUID()
+    // 移除强制刷新的commentsRefreshTrigger，使用SwiftUI的自然更新机制
+    // @Published var commentsRefreshTrigger = UUID() // 已移除
     
     // 添加缓存属性来支持预加载
     private var nextPostCache: UserPostModel?
@@ -3208,7 +3209,6 @@ class FullscreenPostDetailViewModel: ObservableObject {
     // 刷新评论列表
     func refreshComments() {
         DispatchQueue.main.async {
-            self.commentsRefreshTrigger = UUID()
             self.objectWillChange.send()
         }
     }

@@ -121,7 +121,8 @@ struct HistoricalFigureSelectionView: View {
                     }
                 }
             }
-            .id(UUID()) // 强制在数据变化时刷新视图
+            // 移除不必要的强制刷新，让SwiftUI自然管理视图更新
+            // .id(UUID()) // 强制在数据变化时刷新视图
         }
     }
     

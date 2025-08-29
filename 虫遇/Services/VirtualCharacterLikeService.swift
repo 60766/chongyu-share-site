@@ -237,6 +237,9 @@ class VirtualCharacterLikeService {
                 // 更新帖子
                 viewModel.posts[postIndex] = updatedPost
                 
+                // 🎯 关键节点4：虚拟角色点赞后保存
+                viewModel.saveAtCriticalPoint(reason: "虚拟角色点赞")
+                
                 // 发送UI更新通知
                 NotificationCenter.default.post(
                     name: NSNotification.Name("PostLikeUpdated"),

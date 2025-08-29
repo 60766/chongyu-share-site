@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import Combine
 
 // 添加一个新的UIKit桥接组件来处理点击事件
 struct TouchableView: UIViewRepresentable {
@@ -86,6 +87,15 @@ struct ProfileView: View {
     // 添加NotificationService依赖来获取点赞数据
     @ObservedObject private var notificationService = NotificationService.shared
     
+    // 添加缓存服务依赖
+    @ObservedObject private var cacheService = DataCacheService.shared
+    
+    // 添加取消令牌集合
+    @State private var cancellables = Set<AnyCancellable>()
+    
+    // 缓存键前缀
+    private let cacheKeyPrefix = "profile."
+    
     // 模拟用户成就数据
     private let userAchievements = [
         Achievement(id: "1", name: "时空旅行者", icon: "clock.arrow.2.circlepath", description: "完成10次历史对话"),
@@ -102,6 +112,18 @@ struct ProfileView: View {
         let _ = print("ProfileView正在加载...")
         
         return mainContent
+            .onAppear {
+                print("个人空间页面加载完成")
+                // 加载缓存的统计数据或计算新的统计数据
+                loadOrCalculateStats()
+                // 设置数据更新监听
+                setupDataUpdateListeners()
+            }
+            .onDisappear {
+                // 清理订阅
+                cancellables.forEach { $0.cancel() }
+                cancellables.removeAll()
+            }
     }
     
     // 将主要内容分离为单独的视图以避免编译器超时
@@ -958,14 +980,14 @@ struct ProfileView: View {
             )
             
             TimeStatItem(
-                value: "\(resonanceScore)",
+                value: "\(resonanceCount)次",
                 label: "获得共鸣", 
                 color: Color.pink.opacity(0.7),
                 backgroundColor: Color.pink.opacity(0.08)
             )
             
             TimeStatItem(
-                value: "\(deepConnectionCount)位",
+                value: "\(cognitionCount)位",
                 label: "互动好友",
                 color: Color.green.opacity(0.7),
                 backgroundColor: Color.green.opacity(0.08)
@@ -977,21 +999,21 @@ struct ProfileView: View {
     private var timeTravelStatsSecondRow: some View {
         HStack(spacing: 12) {
             TimeStatItem(
-                value: "\(explorationDays)天",
+                value: "\(travelCount)天",
                 label: "探索天数",
                 color: Color.orange.opacity(0.7),
                 backgroundColor: Color.orange.opacity(0.08)
             )
             
             TimeStatItem(
-                value: "\(collectedHighlights)份",
+                value: "\(resonanceCount)份",
                 label: "点赞收藏",
                 color: Color.purple.opacity(0.7),
                 backgroundColor: Color.purple.opacity(0.08)
                             )
             
             TimeStatItem(
-                value: "\(dimensionJumps)篇",
+                value: "\(deepDialogueCount)篇",
                 label: "我的动态",
                 color: Color.cyan.opacity(0.7),
                 backgroundColor: Color.cyan.opacity(0.08)
@@ -1237,6 +1259,8 @@ struct ProfileView: View {
                         }
                     }
     
+    // MARK: - 计算属性 - 优化版本
+    
     // 计算关注角色数
     private var followingCount: Int {
         // 这里应该从实际的关注数据中计算，暂时返回模拟数据
@@ -1245,38 +1269,68 @@ struct ProfileView: View {
     
     // 新增：次元对话数
     private var dialogueCount: Int {
-        // 从历史数据中计算总对话数
+        // 优先从缓存获取
+        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
+           let count = stats["dialogueCount"] {
+            return count
+        }
+        // 缓存未命中，计算值
         return calculateTotalDialogues()
     }
     
-    // 新增：共鸣分数
-    private var resonanceScore: Int {
-        // 从历史数据中计算总共鸣数
-        return calculateTotalResonance()
+    // 新增：创作灵感数
+    private var inspirationCount: Int {
+        // 优先从缓存获取
+        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
+           let count = stats["inspirationCount"] {
+            return count
+        }
+        // 缓存未命中，计算值
+        return calculateTotalInspirations()
     }
     
-    // 新增：互动好友数量
-    private var deepConnectionCount: Int {
-        // 从历史数据中计算总互动角色数
-        return calculateTotalActiveCharacters()
+    // 新增：穿越次数
+    private var travelCount: Int {
+        // 优先从缓存获取
+        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
+           let count = stats["travelCount"] {
+            return count
+        }
+        // 缓存未命中，计算值
+        return calculateTotalTravels()
     }
     
-    // 新增：探索天数
-    private var explorationDays: Int {
-        // 从历史数据中计算探索天数
-        return calculateExplorationDays()
+    // 新增：认知升华次数
+    private var cognitionCount: Int {
+        // 优先从缓存获取
+        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
+           let count = stats["cognitionCount"] {
+            return count
+        }
+        // 缓存未命中，计算值
+        return calculateTotalCognitions()
     }
     
-    // 新增：点赞收藏数
-    private var collectedHighlights: Int {
-        // 从历史数据中计算点赞收藏数
-        return calculateCollectedEssence()
+    // 新增：时空共鸣次数
+    private var resonanceCount: Int {
+        // 优先从缓存获取
+        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
+           let count = stats["resonanceCount"] {
+            return count
+        }
+        // 缓存未命中，计算值
+        return calculateTotalResonances()
     }
     
-    // 新增：我的动态数
-    private var dimensionJumps: Int {
-        // 从历史数据中计算我的动态数
-        return calculateTotalDynamics()
+    // 新增：深度对话次数
+    private var deepDialogueCount: Int {
+        // 优先从缓存获取
+        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
+           let count = stats["deepDialogueCount"] {
+            return count
+        }
+        // 缓存未命中，计算值
+        return calculateTotalDeepDialogues()
     }
     
     // MARK: - 数据计算方法
@@ -1857,6 +1911,148 @@ struct ProfileView: View {
         }
         }
     }
+    }
+    
+    // MARK: - 数据加载与缓存
+    
+    /// 加载缓存的统计数据或计算新的统计数据
+    private func loadOrCalculateStats() {
+        // 检查缓存是否有效
+        if !cacheService.isValid(key: "\(cacheKeyPrefix)stats") {
+            // 缓存无效，重新计算统计数据
+            let stats = calculateAllStats()
+            
+            // 缓存计算结果，有效期5分钟
+            cacheService.store(
+                key: "\(cacheKeyPrefix)stats",
+                value: stats,
+                type: "UserStats",
+                expirationTime: 300 // 5分钟
+            )
+            
+            print("📊 用户统计数据已重新计算并缓存")
+        } else {
+            print("📊 使用缓存的用户统计数据")
+        }
+    }
+    
+    /// 设置数据更新监听器
+    private func setupDataUpdateListeners() {
+        // 监听帖子数据更新
+        let postSubscription = postViewModel.objectWillChange
+            .sink { _ in
+                // 帖子数据更新时，清除相关缓存
+                cacheService.invalidate(key: "\(cacheKeyPrefix)stats")
+                // 重新计算统计数据
+                loadOrCalculateStats()
+            }
+        cancellables.insert(postSubscription)
+        
+        // 监听通知数据更新
+        let notificationSubscription = notificationService.objectWillChange
+            .sink { _ in
+                // 通知数据更新时，清除相关缓存
+                cacheService.invalidate(key: "\(cacheKeyPrefix)stats")
+                // 重新计算统计数据
+                loadOrCalculateStats()
+            }
+        cancellables.insert(notificationSubscription)
+    }
+    
+    /// 计算所有统计数据并返回
+    private func calculateAllStats() -> [String: Int] {
+        return [
+            "dialogueCount": calculateTotalDialogues(),
+            "inspirationCount": calculateTotalInspirations(),
+            "travelCount": calculateTotalTravels(),
+            "cognitionCount": calculateTotalCognitions(),
+            "resonanceCount": calculateTotalResonances(),
+            "deepDialogueCount": calculateTotalDeepDialogues(),
+            "followingCount": followingCount
+        ]
+    }
+    
+    // MARK: - Missing Calculation Methods
+    
+    /// 计算创作灵感总数
+    private func calculateTotalInspirations() -> Int {
+        // 基于帖子和评论的创意内容计算
+        let posts = postViewModel.posts
+        let comments = posts.flatMap { $0.comments }
+        
+        // 简单模拟：每个创意帖子或评论算作一次灵感
+        let creativePostsCount = posts.filter { post in
+            post.content.count > 100 || post.content.contains("创意") || post.content.contains("想法")
+        }.count
+        
+        let creativeCommentsCount = comments.filter { comment in
+            comment.content.count > 50 || comment.content.contains("创意") || comment.content.contains("想法")
+        }.count
+        
+        return creativePostsCount + creativeCommentsCount
+    }
+    
+    /// 计算穿越次数
+    private func calculateTotalTravels() -> Int {
+        // 基于多角色聊天会话数计算穿越次数
+        do {
+            let descriptor = FetchDescriptor<MultiPersonChatSession>()
+            let sessions = try modelContext.fetch(descriptor)
+            return sessions.count
+        } catch {
+            print("获取聊天会话失败: \(error)")
+            return 0
+        }
+    }
+    
+    /// 计算认知升华次数
+    private func calculateTotalCognitions() -> Int {
+        // 基于深度对话和学习成果计算
+        let posts = postViewModel.posts
+        
+        // 模拟：长篇深度内容和包含哲学思考的帖子
+        let deepThoughtPosts = posts.filter { post in
+            post.content.count > 200 || 
+            post.content.contains("思考") || 
+            post.content.contains("感悟") ||
+            post.content.contains("领悟") ||
+            post.content.contains("理解")
+        }.count
+        
+        return deepThoughtPosts
+    }
+    
+    /// 计算时空共鸣次数
+    private func calculateTotalResonances() -> Int {
+        // 基于点赞和情感共鸣计算
+        let totalLikes = notificationService.notifications.compactMap { notification in
+            if case .like = notification.type {
+                return 1
+            }
+            return 0
+        }.reduce(0, +)
+        
+        // 共鸣次数基于获得的点赞数
+        return totalLikes
+    }
+    
+    /// 计算深度对话次数
+    private func calculateTotalDeepDialogues() -> Int {
+        // 基于多角色聊天中的消息长度和质量计算
+        do {
+            let descriptor = FetchDescriptor<MultiPersonChatMessage>()
+            let messages = try modelContext.fetch(descriptor)
+            
+            // 深度对话：消息长度超过100字符
+            let deepMessages = messages.filter { message in
+                message.content.count > 100
+            }.count
+            
+            return deepMessages
+        } catch {
+            print("获取聊天消息失败: \(error)")
+            return 0
+        }
     }
 }
 

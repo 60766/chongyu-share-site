@@ -250,12 +250,16 @@ struct PerfectTextEditor: UIViewRepresentable {
         
         // 添加滚动和行高监听
         textView.onScrollCallback = { point in
-            contentOffset = point
+            DispatchQueue.main.async {
+                self.contentOffset = point
+            }
             onScrollChange(point)
         }
         
         textView.onLineHeightCallback = { height in
-            onLineHeightChange(height)
+            DispatchQueue.main.async {
+                self.onLineHeightChange(height)
+            }
         }
         
         // 计算初始行高
@@ -416,8 +420,10 @@ struct PerfectTextEditor: UIViewRepresentable {
             // 保存选择范围和光标位置
             let selectedRange = textView.selectedRange
             
-            // 更新绑定的文本
-            text = textView.text
+            // 异步更新绑定的文本，避免在视图更新期间修改状态
+            DispatchQueue.main.async {
+                self.text = textView.text
+            }
             
             // 计算行高并报告
             if let superTextView = textView as? SuperPreciseTextView {

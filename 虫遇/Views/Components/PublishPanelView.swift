@@ -73,20 +73,14 @@ struct PublishPanelView: View {
     // 时代选项
     private let eras = ["现代", "古代", "中世纪", "文艺复兴", "启蒙运动", "未来"]
     
-    // 推荐角色视图
-    private var characterRecommendationView: some View {
-        PublishCharacterRecommendationView(
-            contentText: contentText,
-            selectedEra: selectedEra,
-            selectedCharacters: $selectedCharacters
-        )
-    }
+
     
     // 虫洞能量指示器
     private var energyIndicatorView: some View {
         WormholeEnergyIndicator(
             contentText: contentText,
-            characters: selectedCharacters
+            characters: selectedCharacters,
+            isAnimating: true // 在发布面板中显示动画
         )
     }
     
@@ -99,7 +93,7 @@ struct PublishPanelView: View {
                     .onTapGesture {
                         // 点击背景区域时隐藏键盘并关闭发布面板，但不重置状态
                         hideKeyboard()
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) { // 从0.25秒减少到0.2秒
                             isVisible = false
                         }
                         // 移除重置面板状态的代码，保留用户输入的内容
@@ -138,7 +132,7 @@ struct PublishPanelView: View {
                         .shadow(color: Color.black.opacity(0.1), radius: 10, y: -5)
                 )
                 .offset(y: isVisible ? 0 : UIScreen.main.bounds.height)
-                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isVisible)
+                .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isVisible) // 从0.25秒减少到0.2秒
                 // 简化键盘适配，只观察键盘高度变化，不自动调整视图
                 .onReceive(Publishers.keyboardHeight) { height in
                     // 不使用动画改变状态值，避免引起整个视图的动画
@@ -203,22 +197,14 @@ struct PublishPanelView: View {
                 if isShowingSuccessToast {
                     // 移除半透明背景蒙版，只保留卡片
                         successToastView
-                        .transition(
-                            .asymmetric(
-                                insertion: .scale(scale: 0.9, anchor: .center)
-                                    .combined(with: .opacity),
-                                removal: .scale(scale: 0.95)
-                                    .combined(with: .opacity)
-                            )
-                        )
+                        .transition(.identity) // 完全移除所有过渡动画，极速显示和隐藏
                         .onTapGesture {
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                isShowingSuccessToast = false
-                            }
+                            // 完全移除动画，立即关闭
+                            isShowingSuccessToast = false
                         }
                 }
             }
-            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isShowingSuccessToast)
+            // 完全移除所有动画，极速响应
         )
     }
     
@@ -291,9 +277,6 @@ struct PublishPanelView: View {
             }
             
             energyIndicatorView
-                .padding(.top, 2)
-            
-            characterRecommendationView
                 .padding(.top, 2)
         }
         .padding(.horizontal, 16)
@@ -439,7 +422,7 @@ struct PublishPanelView: View {
                                         let generator = UIImpactFeedbackGenerator(style: .light)
                                         generator.impactOccurred()
                                         
-                                        _ = withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        _ = withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
                                             selectedImages.remove(at: index)
                                         }
                                     }) {
@@ -589,9 +572,9 @@ struct PublishPanelView: View {
         .padding(.bottom, 4) // 减小底部边距，提高位置
     }
     
-    // 发布内容判断 - 文本不为空或有图片
+    // 发布内容判断 - 文本必须不为空，图片可选
     private var hasValidContent: Bool {
-        !contentText.isEmpty || !selectedImages.isEmpty
+        !contentText.isEmpty
     }
     
     // 处理发布按钮点击
@@ -600,43 +583,129 @@ struct PublishPanelView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
         
-        guard hasValidContent else { return }
+        guard hasValidContent else { 
+            return 
+        }
         guard !isPublishing else { 
-            print("⚠️ 按钮点击被忽略：正在发布中")
             return 
         }
         
-        // 如果没有选择角色，自动添加推荐角色
-        if selectedCharacters.isEmpty {
-            autoSelectCharacters()
+        // 🔧 修复：在发布前保存内容，避免被resetPanelState清空
+        let contentToPublish = contentText
+        let imagesToPublish = selectedImages
+        let eraToPublish = selectedEra
+        let charactersToPublish = selectedCharacters
+        let characterProbabilitiesToPublish = getProbabilityDict()
+        let publishModeToPublish = publishMode
+        
+        // 立即关闭发布面板，给用户即时反馈
+        withAnimation(.easeOut(duration: 0.05)) {
+            isVisible = false
         }
         
-        publishContent()
+        // 立即显示成功提示，与面板关闭同时进行
+        showSuccessToastImmediately()
+        
+        // 🔧 优化：调整延迟时间，平衡速度和流畅性，避免卡顿
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            // 异步处理所有发布逻辑，不阻塞UI
+            DispatchQueue.global(qos: .userInitiated).async {
+                // 如果没有选择角色，自动添加推荐角色
+                if charactersToPublish.isEmpty {
+                    self.autoSelectCharacters()
+                }
+                
+                self.publishContent(
+                    content: contentToPublish,
+                    images: imagesToPublish,
+                    era: eraToPublish,
+                    characters: charactersToPublish,
+                    characterProbabilities: characterProbabilitiesToPublish,
+                    publishMode: publishModeToPublish
+                )
+            }
+        }
     }
     
-    // 自动选择推荐角色
+    // 自动选择角色 - 简化版本，直接使用随机选择
     private func autoSelectCharacters() {
-        // 获取推荐角色
-        let recommendedCharacters = PublishCharacterRecommendationView.getRecommendedCharacters(
-            contentText: contentText,
-            selectedEra: selectedEra,
-            selectedCharacters: []
-        )
-        
-        // 如果有推荐角色就使用前3个，否则随机选择
-        if !recommendedCharacters.isEmpty {
-            selectedCharacters = Array(recommendedCharacters.prefix(3))
-        } else {
-            selectedCharacters = selectRandomCharacters()
-        }
+        // 直接使用随机选择，避免复杂的推荐算法
+        selectedCharacters = selectRandomCharacters()
         
         // 更新角色概率
         updateCharacterProbabilities()
     }
     
-    // 随机选择角色
+    /**
+     * 将角色的type和subtype映射到CharacterCategory
+     */
+    private func mapToCharacterCategory(type: String, subtype: String) -> CharacterCategory {
+        switch (type, subtype) {
+        case ("historical", "scientist"), ("literary", "scientist"), ("movie", "scientist"), ("anime", "scientist"):
+            return .scientist
+        case ("historical", "writer"), ("literary", "writer"), ("movie", "writer"), ("anime", "writer"):
+            return .writer
+        case ("historical", "artist"), ("literary", "artist"), ("movie", "artist"), ("anime", "artist"):
+            return .artist
+        case ("historical", "philosopher"), ("literary", "philosopher"), ("movie", "philosopher"), ("anime", "philosopher"):
+            return .philosopher
+        case ("historical", "politician"), ("literary", "politician"), ("movie", "politician"), ("anime", "politician"):
+            return .historical
+        case ("historical", "military"), ("literary", "military"), ("movie", "military"), ("anime", "military"):
+            return .historical
+        case ("historical", "explorer"), ("literary", "explorer"), ("movie", "explorer"), ("anime", "explorer"):
+            return .historical
+        case ("historical", "inventor"), ("literary", "inventor"), ("movie", "inventor"), ("anime", "inventor"):
+            return .scientist
+        case ("historical", "musician"), ("literary", "musician"), ("movie", "musician"), ("anime", "musician"):
+            return .artist
+        case ("historical", "athlete"), ("literary", "athlete"), ("movie", "athlete"), ("anime", "athlete"):
+            return .historical
+        case ("historical", "business"), ("literary", "business"), ("movie", "business"), ("anime", "business"):
+            return .historical
+        case ("historical", "religious"), ("literary", "religious"), ("movie", "religious"), ("anime", "religious"):
+            return .historical
+        case ("historical", "mythological"), ("literary", "mythological"), ("movie", "mythological"), ("anime", "mythological"):
+            return .mythCharacter
+        case ("historical", "fictional"), ("literary", "fictional"), ("movie", "fictional"), ("anime", "fictional"):
+            return .fictionCharacter
+        default:
+            // 根据type进行默认分类
+            switch type {
+            case "historical":
+                return .scientist
+            case "literary":
+                return .writer
+            case "movie":
+                return .movieCharacter
+            case "anime":
+                return .animeCharacter
+            case "game":
+                return .gameCharacter
+            default:
+                return .scientist
+            }
+        }
+    }
+    
+    // 随机选择角色 - 使用完整角色库
     private func selectRandomCharacters() -> [CharacterModel] {
-        let allCharacters = CharacterModel.sampleCharacters
+        // 从CharacterDataManager获取所有角色信息，转换为CharacterModel
+        let allCharacterInfos = CharacterDataManager.shared.getAllCharactersInfo()
+        let allCharacters = allCharacterInfos.map { characterInfo in
+            CharacterModel(
+                id: characterInfo.id,
+                name: characterInfo.name,
+                avatar: characterInfo.avatar, // 使用真实的头像名称
+                era: characterInfo.era, // 使用真实的时代信息
+                profession: characterInfo.primaryField, // 使用真实的职业信息
+                bio: "暂无描述", // 暂时使用默认值
+                category: mapToCharacterCategory(type: characterInfo.type, subtype: characterInfo.subtype), // 使用映射的分类
+                famousQuotes: [], // 暂时使用默认值
+                characterID: characterInfo.id
+            )
+        }
+        
         var tempSelectedCharacters: [CharacterModel] = []
         
         // 确保选择来自不同类别的角色
@@ -668,83 +737,119 @@ struct PublishPanelView: View {
     }
     
     // 发布内容
-    private func publishContent() {
+    private func publishContent(
+        content: String,
+        images: [UIImage],
+        era: String,
+        characters: [CharacterModel],
+        characterProbabilities: [String: Int],
+        publishMode: PublishMode
+    ) {
         // 防止重复发布
         guard !isPublishing else {
-            print("⚠️ 正在发布中，忽略重复请求")
             return
         }
         
         isPublishing = true
-        print("🚀 === 开始发布内容 ===")
-        print("📝 内容: \(contentText.prefix(50))...")
-        print("📸 图片数量: \(selectedImages.count)")
-        print("🎭 选中角色数量: \(selectedCharacters.count)")
         
+        // 面板已经在handlePublishButtonTapped中关闭，这里不需要重复关闭
+        
+        // 🔧 修复：使用更低的优先级，确保不干扰UI
+        DispatchQueue.global(qos: .background).async {
         // 确保概率总和为100%
-        normalizeCharacterProbabilities()
+            self.normalizeCharacterProbabilities()
         
         // 创建要发布的内容数据
         let postData = PostData(
-            content: contentText,
-            images: selectedImages,
-            era: selectedEra,
-            characters: selectedCharacters,
-            characterProbabilities: getProbabilityDict(),
-            publishMode: publishMode
+                content: content,
+                images: images,
+                era: era,
+                characters: characters,
+                characterProbabilities: characterProbabilities,
+                publishMode: publishMode
         )
         
         // 将PostData转换为UserPostModel并添加到PostViewModel
-        let userPost = createUserPostFromPostData(postData)
-        print("📄 已创建用户帖子模型")
+            let userPost = self.createUserPostFromPostData(postData)
         
-        // 添加到PostViewModel，使其显示在主页
-        PostViewModel.shared.addPosts([userPost])
-        print("📂 已添加帖子到PostViewModel")
-        
-        // 发送通知，告知HomeView有新帖子
-        NotificationCenter.default.post(
-            name: NSNotification.Name("NewPostsGenerated"),
-            object: nil,
-            userInfo: ["count": 1]
-        )
-        print("📢 已发送新帖子通知")
-        
-        // 先关闭发布面板
-        print("📱 关闭发布面板")
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            isVisible = false
-        }
-        
-        // ✅ 异步调用AI生成真实的虚拟角色评论，避免阻塞UI
-        DispatchQueue.global(qos: .userInitiated).async {
-            print("🔄 开始异步生成AI评论")
-            generateAICommentsForUserPost(userPost)
-        }
-        
-        // 延迟一段时间后显示发布成功提示
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            print("📱 显示发布成功提示")
-            withAnimation {
-                isShowingSuccessToast = true
+            // 🔧 优化：调整延迟时间，平衡速度和流畅性，避免卡顿
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                // 使用新的增量更新方法，避免全量刷新
+                PostViewModel.shared.addSinglePost(userPost)
+                
+                // 成功提示已经在用户点击时通过showSuccessToastImmediately()显示
+                // 后台处理完成后不再重复显示，避免重复提示
+                // 此函数保留是为了兼容性，实际不再执行任何操作
+                self.isPublishing = false // 重置发布状态
             }
             
-            // 1秒后关闭提示
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                print("📱 关闭发布成功提示")
-                withAnimation {
-                    isShowingSuccessToast = false
-                }
-                
-                // 成功发布后重置面板状态
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    print("📱 重置发布面板状态")
-                    resetPanelState()
-                    isPublishing = false // 重置发布状态
-                    print("✅ 发布流程完成")
-                }
+            // 异步生成AI评论，完全不影响UI
+            DispatchQueue.global(qos: .utility).async {
+                self.generateAICommentsForUserPost(userPost)
             }
         }
+    }
+    
+    // 立即显示发布成功提示（用于用户点击发布按钮后）
+    private func showSuccessToastImmediately() {
+        // 获取潜在回复角色（基于当前选中的角色）
+        let potentialCharacters = getPotentialRespondingCharactersFromCurrent()
+        
+        // 立即显示成功提示，与面板关闭同时进行
+        self.potentialRespondingCharacters = potentialCharacters
+        self.isShowingSuccessToast = true
+        
+        // 🔧 修复：使用精确的时间控制，确保不被后台处理干扰
+        let startTime = Date()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            
+            _ = Date().timeIntervalSince(startTime)
+            
+            if self.isShowingSuccessToast {
+                self.isShowingSuccessToast = false
+                self.resetPanelState()
+            }
+        }
+    }
+    
+    // 显示发布成功提示（用于后台处理完成后）
+    // 注意：此函数已被废弃，成功提示现在在用户点击时立即显示
+    // 保留函数签名以避免编译错误，但内部逻辑已移除
+    private func showSuccessToast(_ userPost: UserPostModel) {
+        // 成功提示已经在用户点击时通过showSuccessToastImmediately()显示
+        // 后台处理完成后不再重复显示，避免重复提示
+        // 此函数保留是为了兼容性，实际不再执行任何操作
+    }
+    
+    // 获取潜在回复角色（基于当前选中的角色）
+    private func getPotentialRespondingCharactersFromCurrent() -> [CharacterModel] {
+        // 从当前选中的角色中随机选择2-3个作为潜在回复角色
+        let selectedChars = selectedCharacters
+        if selectedChars.isEmpty {
+            // 如果没有选中角色，返回空数组
+            return []
+        }
+        
+        // 随机选择2-3个角色
+        let count = min(Int.random(in: 2...3), selectedChars.count)
+        let shuffled = selectedChars.shuffled()
+        return Array(shuffled.prefix(count))
+    }
+    
+    // 获取潜在回复角色（基于UserPostModel）
+    private func getPotentialRespondingCharacters(for userPost: UserPostModel) -> [CharacterModel] {
+        // 从选中的角色中随机选择2-3个作为潜在回复角色
+        let selectedChars = selectedCharacters
+        if selectedChars.isEmpty {
+            // 如果没有选中角色，返回空数组
+            return []
+        }
+        
+        // 随机选择2-3个角色
+        let count = min(Int.random(in: 2...3), selectedChars.count)
+        let shuffled = selectedChars.shuffled()
+        return Array(shuffled.prefix(count))
     }
     
     // 将PostData转换为UserPostModel
@@ -758,9 +863,13 @@ struct PublishPanelView: View {
             // 生成唯一图片标识符
             let imageId = "\(postData.id)_image_\(index)"
             
-            // 保存图片到本地存储或云存储
-            if let savedImageId = saveImage(image, withId: imageId) {
-                imageIdentifiers.append(savedImageId)
+            // 先添加占位符，异步保存图片
+            imageIdentifiers.append(imageId)
+            
+            // 异步保存图片，不阻塞UI
+            DispatchQueue.global(qos: .utility).async {
+                _ = self.saveImage(image, withId: imageId)
+                // 图片保存成功，静默处理
             }
         }
         
@@ -823,25 +932,17 @@ struct PublishPanelView: View {
     
     // ✅ 为用户发布的帖子生成AI评论
     private func generateAICommentsForUserPost(_ userPost: UserPostModel) {
-        print("🚀 开始为用户帖子生成AI评论")
-        print("📝 帖子内容: \(userPost.content.prefix(50))...")
-        print("🎭 选中的角色数量: \(selectedCharacters.count)")
-        
         // 基于概率和智能选择，确定要评论的角色
         let selectedCharacterIDs = selectCharactersForResponse()
         
         guard !selectedCharacterIDs.isEmpty else {
-            print("⚠️ 没有选中任何角色进行评论")
             return
         }
-        
-        print("🎯 将生成评论的角色: \(selectedCharacterIDs)")
         
         // 创建超时处理
         var hasCompleted = false
         let timeoutWorkItem = DispatchWorkItem {
             if !hasCompleted {
-                print("⏰ AI评论生成超时（30秒），跳过评论生成")
                 hasCompleted = true
             }
         }
@@ -863,7 +964,6 @@ struct PublishPanelView: View {
         ) { result in
             // 检查是否已超时
             guard !hasCompleted else {
-                print("⚠️ AI评论生成已超时，忽略响应")
                 return
             }
             
@@ -873,11 +973,10 @@ struct PublishPanelView: View {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let commentsDict):
-                    print("✅ AI评论生成成功，共\(commentsDict.count)条")
                     PublishPanelView.handleGeneratedComments(commentsDict, for: userPost)
-                case .failure(let error):
-                    print("❌ AI评论生成失败: \(error.localizedDescription)")
+                case .failure(_):
                     // 即使失败也不影响发布流程
+                    break
                 }
             }
         }
@@ -885,26 +984,15 @@ struct PublishPanelView: View {
     
     // 智能选择要评论的角色 - 使用角色轮换系统
     private func selectCharactersForResponse() -> [String] {
-        print("🔄 开始使用角色轮换系统选择回复角色")
-        
         // 使用角色轮换系统开始新的生成会话
         CharacterRotationSystem.shared.beginNewGenerationSession()
         
-        // 优先考虑用户手动选择的角色
+        // 用户手动选择的角色百分百会评论
         var manuallySelectedCharacters: [String] = []
         
-        // 如果用户设置了概率，基于概率筛选
-        if !selectedCharacters.isEmpty && !characterProbabilities.isEmpty {
-        // 确保概率总和正确
-        normalizeCharacterProbabilities()
-        
-        // 基于概率添加角色
-        for i in 0..<min(selectedCharacters.count, characterProbabilities.count) {
-            let prob = Int(characterProbabilities[i])
-                if prob > 0 && Int.random(in: 1...100) <= prob {
-                    manuallySelectedCharacters.append(selectedCharacters[i].id)
-                }
-            }
+        // 如果用户选择了角色，直接全部添加
+        if !selectedCharacters.isEmpty {
+            manuallySelectedCharacters = selectedCharacters.map { $0.id }
         }
         
         // 计算需要额外选择的角色数量
@@ -924,13 +1012,10 @@ struct PublishPanelView: View {
                 .prefix(additionalNeeded)
             
             finalSelectedCharacters.append(contentsOf: additionalCharacterIds)
-            
-            print("🎯 角色轮换系统补充了\(additionalCharacterIds.count)个角色")
             }
             
         // 如果仍然不足（极端情况），使用轮换系统重新选择
         if finalSelectedCharacters.count < 2 {
-            print("⚠️ 角色数量不足，使用轮换系统重新选择")
             let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: targetCount)
             finalSelectedCharacters = rotationCharacters.map { $0.id }
         }
@@ -938,16 +1023,11 @@ struct PublishPanelView: View {
         // 限制最多3个角色
         let result = Array(finalSelectedCharacters.prefix(3))
         
-        print("✅ 最终选择的回复角色: \(result.count)个")
-        print("👥 角色列表: \(result.joined(separator: ", "))")
-        
         return result
     }
     
     // 处理生成的AI评论
     private static func handleGeneratedComments(_ commentsDict: [String: String], for userPost: UserPostModel) {
-        print("🔄 开始处理生成的AI评论")
-        
         var newComments: [DetailedCommentModel] = []
         
         for (characterID, commentContent) in commentsDict {
@@ -962,26 +1042,25 @@ struct PublishPanelView: View {
                 username: characterName,
                 userAvatar: characterAvatar,
                 content: commentContent,
-                datePosted: Date().addingTimeInterval(Double.random(in: 30...180)), // 30秒到3分钟后
+                datePosted: Date(),
                 isVirtualCharacter: true,
                 characterID: characterID,
-                likes: Int.random(in: 0...5),
+                likes: 0,
                 isLikedByCurrentUser: false
             )
             
             newComments.append(comment)
-            print("📝 创建评论: \(characterName) -> \(commentContent.prefix(30))...")
-                    }
+        }
         
-        // 将评论添加到帖子中
-        if let postIndex = PostViewModel.shared.posts.firstIndex(where: { $0.id == userPost.id }) {
-            PostViewModel.shared.posts[postIndex].comments.append(contentsOf: newComments)
-            print("✅ 已将\(newComments.count)条AI评论添加到帖子中")
-            
-            // 触发UI更新
-            PostViewModel.shared.objectWillChange.send()
-        } else {
-            print("⚠️ 未找到对应的帖子进行评论更新")
+        // 添加评论到帖子
+        if !newComments.isEmpty {
+            DispatchQueue.main.async {
+                if let postIndex = PostViewModel.shared.posts.firstIndex(where: { $0.id == userPost.id }) {
+                    PostViewModel.shared.posts[postIndex].comments.append(contentsOf: newComments)
+                } else {
+                    // 未找到对应的帖子进行评论更新
+                }
+            }
         }
     }
     
@@ -994,6 +1073,7 @@ struct PublishPanelView: View {
         showProbabilitySettings = false
         characterProbabilities = []
         publishMode = .communication
+        isShowingSuccessToast = false  // 确保重置成功提示状态
     }
     
     // 发布内容的数据结构
@@ -1029,8 +1109,8 @@ struct PublishPanelView: View {
         // 尝试多次激活，提高成功率
         forceActivateTextInput()
         
-        // 延迟再次尝试
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        // 延迟再次尝试（从0.5秒减少到0.2秒）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             self.forceActivateTextInput()
         }
     }
@@ -1104,8 +1184,8 @@ struct PublishPanelView: View {
                 return 
             }
             
-            // 执行交换 - 只交换两张图片的位置
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            // 执行交换 - 只交换两张图片的位置（从0.3秒减少到0.2秒）
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
                 // 交换图片
                 selectedImages.swapAt(draggedIndex, dropIndex)
             }
@@ -1114,8 +1194,8 @@ struct PublishPanelView: View {
             let feedback = UIImpactFeedbackGenerator(style: .heavy)
             feedback.impactOccurred()
             
-            // 延迟刷新位置信息，确保UI已更新
-            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3秒
+            // 延迟刷新位置信息，确保UI已更新（从0.3秒减少到0.15秒）
+            try? await Task.sleep(nanoseconds: 150_000_000) // 0.15秒
             self.needsPositionRefresh = true
         }
     }
@@ -1130,8 +1210,8 @@ struct PublishPanelView: View {
             // 重新收集所有图片位置
             for index in 0..<self.selectedImages.count {
                 if self.imagePositions[index] == nil {
-                    // 如果有缺失的位置，稍后再次尝试刷新
-                    try? await Task.sleep(nanoseconds: 200_000_000) // 0.2秒
+                    // 如果有缺失的位置，稍后再次尝试刷新（从0.2秒减少到0.1秒）
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
                     self.needsPositionRefresh = true
                     break
                 }
@@ -1294,16 +1374,14 @@ struct PublishPanelView: View {
                 // 内容预览
                 ContentPreviewView(text: contentText)
                 
-                // 分隔线
-                DividerView()
-                    .padding(.vertical, 1) // 进一步减少分隔线上下的间距，从2减到1
-                
-                // 潜在回复角色
-                CharacterResponseView(characters: potentialRespondingCharacters)
+                // 移除分隔线和推荐角色显示
+                // DividerView()
+                //     .padding(.vertical, 1)
+                // CharacterResponseView(characters: potentialRespondingCharacters)
             }
             .padding(.vertical, 30) // 进一步增加卡片上下的内边距，从25增加到30
             .padding(.horizontal, 20)
-            .frame(width: 220, height: 220) // 保持固定的正方形尺寸
+            .frame(width: 220, height: 180) // 减少高度，因为移除了推荐角色部分
             .background(GlassCardBackground())
             .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 4)
         }
@@ -1552,7 +1630,7 @@ struct PublishPanelView: View {
             HStack(spacing: 8) {
                 ForEach(eras, id: \.self) { era in
                     Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
                             selectedEra = era
                         }
                         let generator = UIImpactFeedbackGenerator(style: .light)
@@ -1606,306 +1684,7 @@ enum PublishMode: CaseIterable {
     }
 }
 
-/**
- * 角色推荐视图
- * 基于用户输入内容和选择的时代，推荐相关角色
- */
-struct PublishCharacterRecommendationView: View {
-    /// 内容文本
-    let contentText: String
-    /// 选中的时代
-    let selectedEra: String
-    /// 选中的角色
-    @Binding var selectedCharacters: [CharacterModel]
-    
-    /// 推荐角色列表
-    private var recommendedCharacters: [CharacterModel] {
-        return PublishCharacterRecommendationView.getRecommendedCharacters(
-            contentText: contentText,
-            selectedEra: selectedEra,
-            selectedCharacters: selectedCharacters
-        )
-    }
-    
-    /// 静态方法：获取推荐角色
-    static func getRecommendedCharacters(contentText: String, selectedEra: String, selectedCharacters: [CharacterModel]) -> [CharacterModel] {
-        // 简单推荐算法，实际应用中可实现更复杂的推荐逻辑
-        let allCharacters = CharacterModel.sampleCharacters
-        
-        // 如果内容为空，返回按时代过滤的随机角色
-        if contentText.isEmpty {
-            let eraFilteredCharacters = allCharacters.filter { character in
-                // 排除已选角色
-                if isCharacterAlreadySelected(character, in: selectedCharacters) {
-                    return false
-                }
-                
-                // 时代匹配
-                return doesCharacterEraMatch(character.era, selectedEra: selectedEra)
-            }
-            
-            // 随机选择不超过5个角色
-            var randomCharacters: [CharacterModel] = []
-            let shuffledCharacters = eraFilteredCharacters.shuffled()
-            for character in shuffledCharacters {
-                if randomCharacters.count >= 3 {
-                    break
-                }
-                randomCharacters.append(character)
-            }
-            
-            return randomCharacters
-        }
-        
-        // 根据内容进行更智能的匹配
-        // 1. 定义关键词类别
-        let scienceKeywords = ["科学", "物理", "化学", "数学", "实验", "研究", "发现", "理论", "宇宙", "相对论", "量子"]
-        let artKeywords = ["艺术", "绘画", "音乐", "雕塑", "创作", "美学", "色彩", "构图", "灵感", "表现", "风格"]
-        let philosophyKeywords = ["哲学", "思想", "逻辑", "伦理", "道德", "存在", "真理", "意义", "价值", "认识论", "形而上学"]
-        let literatureKeywords = ["文学", "诗歌", "小说", "散文", "戏剧", "创作", "写作", "语言", "表达", "情感", "意象"]
-        let historicalKeywords = ["历史", "战争", "政治", "革命", "改革", "朝代", "时代", "文明", "帝国", "王朝", "统治"]
-        
-        // 2. 计算各类别匹配度
-        let scienceScore = keywordsMatchScore(contentText, keywords: scienceKeywords)
-        let artScore = keywordsMatchScore(contentText, keywords: artKeywords)
-        let philosophyScore = keywordsMatchScore(contentText, keywords: philosophyKeywords)
-        let literatureScore = keywordsMatchScore(contentText, keywords: literatureKeywords)
-        let historicalScore = keywordsMatchScore(contentText, keywords: historicalKeywords)
-        
-        // 3. 根据类别匹配度过滤角色
-        var matchedCharacters: [CharacterModel] = []
-        let allScores: [(CharacterCategory, Double)] = [
-            (.scientist, scienceScore),
-            (.artist, artScore),
-            (.philosopher, philosophyScore),
-            (.writer, literatureScore),
-            (.all, historicalScore)
-        ].sorted { $0.1 > $1.1 }  // 按分数从高到低排序
-        
-        // 从每个高分类别中选择角色
-        for (category, score) in allScores {
-            // 只考虑分数大于0的类别
-            if score <= 0 {
-                continue
-            }
-            
-            // 从该类别中找出符合条件的角色
-            let filteredCharacters = allCharacters.filter { character in
-                // 必须是该类别
-                guard character.category == category else { return false }
-                
-                // 排除已选角色
-                if isCharacterAlreadySelected(character, in: selectedCharacters) {
-                    return false
-                }
-                
-                // 时代匹配（如果不是跨时代角色，则需匹配所选时代）
-                return doesCharacterEraMatch(character.era, selectedEra: selectedEra)
-            }
-            
-            // 在该类别中最多选两个角色
-            let categoryCharacters = filteredCharacters.prefix(2)
-            matchedCharacters.append(contentsOf: categoryCharacters)
-            
-            // 如果已经有足够的角色，可以提前退出
-            if matchedCharacters.count >= 3 {
-                break
-            }
-        }
-        
-        // 如果没有找到足够的匹配角色，返回随机角色
-        if matchedCharacters.isEmpty {
-            return getRecommendedCharacters(contentText: "", selectedEra: selectedEra, selectedCharacters: selectedCharacters)
-        }
-        
-        return Array(matchedCharacters.prefix(3))  // 最多返回3个角色
-    }
-    
-    // 辅助方法：计算文本与关键词的匹配度
-    private static func keywordsMatchScore(_ text: String, keywords: [String]) -> Double {
-        var score = 0.0
-        let textLower = text.lowercased()
-        
-        for keyword in keywords {
-            if textLower.contains(keyword.lowercased()) {
-                score += 1.0
-            }
-        }
-        
-        return score
-    }
-    
-    // 辅助方法：检查角色是否已被选中
-    private static func isCharacterAlreadySelected(_ character: CharacterModel, in selectedCharacters: [CharacterModel]) -> Bool {
-        return selectedCharacters.contains { $0.id == character.id }
-    }
-    
-    // 辅助方法：检查角色时代是否匹配
-    private static func doesCharacterEraMatch(_ characterEra: String, selectedEra: String) -> Bool {
-        if characterEra == "跨时代" {
-            return true
-        }
-        return characterEra == selectedEra
-    }
-    
-    // 视觉效果控制
-    @State private var isAnimating = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // 标题区域
-            HStack(spacing: 6) {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 15))
-                    .foregroundColor(Color.primaryColor)
-                
-                Text("推荐角色")
-                    .font(.system(size: 14, weight: .medium))
-                
-                Spacer()
-                
-                Button(action: {
-                    // 显示角色选择器
-                }) {
-                    HStack(spacing: 4) {
-                        Text("更多")
-                            .font(.system(size: 12))
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 9))
-                    }
-                    .foregroundColor(Color.primaryColor)
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding(.bottom, 4)
-            
-            if recommendedCharacters.isEmpty {
-                // 空状态提示
-                Text("没有匹配的推荐角色")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 6)
-                    .background(Color.gray.opacity(0.05))
-                    .cornerRadius(12)
-            } else {
-                // 角色推荐卡片滚动视图
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(Array(recommendedCharacters.enumerated()), id: \.element.id) { index, character in
-                            characterCard(character: character, index: index)
-                                // 移除依赖hover状态的动画
-                                // .scaleEffect(hoverIndex == index ? 1.05 : 1.0)
-                                // .animation(.spring(response: 0.3, dampingFraction: 0.6), value: hoverIndex)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-                .frame(height: 80)
-                .onAppear {
-                    // 添加微妙的动画效果
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            isAnimating = true
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    // 角色卡片视图
-    private func characterCard(character: CharacterModel, index: Int) -> some View {
-        let isSelected = selectedCharacters.contains { $0.id == character.id }
-        
-        return Button(action: {
-            // 触感反馈
-            let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
-            feedbackGenerator.impactOccurred()
-            
-            // 切换选择状态
-            if isSelected {
-                selectedCharacters.removeAll { $0.id == character.id }
-            } else {
-                selectedCharacters.append(character)
-            }
-        }) {
-            VStack(spacing: 6) {
-                // 角色头像
-                ZStack {
-                    // 背景圆形
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    character.category.color.opacity(0.15),
-                                    character.category.color.opacity(0.25)
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 48, height: 48)
-                    
-                    // 角色首字
-                    Text(String(character.name.prefix(1)))
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(character.category.color)
-                    
-                    // 选中状态边框
-                    if isSelected {
-                        Circle()
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        character.category.color,
-                                        character.category.color.opacity(0.6)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 2
-                            )
-                        .frame(width: 48, height: 48)
-                    }
-                    
-                    // 时代指示器 - 小标签
-                    if character.era != "跨时代" && character.era == selectedEra {
-                        Text("同期")
-                            .font(.system(size: 8, weight: .medium))
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(Color.primaryColor.opacity(0.9))
-                            .foregroundColor(.white)
-                            .cornerRadius(4)
-                            .offset(y: 24)
-                    }
-                }
-                .offset(y: isAnimating ? 0 : 10)
-                .opacity(isAnimating ? 1 : 0)
-                .animation(
-                    .spring(response: 0.5, dampingFraction: 0.7)
-                    .delay(Double(index) * 0.1),
-                    value: isAnimating
-                )
-                
-                // 角色名称
-                Text(character.name)
-                    .font(.system(size: 12))
-                    .fontWeight(isSelected ? .medium : .regular)
-                    .foregroundColor(isSelected ? character.category.color : .primary)
-                    .lineLimit(1)
-            }
-            .frame(width: 60)
-            .contentShape(Rectangle())
-            // 添加触摸时的动画效果，而不是依赖hover
-            .scaleEffect(isSelected ? 1.05 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
+
 
 /**
  * 角色选择器视图
@@ -2026,9 +1805,9 @@ struct CharacterSelectorView: View {
         .onAppear {
             localSelectedCharacters = selectedCharacters
             
-            // 添加动画效果
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                withAnimation(.easeInOut(duration: 0.4)) {
+            // 添加动画效果（从0.3秒延迟减少到0.1秒，动画时长从0.4秒减少到0.2秒）
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeInOut(duration: 0.2)) {
                     isAnimating = true
                 }
             }
@@ -2046,9 +1825,9 @@ struct CharacterSelectorView: View {
                 
                 if localSelectedCharacters.count > 1 {
                     Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            localSelectedCharacters.removeAll()
-                        }
+                                        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                    localSelectedCharacters.removeAll()
+                }
                     }) {
                         Text("清空")
                             .font(.system(size: 12))
@@ -2084,7 +1863,7 @@ struct CharacterSelectorView: View {
             
             // 删除按钮
             Button(action: {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
                     localSelectedCharacters.removeAll { $0.id == character.id }
                 }
             }) {
@@ -2245,16 +2024,82 @@ struct CharacterSelectorView: View {
         // 关闭当前选择器
         self.presentationMode.wrappedValue.dismiss()
         
-        // 模拟延迟，然后进行创建角色操作
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        // 模拟延迟，然后进行创建角色操作（从0.3秒减少到0.1秒）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             // 这里应该跳转到创建角色的页面或弹出创建角色的表单
             print("创建新角色: \(defaultName)")
         }
     }
     
-    // 过滤后的角色列表
+    /**
+     * 将角色的type和subtype映射到CharacterCategory
+     */
+    private func mapToCharacterCategory(type: String, subtype: String) -> CharacterCategory {
+        switch (type, subtype) {
+        case ("historical", "scientist"), ("literary", "scientist"), ("movie", "scientist"), ("anime", "scientist"):
+            return .scientist
+        case ("historical", "writer"), ("literary", "writer"), ("movie", "writer"), ("anime", "writer"):
+            return .writer
+        case ("historical", "artist"), ("literary", "artist"), ("movie", "artist"), ("anime", "artist"):
+            return .artist
+        case ("historical", "philosopher"), ("literary", "philosopher"), ("movie", "philosopher"), ("anime", "philosopher"):
+            return .philosopher
+        case ("historical", "politician"), ("literary", "politician"), ("movie", "politician"), ("anime", "politician"):
+            return .historical
+        case ("historical", "military"), ("literary", "military"), ("movie", "military"), ("anime", "military"):
+            return .historical
+        case ("historical", "explorer"), ("literary", "explorer"), ("movie", "explorer"), ("anime", "explorer"):
+            return .historical
+        case ("historical", "inventor"), ("literary", "inventor"), ("movie", "inventor"), ("anime", "inventor"):
+            return .scientist
+        case ("historical", "musician"), ("literary", "musician"), ("movie", "musician"), ("anime", "musician"):
+            return .artist
+        case ("historical", "athlete"), ("literary", "athlete"), ("movie", "athlete"), ("anime", "athlete"):
+            return .historical
+        case ("historical", "business"), ("literary", "business"), ("movie", "business"), ("anime", "business"):
+            return .historical
+        case ("historical", "religious"), ("literary", "religious"), ("movie", "religious"), ("anime", "religious"):
+            return .historical
+        case ("historical", "mythological"), ("literary", "mythological"), ("movie", "mythological"), ("anime", "mythological"):
+            return .mythCharacter
+        case ("historical", "fictional"), ("literary", "fictional"), ("movie", "fictional"), ("anime", "fictional"):
+            return .fictionCharacter
+        default:
+            // 根据type进行默认分类
+            switch type {
+            case "historical":
+                return .scientist
+            case "literary":
+                return .writer
+            case "movie":
+                return .movieCharacter
+            case "anime":
+                return .animeCharacter
+            case "game":
+                return .gameCharacter
+            default:
+                return .scientist
+            }
+        }
+    }
+    
+    // 过滤后的角色列表 - 使用完整的角色库而不是硬编码的示例角色
     private var filteredCharacters: [CharacterModel] {
-        var characters = CharacterModel.sampleCharacters
+        // 从CharacterDataManager获取所有角色信息，转换为CharacterModel
+        let allCharacterInfos = CharacterDataManager.shared.getAllCharactersInfo()
+        var characters = allCharacterInfos.map { characterInfo in
+            CharacterModel(
+                id: characterInfo.id,
+                name: characterInfo.name,
+                avatar: characterInfo.avatar, // 使用真实的头像名称
+                era: characterInfo.era, // 使用真实的时代信息
+                profession: characterInfo.primaryField, // 使用真实的职业信息
+                bio: "暂无描述", // 暂时使用默认值
+                category: mapToCharacterCategory(type: characterInfo.type, subtype: characterInfo.subtype), // 使用映射的分类
+                famousQuotes: [], // 暂时使用默认值
+                characterID: characterInfo.id
+            )
+        }
         
         // 按分类筛选
         if selectedCategory != nil && selectedCategory != .all {
@@ -2282,7 +2127,7 @@ struct CharacterSelectorView: View {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
             if isSelected(character) {
                 localSelectedCharacters.removeAll { $0.id == character.id }
             } else {
@@ -2345,10 +2190,25 @@ struct CharacterSelectionCell: View {
                         )
                         .frame(width: avatarSize, height: avatarSize)
                     
-                    // 角色首字
-                    Text(String(character.name.prefix(1)))
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundColor(character.category.color)
+                    // 角色头像 - 尝试显示真实头像，失败时使用首字母
+                    if let image = UIImage(named: character.avatar) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: avatarSize, height: avatarSize)
+                            .clipShape(Circle())
+                    } else if let image = UIImage(named: "HistoricalFigures/\(character.avatar)") {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: avatarSize, height: avatarSize)
+                            .clipShape(Circle())
+                    } else {
+                        // 如果头像加载失败，使用首字母作为占位符
+                        Text(String(character.name.prefix(1)))
+                            .font(.system(size: 22, weight: .medium))
+                            .foregroundColor(character.category.color)
+                    }
                     
                     // 右上角显示选中状态
                     if isSelected {
@@ -2451,48 +2311,44 @@ struct CharacterSelectionCell: View {
 }
 
 /**
- * 虫洞能量指示器 - 提高直观性和视觉吸引力
+ * 虫洞能量指示器 - 优化后的简化版本
+ * 只保留核心因素：文本长度和角色数量
+ * 移除复杂的关键词检测和时代因素，提高响应性和公平性
  */
 struct WormholeEnergyIndicator: View {
     let contentText: String
     let characters: [CharacterModel]
+    let isAnimating: Bool // 控制是否显示动画
     
-    // 计算能量等级
+    // 添加防抖状态，避免拼音输入时能量条频繁变化
+    @State private var debouncedTextLength: Int = 0
+    @State private var debounceTimer: Timer?
+    
+    // 计算能量等级 - 优化后的简化算法
     private var energyLevel: Int {
-        // 修改计算规则：降低文本长度的阈值，使其更快响应输入
-        let textFactor = min(contentText.count / 3, 30) // 每3个字符提供1点能量，最高30点
-        let characterFactor = min(characters.count * 20, 40) // 每个角色提供20点能量，最高40点
+        // 🎯 优化说明：
+        // 1. 删除了关键词检测：避免用户通过特定词汇"刷分"
+        // 2. 删除了时代因素：时代选择主要用于内容生成，不影响穿越能量
+        // 3. 调整了文本系数：从每3字符1点改为每2字符1点，提高响应性
+        // 4. 降低了角色权重：从每个角色20点改为15点，避免角色数量过度影响
         
-        // 不同时代的角色会产生更高能量
-        let uniqueEras = Set(characters.map { $0.era }).count
-        let eraFactor = uniqueEras * 10 // 每个唯一时代提供10点能量
+        // 📝 文本长度因素：使用防抖后的文本长度，每2个字符提供1点能量，最高40点
+        let textFactor = min(debouncedTextLength / 2, 40)
         
-        // 额外因素：考虑文本内容是否包含关键词
-        let keywordFactor = calculateKeywordFactor(text: contentText)
+        // 👥 角色数量因素：每个角色提供15点能量，最高45点
+        let characterFactor = min(characters.count * 15, 45)
         
-        let totalEnergy = textFactor + characterFactor + eraFactor + keywordFactor
-        return min(totalEnergy / 20, 5) // 0-5级
+        // 🧮 总能量计算：文本 + 角色，除以17得到0-5级
+        let totalEnergy = textFactor + characterFactor
+        return min(totalEnergy / 17, 5) // 5级需要85点能量
     }
     
-    // 计算关键词因素 - 检测文本中是否包含特定关键词
-    private func calculateKeywordFactor(text: String) -> Int {
-        let keywords = ["历史", "时代", "思想", "科学", "艺术", "哲学", "文化", "创新"]
-        var factor = 0
-        
-        // 对每个出现的关键词给予5点能量
-        for keyword in keywords {
-            if text.contains(keyword) {
-                factor += 5
-            }
-        }
-        
-        return min(factor, 20) // 最高20点能量
-    }
+    // 移除关键词检测方法，简化逻辑
     
     // 获取能量百分比值
     private var energyPercentage: Int {
-        // 确保即使没有文本也显示至少15%的能量
-        let basePercentage = 15
+        // 确保即使没有文本也显示至少10%的能量
+        let basePercentage = 10
         let calculatedPercentage = energyLevel * 20
         
         // 如果有输入内容但计算值低于基础值，至少显示基础值
@@ -2503,11 +2359,7 @@ struct WormholeEnergyIndicator: View {
         return max(calculatedPercentage, basePercentage) // 确保不低于基础值
     }
     
-    // 控制粒子动画
-    @State private var animationPhase: CGFloat = 0
-    
-    // 粒子动画计时器
-    let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+    // 移除高频计时器，改为基于内容变化的响应式更新
     
     var body: some View {
         VStack(spacing: 6) {
@@ -2535,7 +2387,7 @@ struct WormholeEnergyIndicator: View {
                 // 背景
                 energyBarBackground
                 
-                // 填充条
+                // 填充条 - 添加平滑动画
                 energyBarFill
                     .frame(width: nil)
                     .mask(
@@ -2544,22 +2396,31 @@ struct WormholeEnergyIndicator: View {
                                 .frame(width: geometry.size.width * CGFloat(energyPercentage) / 100)
                         }
                     )
+                    .animation(.easeInOut(duration: 0.3), value: energyPercentage)
                 
-                // 粒子效果 - 仅在能量足够时显示
-                if energyPercentage > 20 {
+                // 粒子效果 - 仅在能量足够且允许动画时显示
+                if energyPercentage > 20 && isAnimating {
                     energyParticles
                 }
             }
             .frame(height: 10)
             .clipShape(Capsule())
-            .onReceive(timer) { _ in
-                withAnimation {
-                    animationPhase += 0.05
-                    if animationPhase > 1 {
-                        animationPhase = 0
-                    }
-                }
+        }
+        .onAppear {
+            // 初始化防抖文本长度
+            debouncedTextLength = contentText.count
+        }
+        .onChange(of: contentText) { oldValue, newText in
+            // 防抖处理：延迟300ms更新文本长度，避免拼音输入时的频繁变化
+            debounceTimer?.invalidate()
+            debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                debouncedTextLength = newText.count
             }
+        }
+        .onDisappear {
+            // 清理定时器
+            debounceTimer?.invalidate()
+            debounceTimer = nil
         }
     }
     
@@ -2625,18 +2486,21 @@ struct WormholeEnergyIndicator: View {
         )
     }
     
-    // 能量粒子效果
+    // 能量粒子效果 - 根据动画状态显示不同效果
     private var energyParticles: some View {
-        ZStack {
-            ForEach(0..<min(energyPercentage/10, 8), id: \.self) { i in
+        HStack(spacing: 4) {
+            ForEach(0..<min(energyPercentage/10, 4), id: \.self) { i in
                 Circle()
-                    .fill(Color.white.opacity(0.8))
-                    .frame(width: 2, height: 2)
-                    .offset(
-                        x: CGFloat(i * 12) + CGFloat(animationPhase) * 20,
-                        y: CGFloat.random(in: -3...3)
+                    .fill(Color.white.opacity(0.6))
+                    .frame(width: 3, height: 3)
+                    .scaleEffect(isAnimating ? 1.0 : 0.8)
+                    .opacity(isAnimating ? 0.8 : 0.6)
+                    .animation(
+                        isAnimating ? 
+                        .easeInOut(duration: 1.0).repeatForever(autoreverses: true).delay(Double(i) * 0.2) :
+                        .none,
+                        value: isAnimating
                     )
-                    .opacity(Double.random(in: 0.5...1.0))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

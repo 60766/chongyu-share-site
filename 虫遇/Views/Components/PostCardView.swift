@@ -4,6 +4,46 @@ import UIKit
 import Combine
 
 /**
+ * 全局CommentLoader管理器
+ * 避免每个PostCardView都创建独立的CommentLoader实例
+ */
+class CommentLoaderManager: ObservableObject {
+    static let shared = CommentLoaderManager()
+    
+    private var loaders: [UUID: CommentLoader] = [:]
+    private let queue = DispatchQueue(label: "CommentLoaderManager", qos: .utility)
+    
+    private init() {
+        print("🏗️ CommentLoaderManager: 初始化全局管理器")
+    }
+    
+    // 获取或创建CommentLoader
+    func getLoader(for postID: UUID) -> CommentLoader {
+        return queue.sync {
+            if let existingLoader = loaders[postID] {
+                return existingLoader
+            } else {
+                print("🆕 CommentLoaderManager: 为帖子 \(postID.uuidString.prefix(8)) 创建新的CommentLoader")
+                let newLoader = CommentLoader()
+                loaders[postID] = newLoader
+                return newLoader
+            }
+        }
+    }
+    
+    // 清理未使用的Loader
+    func cleanupUnusedLoaders(activePosts: Set<UUID>) {
+        queue.async {
+            let unusedKeys = self.loaders.keys.filter { !activePosts.contains($0) }
+            for key in unusedKeys {
+                print("🗑️ CommentLoaderManager: 清理未使用的CommentLoader - \(key.uuidString.prefix(8))")
+                self.loaders.removeValue(forKey: key)
+            }
+        }
+    }
+}
+
+/**
  * 后台数据加载器
  * 用于将数据加载从UI线程分离，优化性能
  */
@@ -25,12 +65,15 @@ class CommentLoader: ObservableObject {
     
     // 初始化
     init() {
-        print("🏗️ CommentLoader: 初始化")
+        // 移除初始化日志，减少噪音
         setupNotifications()
     }
     
     deinit {
+        // 保留清理日志，但只在debug模式下输出
+        #if DEBUG
         print("🗑️ CommentLoader: 清理资源")
+        #endif
         removeNotifications()
         cancelLoading()
     }
@@ -98,80 +141,73 @@ class CommentLoader: ObservableObject {
         guard let userInfo = notification.userInfo,
               let postIDString = userInfo["postID"] as? String,
               let postID = UUID(uuidString: postIDString) else {
-            print("⚠️ CommentLoader: 收到评论更新通知，但缺少有效的帖子ID")
             return
         }
         
-        print("📣 CommentLoader: 收到评论更新通知，帖子ID: \(postIDString)")
+        // 🔧 修复：减少日志输出，只在真正需要时输出
+        let shouldLog = currentPostID == postID
         
-        // 在主线程执行UI更新
-        DispatchQueue.main.async {
-            // 检查是否与当前加载的帖子匹配
-            if let currentID = self.currentPostID, currentID == postID {
-                print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，即将同步最新评论数据")
+        if shouldLog {
+            print("📣 CommentLoader: 收到评论更新通知 - 帖子ID: \(postID)")
+        }
+        
+        // 检查是否与当前加载的帖子匹配
+        if let currentID = currentPostID, currentID == postID {
+            if shouldLog {
+                print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，开始刷新评论")
+            }
+            
+            // 在主线程执行UI更新
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
                 
-                // 🔧 修复：从PostViewModel获取最新的评论数据，而不是使用本地缓存
-                if let post = PostViewModel.shared.posts.first(where: { $0.id == postID }) {
-                    print("🔄 CommentLoader: 从PostViewModel同步最新评论数据，评论数量: \(post.comments.count)")
-                    
-                    // 检查是否有重复评论并清理
-                    let uniqueComments = self.removeDuplicateComments(post.comments)
-                    if uniqueComments.count != post.comments.count {
-                        print("🔧 CommentLoader: 检测到重复评论，已清理，从 \(post.comments.count) 条减少到 \(uniqueComments.count) 条")
-                    }
-                    
-                    // 更新本地评论数据
-                    self.allComments = uniqueComments
-                    
-                    // 刷新显示
-                    self.refreshComments()
-                } else {
-                    print("⚠️ CommentLoader: 未找到对应的帖子，使用本地缓存刷新")
-                    self.refreshComments()
-                }
-            } else {
+                // 刷新评论
+                self.refreshComments()
+            }
+        } else {
+            if shouldLog {
                 print("ℹ️ CommentLoader: 评论更新通知与当前加载的帖子不匹配")
                 print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
-                print("  通知帖子ID: \(postIDString)")
-                
-                // 即使帖子ID不匹配，也尝试刷新当前帖子的评论
-                print("🔄 CommentLoader: 尝试刷新当前帖子评论，可能有角色回复")
-                self.refreshComments()
+                print("  通知帖子ID: \(postID)")
             }
         }
     }
     
     // 处理角色回复生成完成的通知
-    // 🔧 修复重复显示问题：PostViewModel已经通过addReplyToParent添加了回复，这里不需要重复添加
     @objc private func handleCharacterReplyGenerated(_ notification: Notification) {
-        // 提取通知中的帖子ID和回复内容
+        // 提取通知中的帖子ID
         guard let userInfo = notification.userInfo,
-              let postID = userInfo["postID"] as? String,
-              let characterID = userInfo["characterID"] as? String else {
-            print("⚠️ CommentLoader: 收到角色回复生成通知，但缺少必要信息")
+              let postIDString = userInfo["postID"] as? String,
+              let postID = UUID(uuidString: postIDString) else {
             return
         }
         
-        print("📣 CommentLoader: 收到角色回复生成通知 - 帖子ID: \(postID), 角色ID: \(characterID)")
-        print("ℹ️ 回复已通过PostViewModel添加到帖子中，这里只刷新UI显示")
+        // 🔧 修复：减少日志输出，只在真正需要时输出
+        let shouldLog = currentPostID == postID
+        
+        if shouldLog {
+            print("🤖 CommentLoader: 收到角色回复生成完成通知 - 帖子ID: \(postID)")
+        }
         
         // 检查是否与当前加载的帖子匹配
-        if let currentID = currentPostID, currentID.uuidString == postID {
-            print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，刷新评论显示")
+        if let currentID = currentPostID, currentID == postID {
+            if shouldLog {
+                print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，开始刷新评论")
+            }
             
-            // 在主线程执行UI更新，只刷新显示，不重复添加评论
+            // 在主线程执行UI更新
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 
-                // 刷新评论显示，显示PostViewModel已添加的回复
+                // 刷新评论
                 self.refreshComments()
-                
-                print("✅ CommentLoader: 评论显示已刷新，回复应该正确显示")
             }
         } else {
-            print("ℹ️ CommentLoader: 角色回复通知与当前加载的帖子不匹配")
-            print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
-            print("  通知帖子ID: \(postID)")
+            if shouldLog {
+                print("ℹ️ CommentLoader: 角色回复生成通知与当前加载的帖子不匹配")
+                print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
+                print("  通知帖子ID: \(postID)")
+            }
         }
     }
     
@@ -181,16 +217,22 @@ class CommentLoader: ObservableObject {
         guard let userInfo = notification.userInfo,
               let postID = userInfo["postID"] as? String,
               let errorMessage = userInfo["error"] as? String else {
-            print("⚠️ CommentLoader: 收到角色回复生成失败通知，但缺少必要信息")
             return
         }
         
-        print("📣 CommentLoader: 收到角色回复生成失败通知 - 帖子ID: \(postID)")
-        print("❌ 错误信息: \"\(errorMessage)\"")
+        // 🔧 修复：减少日志输出，只在真正需要时输出
+        let shouldLog = currentPostID?.uuidString == postID
+        
+        if shouldLog {
+            print("📣 CommentLoader: 收到角色回复生成失败通知 - 帖子ID: \(postID)")
+            print("❌ 错误信息: \"\(errorMessage)\"")
+        }
         
         // 检查是否与当前加载的帖子匹配
         if let currentID = currentPostID, currentID.uuidString == postID {
-            print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，显示错误信息")
+            if shouldLog {
+                print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，显示错误信息")
+            }
             
             // 在主线程执行UI更新
             DispatchQueue.main.async { [weak self] in
@@ -199,21 +241,48 @@ class CommentLoader: ObservableObject {
                 // 设置错误信息
                 self.errorMessage = "生成角色评论失败: \(errorMessage)"
                 
-                print("✅ CommentLoader: 已设置错误信息")
+                if shouldLog {
+                    print("✅ CommentLoader: 已设置错误信息")
+                }
             }
         } else {
-            print("ℹ️ CommentLoader: 角色回复失败通知与当前加载的帖子不匹配")
-            print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
-            print("  通知帖子ID: \(postID)")
+            if shouldLog {
+                print("ℹ️ CommentLoader: 角色回复失败通知与当前加载的帖子不匹配")
+                print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
+                print("  通知帖子ID: \(postID)")
+            }
         }
     }
     
-    // 刷新评论内容
+    // 刷新评论内容 - 智能刷新，避免不必要的重复加载
     func refreshComments() {
-        print("🔄 CommentLoader: 开始刷新评论...")
+        // 🔧 修复：减少日志输出，只在真正需要时输出
+        let shouldLog = true // 刷新操作总是需要日志
+        
+        if shouldLog {
+            print("🔄 CommentLoader: 开始检查评论是否需要刷新...")
+        }
         
         // 取消正在进行的加载任务
         loadingTask?.cancel()
+        
+        // 🔧 修复：检查评论数据是否真的发生了变化
+        let currentCommentCount = loadedComments.count
+        let totalCommentCount = allComments.count
+        
+        // 如果评论数量和内容都没有变化，跳过刷新
+        if currentCommentCount == totalCommentCount && 
+           currentCommentCount > 0 && 
+           !hasCommentContentChanged() {
+            if shouldLog {
+                print("ℹ️ CommentLoader: 评论数据无变化，跳过刷新")
+            }
+            return
+        }
+        
+        if shouldLog {
+            print("🔄 CommentLoader: 检测到评论变化，开始刷新...")
+        }
         
         // 重置加载状态
         currentPage = 1
@@ -222,83 +291,75 @@ class CommentLoader: ObservableObject {
         
         // 创建刷新任务
         loadingTask = Task { @MainActor in
+            // 模拟网络延迟，避免阻塞UI
+            try? await Task.sleep(nanoseconds: 100_000) // 0.1毫秒
+            
             // 检查任务是否被取消
             if Task.isCancelled {
-                print("❌ CommentLoader: 刷新任务被取消")
+                if shouldLog {
+                    print("❌ CommentLoader: 刷新任务被取消")
+                }
                 return
             }
             
-            do {
-                // 短暂延迟，避免UI抖动
-                print("⏳ CommentLoader: 短暂延迟以避免UI抖动...")
-                try await Task.sleep(nanoseconds: 200_000_000)
-                
-                // 检查任务是否被取消
-                if Task.isCancelled {
-                    print("❌ CommentLoader: 延迟后任务被取消")
-                    return
-                }
-                
-                // 检查我们是否有评论可以加载
-                if allComments.isEmpty {
-                    print("ℹ️ CommentLoader: 无评论可加载，帖子评论列表为空")
-                    self.loadedComments = []
-                    self.hasMoreComments = false
-                    self.isLoading = false
-                    return
-                }
-                
-                // 重新加载评论，避免重复
-                let preloadCount = min(5, self.allComments.count)
-                let preloadedComments = Array(self.allComments.prefix(preloadCount))
-                
-                // 检查是否与当前加载的评论相同
-                if self.loadedComments != preloadedComments {
-                    self.loadedComments = preloadedComments
-                    self.currentPage = 1
-                    self.hasMoreComments = preloadCount < self.allComments.count
-                    self.isPreloaded = true
-                    print("✅ CommentLoader: 评论列表已更新")
-                } else {
-                    print("ℹ️ CommentLoader: 评论列表无变化，跳过更新")
-                }
-                self.isLoading = false
-                
-                // 打印刷新后的评论信息
-                print("✅ CommentLoader: 评论列表已刷新，共加载\(preloadedComments.count)条评论")
-                print("📊 CommentLoader: 当前评论总数: \(self.allComments.count), 已加载: \(self.loadedComments.count)")
-                
-                // 打印评论内容日志
-                if !self.loadedComments.isEmpty {
-                    print("📝 CommentLoader: 已加载评论预览:")
-                    for (index, comment) in self.loadedComments.enumerated() {
-                        let isVirtual = comment.isVirtualCharacter ? "虚拟角色" : "用户"
-                        print("  \(index+1). [\(isVirtual)] \(comment.username): \(comment.content.prefix(20))...")
-                    }
-                }
-            } catch {
-                // 错误处理
-                if error is CancellationError {
-                    print("❌ CommentLoader: 刷新任务被取消")
-                } else {
-                    print("⚠️ CommentLoader: 刷新评论时发生错误 - \(error.localizedDescription)")
-                    self.errorMessage = "加载评论时出错: \(error.localizedDescription)"
-                    self.isLoading = false
-                }
+            // 加载评论
+            let refreshCount = min(pageSize, allComments.count)
+            let refreshedComments = Array(allComments.prefix(refreshCount))
+            
+            // 更新UI状态
+            self.loadedComments = refreshedComments
+            self.hasMoreComments = allComments.count > refreshCount
+            self.isLoading = false
+            
+            if shouldLog {
+                print("✅ CommentLoader: 刷新完成，加载了 \(refreshedComments.count) 条评论")
             }
         }
     }
     
+    // 检查评论内容是否发生变化
+    private func hasCommentContentChanged() -> Bool {
+        // 如果评论数量不同，内容肯定发生了变化
+        if loadedComments.count != allComments.count {
+            return true
+        }
+        
+        // 检查每条评论的内容是否发生变化
+        for (index, loadedComment) in loadedComments.enumerated() {
+            if index < allComments.count {
+                let allComment = allComments[index]
+                if loadedComment.content != allComment.content || 
+                   loadedComment.username != allComment.username ||
+                   loadedComment.isVirtualCharacter != allComment.isVirtualCharacter {
+                    return true
+                }
+            } else {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
     // 初始化加载器
     func initialize(with comments: [DetailedCommentModel], postID: UUID? = nil) {
-        print("🚀 CommentLoader: 初始化评论加载器...")
+        // 🔧 修复：减少日志输出，只在真正需要时输出
+        let shouldLog = !isInitialized || currentPostID != postID
+        
+        if shouldLog {
+            print("🚀 CommentLoader: 初始化评论加载器...")
+        }
         
         // 记录当前帖子ID
         if let id = postID {
-            print("🔑 CommentLoader: 设置帖子ID: \(id)")
+            if shouldLog {
+                print("🔑 CommentLoader: 设置帖子ID: \(id)")
+            }
             self.currentPostID = id
         } else {
-            print("⚠️ CommentLoader: 警告 - 未提供帖子ID")
+            if shouldLog {
+                print("⚠️ CommentLoader: 警告 - 未提供帖子ID")
+            }
             self.currentPostID = nil
         }
         
@@ -310,20 +371,26 @@ class CommentLoader: ObservableObject {
         self.errorMessage = nil
         
         // 记录评论数量信息
-        print("📊 CommentLoader: 初始化了 \(comments.count) 条评论")
-        
-        // 如果有虚拟角色评论，单独记录
-        let virtualComments = comments.filter { $0.isVirtualCharacter }
-        if !virtualComments.isEmpty {
-            print("🤖 CommentLoader: 包含 \(virtualComments.count) 条虚拟角色评论")
+        if shouldLog {
+            print("📊 CommentLoader: 初始化了 \(comments.count) 条评论")
+            
+            // 如果有虚拟角色评论，单独记录
+            let virtualComments = comments.filter { $0.isVirtualCharacter }
+            if !virtualComments.isEmpty {
+                print("🤖 CommentLoader: 包含 \(virtualComments.count) 条虚拟角色评论")
+            }
         }
         
         // 自动预加载评论
         if !comments.isEmpty {
-            print("⏳ CommentLoader: 即将预加载初始评论...")
+            if shouldLog {
+                print("⏳ CommentLoader: 即将预加载初始评论...")
+            }
             preloadFirstComments()
         } else {
-            print("ℹ️ CommentLoader: 无评论可预加载")
+            if shouldLog {
+                print("ℹ️ CommentLoader: 无评论可预加载")
+            }
         }
     }
     
@@ -345,118 +412,90 @@ class CommentLoader: ObservableObject {
         // 取消之前的任务
         loadingTask?.cancel()
         
-        // 避免重复加载
-        guard !isPreloaded && !isLoading else { return }
+        // 如果已经预加载过，跳过
+        if isPreloaded {
+            return
+        }
         
-        isLoading = true
+        // 🔧 优化：减少日志输出，只在真正需要时输出
+        let shouldLog = !isPreloaded
         
-        // 创建新任务
+        if shouldLog {
+            print("⏳ CommentLoader: 开始预加载首批评论...")
+        }
+        
+        // 计算要预加载的评论数量
+        let preloadCount = min(pageSize, allComments.count)
+        
+        if shouldLog {
+            print("📊 CommentLoader: 预加载数量: \(preloadCount)")
+        }
+        
+        // 创建预加载任务
         loadingTask = Task { @MainActor in
-            // 检查任务是否被取消
-            if Task.isCancelled { return }
+            // 模拟网络延迟，避免阻塞UI
+            try? await Task.sleep(nanoseconds: 100_000) // 0.1毫秒
             
-            do {
-                // 模拟网络延迟
-                try await Task.sleep(nanoseconds: 100_000_000)
-                
-                // 检查任务是否被取消
-                if Task.isCancelled { return }
-                
-                let preloadCount = min(3, self.allComments.count)
-                let preloadedComments = Array(self.allComments.prefix(preloadCount))
-                
-                // 🔧 修复：检查是否与当前加载的评论相同，避免重复设置
-                if self.loadedComments != preloadedComments {
-                    self.loadedComments = preloadedComments
-                    self.currentPage = 1
-                    self.hasMoreComments = preloadCount < self.allComments.count
-                    self.isPreloaded = true
-                    print("✅ CommentLoader: 预加载完成，加载了 \(preloadedComments.count) 条评论")
-                } else {
-                    print("ℹ️ CommentLoader: 预加载跳过，评论列表无变化")
+            // 检查任务是否被取消
+            if Task.isCancelled {
+                if shouldLog {
+                    print("❌ CommentLoader: 预加载任务被取消")
                 }
-                self.isLoading = false
-            } catch {
-                // 错误处理
-                if !(error is CancellationError) {
-                    self.errorMessage = "加载评论时出错"
-                    self.isLoading = false
-                }
+                return
+            }
+            
+            // 预加载首批评论
+            let firstComments = Array(allComments.prefix(preloadCount))
+            self.loadedComments = firstComments
+            self.isPreloaded = true
+            self.isLoading = false
+            
+            if shouldLog {
+                print("✅ CommentLoader: 预加载完成，加载了 \(firstComments.count) 条评论")
             }
         }
     }
     
-    // 加载下一页评论 - 批次加载避免UI阻塞，优化性能
+    // 加载下一页评论
     func loadNextPage() {
-        // 避免重复加载
         guard !isLoading && hasMoreComments else { return }
         
-        // 取消之前的任务
-        loadingTask?.cancel()
+        // 🔧 优化：减少日志输出，只在真正需要时输出
+        let shouldLog = !isLoading
+        
+        if shouldLog {
+            print("📄 CommentLoader: 开始加载下一页评论...")
+        }
         
         isLoading = true
-        errorMessage = nil
         
-        // 创建新任务
+        // 创建加载任务
         loadingTask = Task { @MainActor in
-            // 检查任务是否被取消
-            if Task.isCancelled { return }
+            // 模拟网络延迟，避免阻塞UI
+            try? await Task.sleep(nanoseconds: 100_000) // 0.1毫秒
             
-            do {
-                // 先设置加载状态，让UI有反馈
-                isLoading = true
-                
-                // 提供触觉反馈
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
-                
-                // 延迟执行实际加载，避免UI卡顿
-                try await Task.sleep(nanoseconds: 100_000_000) // 100毫秒
-                
-                // 检查任务是否被取消
-                if Task.isCancelled { 
-                    isLoading = false
-                    return 
+            // 检查任务是否被取消
+            if Task.isCancelled {
+                if shouldLog {
+                    print("❌ CommentLoader: 加载下一页任务被取消")
                 }
-                
-                // 减少每页加载的评论数量
-                let pageSize = 2  // 原来是3，减少到2
-                let startIndex = self.currentPage * pageSize
-                let endIndex = min(startIndex + pageSize, self.allComments.count)
-                
-                // 安全检查
-                guard startIndex < self.allComments.count else {
-                    self.hasMoreComments = false
-                    self.isLoading = false
-                    return
-                }
-                
-                // 安全获取评论片段
-                let safeEndIndex = min(endIndex, self.allComments.count)
-                let newComments = Array(self.allComments[startIndex..<safeEndIndex])
-                
-                // 🔧 修复：检查是否重复添加评论，避免重复显示
-                let existingCommentIds = Set(self.loadedComments.map { $0.id })
-                let uniqueNewComments = newComments.filter { !existingCommentIds.contains($0.id) }
-                
-                if !uniqueNewComments.isEmpty {
-                    // 不使用分批加载和动画，直接添加所有新评论
-                    self.loadedComments.append(contentsOf: uniqueNewComments)
-                    print("✅ CommentLoader: 加载下一页，添加了 \(uniqueNewComments.count) 条新评论")
-                } else {
-                    print("ℹ️ CommentLoader: 加载下一页，没有新评论需要添加")
-                }
-                
-                // 更新状态
-                self.currentPage += 1
-                self.hasMoreComments = endIndex < self.allComments.count
-                self.isLoading = false
-            } catch {
-                // 错误处理
-                if !(error is CancellationError) {
-                    self.errorMessage = "加载评论时出错"
-                    self.isLoading = false
-                }
+                return
+            }
+            
+            // 计算要加载的评论范围
+            let startIndex = loadedComments.count
+            let endIndex = min(startIndex + pageSize, allComments.count)
+            let newComments = Array(allComments[startIndex..<endIndex])
+            
+            // 更新UI状态
+            self.loadedComments.append(contentsOf: newComments)
+            self.currentPage += 1
+            self.hasMoreComments = endIndex < allComments.count
+            self.isLoading = false
+            
+            if shouldLog {
+                print("✅ CommentLoader: 下一页加载完成，新增 \(newComments.count) 条评论")
+                print("📊 CommentLoader: 当前已加载: \(self.loadedComments.count)/\(self.allComments.count)")
             }
         }
     }
@@ -642,6 +681,16 @@ class CommentLoader: ObservableObject {
         
         return uniqueComments
     }
+    
+    // 获取当前帖子ID
+    var postID: UUID? {
+        return currentPostID
+    }
+    
+    // 检查是否为指定帖子的加载器
+    func isForPost(_ postID: UUID) -> Bool {
+        return currentPostID == postID
+    }
 }
 
 // 定义帖子显示模式枚举
@@ -710,8 +759,8 @@ struct PostCardView: View {
     var displayMode: DisplayMode = .preview
     var isOwnPost: Bool = false
     
-    // 评论加载器
-    @StateObject private var commentLoader = CommentLoader()
+    // 评论加载器 - 使用全局管理器
+    @State private var commentLoader: CommentLoader?
     
     // 触觉反馈
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
@@ -735,31 +784,21 @@ struct PostCardView: View {
     
     // 估算文本行数的辅助方法
     private func estimateTextLines(_ text: String) -> Int {
-        // 假设每行平均字符数(中文约15-20字，英文35-40字)
-        let chineseCharsPerLine = 18
-        let englishCharsPerLine = 40
+        // 使用更准确的文本行数估算
+        let averageCharsPerLine = 35 // 根据字体大小调整
+        return max(1, Int(ceil(Double(text.count) / Double(averageCharsPerLine))))
+    }
+    
+    // 新增：智能初始化CommentLoader
+    private func smartInitializeCommentLoader() {
+        // 🔧 修复：避免重复初始化CommentLoader
+        // 只有当CommentLoader未初始化或帖子ID发生变化时才初始化
+        guard let loader = commentLoader else { return }
         
-        // 估算中文字符数
-        var chineseCharCount = 0
-        for char in text {
-            if String(char).unicodeScalars.contains(where: { 
-                // 基本汉字范围
-                ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
-                // 扩展汉字范围
-                ($0.value >= 0x3400 && $0.value <= 0x4DBF)
-            }) {
-                chineseCharCount += 1
-            }
+        if !loader.isInitialized || !loader.isForPost(post.id) {
+            // 减少日志输出，只在真正需要初始化时输出
+            loader.initialize(with: post.comments, postID: post.id)
         }
-        
-        // 估算英文字符数(包括标点符号和空格)
-        let englishCharCount = text.count - chineseCharCount
-        
-        // 综合计算估计行数
-        let estimatedChineseLines = Double(chineseCharCount) / Double(chineseCharsPerLine)
-        let estimatedEnglishLines = Double(englishCharCount) / Double(englishCharsPerLine)
-        
-        return max(1, Int(ceil(estimatedChineseLines + estimatedEnglishLines)))
     }
     
     // 新增：评论预览获取逻辑
@@ -909,16 +948,28 @@ struct PostCardView: View {
             }
         }
         .onAppear {
-            // 初始化评论加载器
-            commentLoader.initialize(with: post.comments, postID: post.id)
+            // 🔧 优化：避免重复初始化CommentLoader
+            if commentLoader == nil {
+                commentLoader = CommentLoaderManager.shared.getLoader(for: post.id)
+                // 🔧 优化：只在首次初始化时输出日志
+                print("🔧 PostCardView - 初始化CommentLoader: \(post.id.uuidString.prefix(8))")
+            }
+            
+            // 🔧 优化：使用智能初始化方法，避免重复初始化CommentLoader
+            smartInitializeCommentLoader()
             
             // 只在详情模式下预加载评论
             if displayMode == .detail && showCommentSection {
-                commentLoader.loadNextPage()
+                // 🔧 修复：使用guard let安全处理commentLoader
+                guard let loader = commentLoader else { return }
+                loader.loadNextPage()
             }
             
-            // 准备触觉反馈
-            feedbackGenerator.prepare()
+            // 🔧 优化：减少重复的用户头像日志输出
+            // print("🔍 PostCardView - 用户头像URL: \(post.userAvatarURL), 用户名: \(post.username)")
+        }
+        .onDisappear {
+            // 可以在这里进行清理，但由于使用全局管理器，暂时不需要特殊处理
         }
         .wechatStyleImageViewer(
             isPresented: $showImageViewer,
@@ -951,9 +1002,10 @@ struct PostCardView: View {
         HStack(alignment: .center, spacing: 12) {
             // 用户头像 - 直接使用通用的Avatar组件
             Avatar(url: post.userAvatar, name: post.username, category: post.username.contains("探索") ? "历史爱好者" : "", size: 46.0)
-                .onAppear {
-                    print("🔍 PostCardView - 用户头像URL: \(post.userAvatar), 用户名: \(post.username)")
-                }
+                // 🔧 优化：移除重复的日志输出
+                // .onAppear {
+                //     print("🔍 PostCardView - 用户头像URL: \(post.userAvatar), 用户名: \(post.username)")
+                // }
             
             // 用户信息 - 更紧凑的布局
             VStack(alignment: .leading, spacing: 4) {
@@ -2233,10 +2285,13 @@ struct PostCardView: View {
         
         // 如果是打开评论区，加载评论数据
         if showComments {
+            // 🔧 修复：使用guard let安全处理commentLoader
+            guard let loader = commentLoader else { return }
+            
             // 如果是首次加载或者评论为空，触发加载
-            if commentLoader.loadedComments.isEmpty {
+            if loader.loadedComments.isEmpty {
                 // 加载评论数据
-                commentLoader.loadComments(forPostID: post.id.uuidString, resetPagination: true)
+                loader.loadComments(forPostID: post.id.uuidString, resetPagination: true)
             }
         }
     }
@@ -2471,104 +2526,111 @@ struct PostCardView: View {
     // 完整评论区域
     private var populatedCommentSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // 评论区标题
-            HStack {
-                Text("评论")
-                    .font(.headline)
-                
-                Spacer()
-                
-                if commentLoader.hasMoreComments {
-                    Button(action: {
-                        commentLoader.loadNextPage()
-                        feedbackGenerator.impactOccurred(intensity: 0.3)
-                    }) {
-                        Text("加载更多")
-                            .font(.subheadline)
-                            .foregroundColor(DesignSystem.Colors.primary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .disabled(commentLoader.isLoading)
-                }
-            }
-            .padding(.top, 8)
-            
-            // 加载状态
-            if commentLoader.isLoading {
+            // 🔧 修复：使用if let安全处理commentLoader
+            if let loader = commentLoader {
+                // 评论区标题
                 HStack {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
-                }
-                .padding(.vertical, 8)
-            }
-            
-            // 无评论状态
-            else if commentLoader.loadedComments.isEmpty {
-                VStack(spacing: 6) {
-                    Image(systemName: "bubble.left")
-                        .font(.system(size: 30))
-                        .foregroundColor(.gray.opacity(0.5))
-                        .padding(.bottom, 4)
+                    Text("评论")
+                        .font(.headline)
                     
-                    Text("暂无评论")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
+                    Spacer()
                     
-                    Text("成为第一个评论的人")
-                        .font(.caption)
-                        .foregroundColor(.gray.opacity(0.8))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-            }
-            
-            // 评论列表
-            else {
-                ForEach(commentLoader.loadedComments) { comment in
-                    CommentRow(
-                        comment: comment,
-                        onReply: {
-                            replyingTo = comment
-                            feedbackGenerator.impactOccurred(intensity: 0.4)
+                    if loader.hasMoreComments {
+                        Button(action: {
+                            loader.loadNextPage()
+                            feedbackGenerator.impactOccurred(intensity: 0.3)
+                        }) {
+                            Text("加载更多")
+                                .font(.subheadline)
+                                .foregroundColor(DesignSystem.Colors.primary)
                         }
-                    )
-                    .padding(.vertical, 6)
-                    
-                    if comment.id != commentLoader.loadedComments.last?.id {
-                        Divider().padding(.leading, 40)
+                        .buttonStyle(PlainButtonStyle())
+                        .disabled(loader.isLoading)
                     }
                 }
-            }
-            
-            // 加载更多按钮
-            if commentLoader.hasMoreComments && !commentLoader.loadedComments.isEmpty {
-                Button(action: {
-                    commentLoader.loadNextPage()
-                    feedbackGenerator.impactOccurred(intensity: 0.3)
-                }) {
+                .padding(.top, 8)
+                
+                // 加载状态
+                if loader.isLoading {
                     HStack {
-                        Text("查看更多评论")
-                            .font(.subheadline)
-                            .foregroundColor(DesignSystem.Colors.primary)
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    }
+                    .padding(.vertical, 8)
+                }
+                
+                // 无评论状态
+                else if loader.loadedComments.isEmpty {
+                    VStack(spacing: 6) {
+                        Image(systemName: "bubble.left")
+                            .font(.system(size: 30))
+                            .foregroundColor(.gray.opacity(0.5))
+                            .padding(.bottom, 4)
                         
-                        Image(systemName: "chevron.down")
+                        Text("暂无评论")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                        
+                        Text("成为第一个评论的人")
                             .font(.caption)
-                            .foregroundColor(DesignSystem.Colors.primary)
+                            .foregroundColor(.gray.opacity(0.8))
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(DesignSystem.Colors.primary.opacity(0.05))
-                    .cornerRadius(8)
+                    .padding(.vertical, 20)
                 }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(commentLoader.isLoading)
+                
+                // 评论列表
+                else {
+                    ForEach(loader.loadedComments) { comment in
+                        VStack(spacing: 0) {
+                            CommentRow(
+                                comment: comment,
+                                onReply: {
+                                    replyingTo = comment
+                                    feedbackGenerator.impactOccurred(intensity: 0.4)
+                                }
+                            )
+                            .padding(.vertical, 6)
+                            
+                            if comment.id != loader.loadedComments.last?.id {
+                                Divider().padding(.leading, 40)
+                            }
+                        }
+                    }
+                }
+                
+                // 加载更多按钮
+                if loader.hasMoreComments && !loader.loadedComments.isEmpty {
+                    Button(action: {
+                        loader.loadNextPage()
+                        feedbackGenerator.impactOccurred(intensity: 0.3)
+                    }) {
+                        HStack {
+                            Text("查看更多评论")
+                                .font(.subheadline)
+                                .foregroundColor(DesignSystem.Colors.primary)
+                            
+                            Image(systemName: "chevron.down")
+                                .font(.caption)
+                                .foregroundColor(DesignSystem.Colors.primary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(DesignSystem.Colors.primary.opacity(0.05))
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(loader.isLoading)
+                }
+            } else {
+                // 评论加载中状态
+                VStack {
+                    Text("评论加载中...")
+                        .foregroundColor(.gray)
+                }
             }
-            
-            // 评论输入区域
-            commentInputSection
         }
-        .padding(.horizontal, 4)
     }
     
     // 评论输入区域 - 优化体验
@@ -2700,7 +2762,9 @@ struct PostCardView: View {
                 
                 // 添加到评论列表
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    commentLoader.addComment(newComment)
+                    // 🔧 修复：使用guard let安全处理commentLoader
+                    guard let loader = commentLoader else { return }
+                    loader.addComment(newComment)
                     
                     // 使用回调而不是直接访问viewModel
                     onAddComment?(post, trimmedText, nil)

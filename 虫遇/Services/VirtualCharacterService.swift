@@ -124,17 +124,73 @@ class CharacterDataManager {
      * 获取所有可用的角色信息
      * @return 角色信息数组
      */
-    func getAllCharactersInfo() -> [(id: String, name: String, avatar: String)] {
-        var result: [(id: String, name: String, avatar: String)] = []
+    func getAllCharactersInfo() -> [(id: String, name: String, avatar: String, type: String, subtype: String, era: String, primaryField: String)] {
+        var result: [(id: String, name: String, avatar: String, type: String, subtype: String, era: String, primaryField: String)] = []
         
         for (id, characterInfo) in characterData {
             if let name = characterInfo["name"] as? String,
-               let avatar = characterInfo["avatarName"] as? String {
-                result.append((id: id, name: name, avatar: avatar))
+               let avatar = characterInfo["avatarName"] as? String,
+               let type = characterInfo["type"] as? String,
+               let subtype = characterInfo["subtype"] as? String,
+               let era = characterInfo["era"] as? String,
+               let primaryField = characterInfo["primaryField"] as? String {
+                result.append((id: id, name: name, avatar: avatar, type: type, subtype: subtype, era: era, primaryField: primaryField))
             }
         }
         
         return result
+    }
+    
+    /**
+     * 将角色的type和subtype映射到CharacterCategory
+     */
+    private func mapToCharacterCategory(type: String, subtype: String) -> CharacterCategory {
+        switch (type, subtype) {
+        case ("historical", "scientist"), ("literary", "scientist"), ("movie", "scientist"), ("anime", "scientist"):
+            return .scientist
+        case ("historical", "writer"), ("literary", "writer"), ("movie", "writer"), ("anime", "writer"):
+            return .writer
+        case ("historical", "artist"), ("literary", "artist"), ("movie", "artist"), ("anime", "artist"):
+            return .artist
+        case ("historical", "philosopher"), ("literary", "philosopher"), ("movie", "philosopher"), ("anime", "philosopher"):
+            return .philosopher
+        case ("historical", "politician"), ("literary", "politician"), ("movie", "politician"), ("anime", "politician"):
+            return .historical
+        case ("historical", "military"), ("literary", "military"), ("movie", "military"), ("anime", "military"):
+            return .historical
+        case ("historical", "explorer"), ("literary", "explorer"), ("movie", "explorer"), ("anime", "explorer"):
+            return .historical
+        case ("historical", "inventor"), ("literary", "inventor"), ("movie", "inventor"), ("anime", "inventor"):
+            return .scientist
+        case ("historical", "musician"), ("literary", "musician"), ("movie", "musician"), ("anime", "musician"):
+            return .artist
+        case ("historical", "athlete"), ("literary", "athlete"), ("movie", "athlete"), ("anime", "athlete"):
+            return .historical
+        case ("historical", "business"), ("literary", "business"), ("movie", "business"), ("anime", "business"):
+            return .historical
+        case ("historical", "religious"), ("literary", "religious"), ("movie", "religious"), ("anime", "religious"):
+            return .historical
+        case ("historical", "mythological"), ("literary", "mythological"), ("movie", "mythological"), ("anime", "mythological"):
+            return .mythCharacter
+        case ("historical", "fictional"), ("literary", "fictional"), ("movie", "fictional"), ("anime", "fictional"):
+            return .fictionCharacter
+        default:
+            // 根据type进行默认分类
+            switch type {
+            case "historical":
+                return .scientist
+            case "literary":
+                return .writer
+            case "movie":
+                return .movieCharacter
+            case "anime":
+                return .animeCharacter
+            case "game":
+                return .gameCharacter
+            default:
+                return .scientist
+            }
+        }
     }
 }
 
