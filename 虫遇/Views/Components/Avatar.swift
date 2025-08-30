@@ -6,6 +6,14 @@ import SwiftUI
  * 自动识别角色ID并使用CharacterAvatarService获取头像
  * 🔧 优化：添加缓存感知，避免重复渲染
  */
+// 定义预加载优先级枚举
+enum AvatarPreloadPriority {
+    case none
+    case low
+    case medium
+    case high
+}
+
 struct Avatar: View {
     // 头像URL、系统图标名称或角色ID
     var url: String
@@ -19,14 +27,21 @@ struct Avatar: View {
     var borderColor: Color = Color.gray.opacity(0.2)
     // 边框宽度
     var borderWidth: CGFloat = 1
+    // 是否使用缓存
+    var useCaching: Bool = false
+    // 预加载优先级
+    var preloadPriority: AvatarPreloadPriority = .none
     
     // 自定义头像
     @State private var customImage: UIImage? = nil
     
-    // 🔧 优化：缓存计算结果，避免重复计算
+    // 缓存计算结果，避免重复计算
     @State private var cachedCleanCharacterId: String = ""
     @State private var cachedIsKnownCharacter: Bool = false
     @State private var hasInitialized: Bool = false
+    
+    // 缓存控制
+    @State private var cacheKey: String = UUID().uuidString
     
     // 头像服务
     private let avatarService = CharacterAvatarService.shared
@@ -76,6 +91,26 @@ struct Avatar: View {
         return cleanCharacterId.hasPrefix("custom_")
     }
     
+    // 当组件出现时预加载头像
+    private func preloadAvatar() {
+        guard preloadPriority != .none else { return }
+        
+        let priority: Float = {
+            switch preloadPriority {
+            case .low: return 0.2
+            case .medium: return 0.5
+            case .high: return 0.9
+            case .none: return 0.0
+            }
+        }()
+        
+        if isKnownCharacter {
+            avatarService.preloadAvatar(for: cleanCharacterId, priority: priority)
+        } else if url.starts(with: "http") {
+            ImageCache.shared.prefetchImage(url: url, priority: priority)
+        }
+    }
+    
     var body: some View {
         Group {
             if let customImage = customImage {
@@ -93,13 +128,22 @@ struct Avatar: View {
                     .allowsHitTesting(true) // 明确允许点击事件
             } else if isKnownCharacter {
                 // 已知角色交由服务处理
-                avatarService.getAvatarView(for: cleanCharacterId, name: name, category: category, size: size)
+                avatarService.getAvatarView(for: cleanCharacterId, name: name, category: category, size: size, useCaching: useCaching)
                     .contentShape(Circle()) // 确保头像可点击
                     .allowsHitTesting(true) // 明确允许点击事件
+                    .onAppear(perform: preloadAvatar)
             } else if url.starts(with: "http") {
-                // 远程URL图片
-                remoteImage
+                // 远程URL图片 - 使用缓存加载
+                CachedImage(url: url, placeholder: Image(systemName: "person.circle.fill"))
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(borderColor, lineWidth: borderWidth)
+                    )
                     .contentShape(Circle()) // 确保头像可点击
+                    .allowsHitTesting(true) // 明确允许点击事件
+                    .onAppear(perform: preloadAvatar)
                     .allowsHitTesting(true) // 明确允许点击事件
             } else if url.contains(".") {
                 // 本地图片 (通常是文件名带后缀)

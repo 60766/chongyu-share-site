@@ -197,8 +197,22 @@ struct UserPostListView: View {
     // 处理点赞
     private func handleLike(at index: Int, isLiked: Bool) {
         guard index < posts.count else { return }
+        
+        // 使用全局点赞状态管理器设置状态
+        LikeStateManager.shared.setLiked(posts[index].id.uuidString, isLiked: isLiked)
+        
         let updatedPost = posts[index].toggleLike(isLiked: isLiked)
         posts[index] = updatedPost
+        
+        // 发送通知给UserLikeService记录点赞行为
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PostLiked"),
+            object: nil,
+            userInfo: [
+                "post": updatedPost,
+                "isLiked": isLiked
+            ]
+        )
         
         // 这里可以添加网络请求，将点赞状态同步到服务器
     }

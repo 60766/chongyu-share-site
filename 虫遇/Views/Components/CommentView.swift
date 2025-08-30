@@ -227,22 +227,21 @@ struct CommentView: View {
 
     /**
      * 获取用户显示名称
-     * 对于虚拟角色，确保显示中文名称而非ID
+     * 对于虚拟角色，使用与评论创建时相同的数据源
      */
     private func getUserDisplayName(comment: DetailedCommentModel) -> String {
         if comment.isVirtualCharacter, let characterID = comment.characterID {
-            // 优先从CharacterAvatarService获取中文名
-            let chineseName = avatarService.getCharacterChineseName(for: characterID)
-            if !chineseName.isEmpty && chineseName != characterID {
+            // 使用与评论创建时相同的数据源：CharacterDataManager
+            if let chineseName = CharacterDataManager.shared.getName(for: characterID) {
                 return chineseName
             }
             
-            // 检查用户名是否已经是中文
+            // 如果CharacterDataManager找不到，检查用户名是否已经是中文
             if comment.username.rangeOfCharacter(from: .chineseCharacters) != nil {
                 return comment.username
             }
             
-            // 如果以上都不满足，返回原始用户名
+            // 最后返回原始用户名
             return comment.username
         }
         

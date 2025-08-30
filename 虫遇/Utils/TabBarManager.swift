@@ -45,6 +45,9 @@ class TabBarManager: ObservableObject {
     /// 存储添加的底部覆盖视图，便于后续移除
     private var addedOverlayViews: [UIView] = []
     
+    /// 存储添加的高度约束，防止重复添加
+    private var heightConstraint: NSLayoutConstraint?
+    
     private init() {
         // 获取初始安全区域高度
         setupSafeAreaHeight()
@@ -165,17 +168,17 @@ class TabBarManager: ObservableObject {
                 tabBarController.tabBar.isUserInteractionEnabled = false
                 print("TabBar交互已禁用 (pushHideState)")
                 
-                // 移除所有可能影响布局的约束
-                for constraint in tabBarController.tabBar.constraints {
-                    if constraint.firstAttribute == .height {
-                        constraint.isActive = false
-                    }
+                // 如果已有高度约束，先移除
+                if let existingConstraint = self.heightConstraint {
+                    existingConstraint.isActive = false
+                    self.heightConstraint = nil
                 }
                 
-                // 给TabBar添加零高度约束
-                let heightConstraint = tabBarController.tabBar.heightAnchor.constraint(equalToConstant: 0)
-                heightConstraint.priority = .required
-                heightConstraint.isActive = true
+                // 给TabBar添加零高度约束，避免重复添加
+                let newHeightConstraint = tabBarController.tabBar.heightAnchor.constraint(equalToConstant: 0)
+                newHeightConstraint.priority = .required
+                newHeightConstraint.isActive = true
+                self.heightConstraint = newHeightConstraint
                 
                 // 立即更新布局
                 UIView.performWithoutAnimation {
@@ -206,6 +209,12 @@ class TabBarManager: ObservableObject {
                 if let tabBarController = findTabBarController() {
                     tabBarController.tabBar.isHidden = false
                     
+                    // 移除高度约束
+                    if let existingConstraint = self.heightConstraint {
+                        existingConstraint.isActive = false
+                        self.heightConstraint = nil
+                    }
+                    
                     // 恢复TabBar交互
                     tabBarController.tabBar.isUserInteractionEnabled = true
                     print("TabBar交互已恢复 (popHideState)")
@@ -217,13 +226,13 @@ class TabBarManager: ObservableObject {
             
             #if DEBUG
             if self.debugModeEnabled {
-                print("TabBar状态栈弹出，当前深度: \(hideStateStack.count)")
+    
             }
             #endif
         } else {
             #if DEBUG
             if self.debugModeEnabled {
-                print("TabBar状态栈已为空，无法弹出")
+    
             }
             #endif
         }
@@ -995,7 +1004,7 @@ class TabBarManager: ObservableObject {
             
             #if DEBUG
             if self.debugModeEnabled {
-                print("TabBar强制显示 - 确保可见")
+        
             }
             #endif
         }

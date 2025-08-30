@@ -11,8 +11,8 @@ struct NewAchievementView: View {
             // 标题和查看全部按钮
             HStack {
                 Text("成就展示")
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primary)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary.opacity(0.8))
                 
                 Spacer()
                 
@@ -39,7 +39,7 @@ struct NewAchievementView: View {
         }
         .onAppear {
             // 页面出现时刷新成就数据
-            print("🎯 NewAchievementView页面出现，开始刷新成就数据")
+
             evaluator.updateAllAchievements(using: modelContext)
         }
         .refreshable {

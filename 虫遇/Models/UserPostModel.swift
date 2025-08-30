@@ -232,47 +232,68 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
     
     /// 点赞评论
     func likeComment(commentId: UUID) {
+        var likedComment: DetailedCommentModel?
+        var wasLiked = false
+        
         // 优先在顶级评论中查找
         if let index = comments.firstIndex(where: { $0.id == commentId }) {
             comments[index].isLikedByCurrentUser.toggle()
+            wasLiked = comments[index].isLikedByCurrentUser
             if comments[index].isLikedByCurrentUser {
                 comments[index].likes += 1
             } else {
                 comments[index].likes = max(0, comments[index].likes - 1)
             }
-            return
-        }
-        
+            likedComment = comments[index]
+        } else {
         // 递归查找回复
         var updatedComments = comments
-        if findAndLikeReply(in: &updatedComments, commentId: commentId) {
+            if let foundComment = findAndLikeReply(in: &updatedComments, commentId: commentId) {
             comments = updatedComments
+                likedComment = foundComment.comment
+                wasLiked = foundComment.isLiked
+            }
+        }
+        
+        // 发送评论点赞通知给UserLikeService
+        if let comment = likedComment {
+            print("📨 UserPostModel: 发送评论点赞通知 - 评论ID: \(comment.id), 是否点赞: \(wasLiked)")
+            NotificationCenter.default.post(
+                name: NSNotification.Name("CommentLiked"),
+                object: nil,
+                userInfo: [
+                    "comment": comment,
+                    "post": self,
+                    "isLiked": wasLiked
+                ]
+            )
         }
     }
     
     /// 递归查找并点赞回复
-    private func findAndLikeReply(in replies: inout [DetailedCommentModel], commentId: UUID) -> Bool {
+    private func findAndLikeReply(in replies: inout [DetailedCommentModel], commentId: UUID) -> (comment: DetailedCommentModel, isLiked: Bool)? {
         for i in 0..<replies.count {
             if replies[i].id == commentId {
                 replies[i].isLikedByCurrentUser.toggle()
+                let wasLiked = replies[i].isLikedByCurrentUser
                 if replies[i].isLikedByCurrentUser {
                     replies[i].likes += 1
                 } else {
                     replies[i].likes = max(0, replies[i].likes - 1)
                 }
-                return true
+                return (comment: replies[i], isLiked: wasLiked)
             }
             
             if !replies[i].replies.isEmpty {
                 var updatedReplies = replies[i].replies
-                if findAndLikeReply(in: &updatedReplies, commentId: commentId) {
+                if let foundComment = findAndLikeReply(in: &updatedReplies, commentId: commentId) {
                     replies[i].replies = updatedReplies
-                    return true
+                    return foundComment
                 }
             }
         }
         
-        return false
+        return nil
     }
     
     /// 添加评论或回复
@@ -524,7 +545,7 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         )
     }
     
-    // 获取格式化的时间文本
+    // 获取格式化的时间文本 - 简化版本，不显示太精确的时间
     func getFormattedTimeAgo() -> String {
         let calendar = Calendar.current
         let now = Date()
@@ -538,11 +559,10 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             return "\(week)周前"
         } else if let day = components.day, day > 0 {
             return "\(day)天前"
-        } else if let hour = components.hour, hour > 0 {
+        } else if let hour = components.hour, hour >= 1 {
             return "\(hour)小时前"
-        } else if let minute = components.minute, minute > 0 {
-            return "\(minute)分钟前"
         } else {
+            // 不显示分钟，1小时内都显示"刚刚"
             return "刚刚"
         }
     }

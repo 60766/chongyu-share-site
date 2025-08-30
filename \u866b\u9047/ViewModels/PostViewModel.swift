@@ -8,24 +8,21 @@ import Utils
 func addPosts(_ newPosts: [UserPostModel]) {
     // 记录添加前的帖子数量
     let oldCount = posts.count
-    print("📊 PostViewModel: 添加前帖子数量 = \(oldCount)")
+    
     
     // 避免添加空数组
-    if newPosts.isEmpty {
-        print("⚠️ PostViewModel: 试图添加空数组，操作取消")
-        return
-    }
+          if newPosts.isEmpty {
+          return
+      }
     
     // 先触发objectWillChange，确保订阅者知道数据将要变化
     DispatchQueue.main.async {
         self.objectWillChange.send()
-        print("📊 PostViewModel: 发送pre-update objectWillChange通知")
+
     }
     
-    print("📊 PostViewModel: 开始处理新帖子，共 \(newPosts.count) 篇")
-    if !newPosts.isEmpty {
-        print("�� PostViewModel: 第一篇新帖子ID: \(newPosts[0].id), 内容: \(newPosts[0].content.prefix(50))...")
-    }
+    
+    
     
     // 检查是否有重复ID的帖子，避免添加重复内容
     var uniquePosts = [UserPostModel]()
@@ -35,19 +32,18 @@ func addPosts(_ newPosts: [UserPostModel]) {
         if !existingIds.contains(post.id) {
             uniquePosts.append(post)
             existingIds.insert(post.id)
-            print("✅ PostViewModel: 添加新帖子 ID: \(post.id)")
+  
         } else {
             print("⚠️ PostViewModel: 发现重复帖子ID: \(post.id)，已跳过")
         }
     }
     
-    if uniquePosts.isEmpty {
-        print("⚠️ PostViewModel: 所有新帖子都是重复的，未添加任何内容")
-        return
-    }
+          if uniquePosts.isEmpty {
+          return
+      }
     
     // 将新帖子添加到列表前面
-    print("📊 PostViewModel: 准备插入 \(uniquePosts.count) 篇帖子到位置0")
+    
     
     // 使用写时复制确保UI更新
     var newPosts = posts
@@ -55,16 +51,13 @@ func addPosts(_ newPosts: [UserPostModel]) {
     posts = newPosts
     
     // 验证添加是否成功
-    let newCount = posts.count
-    let addedCount = uniquePosts.count
-    print("�� PostViewModel: 添加后帖子数量 = \(newCount)，应增加 \(addedCount)，实际增加 \(newCount - oldCount)")
+          let newCount = posts.count
+      let addedCount = uniquePosts.count
     
     // 检查第一篇帖子是否就是新添加的第一篇
     if let firstNewPost = uniquePosts.first, let firstPost = posts.first {
         let isFirstPostMatch = firstNewPost.id == firstPost.id
-        print("📊 PostViewModel: 第一篇帖子ID匹配检查 = \(isFirstPostMatch ? "✅成功" : "❌失败")")
-        print("📊 PostViewModel: 第一篇帖子内容片段: \(firstPost.content.prefix(30))...")
-        print("📊 PostViewModel: 原始新帖子内容片段: \(firstNewPost.content.prefix(30))...")
+
     }
     
     // 强制触发变更通知，确保UI更新
@@ -104,7 +97,7 @@ func addPosts(_ newPosts: [UserPostModel]) {
             ]
         )
         
-        print("📱 PostViewModel: 已发送PostsUpdated和NewPostsGenerated通知，添加了 \(uniquePosts.count) 个新帖子，当前总数: \(self.posts.count)")
+        
         
         // 增加延迟再次触发，确保所有UI组件都能正确处理变更
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
@@ -137,11 +130,7 @@ func addPosts(_ newPosts: [UserPostModel]) {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                         guard let self = self else { return }
                         
-                        print("📊 PostViewModel: 最终确认 - 当前帖子总数: \(self.posts.count)")
-                        if !self.posts.isEmpty {
-                            print("📊 PostViewModel: 第一篇帖子ID: \(self.posts[0].id)")
-                            print("📊 PostViewModel: 第一篇帖子内容: \(self.posts[0].content.prefix(50))...")
-                        }
+
                     }
                 }
             }
@@ -386,7 +375,7 @@ func generatePostsByCreationType(typeIndex: Int) -> [UserPostModel] {
         )
         
         newPosts.append(fallbackPost)
-        print("✅ 成功生成备用帖子: \(fallbackPost.id)")
+
     }
     
     print("📱 generatePostsByCreationType 完成，生成了 \(newPosts.count) 篇帖子")
@@ -1347,7 +1336,7 @@ func sendCommentResponse(postIndex: Int, commentIndex: Int, characterID: String?
         // 通知UI更新
         self.objectWillChange.send()
         
-        print("✅✅✅ 虚拟角色回复已生成 - 内容: \(reply.content.prefix(30))...")
+        
     }
 }
 
@@ -1435,7 +1424,7 @@ func handleCommentReply(postIndex: Int, commentIndex: Int, userComment: String) 
             // 通知UI更新
             self.objectWillChange.send()
             
-            print("✅✅✅ 虚拟角色对评论回复的回应已生成 - 内容: \(characterReply.content.prefix(30))...")
+            
         }
     } else {
         print("⚠️⚠️⚠️ 原评论不是虚拟角色评论 或 缺少characterID")
@@ -1471,7 +1460,7 @@ func handleCommentReply(postIndex: Int, commentIndex: Int, userComment: String) 
                 // 通知UI更新
                 self.objectWillChange.send()
                 
-                print("✅✅✅ 作者对评论回复的回应已生成 - 内容: \(characterReply.content.prefix(30))...")
+                
             }
         } else {
             print("⚠️⚠️⚠️ 警告: 无法生成帖子作者回应，帖子characterID为nil")
@@ -1536,7 +1525,7 @@ func sendComment(postIndex: Int, userComment: String, characterID: String?) {
             // 通知UI更新
             self.objectWillChange.send()
             
-            print("✅✅✅ 虚拟角色回复已生成并添加 - 内容: \(reply.content.prefix(30))...")
+            
         }
     } else {
         print("⚠️⚠️⚠️ 警告: 无法生成虚拟角色回复，characterID为nil")
@@ -3953,7 +3942,7 @@ extension PostViewModel {
             postContext: postContext
         )
         
-        print("✅ 本质驱动回复生成完成: '\(String(response.prefix(50)))...'")
+
         return response
     }
     
@@ -4207,7 +4196,7 @@ class EssenceBasedResponseGenerator {
         
         // 处理短评论 (少于8个字符)
         if comment.count < 8 {
-            print("📝 检测到短评论，使用特殊处理")
+    
             return generateEssenceBasedBody(for: comment, character: character, postContext: postContext, originalPost: originalPost)
         }
         
@@ -4233,7 +4222,7 @@ class EssenceBasedResponseGenerator {
         let finalResponse = character.usesSignature ? 
             "\(responseBody)\n\n\(character.signature)" : responseBody
             
-        print("✅ 生成回复完成: '\(String(finalResponse.prefix(50)))...'")
+
         return finalResponse
     }
     
@@ -4591,7 +4580,7 @@ func generateEnhancedResponseToComment(
         recentInteractions: recentInteractions
     )
     
-    print("✅ AI生成回复完成: '\(String(response.prefix(50)))...'")
+    
     return response
 }
 

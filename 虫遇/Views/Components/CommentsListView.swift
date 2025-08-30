@@ -173,6 +173,20 @@ struct CommentsListView: View {
                         }
                     }
                 }
+                .onAppear {
+                    // 从全局状态管理器加载点赞状态
+                    // 遍历所有评论（包括嵌套评论），检查点赞状态
+                    func loadStates(_ comments: [DetailedCommentModel]) {
+                        for comment in comments {
+                            if LikeStateManager.shared.isLiked(comment.id.uuidString) {
+                                likedComments.insert(comment.id)
+                            }
+                            // 递归检查回复
+                            loadStates(comment.replies)
+                        }
+                    }
+                    loadStates(comments)
+                }
                 .onDisappear {
                     // 移除ScrollToComment通知监听
                     NotificationCenter.default.removeObserver(
@@ -243,7 +257,7 @@ struct CommentsListView: View {
             DispatchQueue.main.async {
                 // 强制刷新视图，确保点赞数更新
                 // self.refreshID = UUID() // 已移除
-                print("✅ CommentsListView: 收到CommentLikeUpdated通知，评论点赞数已刷新")
+    
             }
         }
     }
@@ -255,7 +269,7 @@ struct CommentsListView: View {
             let data = try JSONEncoder().encode(uuidStrings)
             UserDefaults.standard.set(data, forKey: storageKey)
         } catch {
-            print("❌ 保存展开状态失败: \(error)")
+
         }
     }
     
@@ -266,7 +280,7 @@ struct CommentsListView: View {
                 let uuidStrings = try JSONDecoder().decode([String].self, from: data)
                 expandedComments = Set(uuidStrings.compactMap { UUID(uuidString: $0) })
             } catch {
-                print("❌ 加载展开状态失败: \(error)")
+    
             }
         }
     }
@@ -1214,19 +1228,24 @@ struct CommentThreadView: View {
     
     // 切换点赞状态
     private func toggleLike(for commentId: UUID) {
-        // 不使用动画，直接更新状态
-            if likedComments.contains(commentId) {
-                likedComments.remove(commentId)
-            } else {
+        // 使用全局点赞状态管理器
+        let newLikedState = LikeStateManager.shared.toggleLike(commentId.uuidString)
+        
+        // 更新本地状态
+        if newLikedState {
                 likedComments.insert(commentId)
                 // 添加触觉反馈
                 let generator = UIImpactFeedbackGenerator(style: .light)
                 generator.impactOccurred()
+        } else {
+            likedComments.remove(commentId)
             }
         
         // 调用回调函数，更新模型数据
         onLike(commentId)
     }
+    
+
     
     // 添加一个特殊的刷新方法，避免导致滚动
     private func refreshWithoutScrolling() {
@@ -1286,7 +1305,7 @@ struct CommentItemView: View {
             HStack(alignment: .top, spacing: 14) { // 增加水平间距
                 // 用户头像 - 使用Avatar组件
                 Avatar(url: comment.isVirtualCharacter ? 
-                      (comment.characterID != nil ? "HistoricalFigures/\(comment.characterID!)" : comment.userAvatar) : 
+                      (comment.characterID ?? comment.userAvatar) : 
                       comment.userAvatar, 
                       name: comment.username,
                       category: comment.characterID != nil ? getCharacterTag(for: comment.characterID!) : "",
@@ -1294,15 +1313,15 @@ struct CommentItemView: View {
                     .frame(width: 38, height: 38)
                     .onAppear {
                         if comment.isVirtualCharacter {
-                            print("📱 评论头像 - 角色ID: \(comment.characterID ?? "nil"), 头像路径: \(comment.userAvatar)")
+                            print("📱 评论头像 - 角色ID: \(comment.characterID ?? "nil"), 传递给Avatar的URL: \(comment.characterID ?? comment.userAvatar)")
                         }
                     }
                 
                 VStack(alignment: .leading, spacing: 6) { // 增加垂直间距
                     // 用户信息行
                     HStack(alignment: .center, spacing: 8) { // 增加水平间距
-                        // 用户名
-                        Text(comment.username)
+                        // 用户名 - 使用与评论创建时相同的数据源
+                        Text(getUserDisplayName(comment: comment))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.primary)
                         
@@ -1392,23 +1411,22 @@ struct CommentItemView: View {
                         Button(action: {
                             onLike?()
                         }) {
+                            // 使用全局状态管理器检查点赞状态，简化显示逻辑
+                            let isGloballyLiked = LikeStateManager.shared.isLiked(comment.id.uuidString)
+                            let displayLikes = isGloballyLiked ? 
+                                max(1, comment.likes) : 
+                                comment.likes
+                            
                             HStack(spacing: 4) {
-                                Image(systemName: isLiked ? "heart.fill" : "heart")
+                                Image(systemName: isGloballyLiked ? "heart.fill" : "heart")
                                     .font(.system(size: 13))
-                                
-                                // 动态计算显示的点赞数：如果已点赞但原始数据未更新，则+1显示
-                                let displayLikes = isLiked && !comment.isLikedByCurrentUser ? 
-                                    comment.likes + 1 : 
-                                    ((!isLiked && comment.isLikedByCurrentUser) ? 
-                                        max(0, comment.likes - 1) : 
-                                        comment.likes)
                                 
                                 if displayLikes > 0 {
                                     Text("\(displayLikes)")
                                         .font(.system(size: 13))
                                 }
                             }
-                            .foregroundColor(isLiked ? .red : .gray.opacity(0.8))
+                            .foregroundColor(isGloballyLiked ? .red : .gray.opacity(0.8))
                         }
                         .buttonStyle(PlainButtonStyle())
                         .padding(.vertical, 4) // 从6减小到4
@@ -1429,6 +1447,29 @@ struct CommentItemView: View {
         .background(Color(.systemBackground).opacity(0.5))
         .contentShape(Rectangle())
         .frame(maxWidth: .infinity) // 确保整个评论视图占满宽度
+    }
+    
+    /**
+     * 获取用户显示名称
+     * 对于虚拟角色，使用与评论创建时相同的数据源
+     */
+    private func getUserDisplayName(comment: DetailedCommentModel) -> String {
+        if comment.isVirtualCharacter, let characterID = comment.characterID {
+            // 使用与评论创建时相同的数据源：CharacterDataManager
+            if let chineseName = CharacterDataManager.shared.getName(for: characterID) {
+                return chineseName
+            }
+            
+            // 如果CharacterDataManager找不到，检查用户名是否已经是中文
+            if comment.username.rangeOfCharacter(from: .chineseCharacters) != nil {
+                return comment.username
+            }
+            
+            // 最后返回原始用户名
+            return comment.username
+        }
+        
+        return comment.username
     }
 }
 

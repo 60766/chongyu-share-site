@@ -408,7 +408,7 @@ struct NotificationView: View {
                     }
                     
                     // 打印当前通知数量用于调试
-                    print("🔔 通知页面加载，当前通知数量: \(notificationService.notifications.count)")
+        
                     
                     // 生成系统通知（如果还没有的话）
                     notificationService.generateAdditionalSystemNotifications()

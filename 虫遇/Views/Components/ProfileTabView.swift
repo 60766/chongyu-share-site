@@ -53,12 +53,12 @@ struct ProfileTabView: View {
 #Preview("个人中心标签") {
     VStack(spacing: 20) {
         ProfileTabView(
-            tabs: ["角色关系", "我的动态", "互动记录"],
+            tabs: ["角色关系", "我的动态", "我的点赞"],
             selectedTab: .constant(0)
         )
         
         ProfileTabView(
-            tabs: ["角色关系", "我的动态", "互动记录"],
+            tabs: ["角色关系", "我的动态", "我的点赞"],
             selectedTab: .constant(1),
             useFilledBackground: true
         )

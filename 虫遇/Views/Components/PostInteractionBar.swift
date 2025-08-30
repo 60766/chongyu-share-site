@@ -15,6 +15,9 @@ struct PostInteractionBar: View {
     var postId: String?
     var authorCharacterId: String?
     
+    // 帖子对象（用于发送正确的点赞通知）
+    var post: UserPostModel?
+    
     // 回调函数
     var onCommentTap: () -> Void
     var onShareTap: () -> Void
@@ -34,27 +37,43 @@ struct PostInteractionBar: View {
                 // 触觉反馈
                 feedbackGenerator.impactOccurred()
                 
+                // 使用全局点赞状态管理器
+                guard let post = post else { return }
+                let newLikedState = LikeStateManager.shared.toggleLike(post.id.uuidString)
+                
                 // 视觉反馈 - 轻微缩放动画
                 withAnimation(DesignSystem.Animations.quick) {
                     likeScale = 1.2
-                    let _ = isLiked // 记录之前的状态但不使用
-                    isLiked.toggle()
-                    if isLiked {
+                    isLiked = newLikedState
+                    if newLikedState {
                         likeCount += 1
+                    } else {
+                        likeCount -= 1
+                    }
                         
-                        // 发送点赞通知（只在点赞时发送，取消点赞不发送）
-                        if let postId = postId, let authorCharacterId = authorCharacterId {
+                    // 发送正确格式的点赞通知给UserLikeService
+                    // 创建更新后的帖子对象
+                    let updatedPost = post.toggleLike(isLiked: newLikedState)
+                    
                             NotificationCenter.default.post(
                                 name: NSNotification.Name("PostLiked"),
+                        object: nil,
+                        userInfo: [
+                            "post": updatedPost,
+                            "isLiked": newLikedState
+                        ]
+                    )
+                    
+                    // 发送虚拟角色点赞通知（如果需要）
+                    if newLikedState, let postId = postId, let authorCharacterId = authorCharacterId {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("UserLikedCharacterPost"),
                                 object: nil,
                                 userInfo: [
                                     "postId": postId,
                                     "authorCharacterId": authorCharacterId
                                 ]
                             )
-                        }
-                    } else {
-                        likeCount -= 1
                     }
                 }
                 

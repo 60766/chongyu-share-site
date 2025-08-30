@@ -1006,8 +1006,11 @@ struct SpiralAnimation: View {
                 animationTime = timeline.date.timeIntervalSince1970
             }
             .onChange(of: timeline.date) { _, newDate in
-                // 安全地更新动画时间状态
-                animationTime = newDate.timeIntervalSince1970
+                // 防抖：只在时间变化超过阈值时更新，避免过度频繁的状态更新
+                let newTime = newDate.timeIntervalSince1970
+                if abs(newTime - animationTime) > 0.016 { // ~60fps阈值
+                    animationTime = newTime
+                }
             }
         }
         .clipShape(Circle()) // 确保内容不超出圆形边界

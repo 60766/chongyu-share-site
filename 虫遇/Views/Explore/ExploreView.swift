@@ -689,7 +689,7 @@ struct ExploreView: View {
         // 更新角色列表
         self.characters = allCharacters
         
-        print("已加载 \(characters.count) 个角色，其中用户创建的角色有 \(userCharacters.count) 个")
+
     }
     
     // 完整重新实现improvedCharacterCard方法
@@ -1363,7 +1363,7 @@ extension ExploreView {
         if let data = UserDefaults.standard.data(forKey: "HiddenCharacters"),
            let decodedIds = try? JSONDecoder().decode([String].self, from: data) {
             hiddenCharacters = decodedIds
-            print("从UserDefaults加载了\(hiddenCharacters.count)个隐藏角色")
+    
         }
     }
 }
@@ -1383,7 +1383,7 @@ extension ExploreView {
         if let data = UserDefaults.standard.data(forKey: "PinnedCharacters"),
            let decodedIds = try? JSONDecoder().decode([String].self, from: data) {
             pinnedCharacters = decodedIds
-            print("从UserDefaults加载了\(pinnedCharacters.count)个置顶角色")
+    
         }
     }
 }

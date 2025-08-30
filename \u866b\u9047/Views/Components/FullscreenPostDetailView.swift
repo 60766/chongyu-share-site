@@ -14,7 +14,7 @@
                     ) {
                         // 特效完成后的回调
                         print("⭐️ 时空特效完成，准备返回主页面")
-                        print("🔍 确认是虫洞探索页面发起的时空特效回调")
+                        
                         
                         // 在返回前生成帖子
                         let postVM = PostViewModel.shared
@@ -27,14 +27,14 @@
                         DispatchQueue.global(qos: .userInitiated).async {
                             // 在后台线程生成帖子，避免阻塞UI
                             let posts = postVM.generatePostsByCreationType(typeIndex: typeIndex)
-                            print("📊 成功从FullscreenPostDetailView生成 \(posts.count) 个帖子")
+                
                             
                             // 在主线程添加帖子
                             DispatchQueue.main.async {
                                 if !posts.isEmpty {
                                     // 打印帖子信息
                                     for (index, post) in posts.enumerated() {
-                                        print("📝 帖子 #\(index+1): ID=\(post.id), 内容=\(post.content.prefix(30))...")
+      
                                     }
                                     
                                     // 添加到帖子列表

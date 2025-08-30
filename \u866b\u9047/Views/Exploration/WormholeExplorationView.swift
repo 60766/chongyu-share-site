@@ -10,8 +10,8 @@
                         }
                         
                         // 添加打印信息，跟踪执行情况
-                        print("🚀 时空效果完成，准备生成帖子，当前选择的创作类型索引: \(typeManager.selectedIndex)")
-                        print("🔍 调用栈检查：TimeSpaceEffectView回调正在被执行")
+                
+                        
                         
                         // 确保创作类型管理器是有效的
                         guard let typeIndex = typeManager.selectedIndex else {
@@ -26,7 +26,7 @@
                     
     // 提取帖子生成和添加逻辑为独立函数，方便在不同位置调用
     private func generateAndAddPosts(typeIndex: Int) {
-        print("🚀 generateAndAddPosts被调用，创作类型索引: \(typeIndex)")
+
         
         // 生成基于当前所选创作类型的5个帖子
         var posts = postViewModel.generatePostsByCreationType(typeIndex: typeIndex)
@@ -57,11 +57,11 @@
         
         // 更新生成成功的帖子数量
         generatedPostsCount = posts.count
-        print("✅ 成功生成 \(posts.count) 个帖子，创作类型: \(typeManager.types[typeIndex])")
+        
         
         // 检查帖子内容有效性
         for (index, post) in posts.enumerated() {
-            print("📝 帖子 #\(index+1): ID=\(post.id), 内容=\(post.content.prefix(30))...")
+            
         }
         
         // 在主线程处理UI更新
@@ -146,7 +146,7 @@
                 // 确认首篇帖子内容
                 if !postViewModel.posts.isEmpty {
                     let firstPost = postViewModel.posts[0]
-                    print("📝 当前首篇帖子: ID=\(firstPost.id), 内容=\(firstPost.content.prefix(30))...")
+    
                 }
             }
             

@@ -93,7 +93,7 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
         return newComment
     }
     
-    // 获取格式化的时间文本
+    // 获取格式化的时间文本 - 简化版本，不显示太精确的时间
     func getFormattedTimeAgo() -> String {
         let calendar = Calendar.current
         let now = Date()
@@ -107,11 +107,10 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
             return "\(week)周前"
         } else if let day = components.day, day > 0 {
             return "\(day)天前"
-        } else if let hour = components.hour, hour > 0 {
+        } else if let hour = components.hour, hour >= 1 {
             return "\(hour)小时前"
-        } else if let minute = components.minute, minute > 0 {
-            return "\(minute)分钟前"
         } else {
+            // 不显示分钟，1小时内都显示"刚刚"
             return "刚刚"
         }
     }

@@ -32,11 +32,9 @@ class ExplorationCountManager {
         
         // 如果没有设置过，返回默认值
         guard let count = contentTypeCounts[typeKey] else {
-            print("📊 获取「\(typeKey)」生成数量: 使用默认值 \(defaultCount)")
             return defaultCount
         }
         
-        print("📊 获取「\(typeKey)」生成数量: \(count)")
         return count
     }
     

@@ -43,6 +43,12 @@ struct ChongYuApp: App {
         // 初始化API配置
         setupAPIConfig()
         
+        // 初始化用户点赞服务
+        _ = UserLikeService.shared
+        
+        // 初始化全局点赞状态管理器
+        _ = LikeStateManager.shared
+        
         print("🖼️ 初始化历史人物图片资源...")
         print("📱 应用路径: \(Bundle.main.bundlePath)")
         if let resourcePath = Bundle.main.resourcePath {

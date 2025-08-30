@@ -49,12 +49,10 @@ class AINetworkService {
      */
     func sendRequest(prompt: String) -> AnyPublisher<String, AINetworkError> {
         guard let apiKey = APIConfigManager.shared.apiKey else {
-            print("❌ API调用失败: 未设置API密钥")
             return Fail(error: AINetworkError.noAPIKey).eraseToAnyPublisher()
         }
         
         guard let url = URL(string: APIConfigManager.shared.deepSeekEndpoint) else {
-            print("❌ API调用失败: 无效的API URL")
             return Fail(error: AINetworkError.invalidURL).eraseToAnyPublisher()
         }
         
@@ -117,7 +115,7 @@ class AINetworkService {
             return Fail(error: AINetworkError.requestFailed(error)).eraseToAnyPublisher()
         }
         
-        print("🚀🚀🚀 正在发送请求到\(apiType)... 🚀🚀🚀")
+
         
         // 创建自定义URLSessionConfiguration，设置更长的超时时间
         let sessionConfig = URLSessionConfiguration.default
@@ -178,33 +176,15 @@ class AINetworkService {
                        let firstChoice = choices.first,
                        let message = firstChoice["message"] as? [String: Any],
                        let content = message["content"] as? String {
-                        // 🔴🔴🔴 超级醒目的解析成功日志 🔴🔴🔴
-                        print("\n💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚")
-                        print("🎊🎊🎊 【虚拟角色评论】成功生成！🎊🎊🎊")
-                        print("💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚")
-                        print("✅ 成功解析\(apiType)响应")
-                        print("📝 原始回复内容长度: \(content.count)字符")
-                        print("\n💚 ===== 生成的角色评论原始内容 =====")
-                        print(content)
-                        print("💚 ===== 角色评论原始内容结束 =====")
-                        
-                        // 处理可能存在的前导和尾随空格和换行符
+                                                // 处理可能存在的前导和尾随空格和换行符
                         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
-                        print("\n🔍 处理后内容长度: \(trimmedContent.count)字符")
-                        print("\n💚 ===== 最终角色评论内容 =====")
-                        print(trimmedContent)
-                        print("💚 ===== 最终角色评论内容结束 =====")
-                        print("💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚💚")
-                        print("👍 虚拟角色评论生成完成！即将添加到评论列表\n")
                         
                         return Just(trimmedContent)
                             .setFailureType(to: AINetworkError.self)
                             .eraseToAnyPublisher()
                     } else {
-                        print("❌ 无法解析响应数据")
-                        if let responseStr = String(data: data, encoding: .utf8) {
-                            print("📄 原始响应: \(responseStr)")
-                        }
+    
+
                         
                         // 建议尝试切换API端点
                         print("⚠️ 响应解析失败，建议尝试切换API端点")
@@ -212,7 +192,7 @@ class AINetworkService {
                         return Fail(error: AINetworkError.invalidResponse).eraseToAnyPublisher()
                     }
                 } catch {
-                    print("❌ 解析响应失败: \(error)")
+
                     
                     // 建议尝试切换API端点
                     print("⚠️ 响应解析出错，建议尝试切换API端点")
@@ -239,12 +219,10 @@ class AINetworkService {
         userMessage: String
     ) -> AnyPublisher<String, AINetworkError> {
         guard let apiKey = APIConfigManager.shared.apiKey else {
-            print("❌ API调用失败: 未设置API密钥")
             return Fail(error: AINetworkError.noAPIKey).eraseToAnyPublisher()
         }
         
         guard let url = URL(string: APIConfigManager.shared.deepSeekEndpoint) else {
-            print("❌ API调用失败: 无效的API URL")
             return Fail(error: AINetworkError.invalidURL).eraseToAnyPublisher()
         }
         
@@ -379,7 +357,7 @@ class AINetworkService {
                        let firstChoice = choices.first,
                        let message = firstChoice["message"] as? [String: Any],
                        let content = message["content"] as? String {
-                        print("✅ 成功解析\(apiType)聊天响应")
+    
                         
                         // 处理可能存在的前导和尾随空格和换行符
                         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -389,7 +367,7 @@ class AINetworkService {
                             .setFailureType(to: AINetworkError.self)
                             .eraseToAnyPublisher()
                     } else {
-                        print("❌ 无法解析聊天响应数据")
+    
                         return Fail(error: AINetworkError.invalidResponse).eraseToAnyPublisher()
                     }
                 } catch {

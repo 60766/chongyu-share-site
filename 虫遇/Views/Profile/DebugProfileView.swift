@@ -6,7 +6,7 @@ import SwiftUI
  */
 struct DebugProfileView: View {
     @State private var selectedTabIndex = 0
-    private let tabOptions = ["角色关系", "我的动态", "互动记录"]
+    private let tabOptions = ["角色关系", "我的动态", "我的点赞"]
     
     var body: some View {
         // 移除NavigationView，直接使用ScrollView

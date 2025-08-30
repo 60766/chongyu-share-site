@@ -317,11 +317,15 @@ struct TimePortalIcon: View {
                     }
                 }
             }
-            .onChange(of: timeline.date) { _, _ in
-                // 保存当前时间作为下一帧的参考
-                lastUpdateTime = now
-                // 更新存储的角度值，确保在0-360范围内
-                rotationAngle = currentAngle.truncatingRemainder(dividingBy: 360)
+            .onChange(of: timeline.date) { _, newDate in
+                // 防抖：避免同一帧内多次更新
+                let timeSinceLastUpdate = newDate.timeIntervalSince(lastUpdateTime)
+                if abs(timeSinceLastUpdate) > 0.016 { // ~60fps阈值
+                    // 保存当前时间作为下一帧的参考
+                    lastUpdateTime = newDate
+                    // 更新存储的角度值，确保在0-360范围内
+                    rotationAngle = currentAngle.truncatingRemainder(dividingBy: 360)
+                }
             }
         }
     }

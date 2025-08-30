@@ -25,7 +25,6 @@ class CharacterAvatarService {
     
     // 私有初始化方法
     private init() {
-        print("✅ CharacterAvatarService: 初始化")
         // 初始化时检查常用角色头像
         checkCommonAvatars()
     }
@@ -38,23 +37,7 @@ class CharacterAvatarService {
         // 将孔子移到列表中间，防止其成为默认选择
         let commonCharacters = ["einstein", "shakespeare", "davinci", "newton", "sunwukong", "kongzi"]
         
-        print("🔍 检查常用角色头像:")
-        for id in commonCharacters {
-            // 检查直接路径
-            if let _ = UIImage(named: id) {
-                print("✅ 直接路径可用: \(id)")
-            } else {
-                print("❌ 直接路径不可用: \(id)")
-            }
-            
-            // 检查HistoricalFigures路径
-            let historicalPath = "HistoricalFigures/\(id)"
-            if let _ = UIImage(named: historicalPath) {
-                print("✅ 历史人物路径可用: \(historicalPath)")
-            } else {
-                print("❌ 历史人物路径不可用: \(historicalPath)")
-            }
-        }
+
     }
     
     /**
@@ -63,22 +46,17 @@ class CharacterAvatarService {
      * @return 图片是否存在且有效
      */
     func checkImageExistence(imageName: String) -> Bool {
-        print("🔍 CharacterAvatarService.checkImageExistence - 检查图片是否存在: \(imageName)")
-        
         // 检查直接路径
         if let image = UIImage(named: imageName), image.size.width > 0, image.cgImage != nil {
-            print("✅ 图片存在且有效: \(imageName)")
             return true
         }
         
         // 检查历史人物路径
         let historicalPath = "HistoricalFigures/\(imageName)"
         if let image = UIImage(named: historicalPath), image.size.width > 0, image.cgImage != nil {
-            print("✅ 图片存在且有效: \(historicalPath)")
             return true
         }
         
-        print("❌ 图片不存在或无效: \(imageName)")
         return false
     }
     
@@ -92,29 +70,20 @@ class CharacterAvatarService {
     func getAvatarType(for characterId: String, name: String, category: String) -> AvatarType {
         // 🔧 优化：先检查缓存
         if let cachedType = cacheQueue.sync(execute: { avatarTypeCache[characterId] }) {
-            print("✅ CharacterAvatarService: 使用缓存的头像类型: \(characterId)")
             return cachedType
         }
-        
-        print("🔍 CharacterAvatarService.getAvatarType - 正在获取头像类型: \(characterId), 名称: \(name), 类别: \(category)")
         
         let avatarType: AvatarType
         
         // 1. 尝试直接加载本地图片
         if let image = UIImage(named: characterId), image.size.width > 0, image.cgImage != nil {
-            print("✅ 找到本地图片: \(characterId), 尺寸: \(image.size)")
             avatarType = .image(characterId)
         } else {
-            print("❌ 本地图片不存在或无效: \(characterId)")
-            
             // 2. 尝试加载HistoricalFigures目录下的图片
             let historicalPath = "HistoricalFigures/\(characterId)"
             if let image = UIImage(named: historicalPath), image.size.width > 0, image.cgImage != nil {
-                print("✅ 找到历史人物图片: \(historicalPath), 尺寸: \(image.size)")
                 avatarType = .image(historicalPath)
             } else {
-                print("❌ 历史人物图片不存在或无效: \(historicalPath)")
-                
                 // 3. 没有图片资源，使用字母头像
                 // 获取有效名称 (优先使用中文名称)
                 let chineseName = getCharacterChineseName(for: characterId)
@@ -123,7 +92,6 @@ class CharacterAvatarService {
                 // 生成字母头像
                 let initialLetter = getInitialLetter(from: effectiveName)
                 let color = generateConsistentColor(for: characterId)
-                print("⚠️ 未找到有效图片，使用字母头像: \(initialLetter) (来自: \(effectiveName))")
                 avatarType = .letter(initialLetter, color)
             }
         }
@@ -144,24 +112,23 @@ class CharacterAvatarService {
      * @param size 头像大小
      * @return 头像视图
      */
-    func getAvatarView(for characterId: String, name: String = "", category: String = "", size: CGFloat = 40) -> some View {
-        // 🔧 优化：先检查视图缓存
+    func getAvatarView(for characterId: String, name: String = "", category: String = "", size: CGFloat = 40, useCaching: Bool = false) -> some View {
+        // 先检查视图缓存
         let cacheKey = "\(characterId)_\(size)"
-        if let cachedView = cacheQueue.sync(execute: { avatarViewCache[cacheKey] }) {
-            print("✅ CharacterAvatarService: 使用缓存的头像视图: \(characterId), 尺寸: \(size)")
+        if useCaching, let cachedView = cacheQueue.sync(execute: { avatarViewCache[cacheKey] }) {
+
             return cachedView
         }
         
         let avatarType = getAvatarType(for: characterId, name: name, category: category)
         
-        print("🔍 CharacterAvatarService.getAvatarView - characterId: \(characterId), avatarType: \(avatarType)")
+
         
         let avatarView: AnyView
         
         // 标准头像处理逻辑
         switch avatarType {
         case .image(let imageName):
-            print("🖼️ 尝试加载图片头像: \(imageName)")
             avatarView = AnyView(
                 Image(imageName)
                     .resizable()
@@ -177,7 +144,6 @@ class CharacterAvatarService {
             )
             
         case .systemIcon(let iconName, let color):
-            print("🔣 使用系统图标: \(iconName)")
             avatarView = AnyView(
                 ZStack {
                     Circle()
@@ -197,7 +163,6 @@ class CharacterAvatarService {
             )
             
         case .letter(let letter, let color):
-            print("📝 使用字母头像: \(letter)")
             avatarView = AnyView(
                 ZStack {
                     Circle()
@@ -231,14 +196,11 @@ class CharacterAvatarService {
      * @return 头像名称
      */
     func getAvatarName(for characterId: String) -> String {
-        print("🔍 CharacterAvatarService.getAvatarName - characterId: \(characterId)")
-        
         // 标准化ID
         let normalizedId = characterId.lowercased()
         
         // 对于Assets.xcassets中的图片，直接使用图片集名称
         // 不需要路径前缀，因为iOS会自动在Asset Catalog中查找
-        print("✅ 返回标准化角色ID作为头像名称: \(normalizedId)")
         return normalizedId
     }
     
@@ -253,11 +215,9 @@ class CharacterAvatarService {
         let result = _knownCharacters.contains(normalizedId)
         
         if result {
-            print("✅ 已知角色: \(normalizedId)")
             // 即使图片不存在也返回true，因为已知角色需要显示字母头像
             return true
         } else {
-            print("ℹ️ 未知角色: \(normalizedId)")
             return false
         }
     }
@@ -542,6 +502,30 @@ class CharacterAvatarService {
                UIImage(named: "HistoricalFigures/\(characterId)") != nil
     }
     
+    /**
+     * 预加载角色头像
+     * @param characterId 角色ID
+     * @param priority 优先级 (0.0-1.0)
+     */
+    func preloadAvatar(for characterId: String, priority: Float = 0.5) {
+        // 创建一个低优先级的后台任务来预加载头像
+        DispatchQueue.global(qos: .utility).async {
+            // 获取头像类型但不创建视图
+            let avatarType = self.getAvatarType(for: characterId, name: "", category: "")
+            
+            // 对于图片类型，预加载图片
+            if case .image(let imageName) = avatarType {
+                // 尝试加载图片以确保它在内存中
+                let _ = UIImage(named: imageName)
+                
+                // 缓存头像类型
+                self.cacheQueue.async(flags: .barrier) {
+                    self.avatarTypeCache[characterId] = avatarType
+                }
+            }
+        }
+    }
+    
     // MARK: - 缓存管理
     
     /**
@@ -551,7 +535,6 @@ class CharacterAvatarService {
     func clearAvatarTypeCache() {
         cacheQueue.async(flags: .barrier) {
             self.avatarTypeCache.removeAll()
-            print("🧹 CharacterAvatarService: 已清理头像类型缓存")
         }
     }
     
@@ -562,7 +545,6 @@ class CharacterAvatarService {
     func clearAvatarViewCache() {
         cacheQueue.async(flags: .barrier) {
             self.avatarViewCache.removeAll()
-            print("🧹 CharacterAvatarService: 已清理头像视图缓存")
         }
     }
     
@@ -574,7 +556,6 @@ class CharacterAvatarService {
         cacheQueue.async(flags: .barrier) {
             self.avatarTypeCache.removeAll()
             self.avatarViewCache.removeAll()
-            print("🧹 CharacterAvatarService: 已清理所有缓存")
         }
     }
     

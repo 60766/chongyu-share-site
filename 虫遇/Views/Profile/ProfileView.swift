@@ -2,6 +2,324 @@ import SwiftUI
 import SwiftData
 import UIKit
 import Combine
+import PhotosUI
+
+// 用户资料管理服务
+class UserProfileManager: ObservableObject {
+    static let shared = UserProfileManager()
+    
+    @Published var username: String = "次元指挥官"
+    @Published var personalSignature: String = "探索无限次元，寻找智慧宝藏 ✨"
+    @Published var avatarImage: UIImage?
+    @Published var avatarImageName: String = "default_avatar"
+    
+    // 等级系统相关属性
+    @Published var userLevel: Int = 1
+    @Published var userExperience: Int = 0
+    @Published var levelTitle: String = "时空新手"
+    @Published var lastLevelUpdateTime: Date = Date()
+    @Published var showLevelUpNotification: Bool = false
+    @Published var levelUpMessage: String = ""
+
+    private let userDefaults = UserDefaults.standard
+    private let usernameKey = "user_profile_username"
+    private let personalSignatureKey = "user_profile_personal_signature"
+    private let avatarImageNameKey = "user_profile_avatar_name"
+    
+    // 等级系统缓存键
+    private let levelKey = "user_profile_level"
+    private let experienceKey = "user_profile_experience"
+    private let levelTitleKey = "user_profile_level_title"
+    private let lastLevelUpdateKey = "user_profile_last_level_update"
+    
+    // 等级计算缓存
+    private let levelCacheKey = "user_level_calculation_cache"
+    private let levelCacheExpiration: TimeInterval = 300 // 5分钟缓存
+
+    init() {
+        loadUserProfile()
+        loadLevelData()
+    }
+    
+    func loadUserProfile() {
+        username = userDefaults.string(forKey: usernameKey) ?? "次元指挥官"
+        personalSignature = userDefaults.string(forKey: personalSignatureKey) ?? "探索无限次元，寻找智慧宝藏 ✨"
+        avatarImageName = userDefaults.string(forKey: avatarImageNameKey) ?? "default_avatar"
+    }
+    
+    func loadLevelData() {
+        userLevel = userDefaults.integer(forKey: levelKey)
+        if userLevel == 0 { userLevel = 1 } // 默认等级1
+        
+        userExperience = userDefaults.integer(forKey: experienceKey)
+        levelTitle = userDefaults.string(forKey: levelTitleKey) ?? getLevelTitle(level: userLevel)
+        lastLevelUpdateTime = userDefaults.object(forKey: lastLevelUpdateKey) as? Date ?? Date()
+    }
+    
+    func updateUsername(_ newUsername: String) {
+        username = newUsername
+        userDefaults.set(newUsername, forKey: usernameKey)
+    }
+    
+    func updatePersonalSignature(_ newSignature: String) {
+        personalSignature = newSignature
+        userDefaults.set(newSignature, forKey: personalSignatureKey)
+    }
+    
+    func updateAvatar(_ image: UIImage, name: String) {
+        avatarImage = image
+        avatarImageName = name
+        userDefaults.set(name, forKey: avatarImageNameKey)
+        
+        // 保存图片到本地
+        saveImageToDocuments(image, name: name)
+    }
+    
+    // MARK: - 等级系统核心方法
+    
+    /// 异步计算并更新用户等级（带缓存）
+    func updateUserLevelAsync() {
+        // 检查缓存是否有效
+        if isLevelCacheValid() {
+            return
+        }
+        
+        // 在后台线程计算等级
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            
+            let newLevelData = self.calculateUserLevelData()
+            
+            // 在主线程更新UI
+            DispatchQueue.main.async {
+                self.updateLevelData(newLevelData)
+                self.saveLevelCache(newLevelData)
+            }
+        }
+    }
+    
+    /// 强制重新计算等级（清除缓存）
+    func forceUpdateUserLevel() {
+        clearLevelCache()
+        updateUserLevelAsync()
+    }
+    
+    /// 检查等级缓存是否有效
+    private func isLevelCacheValid() -> Bool {
+        guard let cacheData = userDefaults.object(forKey: levelCacheKey) as? [String: Any],
+              let timestamp = cacheData["timestamp"] as? Date else {
+            return false
+        }
+        
+        return Date().timeIntervalSince(timestamp) < levelCacheExpiration
+    }
+    
+    /// 保存等级缓存
+    private func saveLevelCache(_ levelData: (level: Int, experience: Int, title: String)) {
+        let cacheData: [String: Any] = [
+            "level": levelData.level,
+            "experience": levelData.experience,
+            "title": levelData.title,
+            "timestamp": Date()
+        ]
+        userDefaults.set(cacheData, forKey: levelCacheKey)
+    }
+    
+    /// 清除等级缓存
+    private func clearLevelCache() {
+        userDefaults.removeObject(forKey: levelCacheKey)
+    }
+    
+    /// 计算用户等级数据
+    private func calculateUserLevelData() -> (level: Int, experience: Int, title: String) {
+        // 获取统计数据（这里需要访问其他服务，暂时使用模拟数据）
+        let stats = getCurrentUserStats()
+        
+        // 计算总经验值
+        let totalExperience = calculateTotalExperience(stats: stats)
+        
+        // 计算等级
+        let level = calculateLevelFromExperience(totalExperience)
+        
+        // 获取等级称号
+        let title = getLevelTitle(level: level)
+        
+        return (level, totalExperience, title)
+    }
+    
+    /// 获取当前用户统计数据
+    private func getCurrentUserStats() -> [String: Int] {
+        // 从DataCacheService获取缓存的统计数据
+        if let stats: [String: Int] = DataCacheService.shared.retrieve(key: "profile.stats") {
+            return stats
+        }
+        
+        // 如果缓存不存在，返回默认值
+        return [
+            "dialogueCount": 0,
+            "resonanceCount": 0,
+            "cognitionCount": 0,
+            "deepDialogueCount": 0,
+            "myLikesCount": 0,
+            "travelCount": 0,
+            "inspirationCount": 0
+        ]
+    }
+    
+    /// 计算总经验值
+    private func calculateTotalExperience(stats: [String: Int]) -> Int {
+        let dialogueScore = stats["dialogueCount", default: 0] * 1
+        let resonanceScore = stats["resonanceCount", default: 0] * 2
+        let cognitionScore = stats["cognitionCount", default: 0] * 3
+        let deepDialogueScore = stats["deepDialogueCount", default: 0] * 2
+        let likeScore = stats["myLikesCount", default: 0] * 1
+        let travelScore = stats["travelCount", default: 0] * 5
+        let inspirationScore = stats["inspirationCount", default: 0] * 2
+        
+        return dialogueScore + resonanceScore + cognitionScore + 
+               deepDialogueScore + likeScore + travelScore + inspirationScore
+    }
+    
+    /// 根据经验值计算等级
+    private func calculateLevelFromExperience(_ experience: Int) -> Int {
+        switch experience {
+        case 0..<50: return 1
+        case 50..<150: return 2
+        case 150..<300: return 3
+        case 300..<500: return 4
+        case 500..<800: return 5
+        case 800..<1200: return 6
+        case 1200..<1800: return 7
+        case 1800..<2500: return 8
+        case 2500..<3500: return 9
+        default: return 10
+        }
+    }
+    
+    /// 更新等级数据
+    private func updateLevelData(_ levelData: (level: Int, experience: Int, title: String)) {
+        let oldLevel = userLevel
+        userLevel = levelData.level
+        userExperience = levelData.experience
+        levelTitle = levelData.title
+        lastLevelUpdateTime = Date()
+        
+        // 保存到UserDefaults
+        userDefaults.set(userLevel, forKey: levelKey)
+        userDefaults.set(userExperience, forKey: experienceKey)
+        userDefaults.set(levelTitle, forKey: levelTitleKey)
+        userDefaults.set(lastLevelUpdateTime, forKey: lastLevelUpdateKey)
+        
+        // 检查是否升级
+        if userLevel > oldLevel {
+            print("🎉 恭喜升级！从 Lv.\(oldLevel) 升级到 Lv.\(userLevel)")
+            
+            // 显示升级通知
+            levelUpMessage = "恭喜升级！从 \(getLevelTitle(level: oldLevel)) 升级到 \(levelTitle)"
+            showLevelUpNotification = true
+            
+            // 3秒后自动隐藏通知
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                self.showLevelUpNotification = false
+            }
+        }
+    }
+    
+    /// 获取等级称号
+    private func getLevelTitle(level: Int) -> String {
+        switch level {
+        case 1: return "时空新手"
+        case 2: return "虫洞探险家"
+        case 3: return "次元旅行者"
+        case 4: return "时空冒险家"
+        case 5: return "虫洞漫游者"
+        case 6: return "次元守护者"
+        case 7: return "时空大师"
+        case 8: return "虫洞领主"
+        case 9: return "次元王者"
+        case 10: return "时空传奇"
+        default: return "时空新手"
+        }
+    }
+    
+    /// 获取当前等级的经验值范围
+    func getCurrentLevelExperienceRange() -> (current: Int, next: Int) {
+        let levelRanges = [
+            1: (0, 50), 2: (50, 150), 3: (150, 300), 4: (300, 500),
+            5: (500, 800), 6: (800, 1200), 7: (1200, 1800),
+            8: (1800, 2500), 9: (2500, 3500), 10: (3500, Int.max)
+        ]
+        
+        let range = levelRanges[userLevel] ?? (0, 50)
+        return (range.0, range.1)
+    }
+    
+    /// 获取升级进度百分比
+    func getLevelUpProgress() -> Double {
+        let range = getCurrentLevelExperienceRange()
+        let progress = Double(userExperience - range.current) / Double(range.next - range.current)
+        return min(max(progress, 0), 1)
+    }
+    
+    /// 获取等级颜色
+    func getLevelColor() -> Color {
+        switch userLevel {
+        case 1...2: return .blue
+        case 3...4: return .green
+        case 5...6: return .orange
+        case 7...8: return .purple
+        case 9...10: return .red
+        default: return .blue
+        }
+    }
+    
+    /// 获取等级图标
+    func getLevelIcon() -> String {
+        switch userLevel {
+        case 1: return "sparkles"
+        case 2: return "location.circle"
+        case 3: return "airplane"
+        case 4: return "map"
+        case 5: return "globe"
+        case 6: return "shield"
+        case 7: return "crown"
+        case 8: return "building.columns"
+        case 9: return "crown.fill"
+        case 10: return "star.circle.fill"
+        default: return "sparkles"
+        }
+    }
+
+    private func saveImageToDocuments(_ image: UIImage, name: String) {
+        guard let data = image.jpegData(compressionQuality: 0.8) else { return }
+        
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileURL = documentsDirectory.appendingPathComponent("\(name).jpg")
+        
+        do {
+            try data.write(to: fileURL)
+        } catch {
+            print("保存头像失败: \(error)")
+        }
+    }
+    
+    func loadAvatarImage() -> UIImage? {
+        if let image = avatarImage {
+            return image
+        }
+        
+        // 从本地文件加载
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileURL = documentsDirectory.appendingPathComponent("\(avatarImageName).jpg")
+        
+        if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
+            avatarImage = image
+            return image
+        }
+        
+        return UIImage(named: avatarImageName)
+    }
+}
 
 // 添加一个新的UIKit桥接组件来处理点击事件
 struct TouchableView: UIViewRepresentable {
@@ -61,7 +379,7 @@ struct ProfileView: View {
     /// 当前选中的标签索引
     @State private var selectedTabIndex = 0
     /// 标签选项
-    private let tabOptions = ["次元回放", "我的动态", "互动记录"]
+    private let tabOptions = ["次元回放", "我的动态", "我的点赞"]
     /// 是否显示成就详情
     @State private var showAchievements = false
     /// 是否显示等级详情
@@ -90,6 +408,35 @@ struct ProfileView: View {
     // 添加缓存服务依赖
     @ObservedObject private var cacheService = DataCacheService.shared
     
+    // 添加用户点赞服务依赖
+    @ObservedObject private var likeService = UserLikeService.shared
+    
+    // 添加用户资料管理服务依赖
+    @ObservedObject private var userProfileManager = UserProfileManager.shared
+
+    // 显示完整点赞视图的状态
+    @State private var showAllLikes = false
+    
+    // 显示完整动态视图的状态
+    @State private var showAllPosts = false
+    
+    // 用户资料编辑相关状态
+    @State private var showingProfileEditor = false
+    @State private var showingImagePicker = false
+    @State private var selectedImage: PhotosPickerItem?
+    @State private var selectedUIImage: UIImage?
+    
+    // 直接编辑状态
+    @State private var isEditingUsername = false
+    @State private var isEditingSignature = false
+    @State private var tempUsername = ""
+    @State private var tempSignature = ""
+    @FocusState private var isUsernameFieldFocused: Bool
+    @FocusState private var isSignatureFieldFocused: Bool
+    
+    // 自动折叠定时器
+    @State private var autoCollapseTimer: Timer?
+    
     // 添加取消令牌集合
     @State private var cancellables = Set<AnyCancellable>()
     
@@ -109,20 +456,93 @@ struct ProfileView: View {
     }
     
     var body: some View {
-        let _ = print("ProfileView正在加载...")
+    
         
         return mainContent
             .onAppear {
-                print("个人空间页面加载完成")
                 // 加载缓存的统计数据或计算新的统计数据
                 loadOrCalculateStats()
                 // 设置数据更新监听
                 setupDataUpdateListeners()
+                // 重置展开状态
+                resetExpandedStates()
+                // 异步更新用户等级（带缓存，不影响性能）
+                Task {
+                    await MainActor.run {
+                        userProfileManager.updateUserLevelAsync()
+                    }
+                }
             }
             .onDisappear {
                 // 清理订阅
                 cancellables.forEach { $0.cancel() }
                 cancellables.removeAll()
+                // 页面消失时重置展开状态
+                resetExpandedStates()
+                // 清理定时器
+                autoCollapseTimer?.invalidate()
+                autoCollapseTimer = nil
+            }
+            .photosPicker(isPresented: $showingImagePicker, selection: $selectedImage, matching: .images)
+            .onChange(of: selectedImage) { _, newItem in
+                Task {
+                    print("📱 ProfileView: 图片选择器触发，开始加载图片")
+                    if let newItem = newItem {
+                        do {
+                            if let data = try await newItem.loadTransferable(type: Data.self),
+                               let image = UIImage(data: data) {
+                                print("📱 ProfileView: 图片加载成功，尺寸: \(image.size)")
+                                print("📱 ProfileView: 图片CGImage存在: \(image.cgImage != nil)")
+                                
+                                // 确保图片有效
+                                guard image.size.width > 0 && image.size.height > 0 && image.cgImage != nil else {
+                                    print("❌ ProfileView: 图片无效，尺寸为0或没有CGImage")
+                                    return
+                                }
+                                
+                                await MainActor.run {
+                                    selectedUIImage = image
+                                    print("📱 ProfileView: 已设置 selectedUIImage，尺寸: \(image.size)")
+                                    print("📱 ProfileView: selectedUIImage 已设置，sheet 将自动显示")
+                                }
+                            } else {
+                                print("❌ ProfileView: 无法创建 UIImage")
+                            }
+                        } catch {
+                            print("❌ ProfileView: 图片加载失败: \(error)")
+                        }
+                    } else {
+                        print("❌ ProfileView: 没有选择图片")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingProfileEditor) {
+                ProfileEditorView(userProfileManager: userProfileManager)
+            }
+            .sheet(item: Binding<IdentifiableUIImage?>(
+                get: { 
+                    if let selectedUIImage = selectedUIImage {
+                        return IdentifiableUIImage(image: selectedUIImage)
+                    }
+                    return nil
+                },
+                set: { _ in 
+                    selectedUIImage = nil 
+                }
+            )) { identifiableImage in
+                AvatarEditorView(
+                    image: identifiableImage.image,
+                    onSave: { croppedImage in
+                        userProfileManager.updateAvatar(croppedImage, name: "user_avatar_\(Date().timeIntervalSince1970)")
+                        selectedUIImage = nil // 这会自动关闭sheet
+                    },
+                    onCancel: {
+                        selectedUIImage = nil // 这会自动关闭sheet
+                    }
+                )
+                .onAppear {
+                    print("📱 Sheet: 显示头像编辑器，图片尺寸: \(identifiableImage.image.size)")
+                }
             }
     }
     
@@ -134,19 +554,44 @@ struct ProfileView: View {
                 contentScrollView(geometry: geometry)
             }
             
-            // 设置按钮（右上角齿轮图标）
+            // 升级通知
+            if userProfileManager.showLevelUpNotification {
             VStack {
-                HStack {
+                    HStack(spacing: 12) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.yellow)
+                        
+                        Text(userProfileManager.levelUpMessage)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                        
                     Spacer()
-                    settingsButton
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 8)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.orange, Color.yellow]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                    )
+                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 60)
+                    
                 Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.spring(response: 0.6, dampingFraction: 0.8), value: userProfileManager.showLevelUpNotification)
             }
         }
         .onAppear {
-            print("个人空间页面加载完成")
+
         }
     }
     
@@ -214,71 +659,63 @@ struct ProfileView: View {
         .padding(.horizontal, 12)
     }
     
-    // 简洁的标签切换器
+    // 扁平化标签切换器
     private var appleStyleSegmentedControl: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
+            HStack(spacing: 0) {
             ForEach(0..<tabOptions.count, id: \.self) { index in
                 Button(action: {
                         // 触觉反馈
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
                         impactFeedback.impactOccurred()
                     
-                        // 优化动画 - 使用更流畅的参数
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8, blendDuration: 0.1)) {
+                        // 流畅的切换动画
+                        withAnimation(.easeInOut(duration: 0.25)) {
                         selectedTabIndex = index
                     }
                 }) {
-                        HStack(spacing: 8) {
+                        VStack(spacing: 6) {
+                            // 图标
                             Image(systemName: tabIconName(for: index))
-                                .font(.system(size: 16, weight: selectedTabIndex == index ? .semibold : .medium))
-                                .foregroundColor(selectedTabIndex == index ? tabColor(for: index) : Color.secondary.opacity(0.7))
+                                .font(.system(size: 18, weight: selectedTabIndex == index ? .semibold : .medium))
+                                .foregroundColor(selectedTabIndex == index ? tabColor(for: index) : Color.secondary.opacity(0.6))
                                 .symbolRenderingMode(.hierarchical)
-                                .symbolEffect(.pulse.wholeSymbol, options: .speed(0.5).repeat(1), isActive: selectedTabIndex == index)
+                                .symbolEffect(.bounce.wholeSymbol, options: .speed(0.8).repeat(1), isActive: selectedTabIndex == index)
                             
+                            // 文字
                         Text(tabOptions[index])
-                                .font(.system(size: 15, weight: selectedTabIndex == index ? .semibold : .medium, design: .rounded))
-                                .foregroundColor(selectedTabIndex == index ? Color.primary : Color.secondary.opacity(0.8))
+                                .font(.system(size: 13, weight: selectedTabIndex == index ? .semibold : .medium, design: .rounded))
+                                .foregroundColor(selectedTabIndex == index ? tabColor(for: index) : Color.secondary.opacity(0.7))
                         }
-                        .padding(.vertical, 14)
-                        .padding(.horizontal, 18)
                     .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
                     .background(
                             ZStack {
                             if selectedTabIndex == index {
-                                    // 优化的选中状态背景 - 更柔和精致的视觉效果
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(
-                                            LinearGradient(
-                                                gradient: Gradient(colors: [
-                                                    tabColor(for: index).opacity(0.15),
-                                                    tabColor(for: index).opacity(0.08)
-                                                ]),
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                                .stroke(tabColor(for: index).opacity(0.25), lineWidth: 0.8)
-                                    )
-                                        .shadow(color: tabColor(for: index).opacity(0.2), radius: 3, x: 0, y: 1)
+                                    // 扁平化选中状态 - 底部指示器
+                                    VStack {
+                                        Spacer()
+                                        Rectangle()
+                                            .fill(tabColor(for: index).opacity(0.6))
+                                            .frame(width: 48, height: 2)
                                         .matchedGeometryEffect(id: "selectedProfileTab", in: namespace)
-                            } else {
-                                    // 未选中状态完全透明
-                                    Color.clear
+                                    }
                             }
                         }
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
-                    .scaleEffect(selectedTabIndex == index ? 1.02 : 0.98) // 更明显的选中放大效果
-                    .animation(.spring(response: 0.3, dampingFraction: 0.75), value: selectedTabIndex)
             }
         }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 8)
+            
+            // 底部分割线
+            Rectangle()
+                .fill(Color.gray.opacity(0.15))
+                .frame(height: 0.5)
+                .padding(.top, 8)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
     }
     
     // 优化的标签颜色 - 更加协调的配色方案
@@ -286,7 +723,7 @@ struct ProfileView: View {
         switch index {
         case 0: return Color(red: 0.7, green: 0.5, blue: 0.9)  // 梦幻紫 - 次元回放，与个人卡片渐变呼应
         case 1: return Color(red: 0.2, green: 0.7, blue: 0.9)  // 天空蓝 - 我的动态，清新个人色彩
-        case 2: return Color(red: 0.3, green: 0.8, blue: 0.6)  // 翠绿色 - 互动记录，活跃社交感
+                        case 2: return Color(red: 1.0, green: 0.3, blue: 0.5)  // 粉红色 - 我的点赞，温暖喜爱感
         default: return Color.primary
         }
     }
@@ -296,7 +733,7 @@ struct ProfileView: View {
         switch index {
         case 0: return "memories"                 // 次元回放 - 使用回忆图标，更贴合"回放"概念
         case 1: return "person.text.rectangle"   // 我的动态 - 个人动态内容图标
-        case 2: return "bubble.left.and.bubble.right"  // 互动记录 - 双向对话气泡，强调互动
+                        case 2: return "heart.fill"  // 我的点赞 - 心形图标，表达喜爱
         default: return "circle.fill"
         }
     }
@@ -310,13 +747,17 @@ struct ProfileView: View {
             case 1:
                 myPostsContent
             case 2:
-                interactionRecordsContent
+                myLikesContent
             default:
                 relationshipNetworkContent
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 20)
+        .onChange(of: selectedTabIndex) { _, _ in
+            // 切换标签时重置展开状态
+            resetExpandedStates()
+        }
     }
     
     // 虫遇回忆内容（替换角色关系网络）
@@ -342,190 +783,214 @@ struct ProfileView: View {
                 // 动态统计摘要（去除外层padding）
                 compactDynamicsSummaryCard
                 
-                // 动态列表
+                // 动态列表 - 苹果式宽适布局
                 LazyVStack(spacing: 12) {
-                    ForEach(userPosts) { post in
-                        UserPostRowView(post: post)
+                    ForEach(showAllPosts ? userPosts : Array(userPosts.prefix(5))) { post in
+                        UserPostCard(post: post)
+                    }
+                    
+                    // 展开/收起按钮 - 苹果式设计
+                    if userPosts.count > 5 {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                showAllPosts.toggle()
+                                
+                                // 如果展开，启动自动折叠定时器
+                                if showAllPosts {
+                                    startAutoCollapseTimer()
+                                } else {
+                                    // 如果收起，取消定时器
+                                    autoCollapseTimer?.invalidate()
+                                    autoCollapseTimer = nil
+                                }
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: showAllPosts ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.9))  // 天空蓝，与动态标签颜色一致
+                                
+                                Text(showAllPosts ? "收起" : "查看全部 \(userPosts.count) 条")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.9))  // 天空蓝，与动态标签颜色一致
+                                
+                                Spacer()
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color(red: 0.2, green: 0.7, blue: 0.9).opacity(0.04))  // 天空蓝背景
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .stroke(Color(red: 0.2, green: 0.7, blue: 0.9).opacity(0.12), lineWidth: 0.5)  // 天空蓝边框
+                                    )
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.top, 4)
                     }
                 }
             }
         }
     }
     
-    // 互动记录内容（适配容器内部）
-    private var interactionRecordsContent: some View {
+    // 我的点赞内容 - 苹果式简洁设计
+    private var myLikesContent: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // 互动统计（去除外层padding）
-            compactInteractionSummaryCard
-            
-            // 最近互动列表
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("最近互动")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    Spacer()
-                }
-                
-                if mockInteractionRecords.isEmpty {
-                    Text("暂无互动记录")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 40)
-                } else {
-                    LazyVStack(spacing: 8) {
-                        ForEach(mockInteractionRecords.prefix(5)) { record in
-                            ProfileInteractionRowView(record: record)
-                        }
+            if likeService.getUserLikes().isEmpty {
+                // 空状态设计 - 苹果式极简
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle()
+                            .fill(.pink.opacity(0.08))
+                            .frame(width: 88, height: 88)
                         
-                        if mockInteractionRecords.count > 5 {
-                            Button(action: {
-                                // 查看全部互动记录
-                            }) {
-                                Text("查看全部 \(mockInteractionRecords.count) 条互动")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(DesignSystem.Colors.primary)
-                                    .padding(.vertical, 8)
-                            }
+                        Image(systemName: "heart.circle.fill")
+                            .font(.system(size: 42, weight: .light))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.pink.opacity(0.8), .pink.opacity(0.5)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    }
+                    
+                    VStack(spacing: 6) {
+                        Text("暂无点赞记录")
+                            .font(.system(size: 18, weight: .medium, design: .rounded))
+                            .foregroundColor(.primary)
+                        
+                        Text("去发现感兴趣的内容，给它们点个赞吧")
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineSpacing(2)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 48)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(.quaternary, lineWidth: 0.5)
+                        )
+                )
+                .padding(.horizontal, 0)
+            } else {
+                // 点赞记录列表 - 苹果式宽适布局
+                LazyVStack(spacing: 12) {
+                    ForEach(showAllLikes ? likeService.getUserLikes() : Array(likeService.getUserLikes().prefix(5))) { record in
+                        AppleStyleLikeRecordCard(record: record) {
+                            // 移除回调
                         }
                     }
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(.ultraThinMaterial)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                    
+                    // 展开/收起按钮 - 苹果式设计
+                    if likeService.getUserLikes().count > 5 {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                showAllLikes.toggle()
+                                
+                                // 如果展开，启动自动折叠定时器
+                                if showAllLikes {
+                                    startAutoCollapseTimer()
+                                } else {
+                                    // 如果收起，取消定时器
+                                    autoCollapseTimer?.invalidate()
+                                    autoCollapseTimer = nil
+                                }
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: showAllLikes ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.pink)
+                                
+                                Text(showAllLikes ? "收起" : "查看全部 \(likeService.getUserLikes().count) 条")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.pink)
+                                
+                                Spacer()
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(.pink.opacity(0.04))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .stroke(.pink.opacity(0.12), lineWidth: 0.5)
+                                    )
                             )
-                    )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.top, 4)
+                    }
                 }
             }
         }
+        .padding(.vertical, 8)
     }
     
     // 紧凑版动态统计摘要卡片（去除外层padding）
     private var compactDynamicsSummaryCard: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("动态总结")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-            
-            HStack(spacing: 20) {
+        HStack(spacing: 24) {
                 // 总帖子数
-                VStack(spacing: 4) {
+            HStack(spacing: 4) {
                     Text("\(userPosts.count)")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(DesignSystem.Colors.primary)
+                    .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.9))  // 天空蓝，与动态标签颜色一致
                     Text("总动态")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
                 }
                 
                 Divider()
-                    .frame(height: 40)
+                .frame(height: 20)
                 
                 // 总点赞数
-                VStack(spacing: 4) {
+            HStack(spacing: 4) {
                     Text("\(totalLikes)")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.pink)
+                    .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(Color(red: 1.0, green: 0.3, blue: 0.5))  // 粉红色，与点赞标签颜色一致
                     Text("总点赞")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
                 }
                 
                 Divider()
-                    .frame(height: 40)
+                .frame(height: 20)
                 
                 // 总评论数
-                VStack(spacing: 4) {
+            HStack(spacing: 4) {
                     Text("\(totalComments)")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.blue)
+                    .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9))  // 梦幻紫，与次元回放标签颜色一致
                     Text("总评论")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
                 }
-                
-                Spacer()
             }
-        }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 12)
-        .padding(.vertical, 16)
+        .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: 12)
                         .stroke(Color.gray.opacity(0.1), lineWidth: 1)
                 )
         )
     }
     
-    // 紧凑版互动统计摘要卡片（去除外层padding）
-    private var compactInteractionSummaryCard: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("互动总结")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-            
-            HStack(spacing: 20) {
-                // 收到评论数
-                VStack(spacing: 4) {
-                    Text("\(receivedCommentsCount)")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.blue)
-                    Text("收到评论")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                
-                Divider()
-                    .frame(height: 40)
-                
-                // 收到点赞数
-                VStack(spacing: 4) {
-                    Text("\(receivedLikesCount)")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.pink)
-                    Text("收到点赞")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                
-                Divider()
-                    .frame(height: 40)
-                
-                // 互动角色数
-                VStack(spacing: 4) {
-                    Text("\(interactedCharactersCount)")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.orange)
-                    Text("互动角色")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.gray.opacity(0.1), lineWidth: 1)
-                )
-        )
-    }
+
     
 
     
@@ -621,122 +1086,9 @@ struct ProfileView: View {
         .padding(.horizontal, 20)
     }
     
-    // 互动记录视图
-    private var interactionRecordsView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // 互动统计
-            interactionSummaryCard
-            
-            // 最近互动列表
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("最近互动")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    Spacer()
-                }
-                .padding(.horizontal, 20)
-                
-                if mockInteractionRecords.isEmpty {
-                    Text("暂无互动记录")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 40)
-                } else {
-                    LazyVStack(spacing: 8) {
-                        ForEach(mockInteractionRecords.prefix(5)) { record in
-                            ProfileInteractionRowView(record: record)
-                        }
-                        
-                        if mockInteractionRecords.count > 5 {
-                    Button(action: {
-                                // 查看全部互动记录
-                            }) {
-                                Text("查看全部 \(mockInteractionRecords.count) 条互动")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(DesignSystem.Colors.primary)
-                                    .padding(.vertical, 8)
-                    }
-                            .padding(.horizontal, 20)
-                        }
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(.ultraThinMaterial)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.gray.opacity(0.1), lineWidth: 1)
-                            )
-                    )
-                    .padding(.horizontal, 20)
-                }
-            }
-        }
-    }
+    // 已删除旧的互动记录视图，改为使用我的点赞视图
     
-    // 互动统计摘要卡片
-    private var interactionSummaryCard: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("互动总结")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.primary)
-                        Spacer()
-            }
-            
-            HStack(spacing: 20) {
-                // 收到评论数
-                VStack(spacing: 4) {
-                    Text("\(receivedCommentsCount)")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.blue)
-                    Text("收到评论")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                
-                Divider()
-                    .frame(height: 40)
-                
-                // 收到点赞数
-                VStack(spacing: 4) {
-                    Text("\(receivedLikesCount)")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.pink)
-                    Text("收到点赞")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                
-                Divider()
-                    .frame(height: 40)
-                        
-                // 互动角色数
-                VStack(spacing: 4) {
-                    Text("\(interactedCharactersCount)")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.orange)
-                    Text("互动角色")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                                
-                                Spacer()
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.gray.opacity(0.1), lineWidth: 1)
-                )
-        )
-        .padding(.horizontal, 20)
-    }
+    // 已删除旧的互动统计卡片
     
     // 设置按钮
     private var settingsButton: some View {
@@ -745,14 +1097,14 @@ struct ProfileView: View {
                             }) {
                     Image(systemName: "gearshape.fill")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.primary.opacity(0.6))
+                .foregroundColor(.white.opacity(0.5))
                 .frame(width: 32, height: 32)
                 .background(
                     Circle()
-                        .fill(.ultraThinMaterial)
+                        .fill(Color.white.opacity(0.08))
                         .overlay(
                             Circle()
-                                .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
+                                .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
                         )
                 )
                 .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
@@ -760,7 +1112,6 @@ struct ProfileView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
-
         .fullScreenCover(isPresented: $showRealStarMap) {
             RealStarMapView()
         }
@@ -794,9 +1145,20 @@ struct ProfileView: View {
                     .opacity(0.4)
             }
             
+            // 设置按钮在卡片右上角
+            VStack {
+                HStack {
+                    Spacer()
+                    settingsButton
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                Spacer()
+            }
+            
             VStack(spacing: 0) {
-                // 用户信息区域
-                HStack(spacing: 16) {
+                // 用户信息区域 - 垂直居中对齐
+                HStack(alignment: .center, spacing: 16) {
                     // 头像容器 - 次元感设计
                     ZStack {
                         // 外层发光环
@@ -822,6 +1184,17 @@ struct ProfileView: View {
                             .shadow(color: Color.white.opacity(0.5), radius: 15)
                         
                         // 头像图片
+                        if let avatarImage = userProfileManager.loadAvatarImage() {
+                            Image(uiImage: avatarImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 60, height: 60)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                )
+                        } else {
                         Image("default_avatar")
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -831,97 +1204,205 @@ struct ProfileView: View {
                                 Circle()
                                     .stroke(Color.white.opacity(0.2), lineWidth: 1)
                             )
+                        }
+                        
+
                     }
                     .onTapGesture {
-                        handleUsernameTap()
+                        showingImagePicker = true
                     }
                     
-                    // 用户信息
-                    VStack(alignment: .leading, spacing: 6) {
-                        // 用户名 - 次元指挥官设定
-                        Button(action: {
-                            handleUsernameTap()
-                        }) {
-                            Text("次元指挥官")
+                                            // 用户信息 - 稍微向下偏移
+                        VStack(alignment: .leading, spacing: 8) {
+                            // 添加顶部间距，让内容向下偏移
+                            Spacer()
+                                .frame(height: 12)
+                            // 第一行：用户名
+                            HStack(spacing: 8) {
+                                if isEditingUsername {
+                                    // 编辑用户名输入框
+                                    TextField("请输入用户名", text: $tempUsername)
+                                        .font(.system(size: 20, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .textFieldStyle(PlainTextFieldStyle())
+                                        .focused($isUsernameFieldFocused)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.white.opacity(0.2))
+                                        )
+                                        .onSubmit {
+                                            saveUsername()
+                                        }
+                                } else {
+                                    Text(userProfileManager.username)
                                 .font(.system(size: 20, weight: .bold))
                                 .foregroundColor(.white)
                                 .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                                        .onTapGesture {
+                                            startEditingUsername()
+                                        }
+                                }
                         
-                        // 等级和经验值 - 游戏化设计
-                VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.yellow)
-                    
-                                Text("次元探索专家")
-                        .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.9))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.white.opacity(0.15))
-                                            .overlay(
-                                                Capsule()
-                                                    .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
-                                            )
-                                    )
+                                Spacer()
                             }
                             
-                            // 新增：经验值进度条
-                            VStack(alignment: .leading, spacing: 2) {
+                            // 第二行：个性签名
+                            if isEditingSignature {
+                                // 编辑个性签名输入框
+                                TextField("请输入个性签名", text: $tempSignature, axis: .vertical)
+                                    .font(.system(size: 13, weight: .regular))
+                                    .foregroundColor(.white)
+                                    .textFieldStyle(PlainTextFieldStyle())
+                                    .focused($isSignatureFieldFocused)
+                                    .lineLimit(2...3)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.white.opacity(0.2))
+                                    )
+                                    .onSubmit {
+                                        saveSignature()
+                                    }
+                            } else {
+                                Text(userProfileManager.personalSignature)
+                                    .font(.system(size: 13, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.85))
+                                    .lineLimit(2)
+                                    .lineSpacing(2)
+                                    .onTapGesture {
+                                        startEditingSignature()
+                                    }
+                            }
+                            
+                            // 第三行：经验值信息和等级标签
+                            VStack(alignment: .leading, spacing: 6) {
+                                let experienceRange = userProfileManager.getCurrentLevelExperienceRange()
+                                
+                                                                // 经验值文本
                                 HStack(spacing: 4) {
-                                    Text("Lv.8")
-                                        .font(.system(size: 11, weight: .bold))
+                                    Text("Lv.\(userProfileManager.userLevel)")
+                                        .font(.system(size: 12, weight: .bold))
                                         .foregroundColor(.white)
                                     
-                                    Text("180/200 EXP")
-                                        .font(.system(size: 10, weight: .medium))
+                                    Text("\(userProfileManager.userExperience)/\(experienceRange.next) EXP")
+                                        .font(.system(size: 11, weight: .medium))
                                         .foregroundColor(.white.opacity(0.7))
+                                    
+                                    Spacer()
                                 }
                                 
-                                // 经验进度条
+                                // 经验进度条 - 充分利用右侧空间
+                                HStack(spacing: 12) {
+                                    // 进度条 - 占据大部分空间
                                 GeometryReader { geometry in
                                     ZStack(alignment: .leading) {
                                         // 背景
-                                        RoundedRectangle(cornerRadius: 6)
+                                            RoundedRectangle(cornerRadius: 8)
                                             .fill(Color.white.opacity(0.2))
-                                            .frame(height: 6)
+                                                .frame(height: 8)
                                         
                                         // 进度
-                                        RoundedRectangle(cornerRadius: 6)
+                                            RoundedRectangle(cornerRadius: 8)
                                             .fill(
                                                 LinearGradient(
-                                                    gradient: Gradient(colors: [Color.yellow, Color.orange]),
+                                                        gradient: Gradient(colors: [userProfileManager.getLevelColor(), userProfileManager.getLevelColor().opacity(0.7)]),
                                                     startPoint: .leading,
                                                     endPoint: .trailing
                                                 )
                                             )
-                                            .frame(width: geometry.size.width * 0.9, height: 6)
+                                                .frame(width: geometry.size.width * userProfileManager.getLevelUpProgress(), height: 8)
                                     }
                                 }
-                                .frame(height: 6)
+                                    .frame(height: 8)
+                                    
+                                    // 等级标签 - 紧贴进度条右侧
+                                    let currentLevelColorScheme = getLevelColorScheme(level: userProfileManager.userLevel)
+                                    Text(userProfileManager.levelTitle)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule()
+                                                .fill(
+                                                    LinearGradient(
+                                                        gradient: Gradient(colors: currentLevelColorScheme.backgroundColors),
+                                                        startPoint: .topLeading,
+                                                        endPoint: .bottomTrailing
+                                                    )
+                                                )
+                                                .overlay(
+                                                    Capsule()
+                                                        .stroke(
+                                                            LinearGradient(
+                                                                gradient: Gradient(colors: currentLevelColorScheme.borderColors),
+                                                                startPoint: .topLeading,
+                                                                endPoint: .bottomTrailing
+                                                            ),
+                                                            lineWidth: 1
+                                                        )
+                                                )
+                                        )
+                                        .overlay(
+                                            // 科幻科技感装饰线条
+                                            Capsule()
+                                                .stroke(
+                                                    currentLevelColorScheme.accentColor.opacity(0.4),
+                                                    lineWidth: 0.5
+                                                )
+                                                .padding(2)
+                                        )
+                                        .shadow(color: currentLevelColorScheme.shadowColor.opacity(0.3), radius: 3, x: 0, y: 2)
+                                        .shadow(color: currentLevelColorScheme.accentColor.opacity(0.2), radius: 1, x: 0, y: 1)
                             }
                         }
                         .onTapGesture {
                             showLevelDetails = true
+                        }
+                        
+                                                // 调试菜单触发区域
+                        Rectangle()
+                            .fill(Color.clear)
+                            .frame(width: 100, height: 12)
+                            .onTapGesture {
+                                handleUsernameTap()
                         }
                 }
                                 
                                 Spacer()
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 16)
+                .padding(.vertical, 16) // 减少垂直内边距，压缩多余空间
             }
         }
         .background(Color.white)
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
         .padding(.horizontal, 20)
+        .onTapGesture {
+            // 点击卡片其他区域时自动保存编辑
+            if isEditingUsername {
+                saveUsername()
+            }
+            if isEditingSignature {
+                saveSignature()
+            }
+        }
+        .onChange(of: isUsernameFieldFocused) { _, isFocused in
+            // 当用户名输入框失去焦点时，如果正在编辑则自动保存
+            if !isFocused && isEditingUsername {
+                saveUsername()
+            }
+        }
+        .onChange(of: isSignatureFieldFocused) { _, isFocused in
+            // 当个性签名输入框失去焦点时，如果正在编辑则自动保存
+            if !isFocused && isEditingSignature {
+                saveSignature()
+            }
+        }
     }
     
     // 时空足迹总览卡片 - 新增功能聚合卡片
@@ -981,7 +1462,7 @@ struct ProfileView: View {
             
             TimeStatItem(
                 value: "\(resonanceCount)次",
-                label: "获得共鸣", 
+                label: "获得点赞", 
                 color: Color.pink.opacity(0.7),
                 backgroundColor: Color.pink.opacity(0.08)
             )
@@ -1006,14 +1487,14 @@ struct ProfileView: View {
             )
             
             TimeStatItem(
-                value: "\(resonanceCount)份",
-                label: "点赞收藏",
+                value: "\(myLikesCount)次",
+                label: "我的点赞",
                 color: Color.purple.opacity(0.7),
                 backgroundColor: Color.purple.opacity(0.08)
                             )
             
             TimeStatItem(
-                value: "\(deepDialogueCount)篇",
+                value: "\(userPosts.count)篇",
                 label: "我的动态",
                 color: Color.cyan.opacity(0.7),
                 backgroundColor: Color.cyan.opacity(0.08)
@@ -1029,6 +1510,8 @@ struct ProfileView: View {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(Color.gray.opacity(0.1), lineWidth: 0.5)
             )
+            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
+            .shadow(color: .black.opacity(0.02), radius: 1, x: 0, y: 1)
     }
     
     // 关系网络可视化 - 增强版
@@ -1333,6 +1816,17 @@ struct ProfileView: View {
         return calculateTotalDeepDialogues()
     }
     
+    // 新增：我的点赞次数
+    private var myLikesCount: Int {
+        // 优先从缓存获取
+        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
+           let count = stats["myLikesCount"] {
+            return count
+        }
+        // 缓存未命中，计算值
+        return calculateMyLikesCount()
+    }
+    
     // MARK: - 数据计算方法
     
     /// 计算总对话数：用户发布的评论数量 + 用户与虚拟角色的私聊消息数量 + 用户发布的帖子数量
@@ -1357,7 +1851,7 @@ struct ProfileView: View {
             let messages = try modelContext.fetch(messageDescriptor)
             userPrivateMessages = messages.count
         } catch {
-            print("❌ 读取用户私聊消息失败: \(error.localizedDescription)")
+
         }
         
         // 3. 计算用户发布的帖子数量
@@ -1439,7 +1933,7 @@ struct ProfileView: View {
                 }
             }
         } catch {
-            print("❌ 读取私聊消息失败: \(error.localizedDescription)")
+
         }
         
         return interactedCharacters.count
@@ -1459,7 +1953,7 @@ struct ProfileView: View {
                 earliestMessageDate = firstMessage.timestamp
             }
         } catch {
-            print("❌ 读取最早消息失败: \(error.localizedDescription)")
+
         }
         
         let earliestDate = min(earliestPostDate, earliestMessageDate)
@@ -1470,8 +1964,7 @@ struct ProfileView: View {
     
     /// 计算点赞收藏数：用户点赞的帖子数量
     private func calculateCollectedEssence() -> Int {
-        let likedPosts = PostViewModel.shared.posts.filter { $0.isLikedByCurrentUser }
-        return likedPosts.count
+        return UserLikeService.shared.getUserLikes().count
     }
     
     /// 计算我的动态数：用户发布的帖子数量
@@ -1479,59 +1972,7 @@ struct ProfileView: View {
         return userPosts.count
     }
     
-    // 模拟互动记录数据
-    private var mockInteractionRecords: [InteractionRecord] = [
-        InteractionRecord(
-            characterName: "历史人物A",
-            characterAvatar: "default_avatar",
-            type: .comment,
-            content: "哇，您的见解真深刻！",
-            timestamp: Date().addingTimeInterval(-3600)
-        ),
-        InteractionRecord(
-            characterName: "历史人物B", 
-            characterAvatar: "default_avatar",
-            type: .like,
-            content: "您的观点很有启发性。",
-            timestamp: Date().addingTimeInterval(-1800)
-        ),
-        InteractionRecord(
-            characterName: "历史人物A",
-            characterAvatar: "default_avatar", 
-            type: .comment,
-            content: "感谢您的回复！",
-            timestamp: Date().addingTimeInterval(-600)
-        ),
-        InteractionRecord(
-            characterName: "历史人物C",
-            characterAvatar: "default_avatar",
-            type: .like,
-            content: "您的见解很有见地。",
-            timestamp: Date().addingTimeInterval(-300)
-        ),
-        InteractionRecord(
-            characterName: "历史人物B",
-            characterAvatar: "default_avatar",
-            type: .comment,
-            content: "您的观点很有启发性。",
-            timestamp: Date().addingTimeInterval(-120)
-        )
-    ]
-    
-    // 模拟收到评论数
-    private var receivedCommentsCount: Int {
-        mockInteractionRecords.filter { $0.type == .comment }.count
-    }
-    
-    // 模拟收到点赞数
-    private var receivedLikesCount: Int {
-        mockInteractionRecords.filter { $0.type == .like }.count
-    }
-    
-    // 模拟互动角色数
-    private var interactedCharactersCount: Int {
-        Set(mockInteractionRecords.map { $0.characterName }).count
-    }
+    // 已删除旧的模拟互动记录数据，改为使用真实的点赞数据
     
     // 扩展成就数据 - 新增更多成就类型
     private var extendedUserAchievements: [ExtendedAchievement] {
@@ -1824,14 +2265,67 @@ struct ProfileView: View {
                     .padding(.top, 20)
                 
                 VStack(spacing: 16) {
-                    Text("次元探索专家")
+                    // 等级图标和称号
+                    HStack(spacing: 12) {
+                        Image(systemName: userProfileManager.getLevelIcon())
+                            .font(.system(size: 32))
+                            .foregroundColor(userProfileManager.getLevelColor())
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(userProfileManager.levelTitle)
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.primaryColor)
+                                .foregroundColor(userProfileManager.getLevelColor())
                 
-                    Text("您已经成功探索了多个次元世界，与各次元角色建立了深度连接。")
+                            Text("Lv.\(userProfileManager.userLevel)")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    
+                    // 等级描述
+                    Text(getLevelDescription(level: userProfileManager.userLevel))
                         .font(.system(size: 14))
                     .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                    
+                    // 经验值进度
+                    VStack(spacing: 8) {
+                        let experienceRange = userProfileManager.getCurrentLevelExperienceRange()
+                        HStack {
+                            Text("经验值")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                            
+                            Text("\(userProfileManager.userExperience)/\(experienceRange.next)")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(userProfileManager.getLevelColor())
+                        }
+                        
+                        // 进度条
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(height: 8)
+                                
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [userProfileManager.getLevelColor(), userProfileManager.getLevelColor().opacity(0.7)]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .frame(width: geometry.size.width * userProfileManager.getLevelUpProgress(), height: 8)
+                            }
+                        }
+                        .frame(height: 8)
+                    }
                         .padding(.horizontal, 20)
                 }
                 .padding(20)
@@ -1930,9 +2424,9 @@ struct ProfileView: View {
                 expirationTime: 300 // 5分钟
             )
             
-            print("📊 用户统计数据已重新计算并缓存")
+
         } else {
-            print("📊 使用缓存的用户统计数据")
+
         }
     }
     
@@ -1945,6 +2439,10 @@ struct ProfileView: View {
                 cacheService.invalidate(key: "\(cacheKeyPrefix)stats")
                 // 重新计算统计数据
                 loadOrCalculateStats()
+                // 延迟更新等级（避免频繁计算）
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    userProfileManager.forceUpdateUserLevel()
+                }
             }
         cancellables.insert(postSubscription)
         
@@ -1955,6 +2453,10 @@ struct ProfileView: View {
                 cacheService.invalidate(key: "\(cacheKeyPrefix)stats")
                 // 重新计算统计数据
                 loadOrCalculateStats()
+                // 延迟更新等级（避免频繁计算）
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    userProfileManager.forceUpdateUserLevel()
+                }
             }
         cancellables.insert(notificationSubscription)
     }
@@ -1968,6 +2470,7 @@ struct ProfileView: View {
             "cognitionCount": calculateTotalCognitions(),
             "resonanceCount": calculateTotalResonances(),
             "deepDialogueCount": calculateTotalDeepDialogues(),
+            "myLikesCount": calculateMyLikesCount(),
             "followingCount": followingCount
         ]
     }
@@ -2054,6 +2557,299 @@ struct ProfileView: View {
             return 0
         }
     }
+    
+    /// 计算我的点赞次数
+    private func calculateMyLikesCount() -> Int {
+        // 计算用户主动点赞的数量
+        return UserLikeService.shared.getUserLikes().count
+    }
+    
+    // MARK: - 等级标签预览
+    
+    /// 预览不同等级的标签样式
+    private func levelTagPreview(level: Int) -> some View {
+        let colorScheme = getLevelColorScheme(level: level)
+        
+        return Text(getLevelTitleForLevel(level))
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: colorScheme.backgroundColors),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: colorScheme.borderColors),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 0.8
+                            )
+                    )
+            )
+            .overlay(
+                // 科幻科技感装饰线条
+                Capsule()
+                    .stroke(
+                        colorScheme.accentColor.opacity(0.4),
+                        lineWidth: 0.3
+                    )
+                    .padding(1.5)
+            )
+            .shadow(color: colorScheme.shadowColor.opacity(0.3), radius: 2, x: 0, y: 1)
+            .shadow(color: colorScheme.accentColor.opacity(0.2), radius: 1, x: 0, y: 0.5)
+    }
+    
+    /// 获取等级对应的配色方案 - 苹果级设计，紫色背景和谐配色
+    private func getLevelColorScheme(level: Int) -> LevelColorScheme {
+        switch level {
+        case 1: // 时空新手 - 薄荷青绿，清新不突兀
+            return LevelColorScheme(
+                backgroundColors: [
+                    Color(red: 0.4, green: 0.8, blue: 0.7).opacity(0.85), // 薄荷青
+                    Color(red: 0.3, green: 0.7, blue: 0.8).opacity(0.75)  // 浅青蓝
+                ],
+                borderColors: [
+                    Color(red: 0.4, green: 0.8, blue: 0.7).opacity(0.6),
+                    Color.white.opacity(0.9)
+                ],
+                accentColor: Color(red: 0.4, green: 0.8, blue: 0.7),
+                shadowColor: Color(red: 0.3, green: 0.7, blue: 0.8)
+            )
+        case 2: // 虫洞探险家 - 天空蓝，与紫色形成和谐对比
+            return LevelColorScheme(
+                backgroundColors: [
+                    Color(red: 0.4, green: 0.6, blue: 0.9).opacity(0.8),  // 天空蓝
+                    Color(red: 0.3, green: 0.7, blue: 0.9).opacity(0.7)   // 浅天蓝
+                ],
+                borderColors: [
+                    Color(red: 0.4, green: 0.6, blue: 0.9).opacity(0.6),
+                    Color.white.opacity(0.9)
+                ],
+                accentColor: Color(red: 0.4, green: 0.6, blue: 0.9),
+                shadowColor: Color(red: 0.3, green: 0.7, blue: 0.9)
+            )
+        case 3: // 次元旅行者 - 蓝紫过渡，自然融入紫色背景
+            return LevelColorScheme(
+                backgroundColors: [
+                    Color(red: 0.5, green: 0.6, blue: 0.9).opacity(0.8),  // 蓝紫
+                    Color(red: 0.6, green: 0.5, blue: 0.9).opacity(0.7)   // 紫蓝
+                ],
+                borderColors: [
+                    Color(red: 0.5, green: 0.6, blue: 0.9).opacity(0.6),
+                    Color.white.opacity(0.9)
+                ],
+                accentColor: Color(red: 0.5, green: 0.6, blue: 0.9),
+                shadowColor: Color(red: 0.6, green: 0.5, blue: 0.9)
+            )
+        case 4: // 时空冒险家 - 优雅紫，与背景形成层次
+            return LevelColorScheme(
+                backgroundColors: [
+                    Color(red: 0.7, green: 0.5, blue: 0.9).opacity(0.8),  // 优雅紫
+                    Color(red: 0.6, green: 0.4, blue: 0.8).opacity(0.7)   // 深优雅紫
+                ],
+                borderColors: [
+                    Color(red: 0.7, green: 0.5, blue: 0.9).opacity(0.6),
+                    Color.white.opacity(0.9)
+                ],
+                accentColor: Color(red: 0.7, green: 0.5, blue: 0.9),
+                shadowColor: Color(red: 0.6, green: 0.4, blue: 0.8)
+            )
+        case 5: // 虫洞漫游者 - 深紫蓝，深邃神秘
+            return LevelColorScheme(
+                backgroundColors: [
+                    Color(red: 0.5, green: 0.4, blue: 0.8).opacity(0.85), // 深紫蓝
+                    Color(red: 0.6, green: 0.3, blue: 0.9).opacity(0.75)  // 紫蓝
+                ],
+                borderColors: [
+                    Color(red: 0.5, green: 0.4, blue: 0.8).opacity(0.6),
+                    Color.white.opacity(0.9)
+                ],
+                accentColor: Color(red: 0.5, green: 0.4, blue: 0.8),
+                shadowColor: Color(red: 0.6, green: 0.3, blue: 0.9)
+            )
+        case 6: // 次元守护者 - 紫粉过渡，温暖优雅
+            return LevelColorScheme(
+                backgroundColors: [
+                    Color(red: 0.8, green: 0.4, blue: 0.8).opacity(0.8),  // 紫粉
+                    Color(red: 0.9, green: 0.3, blue: 0.7).opacity(0.7)   // 粉紫
+                ],
+                borderColors: [
+                    Color(red: 0.8, green: 0.4, blue: 0.8).opacity(0.6),
+                    Color.white.opacity(0.9)
+                ],
+                accentColor: Color(red: 0.8, green: 0.4, blue: 0.8),
+                shadowColor: Color(red: 0.9, green: 0.3, blue: 0.7)
+            )
+        case 7: // 时空大师 - 玫瑰紫，高贵典雅
+            return LevelColorScheme(
+                backgroundColors: [
+                    Color(red: 0.9, green: 0.3, blue: 0.6).opacity(0.8),  // 玫瑰紫
+                    Color(red: 0.8, green: 0.2, blue: 0.7).opacity(0.7)   // 深玫瑰紫
+                ],
+                borderColors: [
+                    Color(red: 0.9, green: 0.3, blue: 0.6).opacity(0.6),
+                    Color.white.opacity(0.9)
+                ],
+                accentColor: Color(red: 0.9, green: 0.3, blue: 0.6),
+                shadowColor: Color(red: 0.8, green: 0.2, blue: 0.7)
+            )
+        case 8: // 虫洞领主 - 珊瑚橙，与紫色形成完美对比
+            return LevelColorScheme(
+                backgroundColors: [
+                    Color(red: 0.95, green: 0.4, blue: 0.3).opacity(0.85), // 珊瑚橙
+                    Color(red: 0.9, green: 0.3, blue: 0.4).opacity(0.75)   // 深珊瑚橙
+                ],
+                borderColors: [
+                    Color(red: 0.95, green: 0.4, blue: 0.3).opacity(0.6),
+                    Color.white.opacity(0.9)
+                ],
+                accentColor: Color(red: 0.95, green: 0.4, blue: 0.3),
+                shadowColor: Color(red: 0.9, green: 0.3, blue: 0.4)
+            )
+        case 9: // 次元王者 - 琥珀金，王者风范
+            return LevelColorScheme(
+                backgroundColors: [
+                    Color(red: 0.95, green: 0.6, blue: 0.2).opacity(0.9),  // 琥珀金
+                    Color(red: 0.9, green: 0.5, blue: 0.1).opacity(0.8)    // 深琥珀金
+                ],
+                borderColors: [
+                    Color(red: 0.95, green: 0.6, blue: 0.2).opacity(0.7),
+                    Color.white.opacity(1.0)
+                ],
+                accentColor: Color(red: 0.95, green: 0.6, blue: 0.2),
+                shadowColor: Color(red: 0.9, green: 0.5, blue: 0.1)
+            )
+        case 10: // 时空传奇 - 传奇金，最高荣耀
+            return LevelColorScheme(
+                backgroundColors: [
+                    Color(red: 1.0, green: 0.8, blue: 0.2).opacity(0.95),  // 传奇金
+                    Color(red: 0.95, green: 0.7, blue: 0.1).opacity(0.85), // 深传奇金
+                    Color(red: 1.0, green: 0.9, blue: 0.4).opacity(0.75)   // 浅传奇金
+                ],
+                borderColors: [
+                    Color(red: 1.0, green: 0.8, blue: 0.2).opacity(0.8),
+                    Color.white.opacity(1.0)
+                ],
+                accentColor: Color(red: 1.0, green: 0.8, blue: 0.2),
+                shadowColor: Color(red: 0.95, green: 0.7, blue: 0.1)
+            )
+        default:
+            return getLevelColorScheme(level: 1)
+        }
+    }
+    
+    /// 获取指定等级的称号
+    private func getLevelTitleForLevel(_ level: Int) -> String {
+        switch level {
+        case 1: return "时空新手"
+        case 2: return "虫洞探险家"
+        case 3: return "次元旅行者"
+        case 4: return "时空冒险家"
+        case 5: return "虫洞漫游者"
+        case 6: return "次元守护者"
+        case 7: return "时空大师"
+        case 8: return "虫洞领主"
+        case 9: return "次元王者"
+        case 10: return "时空传奇"
+        default: return "时空新手"
+        }
+    }
+    
+    // MARK: - 状态管理
+    
+    /// 重置所有展开状态
+    private func resetExpandedStates() {
+        // 取消自动折叠定时器
+        autoCollapseTimer?.invalidate()
+        autoCollapseTimer = nil
+        
+        withAnimation(.easeInOut(duration: 0.25)) {
+            showAllPosts = false
+            showAllLikes = false
+        }
+    }
+    
+    /// 启动自动折叠定时器
+    private func startAutoCollapseTimer() {
+        // 取消之前的定时器
+        autoCollapseTimer?.invalidate()
+        
+        // 创建新的定时器，30秒后自动折叠
+        autoCollapseTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: false) { _ in
+            DispatchQueue.main.async {
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    showAllPosts = false
+                    showAllLikes = false
+                }
+            }
+        }
+    }
+    
+    // MARK: - 直接编辑方法
+    
+    /// 开始编辑用户名
+    private func startEditingUsername() {
+        tempUsername = userProfileManager.username
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isEditingUsername = true
+        }
+        // 延迟聚焦，确保动画完成后再弹出键盘
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            isUsernameFieldFocused = true
+        }
+    }
+    
+    /// 保存用户名
+    private func saveUsername() {
+        let trimmedUsername = tempUsername.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedUsername.isEmpty {
+            userProfileManager.updateUsername(trimmedUsername)
+        }
+        
+        // 先收起键盘
+        isUsernameFieldFocused = false
+        
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isEditingUsername = false
+        }
+    }
+    
+    /// 开始编辑个性签名
+    private func startEditingSignature() {
+        tempSignature = userProfileManager.personalSignature
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isEditingSignature = true
+        }
+        // 延迟聚焦，确保动画完成后再弹出键盘
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            isSignatureFieldFocused = true
+        }
+    }
+    
+    /// 保存个性签名
+    private func saveSignature() {
+        let trimmedSignature = tempSignature.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedSignature.isEmpty {
+            userProfileManager.updatePersonalSignature(trimmedSignature)
+        }
+        
+        // 先收起键盘
+        isSignatureFieldFocused = false
+        
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isEditingSignature = false
+        }
+    }
 }
 
 // 简化的角色关系数据模型
@@ -2062,6 +2858,20 @@ struct SimpleCharacterRelation {
     let characterName: String
     let relationshipType: String
     let interactionCount: Int
+}
+
+// 可识别的UIImage包装器，用于sheet显示
+struct IdentifiableUIImage: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
+// 等级配色方案数据模型
+struct LevelColorScheme {
+    let backgroundColors: [Color]
+    let borderColors: [Color]
+    let accentColor: Color
+    let shadowColor: Color
 }
 
 // MARK: - 支持组件
@@ -2106,7 +2916,7 @@ struct TimeStatItem: View {
 
 // 用户帖子行视图
 struct UserPostRowView: View {
-    let post: PostModel
+    let post: UserPostModel
     
     var body: some View {
         HStack(spacing: 12) {
@@ -2128,7 +2938,7 @@ struct UserPostRowView: View {
                     
                     Spacer()
                     
-                    Text(post.timestamp)
+                    Text(timeAgo(from: post.datePosted))
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -2187,57 +2997,1241 @@ struct MockCharacterNode {
     let name: String
 }
 
-// 互动记录行视图
-struct ProfileInteractionRowView: View {
-    let record: InteractionRecord
+// 紧凑的点赞记录视图 - 苹果设计风格
+// MARK: - 现代化点赞记录卡片
+// 苹果式点赞卡片 - 参考通知页面的舒适设计
+struct AppleStyleLikeRecordCard: View {
+    let record: LikeRecord
+    @State private var isExpanded = false
+    @State private var showingCancelAlert = false
+    var onRemove: (() -> Void)?
+    
+    private let collapsedContentLength = 120
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            // 头像
-            if UIImage(named: record.characterAvatar) != nil {
-                Image(record.characterAvatar)
+        VStack(alignment: .leading, spacing: 0) {
+            // 头部信息区域 - 苹果式布局
+            HStack(alignment: .center, spacing: 12) {
+                // 作者头像 - 更大更清晰
+                authorAvatar
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(record.authorName)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color(red: 0.25, green: 0.25, blue: 0.25))
+                        
+                        // 类型标签 - 更精致
+                        typeLabel
+                        
+                        Spacer()
+                    }
+                    
+                    Text(timeAgo(from: record.timestamp))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color(red: 0.5, green: 0.48, blue: 0.45))
+                }
+                
+                // 点赞按钮 - 苹果式
+                likeButton
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+            
+            // 内容区域 - 更好的可读性
+            VStack(alignment: .leading, spacing: 14) {
+                Text(displayContent)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+                    .lineLimit(isExpanded ? nil : 3)
+                    .lineSpacing(3)
+                    .animation(.easeInOut(duration: 0.25), value: isExpanded)
+                
+                // 展开/收起按钮 - 苹果式
+                if shouldShowExpandButton {
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            isExpanded.toggle()
+                        }
+                    }) {
+                        Text(isExpanded ? "收起" : "展开")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(Color(red: 0.3, green: 0.5, blue: 0.8))
+                    }
+                }
+                
+                // 底部标签 - 更精致的设计
+                if let characterName = record.characterName {
+                    HStack(spacing: 5) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(Color(red: 0.6, green: 0.4, blue: 0.8).opacity(0.8))
+                        Text("与\(characterName)相关")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color(red: 0.6, green: 0.4, blue: 0.8).opacity(0.8))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(.purple.opacity(0.06))
+                            .overlay(
+                                Capsule()
+                                    .stroke(.purple.opacity(0.15), lineWidth: 0.5)
+                            )
+                    )
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.ultraThinMaterial)  // 与次元足迹总览完全一致的背景
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.gray.opacity(0.1), lineWidth: 0.5)
+                )
+        )
+        .shadow(color: Color(red: 0.7, green: 0.65, blue: 0.6).opacity(0.15), radius: 6, x: 0, y: 2)
+        .shadow(color: Color(red: 0.8, green: 0.75, blue: 0.7).opacity(0.08), radius: 2, x: 0, y: 1)
+        .alert("取消点赞", isPresented: $showingCancelAlert) {
+            Button("取消", role: .cancel) { }
+            Button("确认", role: .destructive) {
+                UserLikeService.shared.removeLikeRecord(record)
+                onRemove?()
+            }
+        } message: {
+            Text("确定要取消对这条内容的点赞吗？")
+        }
+    }
+    
+    // 苹果式头像 - 更大更清晰
+    private var authorAvatar: some View {
+        ZStack {
+            Circle()
+                .fill(.gray.opacity(0.08))
+                .frame(width: 44, height: 44)
+            
+            if let avatarImage = characterAvatarImage {
+                Image(uiImage: avatarImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 44, height: 44)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(.quaternary, lineWidth: 0.5)
+                    )
+            } else {
+                Text(String(record.authorName.prefix(1)))
+                    .font(.system(size: 18, weight: .medium, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+        }
+    }
+    
+    // 苹果式类型标签
+    private var typeLabel: some View {
+        Text(record.type == .post ? "动态" : "评论")
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                Capsule()
+                    .fill(.quaternary.opacity(0.6))
+            )
+    }
+    
+    // 苹果式点赞按钮
+    private var likeButton: some View {
+        Button(action: {
+            showingCancelAlert = true
+        }) {
+            ZStack {
+                Circle()
+                    .fill(.pink.opacity(0.06))
+                    .frame(width: 32, height: 32)
+                
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.pink)
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    // 显示内容
+    private var displayContent: String {
+        if record.content.count > collapsedContentLength && !isExpanded {
+            return String(record.content.prefix(collapsedContentLength)) + "..."
+        }
+        return record.content
+    }
+    
+    // 是否显示展开按钮
+    private var shouldShowExpandButton: Bool {
+        record.content.count > collapsedContentLength
+    }
+    
+    // 角色头像图片
+    private var characterAvatarImage: UIImage? {
+        if !record.authorAvatar.isEmpty {
+            return UIImage(named: record.authorAvatar)
+        }
+        return nil
+    }
+    
+    // 时间格式化函数
+    private func timeAgo(from date: Date) -> String {
+        let calendar = Calendar.current
+        let now = Date()
+        let components = calendar.dateComponents([.minute, .hour, .day, .weekOfYear, .month, .year], from: date, to: now)
+        
+        if let year = components.year, year > 0 {
+            return "\(year)年前"
+        } else if let month = components.month, month > 0 {
+            return "\(month)个月前"
+        } else if let week = components.weekOfYear, week > 0 {
+            return "\(week)周前"
+        } else if let day = components.day, day > 0 {
+            return "\(day)天前"
+        } else if let hour = components.hour, hour > 0 {
+            return "\(hour)小时前"
+        } else if let minute = components.minute, minute > 5 {
+            return "\(minute)分钟前"
+        } else {
+            return "刚刚"
+        }
+    }
+}
+
+// 保留原有的ModernLikeRecordCard作为备用
+struct ModernLikeRecordCard: View {
+    let record: LikeRecord
+    @State private var isExpanded = false
+    @State private var showingCancelAlert = false
+    var onRemove: (() -> Void)?
+    
+    private let collapsedContentLength = 120
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 头部信息区域
+            HStack(alignment: .center, spacing: 10) {
+                // 作者头像
+                authorAvatar
+                
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(record.authorName)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primary)
+                        
+                        // 类型标签
+                        typeLabel
+                        
+                        Spacer()
+                    }
+                    
+                    Text(formatChineseTime(record.timestamp))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                
+                // 点赞按钮
+                likeButton
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
+            
+            // 内容区域
+            VStack(alignment: .leading, spacing: 12) {
+                Text(displayContent)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(.secondary)
+                    .lineLimit(isExpanded ? nil : 4)
+                    .lineSpacing(2)
+                    .animation(.easeInOut(duration: 0.3), value: isExpanded)
+                
+                // 展开/收起按钮
+                if shouldShowExpandButton {
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            isExpanded.toggle()
+                        }
+                    }) {
+                        Text(isExpanded ? "收起" : "展开")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.blue)
+                    }
+                }
+                
+                // 底部信息
+                if let characterName = record.characterName {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.purple)
+                        Text("与\(characterName)相关")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.purple)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(.purple.opacity(0.08))
+                    )
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 14)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.gray.opacity(0.08), lineWidth: 0.5)
+                )
+        )
+        .shadow(color: .black.opacity(0.06), radius: 2, x: 0, y: 1)
+        .shadow(color: .black.opacity(0.03), radius: 1, x: 0, y: 0.5)
+        .padding(.horizontal, 2)
+        .alert("取消点赞", isPresented: $showingCancelAlert) {
+            Button("取消", role: .cancel) { }
+            Button("确认", role: .destructive) {
+                UserLikeService.shared.removeLikeRecord(record)
+                onRemove?()
+            }
+        } message: {
+            Text("确定要取消对这条内容的点赞吗？")
+        }
+    }
+    
+    // 作者头像
+    private var authorAvatar: some View {
+        Group {
+            if UIImage(named: record.authorAvatar) != nil {
+                Image(record.authorAvatar)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 36, height: 36)
                     .clipShape(Circle())
                     .overlay(
                         Circle()
-                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                            .stroke(.quaternary, lineWidth: 1)
                     )
             } else {
                 Circle()
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(
+                        LinearGradient(
+                            colors: [.blue.opacity(0.7), .purple.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .frame(width: 36, height: 36)
                     .overlay(
-                        Text(String(record.characterName.prefix(1)))
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
+                        Text(String(record.authorName.prefix(1)))
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
                     )
             }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(record.characterName)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.primary)
-                    Spacer()
-                    Text(record.timestamp, style: .relative)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-                
-                Text(record.content)
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+    }
+    
+    // 类型标签
+    private var typeLabel: some View {
+        HStack(spacing: 3) {
+            Image(systemName: record.type.iconName)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundColor(record.type.color)
+            
+            Text(record.type.displayName)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundColor(record.type.color)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(
+            Capsule()
+                .fill(record.type.color.opacity(0.1))
+        )
+    }
+    
+    // 点赞按钮
+    private var likeButton: some View {
+        Button(action: {
+            showingCancelAlert = true
+        }) {
+            HStack(spacing: 5) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.pink)
+                Text("\(record.likeCount)")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color(red: 0.5, green: 0.48, blue: 0.45))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(.pink.opacity(0.08))
+                    .overlay(
+                        Capsule()
+                            .stroke(.pink.opacity(0.2), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    // 计算属性
+    private var displayContent: String {
+        let contentToDisplay = record.content
+        
+        if isExpanded {
+            return contentToDisplay
+        }
+        
+        if contentToDisplay.count <= collapsedContentLength {
+            return contentToDisplay
+        }
+        
+        let truncated = String(contentToDisplay.prefix(collapsedContentLength))
+        if let lastSpace = truncated.lastIndex(of: " ") {
+            return String(truncated[..<lastSpace]) + "..."
+        }
+        return truncated + "..."
+    }
+    
+    private var shouldShowExpandButton: Bool {
+        return record.content.count > collapsedContentLength
+    }
+    
+    // 格式化中文时间
+    private func formatChineseTime(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let now = Date()
+        let components = calendar.dateComponents([.minute, .hour, .day, .weekOfYear, .month, .year], from: date, to: now)
+        
+        if let year = components.year, year > 0 {
+            return "\(year)年前"
+        } else if let month = components.month, month > 0 {
+            return "\(month)个月前"
+        } else if let week = components.weekOfYear, week > 0 {
+            return "\(week)周前"
+        } else if let day = components.day, day > 0 {
+            return "\(day)天前"
+        } else if let hour = components.hour, hour > 0 {
+            return "\(hour)小时前"
+        } else if let minute = components.minute, minute > 5 {
+            return "\(minute)分钟前"
+        } else {
+            return "刚刚"
+        }
     }
 }
 
+// MARK: - 原有的紧凑式点赞记录视图（保留作为备用）
+struct CompactLikeRecordView: View {
+    let record: LikeRecord
+    @State private var isExpanded = false
+    @State private var showingCancelAlert = false
+    var onRemove: (() -> Void)?
+    
+    // 内容截断长度
+    private let collapsedContentLength = 150
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            // 作者头像 - 优化设计
+            authorAvatar
+            
+            VStack(alignment: .leading, spacing: 8) {
+                // 头部信息行
+                HStack(alignment: .center, spacing: 8) {
+                    Text(record.authorName)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primary)
+                    
+                    // 类型标签 - 重新设计
+                    typeLabel
+                    
+                    Spacer()
+                    
+                    Text(formatChineseTime(record.timestamp))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                
+                // 内容 - 更好的排版
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(displayContent)
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.secondary)
+                        .lineLimit(isExpanded ? nil : 3)
+                        .lineSpacing(1)
+                        .animation(.easeInOut(duration: 0.3), value: isExpanded)
+                    
+                    // 展开/收起按钮
+                    if shouldShowExpandButton {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                isExpanded.toggle()
+                            }
+                        }) {
+                            Text(isExpanded ? "收起" : "展开")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+                
+                // 底部信息行
+                HStack(alignment: .center, spacing: 12) {
+                    // 相关角色
+                    if let characterName = record.characterName {
+                        HStack(spacing: 4) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.purple)
+                            Text("与\(characterName)相关")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.purple)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(.purple.opacity(0.08))
+                        )
+                    }
+                    
+                    Spacer()
+                    
+                    // 取消点赞按钮 - 重新设计
+                    Button(action: {
+                        showingCancelAlert = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.pink)
+                            Text("\(record.likeCount)")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(.pink.opacity(0.08))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .alert("取消点赞", isPresented: $showingCancelAlert) {
+            Button("取消", role: .cancel) { }
+            Button("确认", role: .destructive) {
+                // 执行取消点赞
+                UserLikeService.shared.removeLikeRecord(record)
+                onRemove?()
+            }
+        } message: {
+            Text("确定要取消对这条内容的点赞吗？")
+        }
+    }
+    
+    // 作者头像
+    private var authorAvatar: some View {
+        Group {
+            if UIImage(named: record.authorAvatar) != nil {
+                Image(record.authorAvatar)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 40, height: 40)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(.quaternary, lineWidth: 1)
+                    )
+            } else {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.blue.opacity(0.6), .purple.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Text(String(record.authorName.prefix(1)))
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                    )
+            }
+        }
+    }
+    
+    // 类型标签
+    private var typeLabel: some View {
+        HStack(spacing: 3) {
+            Image(systemName: record.type.iconName)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundColor(record.type.color)
+            
+            Text(record.type.displayName)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundColor(record.type.color)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(
+            Capsule()
+                .fill(record.type.color.opacity(0.1))
+        )
+    }
+    
+    // 计算属性
+    private var displayContent: String {
+        // 始终显示内容正文，而不是标题，这样更能体现用户具体点赞了什么
+        let contentToDisplay = record.content
+        
+        if isExpanded {
+            return contentToDisplay
+        }
+        
+        if contentToDisplay.count <= collapsedContentLength {
+            return contentToDisplay
+        }
+        
+        // 找到最后一个完整的词来截断，避免截断到单词中间
+        let truncated = String(contentToDisplay.prefix(collapsedContentLength))
+        if let lastSpace = truncated.lastIndex(of: " ") {
+            return String(truncated[..<lastSpace]) + "..."
+        }
+        return truncated + "..."
+    }
+    
+    private var shouldShowExpandButton: Bool {
+        return record.content.count > collapsedContentLength
+    }
+    
+    // 格式化中文时间
+    private func formatChineseTime(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let now = Date()
+        let components = calendar.dateComponents([.minute, .hour, .day, .weekOfYear, .month, .year], from: date, to: now)
+        
+        if let year = components.year, year > 0 {
+            return "\(year)年前"
+        } else if let month = components.month, month > 0 {
+            return "\(month)个月前"
+        } else if let week = components.weekOfYear, week > 0 {
+            return "\(week)周前"
+        } else if let day = components.day, day > 0 {
+            return "\(day)天前"
+        } else if let hour = components.hour, hour > 0 {
+            return "\(hour)小时前"
+        } else if let minute = components.minute, minute > 5 {
+            return "\(minute)分钟前"
+        } else {
+            return "刚刚"
+        }
+    }
+}
 
+// MARK: - 用户动态卡片 - 极简苹果风格设计
+struct UserPostCard: View {
+    let post: UserPostModel
+    @State private var isExpanded = false
+    
+    private let collapsedContentLength = 150
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 头部信息区域 - 苹果式极简布局
+            HStack(alignment: .top, spacing: 0) {
+                // 左上角用户名 - 很小的字体
+                Text("次元指挥官")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary.opacity(0.8))
+                
+                Spacer()
+                
+                // 右上角时间 - 精致的苹果式时间显示
+                Text(timeAgo(from: post.datePosted))
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary.opacity(0.7))
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+            
+            // 主要内容区域 - 文字是绝对主角
+            VStack(alignment: .leading, spacing: 14) {
+                Text(displayContent)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+                    .lineLimit(isExpanded ? nil : 3)
+                    .lineSpacing(3)
+                    .multilineTextAlignment(.leading)
+                    .animation(.easeInOut(duration: 0.25), value: isExpanded)
+                
+                                 // 展开/收起按钮 - 苹果式
+                 if shouldShowExpandButton {
+                     Button(action: {
+                         withAnimation(.easeInOut(duration: 0.25)) {
+                             isExpanded.toggle()
+                         }
+                     }) {
+                         Text(isExpanded ? "收起" : "展开")
+                             .font(.system(size: 13, weight: .medium))
+                             .foregroundColor(Color(red: 0.3, green: 0.5, blue: 0.8))
+                     }
+                 }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.ultraThinMaterial)  // 与点赞卡片完全一致的背景
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.gray.opacity(0.1), lineWidth: 0.5)
+                )
+        )
+        .shadow(color: Color(red: 0.7, green: 0.65, blue: 0.6).opacity(0.15), radius: 6, x: 0, y: 2)
+        .shadow(color: Color(red: 0.8, green: 0.75, blue: 0.7).opacity(0.08), radius: 2, x: 0, y: 1)
+    }
+    
+    // 显示内容
+    private var displayContent: String {
+        if post.content.count > collapsedContentLength && !isExpanded {
+            // 智能截断 - 找到最后一个完整句子或词语
+            let truncated = String(post.content.prefix(collapsedContentLength))
+            if let lastPunctuation = truncated.lastIndex(where: { "。！？.!?".contains($0) }) {
+                return String(truncated[...lastPunctuation])
+            } else if let lastSpace = truncated.lastIndex(of: " ") {
+                return String(truncated[..<lastSpace]) + "…"
+            }
+            return truncated + "…"
+        }
+        return post.content
+    }
+    
+    // 是否显示展开按钮
+    private var shouldShowExpandButton: Bool {
+        post.content.count > collapsedContentLength
+    }
+    
+    // 苹果式时间格式化函数
+    private func timeAgo(from date: Date) -> String {
+        let calendar = Calendar.current
+        let now = Date()
+        let components = calendar.dateComponents([.minute, .hour, .day, .weekOfYear, .month, .year], from: date, to: now)
+        
+        if let year = components.year, year > 0 {
+            return "\(year)年前"
+        } else if let month = components.month, month > 0 {
+            return "\(month)个月前"
+        } else if let week = components.weekOfYear, week > 0 {
+            return "\(week)周前"
+        } else if let day = components.day, day > 0 {
+            return "\(day)天前"
+        } else if let hour = components.hour, hour > 0 {
+            return "\(hour)小时前"
+        } else if let minute = components.minute, minute > 5 {
+            return "\(minute)分钟前"
+        } else {
+            return "刚刚"
+        }
+    }
+}
+
+// MARK: - 用户资料编辑器
+struct ProfileEditorView: View {
+    @ObservedObject var userProfileManager: UserProfileManager
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var tempUsername: String = ""
+    @State private var tempPersonalSignature: String = ""
+
+    @State private var showingImagePicker = false
+    @State private var selectedImage: PhotosPickerItem?
+    @State private var selectedUIImage: UIImage?
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // 头像编辑区域
+                VStack(spacing: 16) {
+                    Text("头像")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    ZStack {
+                        // 头像显示
+                        if let avatarImage = userProfileManager.loadAvatarImage() {
+                            Image(uiImage: avatarImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 100, height: 100)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                )
+                        } else {
+                            Circle()
+                                .fill(Color.gray.opacity(0.1))
+                                .frame(width: 100, height: 100)
+                                .overlay(
+                                    Image(systemName: "person.fill")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.gray)
+                                )
+                        }
+                        
+                        // 编辑按钮
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                Circle()
+                                    .fill(.blue)
+                                    .frame(width: 32, height: 32)
+                                    .overlay(
+                                        Image(systemName: "camera.fill")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(.white)
+                                    )
+                                    .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
+                            }
+                        }
+                        .frame(width: 100, height: 100)
+                    }
+                    .onTapGesture {
+                        showingImagePicker = true
+                    }
+                }
+                
+                // 用户名编辑区域
+                VStack(spacing: 16) {
+                    Text("用户名")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    TextField("请输入用户名", text: $tempUsername)
+                        .font(.system(size: 16))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray6))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                        )
+                }
+                
+                // 个性签名编辑区域
+                VStack(spacing: 16) {
+                    Text("个性签名")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    TextField("请输入个性签名", text: $tempPersonalSignature, axis: .vertical)
+                        .font(.system(size: 16))
+                        .lineLimit(3...6)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray6))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                        )
+                }
+                
+
+                
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+            .navigationTitle("编辑资料")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("取消") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("保存") {
+                        if !tempUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            userProfileManager.updateUsername(tempUsername.trimmingCharacters(in: .whitespacesAndNewlines))
+                        }
+                        
+                        if !tempPersonalSignature.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            userProfileManager.updatePersonalSignature(tempPersonalSignature.trimmingCharacters(in: .whitespacesAndNewlines))
+                        }
+
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+            .photosPicker(isPresented: $showingImagePicker, selection: $selectedImage, matching: .images)
+            .onChange(of: selectedImage) { _, newItem in
+                Task {
+                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        await MainActor.run {
+                            selectedUIImage = image
+                        }
+                    }
+                }
+            }
+            .sheet(item: Binding<IdentifiableUIImage?>(
+                get: { 
+                    if let selectedUIImage = selectedUIImage {
+                        return IdentifiableUIImage(image: selectedUIImage)
+                    }
+                    return nil
+                },
+                set: { _ in 
+                    selectedUIImage = nil 
+                }
+            )) { identifiableImage in
+                AvatarEditorView(
+                    image: identifiableImage.image,
+                    onSave: { croppedImage in
+                        userProfileManager.updateAvatar(croppedImage, name: "user_avatar_\(Date().timeIntervalSince1970)")
+                        selectedUIImage = nil
+                    },
+                    onCancel: {
+                        selectedUIImage = nil
+                    }
+                )
+            }
+            .onAppear {
+                tempUsername = userProfileManager.username
+                tempPersonalSignature = userProfileManager.personalSignature
+            }
+        }
+    }
+}
+
+// MARK: - 等级系统扩展方法
+extension ProfileView {
+    
+    /// 获取等级描述（用于等级详情页面）
+    func getLevelDescription(level: Int) -> String {
+        switch level {
+        case 1:
+            return "刚开始时空冒险的新手，准备探索无限可能"
+        case 2:
+            return "勇敢的虫洞探险家，开始探索神秘的时空隧道"
+        case 3:
+            return "熟练的次元旅行者，在不同时空自由穿梭"
+        case 4:
+            return "真正的时空冒险家，在虫洞中寻找智慧宝藏"
+        case 5:
+            return "自由的虫洞漫游者，在时空长河中自由探索"
+        case 6:
+            return "守护次元的守护者，保护时空的和平与秩序"
+        case 7:
+            return "时空大师，掌握穿越时空的奥秘"
+        case 8:
+            return "虫洞领主，统治着神秘的虫洞领域"
+        case 9:
+            return "次元王者，在多元宇宙中称王称霸"
+        case 10:
+            return "时空传奇，成为跨越时空的永恒传说"
+        default:
+            return "刚开始时空冒险的新手"
+        }
+    }
+}
+
+// MARK: - 头像编辑器
+struct AvatarEditorView: View {
+    let image: UIImage
+    let onSave: (UIImage) -> Void
+    let onCancel: () -> Void
+    
+    @State private var zoomScale: CGFloat = 1.0
+    @State private var lastZoomScale: CGFloat = 1.0
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
+    @Environment(\.dismiss) private var dismiss
+    
+    // 裁切框大小
+    private var cropSize: CGFloat {
+        UIScreen.main.bounds.width * 0.85
+    }
+    
+    // 计算基础缩放比例，让图片正好填满圆形
+    private var baseScale: CGFloat {
+        let imageSize = image.size
+        guard imageSize.width > 0, imageSize.height > 0 else { return 1.0 }
+        let scaleX = cropSize / imageSize.width
+        let scaleY = cropSize / imageSize.height
+        return max(scaleX, scaleY)
+    }
+    
+    var body: some View {
+        NavigationView {
+            GeometryReader { geometry in
+                ZStack {
+                    Color.black.ignoresSafeArea()
+                    
+                    VStack {
+                        Spacer()
+                        
+                        // 头像预览区域
+                        ZStack {
+                            // 创建一个将被操作的图片视图
+                            let imageView = Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: image.size.width, height: image.size.height)
+                            
+                            // 背景图片 (半透明)
+                            imageView
+                                .scaleEffect(baseScale * zoomScale)
+                                .offset(offset)
+                                .opacity(0.3)
+                            
+                            // 前景图片 (圆形遮罩内)
+                            imageView
+                                .scaleEffect(baseScale * zoomScale)
+                                .offset(offset)
+                                .mask(Circle())
+                            
+                            // 简单的白色圆形边框
+                            Circle()
+                                .stroke(Color.white, lineWidth: 3)
+                        }
+                        .frame(width: cropSize, height: cropSize)
+                        .clipped()
+                        .gesture(
+                            SimultaneousGesture(
+                                DragGesture()
+                                    .onChanged { value in
+                                        offset = CGSize(
+                                            width: lastOffset.width + value.translation.width,
+                                            height: lastOffset.height + value.translation.height
+                                        )
+                                    }
+                                    .onEnded { _ in
+                                        lastOffset = offset
+                                    },
+                                MagnificationGesture()
+                                    .onChanged { value in
+                                        let newScale = lastZoomScale * value
+                                        zoomScale = max(0.5, min(10.0, newScale))
+                                    }
+                                    .onEnded { _ in
+                                        lastZoomScale = zoomScale
+                                    }
+                            )
+                        )
+                        .onTapGesture(count: 2) {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                if zoomScale > 1.0 {
+                                    zoomScale = 1.0
+                                    offset = .zero
+                                } else {
+                                    zoomScale = 2.0
+                                }
+                                lastZoomScale = zoomScale
+                                lastOffset = offset
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        // 操作提示和控制
+                        VStack(spacing: 16) {
+                            Text("拖动调整位置，双指缩放，双击快速缩放")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                            
+                            // 缩放滑块
+                            VStack(spacing: 8) {
+                                HStack {
+                                    Text("图片大小")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.7))
+                                    
+                                    Spacer()
+                                    
+                                    Text("\(Int(zoomScale * 100))%")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.blue)
+                                }
+                                
+                                // 自定义滑块
+                                HStack(spacing: 12) {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.white.opacity(0.6))
+                                        .onTapGesture {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                let newScale = max(0.5, zoomScale - 0.5)
+                                                zoomScale = newScale
+                                                lastZoomScale = newScale
+                                            }
+                                        }
+                                    
+                                    GeometryReader { geo in
+                                        ZStack(alignment: .leading) {
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(Color.white.opacity(0.2))
+                                                .frame(height: 8)
+                                            
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(LinearGradient(colors: [.blue, .blue.opacity(0.7)], startPoint: .leading, endPoint: .trailing))
+                                                .frame(width: geo.size.width * (zoomScale - 0.5) / 9.5, height: 8)
+                                            
+                                            Circle()
+                                                .fill(.blue)
+                                                .frame(width: 20, height: 20)
+                                                .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 1)
+                                                .position(x: geo.size.width * (zoomScale - 0.5) / 9.5, y: 10)
+                                                .gesture(
+                                                    DragGesture()
+                                                        .onChanged { value in
+                                                            let percentage = value.location.x / geo.size.width
+                                                            let newScale = 0.5 + (percentage * 9.5)
+                                                            zoomScale = max(0.5, min(10.0, newScale))
+                                                            lastZoomScale = zoomScale
+                                                        }
+                                                )
+                                        }
+                                    }
+                                    .frame(height: 20)
+                                    
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.white.opacity(0.6))
+                                        .onTapGesture {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                let newScale = min(10.0, zoomScale + 0.5)
+                                                zoomScale = newScale
+                                                lastZoomScale = newScale
+                                            }
+                                        }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color.white.opacity(0.08))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                                    )
+                            )
+                            
+                            // 重置按钮
+                            Button("重置") {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    zoomScale = 1.0
+                                    lastZoomScale = 1.0
+                                    offset = .zero
+                                    lastOffset = .zero
+                                }
+                            }
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(Color.white.opacity(0.1))
+                            )
+                        }
+                        .padding(.bottom, 40)
+                    }
+                }
+            }
+            .navigationTitle("编辑头像")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("取消") {
+                        onCancel()
+                    }
+                    .foregroundColor(.white)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("确定") {
+                        if let croppedImage = cropImage() {
+                            onSave(croppedImage)
+                        }
+                    }
+                    .foregroundColor(.blue)
+                    .fontWeight(.semibold)
+                }
+            }
+            .toolbarBackground(Color.black, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .onAppear {
+                zoomScale = 1.0
+                lastZoomScale = 1.0
+                offset = .zero
+                lastOffset = .zero
+            }
+        }
+    }
+    
+    // 裁切图片 - 匹配新的显示逻辑
+    private func cropImage() -> UIImage? {
+        let finalScale = baseScale * zoomScale
+        let imageSize = image.size
+        let scaledSize = CGSize(width: imageSize.width * finalScale, height: imageSize.height * finalScale)
+        
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: cropSize, height: cropSize))
+        
+        return renderer.image { context in
+            // 设置裁切路径为圆形
+            let path = UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: cropSize, height: cropSize))
+            path.addClip()
+            
+            // 计算图片绘制的原点
+            let drawOrigin = CGPoint(
+                x: (cropSize - scaledSize.width) / 2 + offset.width,
+                y: (cropSize - scaledSize.height) / 2 + offset.height
+            )
+            
+            // 绘制图片
+            image.draw(in: CGRect(origin: drawOrigin, size: scaledSize))
+        }
+    }
+}
 
 #Preview {
     ProfileView()

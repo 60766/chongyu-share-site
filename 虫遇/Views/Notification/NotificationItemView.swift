@@ -271,10 +271,7 @@ struct NotificationItemView: View {
             
     // 通知预览
     private func notificationPreview(_ previewContent: String) -> some View {
-        // 🔍 调试：检查实际接收到的内容
-        let _ = print("🔍 notificationPreview 接收到的内容:")
-        let _ = print("🔍   内容长度: \(previewContent.count)")
-        let _ = print("🔍   实际内容: '\(previewContent)'")
+
         
         // 添加省略号提示这不是完整内容
         let displayContent = previewContent + "..."
@@ -353,8 +350,7 @@ struct NotificationItemView: View {
         let shouldShow = (notification.userComment != nil && !notification.userComment!.isEmpty) || 
                          (notification.originalPost != nil && !notification.originalPost!.isEmpty) // 检查originalPost
         
-        print("🔍 NotificationItemView.shouldShowUserContext - 统一逻辑")
-        print("🔍   shouldShow结果: \(shouldShow)")
+
         
         return shouldShow
     }
@@ -367,12 +363,7 @@ struct NotificationItemView: View {
     // 用户触发内容视图 - 强制显示用户评论，增加调试信息
     private var userContextView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // 调试信息
-            let _ = print("🔍 NotificationItemView.userContextView 渲染")
-            let _ = print("🔍   notification.userComment: '\(notification.userComment ?? "nil")'")
-            let _ = print("🔍   notification.originalPost: '\(notification.originalPost ?? "nil")'")
-            let _ = print("🔍   notification.type: \(notification.type)")
-            let _ = print("🔍   notification.username: '\(notification.username)'")
+
             
             // 优先显示用户评论
             if let userComment = notification.userComment, !userComment.isEmpty {
@@ -523,7 +514,7 @@ struct NotificationCharacterView: View {
                     .frame(width: 42, height: 42)
                     .clipShape(Circle())
                     .onAppear {
-                        print("✅ 通知头像加载成功: \(character.image)")
+
                     }
             } else {
                 ZStack {

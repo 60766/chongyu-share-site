@@ -113,7 +113,7 @@ class AchievementEvaluator: ObservableObject {
             self.objectWillChange.send()
         }
         
-        print("🔖 成就固定状态更新: \(achievementId) -> \(!wasPinned ? "已固定" : "已取消固定")")
+
     }
     
     /// 获取优先展示的成就（固定的成就 + 按默认顺序的其他成就）
@@ -353,7 +353,7 @@ class AchievementEvaluator: ObservableObject {
     // MARK: - 成就进度更新方法
     
     func updateAllAchievements(using modelContext: ModelContext? = nil) {
-        print("🎯 开始更新所有成就...")
+
         updatePopularityAchievement()
         updateSocialMasterAchievement()
         updateInteractionAchievement(using: modelContext)
@@ -365,11 +365,11 @@ class AchievementEvaluator: ObservableObject {
         // 刷新固定状态
         refreshAchievementsPinnedStatus()
         
-        print("✅ 所有成就更新完成")
+
         
         // 强制触发UI更新
         DispatchQueue.main.async {
-            print("🔄 强制触发UI刷新")
+    
             self.objectWillChange.send()
         }
     }
@@ -399,7 +399,7 @@ class AchievementEvaluator: ObservableObject {
                     isUnlocked: isUnlocked
                 )
                 
-                print("🔄 心有灵犀成就更新: \(oldProgress)→\(maxDialogueCount), \(oldLevel)→\(level), 目标:\(targetProgress)")
+    
                 break
             }
         }
@@ -435,7 +435,7 @@ class AchievementEvaluator: ObservableObject {
         // 根据互动角色数量更新"社交达人"成就
         let interactedCharacters = calculateTotalActiveCharacters()
         
-        print("🤝 社交达人成就更新: 互动角色数 = \(interactedCharacters)")
+
         
         // 社交达人成就等级门槛：青铜15 → 白银40 → 黄金80（共169个角色，挑战性门槛）
         let (level, targetProgress, isUnlocked) = determineAchievementLevel(
@@ -458,7 +458,7 @@ class AchievementEvaluator: ObservableObject {
                     isUnlocked: isUnlocked
                 )
                 
-                print("🔄 社交达人成就更新: \(oldProgress)→\(interactedCharacters), \(oldLevel)→\(level), 目标:\(targetProgress)")
+    
                 break
             }
         }
@@ -468,7 +468,7 @@ class AchievementEvaluator: ObservableObject {
         // 根据探索的不同角色领域数量更新"领域漫游者"成就
         let exploredDomains = calculateExploredCharacterDomains(using: modelContext)
         
-        print("🧭 领域漫游者成就更新: 探索领域数 = \(exploredDomains)")
+
         
         // 领域漫游者成就等级门槛：青铜1 → 白银3 → 黄金6（每领域需要5个角色，难度大幅提升）
         let (level, targetProgress, isUnlocked) = determineAchievementLevel(
@@ -491,7 +491,7 @@ class AchievementEvaluator: ObservableObject {
                     isUnlocked: isUnlocked
                 )
                 
-                print("🔄 领域漫游者成就更新: \(oldProgress)→\(exploredDomains), \(oldLevel)→\(level), 目标:\(targetProgress)")
+    
                 break
             }
         }
@@ -501,7 +501,7 @@ class AchievementEvaluator: ObservableObject {
         // 根据活跃天数更新"时光旅人"成就
         let activeDays = calculateActiveDays(using: modelContext)
         
-        print("🕰️ 时光旅人成就更新: 实际活跃天数 = \(activeDays) 天")
+
         
         // 时光旅人成就等级门槛：青铜7 → 白银30 → 黄金100
         let (level, targetProgress, isUnlocked) = determineAchievementLevel(
@@ -524,7 +524,7 @@ class AchievementEvaluator: ObservableObject {
                     isUnlocked: isUnlocked
                 )
                 
-                print("🔄 时光旅人成就更新: \(oldProgress)→\(activeDays), \(oldLevel)→\(level), 目标:\(targetProgress)")
+    
                 break
             }
         }
@@ -584,7 +584,7 @@ class AchievementEvaluator: ObservableObject {
         // 根据综合评分更新"次元段位"成就
         let comprehensiveScore = calculateComprehensiveScore()
         
-        print("👑 次元段位成就更新: 综合评分 = \(comprehensiveScore)")
+
         
         // 次元段位成就等级门槛：青铜200 → 白银600 → 黄金1200（删除质量加成后重新平衡，总分1350）
         let (level, targetProgress, isUnlocked) = determineAchievementLevel(
@@ -607,7 +607,7 @@ class AchievementEvaluator: ObservableObject {
                     isUnlocked: isUnlocked
                 )
                 
-                print("🔄 次元段位成就更新: \(oldProgress)→\(comprehensiveScore), \(oldLevel)→\(level), 目标:\(targetProgress)")
+    
                 break
             }
         }
@@ -622,12 +622,12 @@ class AchievementEvaluator: ObservableObject {
             notification.type == .like
         }
         
-        print("🔍 AchievementEvaluator: 发现 \(likeNotifications.count) 个点赞通知")
+
         
         // 统计总点赞数
         let totalLikes = likeNotifications.count
         
-        print("❤️ AchievementEvaluator: 计算得到的总点赞数: \(totalLikes)")
+
         
         return totalLikes
     }
@@ -676,8 +676,6 @@ class AchievementEvaluator: ObservableObject {
             }
         }
         
-        print("🤝 AchievementEvaluator: 计算得到的总互动角色数: \(interactedCharacters.count)")
-        
         return interactedCharacters.count
     }
     
@@ -687,10 +685,8 @@ class AchievementEvaluator: ObservableObject {
         
         // 必须使用提供的ModelContext，不能创建独立的ModelContext
         guard let modelContext = providedContext else {
-            print("❌ AchievementEvaluator: 未提供ModelContext，跳过统计以避免数据冲突")
-                return 0
-            }
-        print("🔄 AchievementEvaluator: 使用提供的ModelContext")
+            return 0
+        }
         
         do {
             // 获取所有用户发送的消息
@@ -701,27 +697,25 @@ class AchievementEvaluator: ObservableObject {
             )
             let userMessages = try modelContext.fetch(messageDescriptor)
             
-            print("💬 AchievementEvaluator: 查询到 \(userMessages.count) 条用户消息")
+
             
             // 按接收者（角色）分组计算对话轮数
             for message in userMessages {
                 let characterId = message.receiverId
                 if !characterId.isEmpty && characterId != "currentUser" {
                     dialogueCountByCharacter[characterId, default: 0] += 1
-                    print("💬 发现消息: 角色ID=\(characterId), 内容=\(message.content.prefix(20))...")
+
                 }
             }
             
             // 找出最大的对话轮数
             let maxCount = dialogueCountByCharacter.values.max() ?? 0
             
-            print("💬 AchievementEvaluator: 按角色分组的对话数: \(dialogueCountByCharacter)")
-            print("💬 AchievementEvaluator: 最大单个角色对话轮数: \(maxCount)")
+
             
             return maxCount
             
         } catch {
-            print("❌ AchievementEvaluator: 读取用户消息失败: \(error.localizedDescription)")
             return 0
         }
     }
@@ -732,8 +726,7 @@ class AchievementEvaluator: ObservableObject {
         
         // 必须使用提供的ModelContext，不能创建独立的ModelContext
         guard let modelContext = providedContext else {
-            print("❌ AchievementEvaluator: 未提供ModelContext，跳过心有灵犀统计以避免数据冲突")
-                return []
+            return []
         }
         
         do {
@@ -764,15 +757,11 @@ class AchievementEvaluator: ObservableObject {
                 return (characterId: characterId, messageCount: count, character: character)
             }
             
-            print("🏆 心有灵犀成就 - 前三名角色:")
-            for (index, item) in result.enumerated() {
-                print("   \(index + 1). \(item.character?.name ?? "未知角色") - \(item.messageCount)条对话")
-            }
+
             
             return result
             
         } catch {
-            print("❌ AchievementEvaluator: 读取用户消息失败: \(error.localizedDescription)")
             return []
         }
     }
@@ -788,10 +777,8 @@ class AchievementEvaluator: ObservableObject {
         
         // 必须使用提供的ModelContext，不能创建独立的ModelContext
         guard let modelContext = providedContext else {
-            print("❌ AchievementEvaluator: 未提供ModelContext，跳过探索统计以避免数据冲突")
-                return 0
-            }
-        print("🔄 AchievementEvaluator: 使用提供的ModelContext (exploration)")
+            return 0
+        }
         
         do {
             let messageDescriptor = FetchDescriptor<Message>()
@@ -811,7 +798,6 @@ class AchievementEvaluator: ObservableObject {
                 }
             }
         } catch {
-            print("❌ AchievementEvaluator: 读取消息失败: \(error.localizedDescription)")
         }
         
         // 2. 从评论互动中获取角色（不包括仅查看帖子）
@@ -840,9 +826,9 @@ class AchievementEvaluator: ObservableObject {
                 }
                 categoryCharacterCounts[category]?.insert(characterId)
                 
-                print("🧭 角色分类: \(character.name) (ID: \(characterId)) -> type: \(character.type) -> 分类: \(category)")
+    
             } else {
-                print("⚠️ 未找到角色: \(characterId)")
+
             }
         }
         
@@ -850,8 +836,7 @@ class AchievementEvaluator: ObservableObject {
         let requiredCharactersPerDomain = 5
         var fullyExploredDomains = 0
         
-        print("🧭 AchievementEvaluator: 互动标准 - 私聊消息往来 + 评论区互动（不含仅查看帖子）")
-        print("🧭 AchievementEvaluator: 各领域角色统计:")
+
         for (category, characterIds) in categoryCharacterCounts {
             let count = characterIds.count
             let isFullyExplored = count >= requiredCharactersPerDomain
@@ -860,11 +845,10 @@ class AchievementEvaluator: ObservableObject {
                 fullyExploredDomains += 1
             }
             
-            print("   \(category.displayName): \(count)/\(requiredCharactersPerDomain) 角色 \(isFullyExplored ? "✅" : "❌")")
+
         }
         
-        print("🧭 AchievementEvaluator: 互动角色总数: \(interactedCharacterIds.count)")
-        print("🧭 AchievementEvaluator: 完全探索的领域数: \(fullyExploredDomains)")
+
         
         return fullyExploredDomains
     }
@@ -876,8 +860,7 @@ class AchievementEvaluator: ObservableObject {
         
         // 必须使用提供的ModelContext，不能创建独立的ModelContext
         guard let modelContext = providedContext else {
-            print("❌ AchievementEvaluator: 未提供ModelContext，跳过领域探索统计以避免数据冲突")
-                return [:]
+            return [:]
         }
         
         do {
@@ -896,7 +879,6 @@ class AchievementEvaluator: ObservableObject {
                 }
             }
         } catch {
-            print("❌ 获取领域进度失败: \(error.localizedDescription)")
     }
     
         // 从评论互动中获取角色（不包括仅查看帖子）
@@ -1013,10 +995,8 @@ class AchievementEvaluator: ObservableObject {
         // 1. 统计有对话的天数
         // 必须使用提供的ModelContext，不能创建独立的ModelContext
         guard let modelContext = providedContext else {
-            print("❌ AchievementEvaluator: 未提供ModelContext，跳过活跃天数统计以避免数据冲突")
             return 1
         }
-        print("🔄 AchievementEvaluator: 使用提供的ModelContext (活跃天数)")
         
         do {
             // 统计用户发送的消息天数
@@ -1032,9 +1012,7 @@ class AchievementEvaluator: ObservableObject {
                 activeDays.insert(dayStart)
             }
             
-            print("💬 AchievementEvaluator: 统计到 \(userMessages.count) 条用户消息")
         } catch {
-            print("❌ AchievementEvaluator: 读取消息失败: \(error.localizedDescription)")
         }
         
         // 2. 统计用户发帖的天数
@@ -1083,11 +1061,7 @@ class AchievementEvaluator: ObservableObject {
             notificationDays += 1
         }
         
-        print("📝 AchievementEvaluator: 统计到 \(userPosts.count) 条用户帖子")
-        print("💬 AchievementEvaluator: 统计到 \(userCommentDays) 条用户评论")
-        print("🎯 AchievementEvaluator: 统计到 \(interactionActivityDays) 个用户互动活动")
-        print("🔔 AchievementEvaluator: 统计到 \(notificationDays) 个通知相关活动")
-        print("📅 AchievementEvaluator: 实际活跃天数: \(activeDays.count) 天")
+        
         
         return max(activeDays.count, 1)
     }
@@ -1125,14 +1099,7 @@ class AchievementEvaluator: ObservableObject {
         // 6. 内容创作分数 (最高100分)
         score += min(userPosts.count * 10, 100)
         
-        print("🏆 AchievementEvaluator: 综合评分计算完成")
-        print("   对话深度: \(dialogueCount) -> \(min(dialogueCount * 2, 500))分")
-        print("   社交影响: \(totalLikes) -> \(min(totalLikes * 3, 300))分")
-        print("   活跃度: \(activeDays) -> \(min(activeDays * 10, 200))分")
-        print("   探索广度: \(exploredDomains) -> \(min(exploredDomains * 15, 150))分")
-        print("   社交广度: \(socialConnections) -> \(min(socialConnections * 5, 100))分")
-        print("   内容创作: \(userPosts.count) -> \(min(userPosts.count * 10, 100))分")
-        print("   综合评分: \(score)分")
+
         
         return score
     }
@@ -1160,10 +1127,8 @@ class AchievementEvaluator: ObservableObject {
     private func calculateNightTimeConversations(using providedContext: ModelContext? = nil) -> Int {
         // 必须使用提供的ModelContext，不能创建独立的ModelContext
         guard let modelContext = providedContext else {
-            print("❌ AchievementEvaluator: 未提供ModelContext，跳过夜猫子统计以避免数据冲突")
-                return 0
-            }
-        print("🔄 AchievementEvaluator: 使用提供的ModelContext (夜猫子)")
+            return 0
+        }
         
         do {
             // 获取所有用户发送的消息
@@ -1182,14 +1147,11 @@ class AchievementEvaluator: ObservableObject {
                 return (hour >= 22 && hour <= 23) || (hour >= 0 && hour <= 2)
             }
             
-            print("🌙 AchievementEvaluator: 深夜对话统计完成")
-            print("   总消息数: \(userMessages.count)")
-            print("   深夜消息数: \(nightConversations.count)")
+
             
             return nightConversations.count
             
         } catch {
-            print("❌ AchievementEvaluator: 读取深夜消息失败: \(error.localizedDescription)")
             return 0
         }
     }
@@ -1198,10 +1160,8 @@ class AchievementEvaluator: ObservableObject {
     private func calculateMorningTimeConversations(using providedContext: ModelContext? = nil) -> Int {
         // 必须使用提供的ModelContext，不能创建独立的ModelContext
         guard let modelContext = providedContext else {
-            print("❌ AchievementEvaluator: 未提供ModelContext，跳过晨光对话统计以避免数据冲突")
-                return 0
-            }
-        print("🔄 AchievementEvaluator: 使用提供的ModelContext (晨光对话)")
+            return 0
+        }
         
         do {
             // 获取所有用户发送的消息
@@ -1220,14 +1180,11 @@ class AchievementEvaluator: ObservableObject {
                 return hour >= 6 && hour <= 9
             }
             
-            print("🌅 AchievementEvaluator: 晨光对话统计完成")
-            print("   总消息数: \(userMessages.count)")
-            print("   晨光消息数: \(morningConversations.count)")
+
             
             return morningConversations.count
             
         } catch {
-            print("❌ AchievementEvaluator: 读取晨光消息失败: \(error.localizedDescription)")
             return 0
         }
     }

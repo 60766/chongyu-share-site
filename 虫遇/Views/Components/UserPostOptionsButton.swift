@@ -1,5 +1,19 @@
 import SwiftUI
 
+// iOS 16 presentation modifier
+struct iOS16PresentationModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) {
+            content
+                .presentationCompactAdaptation(.none)
+                .presentationBackgroundInteraction(.enabled)
+                .presentationCornerRadius(12)
+        } else {
+            content
+        }
+    }
+}
+
 /**
  * 用户自己发布帖子的选项按钮组件
  * 提供编辑、删除和置顶功能
@@ -166,12 +180,7 @@ struct UserPostOptionsButton: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
-            .if16Available {
-                $0.presentationCompactAdaptation(.none)
-                   .presentationBackgroundInteraction(.enabled)
-                   .presentationCornerRadius(12)
-                   .shadowVisibility(.hidden)
-            }
+            .modifier(iOS16PresentationModifier())
             .onAppear {
                 // 检查是否已置顶
                 checkIfPinned()

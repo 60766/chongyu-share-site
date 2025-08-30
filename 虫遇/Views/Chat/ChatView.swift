@@ -847,7 +847,6 @@ struct ChatView: View {
                     
                 case .failure(let error):
                     // 处理错误情况
-                    print("❌ 获取角色回复失败: \(error.localizedDescription)")
                     
                     // 创建错误提示消息
                     let errorMessage = Message(
@@ -913,7 +912,6 @@ struct ChatView: View {
                     
                 case .failure(let error):
                     // 处理错误情况
-                    print("❌ 获取角色回复失败: \(error.localizedDescription)")
                     
                     // 创建错误提示消息
                     let errorMessage = Message(
@@ -1022,7 +1020,7 @@ struct ChatView: View {
                     }
                 }
             } catch {
-                print("❌ 加载历史消息失败: \(error.localizedDescription)")
+    
             }
         }
     }
@@ -1037,12 +1035,12 @@ struct ChatView: View {
         // 保存更改
         do {
             try modelContext.save()
-            print("✅ 消息已保存到数据库")
+
             
             // 更新或创建会话记录
             updateConversation(with: message)
         } catch {
-            print("❌ 保存消息失败: \(error.localizedDescription)")
+
         }
     }
     
@@ -1081,9 +1079,9 @@ struct ChatView: View {
             
             // 保存更改
             try modelContext.save()
-            print("✅ 会话记录已更新")
+            
         } catch {
-            print("❌ 更新会话记录失败: \(error.localizedDescription)")
+
         }
     }
     

@@ -429,6 +429,16 @@ class PostViewModel: ObservableObject {
             
             posts[index] = updatedPost
             
+            // 发送点赞通知，供UserLikeService监听
+            NotificationCenter.default.post(
+                name: NSNotification.Name("PostLiked"),
+                object: nil,
+                userInfo: [
+                    "post": updatedPost,
+                    "isLiked": isLiked
+                ]
+            )
+            
             // 模拟网络请求更新点赞状态
             // 在实际应用中，应该调用API更新服务器数据
         }
@@ -951,6 +961,17 @@ class PostViewModel: ObservableObject {
             
             // 更新帖子数组
             posts[postIndex] = updatedPost
+            
+            // 发送评论点赞通知，供UserLikeService监听
+            NotificationCenter.default.post(
+                name: NSNotification.Name("CommentLiked"),
+                object: nil,
+                userInfo: [
+                    "comment": updatedComment,
+                    "post": updatedPost,
+                    "isLiked": updatedComment.isLikedByCurrentUser
+                ]
+            )
         }
     }
     

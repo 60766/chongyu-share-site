@@ -126,6 +126,9 @@ struct FullscreenPostDetailView: View {
     // 使用ViewModel管理数据
     @StateObject private var viewModel: FullscreenPostDetailViewModel
     
+    // 全局点赞状态管理器
+    @StateObject private var likeStateManager = LikeStateManager.shared
+    
     // 回调函数
     var onDismiss: (() -> Void)?
     var onLike: ((DetailedCommentModel) -> Void)?
@@ -1667,15 +1670,6 @@ struct FullscreenPostDetailView: View {
             // 检查边界状态前记录当前状态
             print("⭐️ onAppear开始: 当前帖子ID: \(viewModel.post.id), hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost)")
             
-            // 检查是否是最后一篇帖子 - 同步执行确保立即更新状态
-            checkBoundaries()
-            
-            // 记录检查后的状态
-            print("⭐️ onAppear检查边界后: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost)")
-            
-            // 预加载下一篇和上一篇动态，实现滑动时的无缝切换
-            preloadAdjacentPosts()
-            
             // 打印当前状态，用于调试
             print("⭐️ 视图出现 - 初始帖子ID: \(initialPostId.uuidString)")
             
@@ -1689,15 +1683,15 @@ struct FullscreenPostDetailView: View {
             // 隐藏TabBar
             tabBarManager.pushHideState()
             
-            // 显示时进行边界检查和预加载
+            // 异步执行边界检查和预加载，确保视图完全加载后运行，避免重复执行
             DispatchQueue.main.async {
-                // 异步执行，确保视图完全加载后运行
                 checkBoundaries()
                 preloadAdjacentPosts()
+                print("⭐️ onAppear异步任务完成: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost)")
             }
         }
         .onDisappear {
-            print("⭐️ FullscreenPostDetailView 消失")
+
             // 停止task的循环检查
             isViewActive = false
             
@@ -1741,7 +1735,7 @@ struct FullscreenPostDetailView: View {
             
             // 视图任务结束时确保TabBar可见
             if !isViewActive {
-                print("⭐️ 视图任务结束，确保TabBar可见")
+    
                 tabBarManager.popHideState()
             }
         }
@@ -1819,7 +1813,7 @@ struct FullscreenPostDetailView: View {
                     DispatchQueue.main.async {
                         // 更新当前帖子数据
                         viewModel.updatePost(updatedPost)
-                        print("✅ 帖子详情页面点赞数已更新: \(updatedPost.likes)")
+            
                     }
                 }
             }
@@ -1838,7 +1832,7 @@ struct FullscreenPostDetailView: View {
                         viewModel.updatePost(updatedPost)
                         // 同时刷新评论管理器
                         viewModel.commentManager.currentPost = updatedPost
-                        print("✅ FullscreenPostDetailView: 帖子详情页面评论点赞数已更新")
+        
                     }
                 }
             }
@@ -1913,7 +1907,7 @@ struct FullscreenPostDetailView: View {
         
         // 设置点击事件
         backButton.addAction(UIAction { _ in
-            print("⭐️ 动态详情视图返回按钮被点击")
+            
             
             // 添加轻微的动画效果
             UIView.animate(withDuration: 0.1, animations: {
@@ -2412,13 +2406,13 @@ struct FullscreenPostDetailView: View {
                     viewModel.toggleLike()
                 }) {
                     HStack(spacing: 6) {
-                        Image(systemName: viewModel.post.isLikedByCurrentUser ? "heart.fill" : "heart")
+                        Image(systemName: likeStateManager.isLiked(viewModel.post.id.uuidString) ? "heart.fill" : "heart")
                             .font(.system(size: 16))
-                            .foregroundColor(viewModel.post.isLikedByCurrentUser ? .red : .secondary)
+                            .foregroundColor(likeStateManager.isLiked(viewModel.post.id.uuidString) ? .red : .secondary)
                         
                         Text("\(viewModel.post.likes)")
                             .font(.system(size: 13))
-                            .foregroundColor(viewModel.post.isLikedByCurrentUser ? .red.opacity(0.8) : .secondary)
+                            .foregroundColor(likeStateManager.isLiked(viewModel.post.id.uuidString) ? .red.opacity(0.8) : .secondary)
                     }
                     .frame(minWidth: 50, alignment: .leading)
                     .padding(.vertical, 8)
@@ -2784,7 +2778,7 @@ struct FullscreenPostDetailView: View {
     private func preloadAdjacentPosts() {
         // 增加提前缓存逻辑，记录当前帖子ID用于日志
         let currentPostId = viewModel.post.id
-        print("⭐️ 开始预加载相邻帖子 - 当前帖子ID: \(currentPostId)")
+
         
         // 边界检查，确定是否有下一篇或上一篇帖子
         checkBoundaries()
@@ -2792,7 +2786,7 @@ struct FullscreenPostDetailView: View {
         
         // 当确认为最后一篇时，强制禁止预加载下一篇
         if isLastPost {
-            print("⭐️ 已确认为最后一篇帖子，不尝试预加载下一篇")
+
             hasNextPost = false
             
             // 清除可能已缓存的下一篇帖子
@@ -2824,7 +2818,7 @@ struct FullscreenPostDetailView: View {
                     return
                 }
                 
-                print("⭐️ 开始预加载下一篇帖子: \(nextPost.id)")
+
                 // 预加载下一篇帖子
                 Task {
                     try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒延迟
@@ -2833,10 +2827,10 @@ struct FullscreenPostDetailView: View {
                     
                     // 预加载图片和评论 - 使用新的异步函数
                     _ = await preloadImagesForPostAsync(nextPost)
-                    print("⭐️ 下一篇帖子图片预加载完成: \(nextPost.id)")
+                    
                     
                     _ = await preloadCommentsForPostAsync(nextPost)
-                    print("⭐️ 下一篇帖子评论预加载完成: \(nextPost.id)")
+                    
                 }
             } else {
                 // 如果onNextPost()返回nil但hasNextPost为true，说明状态不同步
@@ -2864,7 +2858,7 @@ struct FullscreenPostDetailView: View {
                     return
                 }
                 
-                print("⭐️ 开始预加载上一篇帖子: \(prevPost.id)")
+
                 
                 // 预加载上一篇帖子 (延迟一点以减轻加载压力)
                 Task {
@@ -2874,10 +2868,10 @@ struct FullscreenPostDetailView: View {
                     
                     // 预加载图片和评论 - 使用新的异步函数
                     _ = await preloadImagesForPostAsync(prevPost)
-                    print("⭐️ 上一篇帖子图片预加载完成: \(prevPost.id)")
+                    
                     
                     _ = await preloadCommentsForPostAsync(prevPost)
-                    print("⭐️ 上一篇帖子评论预加载完成: \(prevPost.id)")
+                    
                 }
             } else {
                 // 如果onPrevPost()返回nil但hasPrevPost为true，说明状态不同步
@@ -2925,15 +2919,13 @@ struct FullscreenPostDetailView: View {
                 }
                 
                 // 使用当前viewModel中的帖子作为上下文
-                print("📊 检查上下文 - 检查前确认当前帖子ID: \(currentPostUUID)")
-                
                 // 直接调用回调函数获取结果
                 let nextPost = onNextPost(currentPostId)
                 
                 // 检查是否返回了当前帖子（错误情况）
                 if let nextPost = nextPost {
                     let nextPostUUID = nextPost.id.uuidString
-                    print("📊 比较 - 当前: \(currentPostUUID) vs 下一篇: \(nextPostUUID)")
+    
                     
                     if nextPostUUID == currentPostUUID {
                         print("⭐️⭐️⭐️ 警告：onNextPost()返回了当前帖子ID，尝试再次获取")
@@ -2994,15 +2986,13 @@ struct FullscreenPostDetailView: View {
                 }
                 
                 // 使用当前viewModel中的帖子作为上下文
-                print("📊 检查上下文 - 检查前确认当前帖子ID: \(currentPostUUID)")
-                
                 // 直接调用回调函数获取结果
                 let prevPost = onPrevPost(currentPostId)
                 
                 // 检查是否返回了当前帖子（错误情况）
                 if let prevPost = prevPost {
                     let prevPostUUID = prevPost.id.uuidString
-                    print("📊 比较 - 当前: \(currentPostUUID) vs 上一篇: \(prevPostUUID)")
+    
                     
                     if prevPostUUID == currentPostUUID {
                         print("⭐️⭐️⭐️ 警告：onPrevPost()返回了当前帖子ID，尝试再次获取")
@@ -3215,9 +3205,22 @@ class FullscreenPostDetailViewModel: ObservableObject {
     
     // 添加点赞功能
     func toggleLike() {
-        // 更新点赞状态
-        let updatedPost = post.toggleLike(isLiked: !post.isLikedByCurrentUser)
+        // 使用全局点赞状态管理器
+        let newLikedState = LikeStateManager.shared.toggleLike(post.id.uuidString)
+        
+        // 更新帖子数据
+        let updatedPost = post.toggleLike(isLiked: newLikedState)
         post = updatedPost
+        
+        // 发送通知给UserLikeService记录点赞行为
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PostLiked"),
+            object: nil,
+            userInfo: [
+                "post": updatedPost,
+                "isLiked": newLikedState
+            ]
+        )
         
         // 发送通知以更新其他视图
         NotificationCenter.default.post(
@@ -3300,14 +3303,14 @@ class FullscreenPostDetailViewModel: ObservableObject {
         
         // 查找匹配ID的帖子
         if let foundPost = allPosts.first(where: { $0.id.uuidString == id.uuidString }) {
-            print("✅ 找到匹配的帖子: \(foundPost.id.uuidString)")
+
             
             // 更新当前帖子，使用 updatePost 方法确保一致性
             updatePost(foundPost)
             
-            print("✅ 帖子同步完成")
+            
         } else {
-            print("❌ 无法找到ID为 \(id.uuidString) 的帖子")
+            
         }
     }
 }

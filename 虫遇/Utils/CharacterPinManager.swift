@@ -25,7 +25,7 @@ class CharacterPinManager {
         if let data = UserDefaults.standard.data(forKey: "PinnedCharacters"),
            let decodedIds = try? JSONDecoder().decode([String].self, from: data) {
             pinnedCharacterIds = decodedIds
-            print("从UserDefaults加载了\(pinnedCharacterIds.count)个置顶角色")
+    
         }
     }
     

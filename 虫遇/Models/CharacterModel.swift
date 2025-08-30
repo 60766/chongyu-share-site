@@ -252,35 +252,31 @@ struct CharacterModel: Identifiable, Hashable {
     
     // 从JSON文件加载所有角色
     static func getAllCharacters() -> [CharacterModel] {
-        print("开始从JSON加载所有角色...")
+
         
         // 尝试加载characters.json
         if let url = Bundle.main.url(forResource: "characters", withExtension: "json"),
            let data = try? Data(contentsOf: url) {
-            print("characters.json文件大小: \(data.count) 字节")
+
             
             do {
                 // 解析JSON数据
                 let decoder = JSONDecoder()
                 let characterData = try decoder.decode(CharacterLibrary.self, from: data)
-                print("成功解析characters.json，包含\(characterData.characters.count)个角色")
+
                 
                 // 将AppCharacter转换为CharacterModel
                 let characters = characterData.characters.map { CharacterModel(from: $0) }
-                print("成功转换为CharacterModel，共\(characters.count)个角色")
+
                 
-                // 打印一些角色名称作为验证
-                if !characters.isEmpty {
-                    let sampleNames = characters.prefix(5).map { $0.name }.joined(separator: ", ")
-                    print("加载的角色示例: \(sampleNames)")
-                }
+
                 
                 return characters
             } catch {
-                print("解析characters.json失败: \(error)")
+
             }
         } else {
-            print("无法找到或读取characters.json文件")
+
         }
         
         // 如果加载失败，尝试加载备用文件

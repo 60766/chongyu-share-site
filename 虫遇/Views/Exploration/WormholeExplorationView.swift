@@ -236,7 +236,7 @@ public struct WormholeExplorationView: View {
                         centerPosition: centerPosition
                     ) {
                         // 特效完成后的回调
-                        print("🚀 TimeSpaceEffectView回调开始 - 特效完成，准备生成帖子")
+                
                         withAnimation {
                             isTransitioning = false
                         }
@@ -260,7 +260,7 @@ public struct WormholeExplorationView: View {
                         centerPosition: defaultCenter
                     ) {
                         // 特效完成后的回调
-                        print("🚀 TimeSpaceEffectView回调开始(使用默认中心) - 特效完成，准备生成帖子")
+                
                                 withAnimation {
                             isTransitioning = false
                         }
@@ -453,7 +453,7 @@ public struct WormholeExplorationView: View {
         var posts: [UserPostModel] = []
         do {
             posts = try await postViewModel.generatePostsByCreationType(typeIndex: 0)
-            print("✅ 成功生成备用帖子: \(posts.count)个")
+
         } catch {
             print("❌ 生成备用帖子失败: \(error.localizedDescription)")
         }
@@ -553,7 +553,7 @@ public struct WormholeExplorationView: View {
         }
         
         do {
-            print("🚀 开始生成帖子，类型索引: \(typeManager.selectedIndex)")
+    
             
             // 设置生成中状态
             isGeneratingPost = true
@@ -597,7 +597,7 @@ public struct WormholeExplorationView: View {
                 updatedGeneratedTypes.insert(typeManager.selectedIndex)
                 generatedTypes = updatedGeneratedTypes
                 
-                print("✅ 成功生成\(generatedPosts.count)个类型[\(getTypeNameForIndex(typeManager.selectedIndex))]的帖子")
+    
                 
                 // 显示成功提示
                 DispatchQueue.main.async {

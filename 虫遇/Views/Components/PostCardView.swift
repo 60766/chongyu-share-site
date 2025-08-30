@@ -14,7 +14,7 @@ class CommentLoaderManager: ObservableObject {
     private let queue = DispatchQueue(label: "CommentLoaderManager", qos: .utility)
     
     private init() {
-        print("🏗️ CommentLoaderManager: 初始化全局管理器")
+
     }
     
     // 获取或创建CommentLoader
@@ -23,7 +23,7 @@ class CommentLoaderManager: ObservableObject {
             if let existingLoader = loaders[postID] {
                 return existingLoader
             } else {
-                print("🆕 CommentLoaderManager: 为帖子 \(postID.uuidString.prefix(8)) 创建新的CommentLoader")
+    
                 let newLoader = CommentLoader()
                 loaders[postID] = newLoader
                 return newLoader
@@ -36,7 +36,7 @@ class CommentLoaderManager: ObservableObject {
         queue.async {
             let unusedKeys = self.loaders.keys.filter { !activePosts.contains($0) }
             for key in unusedKeys {
-                print("🗑️ CommentLoaderManager: 清理未使用的CommentLoader - \(key.uuidString.prefix(8))")
+
                 self.loaders.removeValue(forKey: key)
             }
         }
@@ -72,7 +72,7 @@ class CommentLoader: ObservableObject {
     deinit {
         // 保留清理日志，但只在debug模式下输出
         #if DEBUG
-        print("🗑️ CommentLoader: 清理资源")
+
         #endif
         removeNotifications()
         cancelLoading()
@@ -103,7 +103,7 @@ class CommentLoader: ObservableObject {
             object: nil
         )
         
-        print("📡 CommentLoader: 已注册PostCommentsUpdated和CharacterReplyGenerated通知监听")
+
     }
     
     // 移除通知监听
@@ -126,7 +126,7 @@ class CommentLoader: ObservableObject {
             object: nil
         )
         
-        print("🔕 CommentLoader: 已移除所有通知监听")
+
     }
     
     // 取消加载任务
@@ -148,14 +148,11 @@ class CommentLoader: ObservableObject {
         let shouldLog = currentPostID == postID
         
         if shouldLog {
-            print("📣 CommentLoader: 收到评论更新通知 - 帖子ID: \(postID)")
+    
         }
         
         // 检查是否与当前加载的帖子匹配
         if let currentID = currentPostID, currentID == postID {
-            if shouldLog {
-                print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，开始刷新评论")
-            }
             
             // 在主线程执行UI更新
             DispatchQueue.main.async { [weak self] in
@@ -163,12 +160,6 @@ class CommentLoader: ObservableObject {
                 
                 // 刷新评论
                 self.refreshComments()
-            }
-        } else {
-            if shouldLog {
-                print("ℹ️ CommentLoader: 评论更新通知与当前加载的帖子不匹配")
-                print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
-                print("  通知帖子ID: \(postID)")
             }
         }
     }
@@ -186,27 +177,17 @@ class CommentLoader: ObservableObject {
         let shouldLog = currentPostID == postID
         
         if shouldLog {
-            print("🤖 CommentLoader: 收到角色回复生成完成通知 - 帖子ID: \(postID)")
+    
         }
         
         // 检查是否与当前加载的帖子匹配
         if let currentID = currentPostID, currentID == postID {
-            if shouldLog {
-                print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，开始刷新评论")
-            }
-            
             // 在主线程执行UI更新
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 
                 // 刷新评论
                 self.refreshComments()
-            }
-        } else {
-            if shouldLog {
-                print("ℹ️ CommentLoader: 角色回复生成通知与当前加载的帖子不匹配")
-                print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
-                print("  通知帖子ID: \(postID)")
             }
         }
     }
@@ -224,14 +205,14 @@ class CommentLoader: ObservableObject {
         let shouldLog = currentPostID?.uuidString == postID
         
         if shouldLog {
-            print("📣 CommentLoader: 收到角色回复生成失败通知 - 帖子ID: \(postID)")
+    
             print("❌ 错误信息: \"\(errorMessage)\"")
         }
         
         // 检查是否与当前加载的帖子匹配
         if let currentID = currentPostID, currentID.uuidString == postID {
             if shouldLog {
-                print("✅ CommentLoader: 帖子ID匹配当前加载的帖子，显示错误信息")
+    
             }
             
             // 在主线程执行UI更新
@@ -242,14 +223,8 @@ class CommentLoader: ObservableObject {
                 self.errorMessage = "生成角色评论失败: \(errorMessage)"
                 
                 if shouldLog {
-                    print("✅ CommentLoader: 已设置错误信息")
+        
                 }
-            }
-        } else {
-            if shouldLog {
-                print("ℹ️ CommentLoader: 角色回复失败通知与当前加载的帖子不匹配")
-                print("  当前帖子ID: \(self.currentPostID?.uuidString ?? "nil")")
-                print("  通知帖子ID: \(postID)")
             }
         }
     }
@@ -259,9 +234,7 @@ class CommentLoader: ObservableObject {
         // 🔧 修复：减少日志输出，只在真正需要时输出
         let shouldLog = true // 刷新操作总是需要日志
         
-        if shouldLog {
-            print("🔄 CommentLoader: 开始检查评论是否需要刷新...")
-        }
+
         
         // 取消正在进行的加载任务
         loadingTask?.cancel()
@@ -275,13 +248,13 @@ class CommentLoader: ObservableObject {
            currentCommentCount > 0 && 
            !hasCommentContentChanged() {
             if shouldLog {
-                print("ℹ️ CommentLoader: 评论数据无变化，跳过刷新")
+    
             }
             return
         }
         
         if shouldLog {
-            print("🔄 CommentLoader: 检测到评论变化，开始刷新...")
+    
         }
         
         // 重置加载状态
@@ -296,9 +269,6 @@ class CommentLoader: ObservableObject {
             
             // 检查任务是否被取消
             if Task.isCancelled {
-                if shouldLog {
-                    print("❌ CommentLoader: 刷新任务被取消")
-                }
                 return
             }
             
@@ -311,9 +281,7 @@ class CommentLoader: ObservableObject {
             self.hasMoreComments = allComments.count > refreshCount
             self.isLoading = false
             
-            if shouldLog {
-                print("✅ CommentLoader: 刷新完成，加载了 \(refreshedComments.count) 条评论")
-            }
+
         }
     }
     
@@ -347,18 +315,18 @@ class CommentLoader: ObservableObject {
         let shouldLog = !isInitialized || currentPostID != postID
         
         if shouldLog {
-            print("🚀 CommentLoader: 初始化评论加载器...")
+    
         }
         
         // 记录当前帖子ID
         if let id = postID {
             if shouldLog {
-                print("🔑 CommentLoader: 设置帖子ID: \(id)")
+    
             }
             self.currentPostID = id
         } else {
             if shouldLog {
-                print("⚠️ CommentLoader: 警告 - 未提供帖子ID")
+    
             }
             self.currentPostID = nil
         }
@@ -372,24 +340,24 @@ class CommentLoader: ObservableObject {
         
         // 记录评论数量信息
         if shouldLog {
-            print("📊 CommentLoader: 初始化了 \(comments.count) 条评论")
+    
             
             // 如果有虚拟角色评论，单独记录
             let virtualComments = comments.filter { $0.isVirtualCharacter }
             if !virtualComments.isEmpty {
-                print("🤖 CommentLoader: 包含 \(virtualComments.count) 条虚拟角色评论")
+    
             }
         }
         
         // 自动预加载评论
         if !comments.isEmpty {
             if shouldLog {
-                print("⏳ CommentLoader: 即将预加载初始评论...")
+    
             }
             preloadFirstComments()
         } else {
             if shouldLog {
-                print("ℹ️ CommentLoader: 无评论可预加载")
+    
             }
         }
     }
@@ -421,14 +389,14 @@ class CommentLoader: ObservableObject {
         let shouldLog = !isPreloaded
         
         if shouldLog {
-            print("⏳ CommentLoader: 开始预加载首批评论...")
+
         }
         
         // 计算要预加载的评论数量
         let preloadCount = min(pageSize, allComments.count)
         
         if shouldLog {
-            print("📊 CommentLoader: 预加载数量: \(preloadCount)")
+    
         }
         
         // 创建预加载任务
@@ -439,7 +407,7 @@ class CommentLoader: ObservableObject {
             // 检查任务是否被取消
             if Task.isCancelled {
                 if shouldLog {
-                    print("❌ CommentLoader: 预加载任务被取消")
+    
                 }
                 return
             }
@@ -449,10 +417,6 @@ class CommentLoader: ObservableObject {
             self.loadedComments = firstComments
             self.isPreloaded = true
             self.isLoading = false
-            
-            if shouldLog {
-                print("✅ CommentLoader: 预加载完成，加载了 \(firstComments.count) 条评论")
-            }
         }
     }
     
@@ -464,7 +428,7 @@ class CommentLoader: ObservableObject {
         let shouldLog = !isLoading
         
         if shouldLog {
-            print("📄 CommentLoader: 开始加载下一页评论...")
+    
         }
         
         isLoading = true
@@ -477,7 +441,7 @@ class CommentLoader: ObservableObject {
             // 检查任务是否被取消
             if Task.isCancelled {
                 if shouldLog {
-                    print("❌ CommentLoader: 加载下一页任务被取消")
+    
                 }
                 return
             }
@@ -494,8 +458,7 @@ class CommentLoader: ObservableObject {
             self.isLoading = false
             
             if shouldLog {
-                print("✅ CommentLoader: 下一页加载完成，新增 \(newComments.count) 条评论")
-                print("📊 CommentLoader: 当前已加载: \(self.loadedComments.count)/\(self.allComments.count)")
+                
             }
         }
     }
@@ -574,11 +537,11 @@ class CommentLoader: ObservableObject {
     
     // 添加评论（避免重复）
     func addComment(_ comment: DetailedCommentModel) {
-        print("➕ CommentLoader: 添加新评论...")
+
         
         // 🔧 修复：检查是否已存在相同ID的评论，避免重复添加
         if allComments.contains(where: { $0.id == comment.id }) {
-            print("⚠️ CommentLoader: 评论已存在，跳过重复添加 - ID: \(comment.id)")
+
             return
         }
         
@@ -594,13 +557,11 @@ class CommentLoader: ObservableObject {
         // 打印添加的评论信息
         let commentType = comment.isVirtualCharacter ? "虚拟角色评论" : "用户评论"
         let characterInfo = comment.isVirtualCharacter ? "(角色ID: \(comment.characterID ?? "未知"))" : ""
-        print("✅ CommentLoader: 新\(commentType)已添加\(characterInfo)")
-        print("📝 评论内容: \(comment.content)")
-        print("📊 CommentLoader: 当前评论总数: \(allComments.count), 已加载: \(loadedComments.count)")
+
         
         // 如果有帖子ID，发送通知以更新其他可能显示此帖子的视图
         if let postID = currentPostID {
-            print("📣 CommentLoader: 发送评论更新通知，帖子ID: \(postID)")
+    
             
             // 在主线程上发送通知
             DispatchQueue.main.async {
@@ -675,7 +636,7 @@ class CommentLoader: ObservableObject {
                 uniqueComments.append(comment)
                 seenIds.insert(comment.id)
             } else {
-                print("🔧 CommentLoader: 检测到重复评论ID: \(comment.id), 用户名: \(comment.username), 内容: \(comment.content.prefix(20))...")
+    
             }
         }
         
@@ -883,8 +844,8 @@ struct PostCardView: View {
         self.onPin = onPin
         self.postSource = postSource
         
-        // 初始化状态
-        _isLiked = State(initialValue: post.isLikedByCurrentUser)
+        // 使用全局点赞状态管理器初始化状态
+        _isLiked = State(initialValue: LikeStateManager.shared.isLiked(post.id.uuidString))
         _isBookmarked = State(initialValue: post.isBookmarkedByCurrentUser)
     }
     
@@ -952,7 +913,7 @@ struct PostCardView: View {
             if commentLoader == nil {
                 commentLoader = CommentLoaderManager.shared.getLoader(for: post.id)
                 // 🔧 优化：只在首次初始化时输出日志
-                print("🔧 PostCardView - 初始化CommentLoader: \(post.id.uuidString.prefix(8))")
+        
             }
             
             // 🔧 优化：使用智能初始化方法，避免重复初始化CommentLoader
@@ -1820,19 +1781,17 @@ struct PostCardView: View {
                     // 获取一条精选评论
                     if let featuredComment = getFeaturedComment() {
                         HStack(alignment: .top, spacing: 8) {
-                            // 用户头像 - 使用Avatar组件，并传递干净的角色ID
+                            // 用户头像 - 使用Avatar组件，并添加缓存和预加载机制
                             Avatar(
                                 url: featuredComment.characterID ?? featuredComment.userAvatar,
-                                  name: featuredComment.username,
+                                name: featuredComment.username,
                                 category: featuredComment.isVirtualCharacter ? CharacterAvatarService.shared.getCharacterCategoryTag(for: featuredComment.characterID ?? "") : "",
-                                size: 30
+                                size: 30,
+                                useCaching: true,
+                                preloadPriority: .high
                             )
                                 .frame(width: 30, height: 30)
-                                .onAppear {
-                                    if featuredComment.isVirtualCharacter {
-                                        print("📱 精选评论头像 - 角色ID: \(featuredComment.characterID ?? "nil"), 头像路径: \(featuredComment.userAvatar)")
-                                    }
-                                }
+                                .id("featuredAvatar_\(featuredComment.id.uuidString)")  // 添加固定ID防止重新渲染
 
                             VStack(alignment: .leading, spacing: 2) {
                                 // 用户名和类型
@@ -1964,29 +1923,49 @@ struct PostCardView: View {
         .padding(.top, 0) // 添加顶部0内边距以消除与图片区域之间的空白
     }
     
-    // 获取精选评论 - 按照优先级排序
+    // 获取精选评论 - 使用稳定的排序逻辑，避免头像闪烁
     private func getFeaturedComment() -> DetailedCommentModel? {
-        // 🔧 修复：使用getTopLevelComments()而不是直接访问post.comments
-        // 这确保只显示真正的顶级评论，过滤掉虚拟角色回复
+        // 使用getTopLevelComments()确保只显示真正的顶级评论
         let topLevelComments = post.getTopLevelComments()
         
-        // 优先选择有回复的虚拟角色评论
-        if let virtualComment = topLevelComments.first(where: { 
-            $0.isVirtualCharacter && !$0.replies.isEmpty 
-        }) {
-            return virtualComment
+        // 首先按照评论ID缓存精选评论，确保UI稳定性
+        if let cachedCommentID = UserDefaults.standard.string(forKey: "FeaturedComment_\(post.id.uuidString)"),
+           let cachedUUID = UUID(uuidString: cachedCommentID),
+           let cachedComment = topLevelComments.first(where: { $0.id == cachedUUID }) {
+            return cachedComment
         }
         
-        // 其次选择点赞最多的虚拟角色评论
-        if let topVirtualComment = topLevelComments
-            .filter({ $0.isVirtualCharacter })
-            .sorted(by: { $0.likes > $1.likes })
-            .first {
-            return topVirtualComment
+        // 稳定的排序逻辑：首先按照评论类型和回复数排序，然后按时间和ID排序
+        let sortedComments = topLevelComments.sorted { comment1, comment2 in
+            // 1. 优先级1：有回复的虚拟角色评论
+            let c1HasReplies = comment1.isVirtualCharacter && !comment1.replies.isEmpty
+            let c2HasReplies = comment2.isVirtualCharacter && !comment2.replies.isEmpty
+            
+            if c1HasReplies != c2HasReplies {
+                return c1HasReplies
+            }
+            
+            // 2. 优先级2：虚拟角色评论
+            if comment1.isVirtualCharacter != comment2.isVirtualCharacter {
+                return comment1.isVirtualCharacter
+            }
+            
+            // 3. 优先级3：按发布时间排序（较早的优先）
+            if comment1.datePosted != comment2.datePosted {
+                return comment1.datePosted < comment2.datePosted
+            }
+            
+            // 4. 最后按ID排序，确保完全稳定
+            return comment1.id.uuidString < comment2.id.uuidString
         }
         
-        // 最后选择点赞最多的普通评论
-        return topLevelComments.sorted(by: { $0.likes > $1.likes }).first
+        // 保存选择的评论ID以确保稳定性
+        if let selectedComment = sortedComments.first {
+            UserDefaults.standard.set(selectedComment.id.uuidString, forKey: "FeaturedComment_\(post.id.uuidString)")
+            return selectedComment
+        }
+        
+        return nil
     }
     
     // 评论按钮区
@@ -2266,14 +2245,27 @@ struct PostCardView: View {
             }
         }
         
-        isLiked.toggle()
+        // 使用全局点赞状态管理器
+        let newLikedState = LikeStateManager.shared.toggleLike(post.id.uuidString)
+        isLiked = newLikedState
         
         // 触觉反馈
         feedbackGenerator.impactOccurred(intensity: 0.4)
         
-        // 回调
+        // 发送通知给UserLikeService记录点赞行为
+        let updatedPost = post.toggleLike(isLiked: newLikedState)
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PostLiked"),
+            object: nil,
+            userInfo: [
+                "post": updatedPost,
+                "isLiked": newLikedState
+            ]
+        )
+        
+        // 回调（如果有的话）
         if let onLikeToggle = onLikeToggle {
-            onLikeToggle(isLiked)
+            onLikeToggle(newLikedState)
         }
     }
     

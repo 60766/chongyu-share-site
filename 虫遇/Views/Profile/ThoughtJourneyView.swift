@@ -351,7 +351,8 @@ struct ExpandableTextView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 16) {
+            // 内容文本区域
             Text(content)
                 .font(.system(size: 17, weight: .regular))
                 .lineSpacing(6)
@@ -362,43 +363,38 @@ struct ExpandableTextView: View {
                 .lineLimit(isExpanded ? nil : lineLimit)
                 .animation(.easeInOut(duration: 0.3), value: isExpanded)
             
-            // 展开/收起按钮
+            // 展开/收起按钮 - 与其他标签页保持一致的设计
             if shouldShowExpandButton {
-                HStack {
-                    Spacer()
-                    
                     Button(action: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
+                    withAnimation(.easeInOut(duration: 0.35)) {
                             isExpanded.toggle()
                         }
                     }) {
                         HStack(spacing: 6) {
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9))  // 梦幻紫，与次元回放标签颜色一致
+                        
                             Text(isExpanded ? "收起" : "展开全文")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(DesignSystem.Colors.primary)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9))  // 梦幻紫，与次元回放标签颜色一致
                             
-                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(DesignSystem.Colors.primary)
-                                .animation(.easeInOut(duration: 0.2), value: isExpanded)
+                        Spacer()
                         }
+                    .frame(maxWidth: .infinity)
                         .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                    .padding(.vertical, 14)
                         .background(
-                            Capsule()
-                                .fill(.ultraThinMaterial)
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color(red: 0.7, green: 0.5, blue: 0.9).opacity(0.04))  // 梦幻紫背景
                                 .overlay(
-                                    Capsule()
-                                        .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(Color(red: 0.7, green: 0.5, blue: 0.9).opacity(0.12), lineWidth: 0.5)  // 梦幻紫边框
                                 )
-                                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
-                    
-                    Spacer()
-                }
-                .padding(.top, 4) // 给按钮添加少量顶部间距
+                .padding(.top, 4)
             }
         }
     }

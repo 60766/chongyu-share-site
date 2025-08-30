@@ -6,850 +6,7 @@ import UIKit
 // 导入自定义组件
 // 注意：CosmicGenerateButton是在项目内部定义的，不需要特殊导入
 
-/**
- * 历史人物选择器视图
- * 用于全屏展示历史人物列表，并选择特定角色
- */
-struct CharacterPickerView: View {
-    let characters: [CharacterModel]
-    @Binding var selectedCharacter: CharacterModel?
-    @Binding var isPresented: Bool
-    @State private var animateContent = false
-    @State private var selectedCategory: CharacterCategory? = nil
-    @State private var searchText = ""
-    @State private var scrollOffset: CGFloat = 0
-    
-    // 根据角色类别分组
-    private var categorizedCharacters: [CharacterCategory: [CharacterModel]] {
-        Dictionary(grouping: characters) { $0.category }
-    }
-    
-    // 所有类别
-    private var categories: [CharacterCategory] {
-        let result = categorizedCharacters.keys.sorted { $0.rawValue < $1.rawValue }
-        return result
-    }
-    
-    // 过滤后的角色
-    private var filteredCharacters: [CharacterModel] {
-        var result = characters
-        
-        // 按类别筛选
-        if let category = selectedCategory {
-            result = result.filter { $0.category == category }
-        }
-        
-        // 按搜索文本筛选
-        if !searchText.isEmpty {
-            result = result.filter {
-                $0.name.localizedCaseInsensitiveContains(searchText) ||
-                $0.profession.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-        
-        return result
-    }
-    
-    var body: some View {
-        ZStack {
-            // 背景遮罩 - 使用带模糊效果的背景
-            Color.black.opacity(0.5)
-                .background(.ultraThinMaterial)
-                .ignoresSafeArea(.all, edges: .bottom)
-                .onTapGesture {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        animateContent = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            isPresented = false
-                        }
-                    }
-                }
-            
-            // 主内容区
-            VStack(spacing: 0) {
-                // 顶部栏
-                HStack {
-                    // 关闭按钮
-                    Button {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            animateContent = false
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                isPresented = false
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.primary)
-                            .padding(8)
-                            .background(
-                                Circle()
-                                    .fill(Color.gray.opacity(0.15))
-                            )
-                    }
-                    
-                    Spacer()
-                    
-                    // 标题
-                    Text("虚拟角色")
-                        .font(.system(size: 18, weight: .semibold))
-                    
-                    Spacer()
-                    
-                    // 空白占位，保持对称
-                    Circle()
-                        .fill(Color.clear)
-                        .frame(width: 32, height: 32)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-                
-                // 搜索栏
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.gray)
-                        .padding(.leading, 8)
-                    
-                    TextField("搜索历史人物", text: $searchText)
-                        .font(.system(size: 15))
-                        .padding(.vertical, 8)
-                    
-                    if !searchText.isEmpty {
-                        Button {
-                            searchText = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.gray)
-                                .padding(.trailing, 8)
-                        }
-                    }
-                }
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(10)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
-                
-                // 分类标签栏
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        // 全部类别按钮
-                        CategoryButton(
-                            title: "全部",
-                            isSelected: selectedCategory == nil,
-                            color: .gray
-                        ) {
-                            withAnimation {
-                                selectedCategory = nil
-                            }
-                        }
-                        
-                        // 其他类别按钮
-                        ForEach(categories, id: \.self) { category in
-                            CategoryButton(
-                                title: category.displayName,
-                                isSelected: selectedCategory == category,
-                                color: category.color
-                            ) {
-                                withAnimation {
-                                    selectedCategory = category
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 12)
-                }
-                
-                Divider()
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 16)
-                
-                // 内容区域
-                if filteredCharacters.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "person.crop.circle.badge.questionmark")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray.opacity(0.5))
-                        
-                        Text(searchText.isEmpty ? "没有找到相关角色" : "没有符合\"\(searchText)\"的搜索结果")
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.bottom, 40)
-                    .opacity(animateContent ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.3), value: animateContent)
-                } else {
-                    // 角色网格
-                    ScrollView {
-                        LazyVGrid(
-                            columns: [
-                                GridItem(.adaptive(minimum: 100, maximum: 110), spacing: 12)
-                            ],
-                            spacing: 16
-                        ) {
-                            ForEach(filteredCharacters) { character in
-                                enhancedCharacterCell(character)
-                                    .scaleEffect(animateContent ? 1.0 : 0.8)
-                                    .opacity(animateContent ? 1.0 : 0)
-                                    .animation(
-                                        .spring(response: 0.4, dampingFraction: 0.75)
-                                        .delay(0.1 + Double(filteredCharacters.firstIndex(where: { $0.id == character.id }) ?? 0) * 0.03),
-                                        value: animateContent
-                                    )
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
-                    }
-                }
-            }
-            .background(Color(.systemBackground))
-            .cornerRadius(20)
-            .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
-            .frame(height: UIScreen.main.bounds.height * 0.8)
-            .offset(y: UIScreen.main.bounds.height * 0.1)
-            .opacity(animateContent ? 1 : 0)
-            .scaleEffect(animateContent ? 1 : 0.95)
-            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: animateContent)
-        }
-        .ignoresSafeArea(.all, edges: .bottom)
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation {
-                    animateContent = true
-                }
-            }
-        }
-    }
-    
-    // 增强版角色单元格
-    private func enhancedCharacterCell(_ character: CharacterModel) -> some View {
-        Button(action: {
-            selectedCharacter = character
-            withAnimation(.easeOut(duration: 0.2)) {
-                animateContent = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    animateContent = false
-                }
-            }
-        }) {
-            VStack(spacing: 8) {
-                // 角色头像
-                ZStack(alignment: .bottomTrailing) {
-                    if let image = UIImage(named: character.avatar) {
-                        Image(uiImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 70, height: 70)
-                            .clipShape(Circle())
-                            .overlay(
-                                Circle().stroke(character.category.color.opacity(0.6), lineWidth: 2)
-                            )
-                            .shadow(color: character.category.color.opacity(0.3), radius: 4, x: 0, y: 2)
-                    } else {
-                        Circle()
-                            .fill(character.category.color.opacity(0.1))
-                            .frame(width: 70, height: 70)
-                            .overlay(
-                                Text(String(character.name.prefix(1)))
-                                    .font(.system(size: 24, weight: .semibold))
-                                    .foregroundColor(character.category.color)
-                            )
-                            .overlay(
-                                Circle().stroke(character.category.color.opacity(0.6), lineWidth: 2)
-                            )
-                    }
-                    
-                    // 热度指示器 (示例，实际应从模型中获取)
-                    if ["爱因斯坦", "莎士比亚", "达芬奇"].contains(character.name) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white)
-                            .padding(4)
-                            .background(
-                                Circle()
-                                    .fill(Color.orange.opacity(0.9))
-                                    .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-                            )
-                            .offset(x: 0, y: 0)
-                    }
-                }
-                
-                // 角色名称
-                Text(character.name)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                
-                // 角色时代或职业
-                Text(character.profession)
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                
-                // 类型标签
-                Text(character.category.displayName)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(character.category.color)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(character.category.color.opacity(0.1))
-                    .cornerRadius(8)
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 8)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(HomeScaleButtonStyle(scaleAmount: 0.97))
-    }
-}
-
-/// 类别按钮组件
-struct CategoryButton: View {
-    let title: String
-    let isSelected: Bool
-    let color: Color
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
-                .foregroundColor(isSelected ? .white : color)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(isSelected ? color : color.opacity(0.1))
-                )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-/**
- * 虚拟角色选择器视图
- * 用于全屏展示虚拟角色列表，包含分类筛选和搜索功能
- */
-struct VirtualCharacterPickerView: View {
-    // 上级视图传入的关闭方法
-    let onDismiss: () -> Void
-    // 选中角色后的回调
-    let onSelectCharacter: (CharacterModel) -> Void
-    
-    // 状态变量
-    @State private var searchText = ""
-    @State private var selectedCategory: CharacterCategory? = .all
-    @State private var animateContent = false
-    @State private var isLoading = true
-    @Environment(\.presentationMode) var presentationMode
-    
-    // TabBar管理器
-    @ObservedObject private var tabBarManager = TabBarManager.shared
-    
-    // 获取所有角色数据
-    @State private var allCharacters: [CharacterModel] = []
-    
-    // 所有类别
-    private var categories: [CharacterCategory] {
-        // 定义固定的类别顺序
-        let fixedCategoryOrder: [CharacterCategory] = [
-            .all,           // 全部
-            .historical,    // 历史人物
-            .scientist,     // 科学家
-            .philosopher,   // 哲学家
-            .writer,        // 文学家
-            .artist,        // 艺术家
-            .mythCharacter, // 神话角色
-            .movieCharacter, // 电影角色
-            .tvCharacter,   // 电视剧角色
-            .animeCharacter, // 动漫角色
-            .gameCharacter, // 游戏角色
-            .fictionCharacter, // 虚构人物
-            .vtuber         // 虚拟主播
-        ]
-        
-        // 从所有角色中提取唯一的类型
-        var uniqueCategories = Set<CharacterCategory>()
-        uniqueCategories.insert(.all) // 始终包含"全部"选项
-        
-        // 根据角色的类型添加对应的类别
-        for character in allCharacters {
-            uniqueCategories.insert(character.category)
-        }
-        
-        // 按照固定顺序返回实际存在的类别
-        return fixedCategoryOrder.filter { uniqueCategories.contains($0) }
-    }
-    
-    // 过滤后的角色
-    private var filteredCharacters: [CharacterModel] {
-        var result = allCharacters
-        
-        // 按类别筛选
-        if let category = selectedCategory, category != .all {
-            result = result.filter { $0.category == category }
-        }
-        
-        // 按搜索文本筛选
-        if !searchText.isEmpty {
-            result = result.filter {
-                $0.name.localizedCaseInsensitiveContains(searchText) ||
-                $0.profession.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-        
-        // 确保结果不为空
-        if result.isEmpty && !allCharacters.isEmpty {
-            // 如果筛选结果为空，返回所有角色中的前几个
-            return Array(allCharacters.prefix(6))
-        }
-        
-        return result
-    }
-    
-    var body: some View {
-        ZStack {
-            // 添加可点击的背景层，用于关闭视图
-            // 修改为Color.black.opacity(0.001)，保持可点击但几乎透明
-            Color.black.opacity(0.001)
-                .contentShape(Rectangle())
-                .edgesIgnoringSafeArea(.all)
-                .onTapGesture {
-                    print("背景点击 - 关闭角色选择器")
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        onDismiss()
-                    }
-                }
-                .zIndex(0) // 确保背景在最底层
-            
-            // 内容区域，使用Material背景
-            VStack(spacing: 0) {
-                // 顶部导航栏
-                HStack(spacing: 16) {
-                    // 返回按钮
-                    Button(action: {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
-                            let generator = UIImpactFeedbackGenerator(style: .light)
-                            generator.impactOccurred()
-                            onDismiss()
-                        }
-                    }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(Color(red: 140/255, green: 105/255, blue: 158/255)) // 主色调紫色
-                    }
-                    .padding(.leading, 4)
-                    
-                    Spacer()
-                    
-                    // 标题
-                    Text("角色库")
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    // 占位区域
-                    Color.clear
-                        .frame(width: 33, height: 33)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-                
-                // 搜索栏
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.gray)
-                        .padding(.leading, 8)
-                    
-                    TextField("搜索历史人物", text: $searchText)
-                        .font(.system(size: 15))
-                        .padding(.vertical, 8)
-                    
-                    if !searchText.isEmpty {
-                        Button(action: {
-                            searchText = ""
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.gray)
-                        }
-                        .padding(.trailing, 8)
-                    }
-                }
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
-                
-                // 类别选择器
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(categories, id: \.self) { category in
-                            Button(action: {
-                                withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0.3)) {
-                                    selectedCategory = category
-                                    let generator = UIImpactFeedbackGenerator(style: .light)
-                                    generator.impactOccurred()
-                                }
-                            }) {
-                                Text(category.displayName)
-                                    .font(.system(size: 14))
-                                    .fontWeight(selectedCategory == category ? .medium : .regular)
-                                    .foregroundColor(selectedCategory == category ? .white : category.color)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .frame(height: 32)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .fill(selectedCategory == category ? category.color : category.color.opacity(0.1))
-                                    )
-                                    .contentShape(RoundedRectangle(cornerRadius: 16))
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .id("\(category.rawValue)_tab")
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 4)
-                }
-                .padding(.bottom, 12)
-                
-                // 角色总数显示
-                HStack {
-                    Text("共 \(filteredCharacters.count) 个角色")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                        .padding(.leading, 16)
-                        .padding(.bottom, 8)
-                    
-                    Spacer()
-                    
-                    // 如果是筛选状态，显示"查看全部"按钮
-                    if selectedCategory != .all || !searchText.isEmpty {
-                        Button(action: {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                selectedCategory = .all
-                                searchText = ""
-                            }
-                        }) {
-                            Text("查看全部")
-                                .font(.system(size: 14))
-                                .foregroundColor(.blue)
-                        }
-                        .padding(.trailing, 16)
-                    }
-                }
-                
-                // 角色列表内容
-                if isLoading {
-                    Spacer()
-                    ProgressView()
-                        .scaleEffect(1.2)
-                        .padding()
-                    Spacer()
-                } else if filteredCharacters.isEmpty {
-                    Spacer()
-                    Text("没有找到匹配的角色")
-                        .foregroundColor(.secondary)
-                        .padding()
-                    Spacer()
-                } else {
-                    // 使用新的ScrollView包装角色网格
-                    ScrollView {
-                        LazyVGrid(
-                            columns: [
-                                GridItem(.adaptive(minimum: 100, maximum: 120), spacing: 12)
-                            ],
-                            spacing: 16
-                        ) {
-                            ForEach(filteredCharacters, id: \.characterID) { character in
-                                VirtualCharacterCard(character: character)
-                                    .scaleEffect(animateContent ? 1 : 0.8)
-                                    .opacity(animateContent ? 1 : 0)
-                                    .animation(.spring(response: 0.5, dampingFraction: 0.7), value: selectedCategory)
-                                    .transition(
-                                        AnyTransition.opacity
-                                            .combined(with: .scale(scale: 0.9))
-                                            .animation(.spring(response: 0.4, dampingFraction: 0.7))
-                                    )
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 16)
-                    }
-                    .allowsHitTesting(true) // 确保ScrollView可点击
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.systemBackground))
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .contentShape(RoundedRectangle(cornerRadius: 20))
-            // 添加阴影和内边距
-            .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
-            .padding(.vertical, 30)
-            .padding(.horizontal, 10)
-            // 确保内容区域捕获点击事件，但不传递到底层
-            .contentShape(RoundedRectangle(cornerRadius: 20))
-            .allowsHitTesting(true)
-            .zIndex(1) // 确保内容在背景之上
-        }
-        .zIndex(1000)
-        .onAppear {
-            // 确保TabBar在角色选择器显示时隐藏
-            tabBarManager.hide()
-            // 使用pushHideState确保TabBar被彻底隐藏
-            tabBarManager.pushHideState()
-            
-            // 加载所有角色
-            loadAllCharacters()
-            
-            // 动画显示内容
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    animateContent = true
-                }
-            }
-        }
-        .onDisappear {
-            // 不在onDisappear中恢复TabBar，而是让HomeView中的代码来控制
-            // 这样可以避免在角色选择器消失时TabBar意外显示
-            print("VirtualCharacterPickerView消失")
-        }
-    }
-    
-    private func loadAllCharacters() {
-        isLoading = true
-        
-        // 使用CharacterModel的静态方法加载所有角色
-        allCharacters = CharacterModel.getAllCharacters()
-        isLoading = false
-    }
-}
-
-struct VirtualCharacterCard: View {
-    let character: CharacterModel
-    @State private var isAppearing: Bool = false
-    @State private var showCharacterDetail: Bool = false
-    @ObservedObject private var tabBarManager = TabBarManager.shared
-    
-    var body: some View {
-        Button(action: {
-            showCharacterDetail = true
-        }) {
-            VStack(spacing: 8) {
-                // 角色头像
-                ZStack {
-                    Circle()
-                        .fill(character.category.color.opacity(0.15))
-                        .frame(width: 68, height: 68)
-                    
-                    // 使用统一的Avatar组件
-                    Avatar(
-                        url: character.characterID ?? character.name,
-                        name: character.name,
-                        category: character.category.displayName,
-                        size: 60
-                    )
-                    
-                    // 虚拟角色标记
-                    if character.isVirtual {
-                        Circle()
-                            .fill(Color.orange)
-                            .frame(width: 14, height: 14)
-                            .overlay(
-                                Image(systemName: "bubble.fill")
-                                    .font(.system(size: 8))
-                                    .foregroundColor(.white)
-                            )
-                            .offset(x: 24, y: -24)
-                    }
-                }
-                .padding(.top, 4)
-                
-                // 角色名称
-                Text(character.name)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity)
-                
-                // 角色职业
-                Text(character.profession)
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity)
-                
-                // 角色类型标签
-                Text(character.category.displayName)
-                    .font(.system(size: 10))
-                    .foregroundColor(character.category.color)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(character.category.color.opacity(0.1))
-                    )
-                    .padding(.bottom, 4)
-            }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 4)
-            .frame(minWidth: 0, maxWidth: .infinity) // 确保卡片填满可用宽度
-            .background(Color(.systemBackground))
-            .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-        }
-        .buttonStyle(PlainButtonStyle()) // 使用PlainButtonStyle确保点击效果正常
-        .contentShape(Rectangle()) // 确保整个区域可点击
-        .allowsHitTesting(true) // 明确允许点击事件
-        .scaleEffect(isAppearing ? 1.0 : 0.92)
-        .opacity(isAppearing ? 1.0 : 0.7)
-        .animation(.spring(response: 0.5, dampingFraction: 0.7, blendDuration: 0.2), value: isAppearing)
-        .fullScreenCover(isPresented: $showCharacterDetail) {
-            // 使用ZStack包装NavigationView，确保底部导航栏在整个导航过程中保持可见
-            ZStack {
-                // 使用NavigationView包装CharacterDetailView
-                NavigationView {
-                    CharacterDetailView(character: createCharacterFromModel(character))
-                }
-                .edgesIgnoringSafeArea(.all)
-                
-                // 添加一个透明视图，确保底部导航栏区域不被覆盖
-                VStack {
-                    Spacer()
-                    Rectangle()
-                        .fill(Color.clear)
-                        .frame(height: tabBarManager.fullBottomAreaHeight)
-                }
-                .edgesIgnoringSafeArea(.bottom)
-            }
-        }
-        .onAppear {
-            // 错开动画开始时间，创造波浪效果
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 0.05...0.3)) {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                    isAppearing = true
-                }
-            }
-            
-            // 打印调试信息
-            print("VirtualCharacterCard appeared: \(character.name)")
-        }
-        .onDisappear {
-            // 重置状态以便下次显示
-            withAnimation(.easeOut(duration: 0.2)) {
-                isAppearing = false
-        }
-    }
-}
-
-    // 内部转换方法
-    private func createCharacterFromModel(_ characterModel: CharacterModel) -> Character {
-        // 创建一个新的Character实例
-    return Character(
-            id: characterModel.id,
-        name: characterModel.name,
-        introduction: characterModel.bio,
-            field: characterModel.category.rawValue,
-        birthYear: characterModel.era,
-            deathYear: "",
-        avatarUrl: characterModel.avatar,
-            eraTag: characterModel.era,
-            achievements: [characterModel.profession],
-        mainWorks: [],
-            keyThoughts: [],
-            followerCount: Int.random(in: 1000...5000),
-            interactionCount: Int.random(in: 5000...15000),
-            rating: Double.random(in: 4.0...5.0)
-    )
-    }
-}
-
-// 添加通知管理器类
-class HomeViewNotificationManager: ObservableObject {
-    private weak var postViewModel: PostViewModel?
-    
-    // 添加对象ID，便于区分不同实例
-    private let instanceId = UUID().uuidString.prefix(8)
-    
-    init(postViewModel: PostViewModel) {
-        self.postViewModel = postViewModel
-
-        setupNotifications()
-    }
-    
-    deinit {
-
-        // 移除通知观察者，防止内存泄漏
-        NotificationCenter.default.removeObserver(self)
-    }
-    
-    private func setupNotifications() {
-
-        
-        // 新帖子生成通知
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleNewPostsGenerated(_:)),
-            name: NSNotification.Name("NewPostsGenerated"),
-            object: nil
-        )
-        
-        // 帖子更新通知
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handlePostsUpdated(_:)),
-            name: NSNotification.Name("PostsUpdated"),
-            object: nil
-        )
-        
-
-    }
-    
-    @objc private func handleNewPostsGenerated(_ notification: Notification) {
-        DispatchQueue.main.async { [self] in
-            if let viewModel = self.postViewModel {
-                viewModel.objectWillChange.send()
-            }
-        }
-    }
-    
-    @objc private func handlePostsUpdated(_ notification: Notification) {
-        DispatchQueue.main.async { [self] in
-            if let viewModel = self.postViewModel {
-                viewModel.objectWillChange.send()
-            }
-        }
-    }
-}
-
-/**
- * 主页按钮缩放样式
- * 用于主页上的按钮交互效果
- */
-struct HomeScaleButtonStyle: ButtonStyle {
-    let scaleAmount: CGFloat
-    
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? scaleAmount : 1.0)
-            .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
-    }
-}
+// CharacterPickerView 已移动到独立文件 Views/Components/CharacterPickerView.swift
 
 /**
  * 首页视图
@@ -899,7 +56,7 @@ struct HomeView: View {
     /// 当前选中的历史人物
     @State private var selectedCharacter: CharacterModel? = nil
     /// 是否显示帖子详情
-
+    @State private var showPostDetail: Bool = false
     /// 内容动画状态
     @State private var contentAppeared: Bool = false
     
@@ -1157,8 +314,8 @@ struct HomeView: View {
                             .contentShape(Rectangle()) // 确保背景可点击
                             .allowsHitTesting(true) // 明确允许点击事件
                         
-                        // 使用VirtualCharacterPickerView而不包装额外的修饰符
-                        VirtualCharacterPickerView(
+                        // 使用CharacterPickerView而不包装额外的修饰符
+                        CharacterPickerView(
                             onDismiss: {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     tabBarManager.popHideState()
@@ -1306,7 +463,6 @@ struct HomeView: View {
                             }
                         }
                     )
-                    .id(post.id) // 确保只有当帖子ID真正改变时才重建视图
                 }
             }
         }
@@ -1430,14 +586,30 @@ struct HomeView: View {
     
     // MARK: - 内容区域
     private var contentSection: some View {
-        ScrollView {
+        ScrollView(.vertical) {
             // 使用LazyVStack提高性能
             LazyVStack(spacing: 0) {
                 // 帖子列表
                 ForEach(Array(postViewModel.posts.enumerated()), id: \.element.id) { index, post in
-                    postCardView(for: post, at: index)
-                        // 移除强制刷新ID，让SwiftUI自然管理视图更新
-                        // .id("\(post.id)_\(forceRefreshID)")
+                    PostCardView(
+                        post: post,
+                        onPostTap: {
+                            selectedPost = post
+                            showPostDetail = true
+                        },
+                        onEdit: isOwnPost(post) ? {
+                            editingPost = post
+                            showEditPostView = true
+                        } : nil,
+                        onDelete: isOwnPost(post) ? {
+                            postToDelete = post
+                            showDeleteConfirmation = true
+                        } : nil,
+                        onExpandComments: {
+                            selectedPost = post
+                            showPostDetail = true
+                        }
+                    )
                 }
                 .id("\(postViewModel.posts.count)") // 只依赖帖子数量变化
                 
@@ -1525,52 +697,11 @@ struct HomeView: View {
         }
     }
     
-    // 提取单个帖子卡片为独立方法
-    private func postCardView(for post: UserPostModel, at index: Int) -> some View {
-        PostCardView(
-            post: post,
-            onPostTap: {
-                // 查看帖子详情
-                selectedPost = post
-            },
-            onLikeToggle: { isLiked in
-                handlePostLike(post: post, isLiked: isLiked)
-            },
-            onCommentToggle: {
-                handleCommentToggle(for: post)
-            },
-            onBookmarkToggle: { isBookmarked in
-                handlePostBookmark(post: post, isBookmarked: isBookmarked)
-            },
-            onShare: {
-                // 分享逻辑
-                let content = "\(post.username)的虫遇动态: \(post.content)"
-                shareContent(content)
-                HapticFeedbackManager.shared.selectionChanged()
-            },
-            // 不指定maxPreviewLines和maxPreviewLength，使用PostCardView默认值
-            // 这样列表页面也会使用相同的智能显示逻辑
-            displayMode: .preview,
-            // 根据帖子来源设置正确的postSource
-            isOwnPost: post.source == "user",
-            onEdit: {
-                handleEditPost(post)
-            },
-            onDelete: {
-                handleDeletePost(post)
-            },
-            onPin: { isPinned in
-                handlePinPost(post, isPinned: isPinned)
-            },
-            postSource: post.source == "user" ? .userGenerated : .aiGenerated
-        )
-        .offset(y: contentAppeared ? 0 : 50)
-        .opacity(contentAppeared ? 1 : 0)
-        .animation(
-            .easeOut(duration: 0.5)
-            .delay(0.1 + Double(index % 5) * 0.05), // 使用取模避免延迟过长
-            value: contentAppeared
-        )
+    // 检查是否为用户自己的帖子
+    private func isOwnPost(_ post: UserPostModel) -> Bool {
+        // 这里可以根据实际的用户ID或其他标识来判断
+        // 暂时返回false，实际项目中需要根据用户系统来实现
+        return false
     }
     
     // 处理帖子点赞
@@ -1591,7 +722,10 @@ struct HomeView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
         
-        // 显示帖子详情 - 不需要额外的动画，模态已有自己的动画
+        // 显示帖子详情
+        withAnimation(.easeOut(duration: 0.2)) {
+            showPostDetail = true
+        }
     }
     
     // 处理帖子收藏
@@ -2589,5 +1723,131 @@ extension EnvironmentValues {
     var returnToCharacterPicker: Bool {
         get { self[ReturnToCharacterPickerKey.self] }
         set { self[ReturnToCharacterPickerKey.self] = newValue }
+    }
+}
+
+// MARK: - HomeViewNotificationManager
+class HomeViewNotificationManager: ObservableObject {
+    private weak var postViewModel: PostViewModel?
+    
+    // 添加对象ID，便于区分不同实例
+    private let instanceId = UUID().uuidString.prefix(8)
+    
+    init(postViewModel: PostViewModel) {
+        self.postViewModel = postViewModel
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 初始化完成，postViewModel设置成功")
+        setupNotifications()
+    }
+    
+    deinit {
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 正在析构，移除所有观察者")
+        // 移除通知观察者，防止内存泄漏
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    private func setupNotifications() {
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 开始设置通知观察者")
+        
+        // 新帖子生成通知
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleNewPostsGenerated(_:)),
+            name: NSNotification.Name("NewPostsGenerated"),
+            object: nil
+        )
+        
+        // 帖子更新通知
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handlePostsUpdated(_:)),
+            name: NSNotification.Name("PostsUpdated"),
+            object: nil
+        )
+        
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 通知观察者设置完成")
+    }
+    
+    @objc private func handleNewPostsGenerated(_ notification: Notification) {
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 接收到NewPostsGenerated通知")
+        
+        // 检查通知中是否包含数量信息
+        var postsCount = 0
+        if let count = notification.userInfo?["count"] as? Int {
+            postsCount = count
+            print("🔔 HomeViewNotificationManager[\(instanceId)]: 通知包含count数据: \(postsCount)个新帖子")
+        } else {
+            print("🔔 HomeViewNotificationManager[\(instanceId)]: 通知不包含count数据，使用默认值0")
+        }
+        
+        // 检查发送者
+        if let sender = notification.object {
+            print("🔔 通知发送者: \(type(of: sender))")
+        } else {
+            print("🔔 通知发送者: nil")
+        }
+        
+        // 检查postViewModel是否仍然有效
+        if postViewModel == nil {
+            print("⚠️ HomeViewNotificationManager[\(instanceId)]: 警告 - postViewModel已被释放")
+        }
+        
+        DispatchQueue.main.async { [self] in
+            print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 正在主线程处理NewPostsGenerated通知")
+            
+            if let viewModel = self.postViewModel {
+                print("🏠 HomeViewNotificationManager[\(self.instanceId)]: postViewModel依然有效，准备触发objectWillChange")
+                viewModel.objectWillChange.send()
+                print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 已触发objectWillChange，当前帖子数量: \(viewModel.posts.count)")
+                
+                // 验证数据一致性
+                if !viewModel.posts.isEmpty {
+                    print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 第一篇帖子内容片段: \(viewModel.posts[0].content.prefix(30))...")
+                }
+            } else {
+                print("⚠️ HomeViewNotificationManager[\(self.instanceId)]: 严重错误 - 无法访问postViewModel")
+            }
+        }
+    }
+    
+    @objc private func handlePostsUpdated(_ notification: Notification) {
+        print("🔔 HomeViewNotificationManager[\(instanceId)]: 接收到PostsUpdated通知")
+        
+        // 检查通知中是否包含数量信息
+        var postsCount = 0
+        if let count = notification.userInfo?["newPostsCount"] as? Int {
+            postsCount = count
+            print("🔔 HomeViewNotificationManager[\(instanceId)]: 通知包含count数据: \(postsCount)个更新帖子")
+        } else {
+            print("🔔 HomeViewNotificationManager[\(instanceId)]: 通知不包含count数据，使用默认值0")
+        }
+        
+        // 检查发送者
+        if let sender = notification.object {
+            print("🔔 通知发送者: \(type(of: sender))")
+        } else {
+            print("🔔 通知发送者: nil")
+        }
+        
+        // 检查postViewModel是否仍然有效
+        if postViewModel == nil {
+            print("⚠️ HomeViewNotificationManager[\(instanceId)]: 警告 - postViewModel已被释放")
+        }
+        
+        DispatchQueue.main.async { [self] in
+            print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 正在主线程处理PostsUpdated通知")
+            
+            if let viewModel = self.postViewModel {
+                print("🏠 HomeViewNotificationManager[\(self.instanceId)]: postViewModel依然有效，准备触发objectWillChange")
+                viewModel.objectWillChange.send()
+                print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 已触发objectWillChange，当前帖子数量: \(viewModel.posts.count)")
+                
+                // 验证数据一致性
+                if !viewModel.posts.isEmpty {
+                    print("🏠 HomeViewNotificationManager[\(self.instanceId)]: 第一篇帖子内容片段: \(viewModel.posts[0].content.prefix(30))...")
+                }
+            } else {
+                print("⚠️ HomeViewNotificationManager[\(self.instanceId)]: 严重错误 - 无法访问postViewModel")
+            }
+        }
     }
 }

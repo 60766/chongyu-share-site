@@ -76,7 +76,7 @@ struct TabContentView<Content: View>: View {
 #Preview("内容标签页") {
     VStack {
         ContentTabView(
-            tabs: ["角色关系", "我的动态", "互动记录"],
+            tabs: ["角色关系", "我的动态", "我的点赞"],
             selectedTab: .constant(0)
         )
         
