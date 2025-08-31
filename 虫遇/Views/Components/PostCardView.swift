@@ -555,8 +555,8 @@ class CommentLoader: ObservableObject {
         hasMoreComments = allComments.count > loadedComments.count
         
         // 打印添加的评论信息
-        let commentType = comment.isVirtualCharacter ? "虚拟角色评论" : "用户评论"
-        let characterInfo = comment.isVirtualCharacter ? "(角色ID: \(comment.characterID ?? "未知"))" : ""
+        let _ = comment.isVirtualCharacter ? "虚拟角色评论" : "用户评论"
+        let _ = comment.isVirtualCharacter ? "(角色ID: \(comment.characterID ?? "未知"))" : ""
 
         
         // 如果有帖子ID，发送通知以更新其他可能显示此帖子的视图

@@ -845,7 +845,7 @@ struct ChatView: View {
                     // 保存角色消息到数据库
                     saveMessage(characterMessage)
                     
-                case .failure(let error):
+                case .failure(_):
                     // 处理错误情况
                     
                     // 创建错误提示消息
@@ -910,7 +910,7 @@ struct ChatView: View {
                     // 保存角色消息到数据库
                     self.saveMessage(characterMessage)
                     
-                case .failure(let error):
+                case .failure(_):
                     // 处理错误情况
                     
                     // 创建错误提示消息

@@ -2777,7 +2777,7 @@ struct FullscreenPostDetailView: View {
     // 预加载相邻帖子
     private func preloadAdjacentPosts() {
         // 增加提前缓存逻辑，记录当前帖子ID用于日志
-        let currentPostId = viewModel.post.id
+        let _ = viewModel.post.id
 
         
         // 边界检查，确定是否有下一篇或上一篇帖子

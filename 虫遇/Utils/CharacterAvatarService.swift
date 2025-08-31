@@ -35,9 +35,7 @@ class CharacterAvatarService {
      */
     private func checkCommonAvatars() {
         // 将孔子移到列表中间，防止其成为默认选择
-        let commonCharacters = ["einstein", "shakespeare", "davinci", "newton", "sunwukong", "kongzi"]
-        
-
+        let _ = ["einstein", "shakespeare", "davinci", "newton", "sunwukong", "kongzi"]
     }
     
     /**

@@ -161,9 +161,13 @@ class UserProfileManager: ObservableObject {
             "cognitionCount": 0,
             "deepDialogueCount": 0,
             "myLikesCount": 0,
-            "travelCount": 0,
-            "inspirationCount": 0
+            "travelCount": 0
         ]
+    }
+    
+    /// 更新统计数据到缓存（供外部调用）
+    func updateStatsCache(_ stats: [String: Int]) {
+        DataCacheService.shared.store(key: "profile.stats", value: stats, type: "profile_stats", expirationTime: 300)
     }
     
     /// 计算总经验值
@@ -174,10 +178,10 @@ class UserProfileManager: ObservableObject {
         let deepDialogueScore = stats["deepDialogueCount", default: 0] * 2
         let likeScore = stats["myLikesCount", default: 0] * 1
         let travelScore = stats["travelCount", default: 0] * 5
-        let inspirationScore = stats["inspirationCount", default: 0] * 2
+
         
         return dialogueScore + resonanceScore + cognitionScore + 
-               deepDialogueScore + likeScore + travelScore + inspirationScore
+               deepDialogueScore + likeScore + travelScore
     }
     
     /// 根据经验值计算等级
@@ -259,6 +263,24 @@ class UserProfileManager: ObservableObject {
         let range = getCurrentLevelExperienceRange()
         let progress = Double(userExperience - range.current) / Double(range.next - range.current)
         return min(max(progress, 0), 1)
+    }
+    
+    /// 调试方法：打印当前等级和经验值信息
+    func debugLevelInfo() {
+        let stats = getCurrentUserStats()
+        let totalExp = calculateTotalExperience(stats: stats)
+        let range = getCurrentLevelExperienceRange()
+        let currentLevelExp = userExperience - range.current
+        let maxLevelExp = range.next - range.current
+        
+        print("🔍 UserProfileManager调试信息:")
+        print("  - 当前等级: \(userLevel)")
+        print("  - 总经验值: \(userExperience)")
+        print("  - 计算得到的总经验值: \(totalExp)")
+        print("  - 等级范围: \(range.current) - \(range.next)")
+        print("  - 当前等级内经验值: \(currentLevelExp)/\(maxLevelExp)")
+        print("  - 升级进度: \(getLevelUpProgress()) (\(Int(getLevelUpProgress() * 100))%)")
+        print("  - 统计数据: \(stats)")
     }
     
     /// 获取等级颜色
@@ -443,6 +465,40 @@ struct ProfileView: View {
     // 缓存键前缀
     private let cacheKeyPrefix = "profile."
     
+    // MARK: - 性能优化：缓存所有计算结果
+    @State private var cachedDialogueCount: Int = 0
+    @State private var cachedResonanceCount: Int = 0
+    @State private var cachedCognitionCount: Int = 0
+    @State private var cachedTravelCount: Int = 0
+    @State private var cachedMyLikesCount: Int = 0
+
+    @State private var cachedDeepDialogueCount: Int = 0
+    @State private var lastCacheUpdate: Date = Date.distantPast
+    @State private var isCalculating: Bool = false
+    
+    // 缓存有效期：5分钟
+    private let cacheValidDuration: TimeInterval = 300
+    
+    /// 初始化缓存为默认值，提供即时反馈
+    private func initializeCache() {
+        // 如果是第一次打开，使用默认值
+        if lastCacheUpdate == Date.distantPast {
+            // 使用Task来避免在视图更新过程中修改状态
+            Task { @MainActor in
+                cachedDialogueCount = 0
+                cachedResonanceCount = 0
+                cachedCognitionCount = 0
+                cachedTravelCount = 0
+                cachedMyLikesCount = 0
+
+                cachedDeepDialogueCount = 0
+                #if DEBUG
+                print("🎯 ProfileView: 初始化默认缓存值")
+                #endif
+            }
+        }
+    }
+    
     // 模拟用户成就数据
     private let userAchievements = [
         Achievement(id: "1", name: "时空旅行者", icon: "clock.arrow.2.circlepath", description: "完成10次历史对话"),
@@ -460,28 +516,59 @@ struct ProfileView: View {
         
         return mainContent
             .onAppear {
-                // 加载缓存的统计数据或计算新的统计数据
-                loadOrCalculateStats()
-                // 设置数据更新监听
-                setupDataUpdateListeners()
-                // 重置展开状态
-                resetExpandedStates()
-                // 异步更新用户等级（带缓存，不影响性能）
+                // 第一步：立即初始化默认值，确保界面能立即显示
+                initializeCache()
+                
+                // 第二步：延迟加载真实数据，避免阻塞UI
                 Task {
+                    // 延迟500ms再开始计算，让界面先完全显示
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    
+                    // 只有在缓存无效时才重新计算
+                    if !isCacheValid {
+                        await updateCacheAsync()
+                    }
+                    
+                    // 设置数据更新监听（在主线程）
                     await MainActor.run {
+                        setupDataUpdateListeners()
+                        resetExpandedStates()
+                    }
+                    
+                    // 异步更新用户等级（不阻塞界面显示）
                         userProfileManager.updateUserLevelAsync()
                     }
-                }
+                
+                #if DEBUG
+                print("🚀 ProfileView: 页面加载完成，缓存状态: \(isCacheValid ? "有效" : "需要更新")")
+                
+                // 🔍 调试：打印当前等级和经验值信息
+                userProfileManager.debugLevelInfo()
+                #endif
             }
             .onDisappear {
+                // 性能优化：清理资源，避免内存泄漏
+                #if DEBUG
+                print("🧹 ProfileView: 页面消失，开始清理资源")
+                #endif
+                
+                // 停止正在进行的计算任务
+                isCalculating = false
+                
                 // 清理订阅
                 cancellables.forEach { $0.cancel() }
                 cancellables.removeAll()
+                
                 // 页面消失时重置展开状态
                 resetExpandedStates()
+                
                 // 清理定时器
                 autoCollapseTimer?.invalidate()
                 autoCollapseTimer = nil
+                
+                #if DEBUG
+                print("✅ ProfileView: 资源清理完成")
+                #endif
             }
             .photosPicker(isPresented: $showingImagePicker, selection: $selectedImage, matching: .images)
             .onChange(of: selectedImage) { _, newItem in
@@ -1287,7 +1374,7 @@ struct ProfileView: View {
                                         .font(.system(size: 12, weight: .bold))
                                         .foregroundColor(.white)
                                     
-                                    Text("\(userProfileManager.userExperience)/\(experienceRange.next) EXP")
+                                    Text("\(userProfileManager.userExperience - experienceRange.current)/\(experienceRange.next - experienceRange.current) EXP")
                                         .font(.system(size: 11, weight: .medium))
                                         .foregroundColor(.white.opacity(0.7))
                                     
@@ -1723,19 +1810,19 @@ struct ProfileView: View {
         NewAchievementView()
     }
     
-    // 计算用户帖子
+    // 计算用户帖子 - 简化版本，避免复杂的缓存逻辑
     private var userPosts: [UserPostModel] {
         postViewModel.posts.filter { $0.source == "user" }
     }
     
-    // 计算总点赞数
+    // 计算总点赞数 - 简化版本
     private var totalLikes: Int {
         userPosts.reduce(0) { total, post in
             total + post.likes
         }
     }
     
-    // 计算总评论数
+    // 计算总评论数 - 简化版本
     private var totalComments: Int {
         userPosts.reduce(0) { total, post in
             total + post.comments.count
@@ -1750,81 +1837,43 @@ struct ProfileView: View {
         12
     }
     
-    // 新增：次元对话数
+    // MARK: - 性能优化：使用缓存的计算属性
+    
+    // 缓存是否有效
+    private var isCacheValid: Bool {
+        Date().timeIntervalSince(lastCacheUpdate) < cacheValidDuration
+    }
+    
+    // 新增：次元对话数（使用缓存）
     private var dialogueCount: Int {
-        // 优先从缓存获取
-        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
-           let count = stats["dialogueCount"] {
-            return count
-        }
-        // 缓存未命中，计算值
-        return calculateTotalDialogues()
+        return cachedDialogueCount
     }
     
-    // 新增：创作灵感数
-    private var inspirationCount: Int {
-        // 优先从缓存获取
-        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
-           let count = stats["inspirationCount"] {
-            return count
-        }
-        // 缓存未命中，计算值
-        return calculateTotalInspirations()
-    }
+
     
-    // 新增：穿越次数
+    // 新增：穿越次数（使用缓存）
     private var travelCount: Int {
-        // 优先从缓存获取
-        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
-           let count = stats["travelCount"] {
-            return count
-        }
-        // 缓存未命中，计算值
-        return calculateTotalTravels()
+        return cachedTravelCount
     }
     
-    // 新增：认知升华次数
+    // 新增：认知升华次数（使用缓存）
     private var cognitionCount: Int {
-        // 优先从缓存获取
-        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
-           let count = stats["cognitionCount"] {
-            return count
-        }
-        // 缓存未命中，计算值
-        return calculateTotalCognitions()
+        return cachedCognitionCount
     }
     
-    // 新增：时空共鸣次数
+    // 新增：时空共鸣次数（使用缓存）
     private var resonanceCount: Int {
-        // 优先从缓存获取
-        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
-           let count = stats["resonanceCount"] {
-            return count
-        }
-        // 缓存未命中，计算值
-        return calculateTotalResonances()
+        return cachedResonanceCount
     }
     
-    // 新增：深度对话次数
+    // 新增：深度对话次数（使用缓存）
     private var deepDialogueCount: Int {
-        // 优先从缓存获取
-        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
-           let count = stats["deepDialogueCount"] {
-            return count
-        }
-        // 缓存未命中，计算值
-        return calculateTotalDeepDialogues()
+        return cachedDeepDialogueCount
     }
     
-    // 新增：我的点赞次数
+    // 新增：我的点赞次数（使用缓存）
     private var myLikesCount: Int {
-        // 优先从缓存获取
-        if let stats: [String: Int] = cacheService.retrieve(key: "\(cacheKeyPrefix)stats"),
-           let count = stats["myLikesCount"] {
-            return count
-        }
-        // 缓存未命中，计算值
-        return calculateMyLikesCount()
+        return cachedMyLikesCount
     }
     
     // MARK: - 数据计算方法
@@ -2301,7 +2350,7 @@ struct ProfileView: View {
                             
                             Spacer()
                             
-                            Text("\(userProfileManager.userExperience)/\(experienceRange.next)")
+                            Text("\(userProfileManager.userExperience - experienceRange.current)/\(experienceRange.next - experienceRange.current)")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(userProfileManager.getLevelColor())
                         }
@@ -2409,63 +2458,152 @@ struct ProfileView: View {
     
     // MARK: - 数据加载与缓存
     
-    /// 加载缓存的统计数据或计算新的统计数据
+    /// 性能优化：异步更新缓存，避免阻塞UI
     private func loadOrCalculateStats() {
-        // 检查缓存是否有效
-        if !cacheService.isValid(key: "\(cacheKeyPrefix)stats") {
-            // 缓存无效，重新计算统计数据
-            let stats = calculateAllStats()
-            
-            // 缓存计算结果，有效期5分钟
-            cacheService.store(
-                key: "\(cacheKeyPrefix)stats",
-                value: stats,
-                type: "UserStats",
-                expirationTime: 300 // 5分钟
-            )
-            
-
-        } else {
-
+        // 如果正在计算，跳过
+        guard !isCalculating else { 
+            #if DEBUG
+            print("🔄 ProfileView: 正在计算中，跳过重复请求")
+            #endif
+            return 
+        }
+        
+        // 如果缓存仍然有效，跳过
+        guard !isCacheValid else { 
+            #if DEBUG
+            print("✅ ProfileView: 缓存仍然有效，跳过更新")
+            #endif
+            return 
+        }
+        
+        // 如果距离上次更新不到30秒，跳过（防止频繁更新）
+        let timeSinceLastUpdate = Date().timeIntervalSince(lastCacheUpdate)
+        guard timeSinceLastUpdate > 30 else {
+            #if DEBUG
+            print("⏰ ProfileView: 距离上次更新仅\(Int(timeSinceLastUpdate))秒，跳过更新")
+            #endif
+            return
+        }
+        
+        isCalculating = true
+        #if DEBUG
+        print("🚀 ProfileView: 开始异步更新缓存")
+        #endif
+        
+        // 在后台异步计算，避免阻塞UI
+        Task {
+            await updateCacheAsync()
         }
     }
     
-    /// 设置数据更新监听器
+    /// 异步更新所有缓存数据
+    @MainActor
+    private func updateCacheAsync() async {
+        // 并行计算所有统计数据，提高效率
+        async let dialogueCountResult = calculateTotalDialoguesOptimized()
+        async let resonanceCountResult = calculateTotalResonancesOptimized()
+        async let cognitionCountResult = calculateTotalCognitionsOptimized()
+        async let travelCountResult = calculateTotalTravelsOptimized()
+        async let myLikesCountResult = calculateMyLikesCountOptimized()
+
+        async let deepDialogueCountResult = calculateTotalDeepDialoguesOptimized()
+        
+        // 等待所有计算完成
+        let results = await (
+            dialogueCount: dialogueCountResult,
+            resonanceCount: resonanceCountResult,
+            cognitionCount: cognitionCountResult,
+            travelCount: travelCountResult,
+            myLikesCount: myLikesCountResult,
+            deepDialogueCount: deepDialogueCountResult
+        )
+        
+        // 批量更新缓存状态，减少视图重绘次数
+        cachedDialogueCount = results.dialogueCount
+        cachedResonanceCount = results.resonanceCount
+        cachedCognitionCount = results.cognitionCount
+        cachedTravelCount = results.travelCount
+        cachedMyLikesCount = results.myLikesCount
+
+        cachedDeepDialogueCount = results.deepDialogueCount
+        
+        // 🔥 关键修复：将统计数据同步到UserProfileManager
+        let stats = [
+            "dialogueCount": results.dialogueCount,
+            "resonanceCount": results.resonanceCount,
+            "cognitionCount": results.cognitionCount,
+            "deepDialogueCount": results.deepDialogueCount,
+            "myLikesCount": results.myLikesCount,
+            "travelCount": results.travelCount
+        ]
+        
+        // 更新UserProfileManager的统计数据缓存
+        userProfileManager.updateStatsCache(stats)
+        
+        // 温和更新用户等级（不强制清除缓存）
+        userProfileManager.updateUserLevelAsync()
+        
+        lastCacheUpdate = Date()
+        isCalculating = false
+        
+        #if DEBUG
+        print("🚀 ProfileView: 缓存更新完成，数据刷新成功")
+        print("📊 ProfileView: 统计数据已同步到UserProfileManager: \(stats)")
+        #endif
+    }
+    
+    /// 性能优化：精确的数据更新监听器
     private func setupDataUpdateListeners() {
-        // 监听帖子数据更新
-        let postSubscription = postViewModel.objectWillChange
+        // 监听帖子数据的精确变化（防抖处理）
+        let postSubscription = postViewModel.$posts
+            .removeDuplicates { oldPosts, newPosts in
+                // 只有帖子数量真正变化时才更新
+                oldPosts.count == newPosts.count
+            }
+            .debounce(for: .milliseconds(1000), scheduler: DispatchQueue.main) // 增加防抖时间到1秒
             .sink { _ in
-                // 帖子数据更新时，清除相关缓存
-                cacheService.invalidate(key: "\(cacheKeyPrefix)stats")
-                // 重新计算统计数据
-                loadOrCalculateStats()
-                // 延迟更新等级（避免频繁计算）
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    userProfileManager.forceUpdateUserLevel()
-                }
+                #if DEBUG
+                print("📊 ProfileView: 检测到帖子数量变化，更新缓存")
+                #endif
+                self.loadOrCalculateStats()
             }
         cancellables.insert(postSubscription)
         
-        // 监听通知数据更新
-        let notificationSubscription = notificationService.objectWillChange
+        // 监听通知数据的精确变化（防抖处理）
+        let notificationSubscription = notificationService.$notifications
+            .removeDuplicates { oldNotifications, newNotifications in
+                // 只有通知数量真正变化时才更新
+                oldNotifications.count == newNotifications.count
+            }
+            .debounce(for: .milliseconds(1000), scheduler: DispatchQueue.main) // 增加防抖时间到1秒
             .sink { _ in
-                // 通知数据更新时，清除相关缓存
-                cacheService.invalidate(key: "\(cacheKeyPrefix)stats")
-                // 重新计算统计数据
-                loadOrCalculateStats()
-                // 延迟更新等级（避免频繁计算）
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    userProfileManager.forceUpdateUserLevel()
-                }
+                #if DEBUG
+                print("📊 ProfileView: 检测到通知数量变化，更新缓存")
+                #endif
+                self.loadOrCalculateStats()
             }
         cancellables.insert(notificationSubscription)
+        
+        // 监听点赞数据变化
+        let likeSubscription = likeService.$userLikes
+            .removeDuplicates { oldLikes, newLikes in
+                oldLikes.count == newLikes.count
+            }
+            .debounce(for: .milliseconds(1000), scheduler: DispatchQueue.main) // 增加防抖时间到1秒
+            .sink { _ in
+                #if DEBUG
+                print("📊 ProfileView: 检测到点赞数量变化，更新缓存")
+                #endif
+                self.loadOrCalculateStats()
+            }
+        cancellables.insert(likeSubscription)
     }
     
     /// 计算所有统计数据并返回
     private func calculateAllStats() -> [String: Int] {
         return [
             "dialogueCount": calculateTotalDialogues(),
-            "inspirationCount": calculateTotalInspirations(),
+
             "travelCount": calculateTotalTravels(),
             "cognitionCount": calculateTotalCognitions(),
             "resonanceCount": calculateTotalResonances(),
@@ -2476,24 +2614,6 @@ struct ProfileView: View {
     }
     
     // MARK: - Missing Calculation Methods
-    
-    /// 计算创作灵感总数
-    private func calculateTotalInspirations() -> Int {
-        // 基于帖子和评论的创意内容计算
-        let posts = postViewModel.posts
-        let comments = posts.flatMap { $0.comments }
-        
-        // 简单模拟：每个创意帖子或评论算作一次灵感
-        let creativePostsCount = posts.filter { post in
-            post.content.count > 100 || post.content.contains("创意") || post.content.contains("想法")
-        }.count
-        
-        let creativeCommentsCount = comments.filter { comment in
-            comment.content.count > 50 || comment.content.contains("创意") || comment.content.contains("想法")
-        }.count
-        
-        return creativePostsCount + creativeCommentsCount
-    }
     
     /// 计算穿越次数
     private func calculateTotalTravels() -> Int {
@@ -2513,13 +2633,9 @@ struct ProfileView: View {
         // 基于深度对话和学习成果计算
         let posts = postViewModel.posts
         
-        // 模拟：长篇深度内容和包含哲学思考的帖子
+        // 优化：只检查内容长度，避免字符串搜索
         let deepThoughtPosts = posts.filter { post in
-            post.content.count > 200 || 
-            post.content.contains("思考") || 
-            post.content.contains("感悟") ||
-            post.content.contains("领悟") ||
-            post.content.contains("理解")
+            post.content.count > 200
         }.count
         
         return deepThoughtPosts
@@ -2562,6 +2678,78 @@ struct ProfileView: View {
     private func calculateMyLikesCount() -> Int {
         // 计算用户主动点赞的数量
         return UserLikeService.shared.getUserLikes().count
+    }
+    
+    // MARK: - 性能优化：高效的数据计算方法
+    
+    /// 优化版：计算总对话数（使用fetchCount，避免全量查询）
+    private func calculateTotalDialoguesOptimized() async -> Int {
+        do {
+            // 1. 计算用户评论数（直接从PostViewModel获取）
+            // 由于DetailedCommentModel不是PersistentModel，直接从PostViewModel获取评论数
+            let userCommentsCount = postViewModel.posts.flatMap { $0.comments }.filter { comment in
+                !comment.isVirtualCharacter
+            }.count
+            
+            // 2. 计算用户私聊消息数（使用计数查询）
+            let userMessagesPredicate = #Predicate<Message> { message in
+                message.isFromUser == true
+            }
+            let messagesDescriptor = FetchDescriptor<Message>(predicate: userMessagesPredicate)
+            let userMessagesCount = try modelContext.fetchCount(messagesDescriptor)
+            
+            // 3. 用户帖子数
+            let userPostsCount = userPosts.count
+            
+            return userCommentsCount + userMessagesCount + userPostsCount
+        } catch {
+            print("❌ 计算对话数失败: \(error)")
+            return 0
+        }
+    }
+    
+    /// 优化版：计算总共鸣数（使用缓存的通知数据）
+    private func calculateTotalResonancesOptimized() async -> Int {
+        // 直接从内存中的通知数据统计，无需数据库查询
+        return NotificationService.shared.notifications.filter { $0.type == .like }.count
+    }
+    
+    /// 优化版：计算认知升华次数（使用优化的查询）
+    private func calculateTotalCognitionsOptimized() async -> Int {
+        // 基于帖子数量的简化计算，避免复杂的内容分析
+        let posts = PostViewModel.shared.posts
+        return posts.filter { $0.content.count > 200 }.count
+    }
+    
+    /// 优化版：计算穿越次数（使用fetchCount）
+    private func calculateTotalTravelsOptimized() async -> Int {
+        do {
+            let descriptor = FetchDescriptor<MultiPersonChatSession>()
+            return try modelContext.fetchCount(descriptor)
+        } catch {
+            print("❌ 计算穿越次数失败: \(error)")
+            return 0
+        }
+    }
+    
+    /// 优化版：计算我的点赞次数（直接使用缓存）
+    private func calculateMyLikesCountOptimized() async -> Int {
+        // 直接使用服务层的缓存数据，无需额外计算
+        return UserLikeService.shared.getUserLikes().count
+    }
+    
+
+    
+    /// 优化版：计算深度对话次数（使用fetchCount）
+    private func calculateTotalDeepDialoguesOptimized() async -> Int {
+        do {
+            let descriptor = FetchDescriptor<MultiPersonChatMessage>()
+            let messages = try modelContext.fetch(descriptor)
+            return messages.filter { $0.content.count > 100 }.count
+        } catch {
+            print("❌ 计算深度对话次数失败: \(error)")
+            return 0
+        }
     }
     
     // MARK: - 等级标签预览

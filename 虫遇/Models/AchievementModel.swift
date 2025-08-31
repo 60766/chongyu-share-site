@@ -388,8 +388,8 @@ class AchievementEvaluator: ObservableObject {
         
         for i in 0..<achievements.count {
             if achievements[i].name == "心有灵犀" {
-                let oldProgress = achievements[i].currentProgress
-                let oldLevel = achievements[i].level
+                let _ = achievements[i].currentProgress
+                let _ = achievements[i].level
                 
                 achievements[i] = createUpdatedAchievement(
                     from: achievements[i],
@@ -447,8 +447,8 @@ class AchievementEvaluator: ObservableObject {
         
         for i in 0..<achievements.count {
             if achievements[i].name == "社交达人" {
-                let oldProgress = achievements[i].currentProgress
-                let oldLevel = achievements[i].level
+                let _ = achievements[i].currentProgress
+                let _ = achievements[i].level
                 
                 achievements[i] = createUpdatedAchievement(
                     from: achievements[i],
@@ -480,8 +480,8 @@ class AchievementEvaluator: ObservableObject {
         
         for i in 0..<achievements.count {
             if achievements[i].name == "领域漫游者" {
-                let oldProgress = achievements[i].currentProgress
-                let oldLevel = achievements[i].level
+                let _ = achievements[i].currentProgress
+                let _ = achievements[i].level
                 
                 achievements[i] = createUpdatedAchievement(
                     from: achievements[i],
@@ -513,8 +513,8 @@ class AchievementEvaluator: ObservableObject {
         
         for i in 0..<achievements.count {
             if achievements[i].name == "时光旅人" {
-                let oldProgress = achievements[i].currentProgress
-                let oldLevel = achievements[i].level
+                let _ = achievements[i].currentProgress
+                let _ = achievements[i].level
                 
                 achievements[i] = createUpdatedAchievement(
                     from: achievements[i],
@@ -596,8 +596,8 @@ class AchievementEvaluator: ObservableObject {
         
         for i in 0..<achievements.count {
             if achievements[i].name == "次元段位" {
-                let oldProgress = achievements[i].currentProgress
-                let oldLevel = achievements[i].level
+                let _ = achievements[i].currentProgress
+                let _ = achievements[i].level
                 
                 achievements[i] = createUpdatedAchievement(
                     from: achievements[i],
@@ -837,15 +837,13 @@ class AchievementEvaluator: ObservableObject {
         var fullyExploredDomains = 0
         
 
-        for (category, characterIds) in categoryCharacterCounts {
+        for (_, characterIds) in categoryCharacterCounts {
             let count = characterIds.count
             let isFullyExplored = count >= requiredCharactersPerDomain
             
             if isFullyExplored {
                 fullyExploredDomains += 1
             }
-            
-
         }
         
 

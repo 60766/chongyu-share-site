@@ -40,7 +40,7 @@ struct ThoughtJourneyView: View {
             }
         }
         .onAppear {
-            loadCachedReportOrGenerate()
+            loadCachedReport()
         }
     }
     
@@ -71,7 +71,7 @@ struct ThoughtJourneyView: View {
                 ForEach(TimeRange.allCases, id: \.self) { range in
                     Button(range.description) {
                         selectedTimeRange = range
-                        generateReport()
+                        loadCachedReport()
                     }
                 }
             } label: {
@@ -310,13 +310,11 @@ struct ThoughtJourneyView: View {
     
     // MARK: - 方法
     
-    private func loadCachedReportOrGenerate() {
+    private func loadCachedReport() {
         if let cachedReport = service.getCachedReport(for: selectedTimeRange) {
             service.currentReport = cachedReport
-        } else {
-            // 如果没有缓存，自动生成报告
-            generateReport()
         }
+        // 不自动生成报告，只显示缓存的报告或空状态
     }
     
     private func generateReport() {
