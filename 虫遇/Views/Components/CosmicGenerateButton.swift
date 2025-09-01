@@ -888,7 +888,7 @@ struct SpiralAnimation: View {
     @State private var animationTime: Double = 0
     
     var body: some View {
-        TimelineView(.animation) { timeline in
+        TimelineView(.periodic(from: .now, by: 0.1)) { timeline in
             Canvas { context, size in
                 // 移除未使用的变量，用_忽略
                 _ = timeline.date.timeIntervalSince1970
@@ -1006,9 +1006,9 @@ struct SpiralAnimation: View {
                 animationTime = timeline.date.timeIntervalSince1970
             }
             .onChange(of: timeline.date) { _, newDate in
-                // 防抖：只在时间变化超过阈值时更新，避免过度频繁的状态更新
+                // 🚀 性能优化：降低更新频率，减少性能开销
                 let newTime = newDate.timeIntervalSince1970
-                if abs(newTime - animationTime) > 0.016 { // ~60fps阈值
+                if abs(newTime - animationTime) > 0.1 { // 降低到10fps
                     animationTime = newTime
                 }
             }

@@ -143,7 +143,7 @@ struct TimeSpaceParticlesView: View {
     @State private var phase = 0.0
     
     var body: some View {
-        TimelineView(.animation) { timeline in
+        TimelineView(.periodic(from: .now, by: 0.2)) { timeline in
             let timeValue = timeline.date.timeIntervalSince1970
             let currentPhase = timeValue.truncatingRemainder(dividingBy: 10)
             

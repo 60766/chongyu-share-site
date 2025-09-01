@@ -399,23 +399,16 @@ struct NotificationView: View {
                 }
                 .background(Color(.systemBackground))
                 .onAppear {
-                    // 设置UIScrollView的全局配置
+                    // 🚀 轻量化onAppear，避免页面切换卡顿
                     
+                    // 立即触发头部动画，无需延迟
+                    animateHeader = true
                     
-                    
-                    withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.1)) {
-                        animateHeader = true
+                    // 延迟执行重型操作，不阻塞页面切换
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        // 生成系统通知（如果还没有的话）
+                        notificationService.generateAdditionalSystemNotifications()
                     }
-                    
-                    // 打印当前通知数量用于调试
-        
-                    
-                    // 生成系统通知（如果还没有的话）
-                    notificationService.generateAdditionalSystemNotifications()
-                    
-                    // 🔧 移除测试通知创建，显示真实的通知数据
-                    // createTestNotificationWithUserComment()
-                    // createAdditionalTestNotifications()
                 }
                 .onDisappear {
                     // 无全局设置可还原

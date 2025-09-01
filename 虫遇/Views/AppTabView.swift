@@ -136,6 +136,9 @@ struct AppTabView: View {
         .ignoresSafeArea(.all, edges: .bottom)
         .environmentObject(tabBarManager) // 确保TabBarManager在所有子视图中可用
         .onAppear {
+            // 🚀 性能优化：直接设置TabBarController引用，避免递归搜索
+            setupTabBarControllerReference()
+            
             // 添加通知监听，处理返回首页的请求
             NotificationCenter.default.addObserver(
                 forName: NSNotification.Name("NavigateToHomeTab"),
@@ -156,6 +159,46 @@ struct AppTabView: View {
             tabBarManager.enableDebugMode()
             #endif
         }
+    }
+    
+    /// 🚀 性能优化：设置TabBarController直接引用
+    private func setupTabBarControllerReference() {
+        // 延迟一点时间确保视图层次已经建立
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // 获取当前窗口的TabBarController
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first,
+               let tabBarController = self.findTabBarControllerInHierarchy(from: window.rootViewController) {
+                
+                // 直接设置引用，避免后续所有递归搜索
+                self.tabBarManager.setTabBarController(tabBarController)
+                
+                #if DEBUG
+                print("🚀 性能优化生效：TabBarController直接引用已建立")
+                #endif
+            }
+        }
+    }
+    
+    /// 🚀 性能优化：一次性搜索TabBarController（仅在设置时使用）
+    private func findTabBarControllerInHierarchy(from viewController: UIViewController?) -> UITabBarController? {
+        guard let viewController = viewController else { return nil }
+        
+        if let tabBarController = viewController as? UITabBarController {
+            return tabBarController
+        }
+        
+        for child in viewController.children {
+            if let found = findTabBarControllerInHierarchy(from: child) {
+                return found
+            }
+        }
+        
+        if let presentedVC = viewController.presentedViewController {
+            return findTabBarControllerInHierarchy(from: presentedVC)
+        }
+        
+        return nil
     }
     
     /// 确保TabBar可见的辅助方法

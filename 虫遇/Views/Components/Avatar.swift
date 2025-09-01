@@ -38,7 +38,6 @@ struct Avatar: View {
     // 缓存计算结果，避免重复计算
     @State private var cachedCleanCharacterId: String = ""
     @State private var cachedIsKnownCharacter: Bool = false
-    @State private var hasInitialized: Bool = false
     
     // 缓存控制
     @State private var cacheKey: String = UUID().uuidString
@@ -70,20 +69,19 @@ struct Avatar: View {
     
     // 判断是否为已知角色
     private var isKnownCharacter: Bool {
-        // 🔧 优化：使用缓存，避免重复计算
-        if !hasInitialized {
-            // 使用临时变量避免在计算属性中修改状态
-            let tempIsKnown = avatarService.isKnownCharacter(id: cleanCharacterId)
-            // 异步更新缓存状态，避免在计算属性中修改状态
-            DispatchQueue.main.async {
-                if !self.hasInitialized {
-                    self.cachedIsKnownCharacter = tempIsKnown
-                    self.hasInitialized = true
-                }
-            }
-            return tempIsKnown
+        // 🚀 性能优化：使用简单缓存机制，避免复杂状态管理
+        if cachedIsKnownCharacter {
+            return cachedIsKnownCharacter
         }
-        return cachedIsKnownCharacter
+        
+        let isKnown = avatarService.isKnownCharacter(id: cleanCharacterId)
+        
+        // 异步更新缓存，避免在计算属性中同步修改状态
+        DispatchQueue.main.async {
+            self.cachedIsKnownCharacter = isKnown
+        }
+        
+        return isKnown
     }
     
     // 判断是否为自定义角色
@@ -131,7 +129,6 @@ struct Avatar: View {
                 avatarService.getAvatarView(for: cleanCharacterId, name: name, category: category, size: size, useCaching: useCaching)
                     .contentShape(Circle()) // 确保头像可点击
                     .allowsHitTesting(true) // 明确允许点击事件
-                    .onAppear(perform: preloadAvatar)
             } else if url.starts(with: "http") {
                 // 远程URL图片 - 使用缓存加载
                 CachedImage(url: url, placeholder: Image(systemName: "person.circle.fill"))
@@ -142,8 +139,6 @@ struct Avatar: View {
                             .stroke(borderColor, lineWidth: borderWidth)
                     )
                     .contentShape(Circle()) // 确保头像可点击
-                    .allowsHitTesting(true) // 明确允许点击事件
-                    .onAppear(perform: preloadAvatar)
                     .allowsHitTesting(true) // 明确允许点击事件
             } else if url.contains(".") {
                 // 本地图片 (通常是文件名带后缀)
@@ -158,16 +153,7 @@ struct Avatar: View {
             }
         }
         .onAppear {
-            // 🔧 优化：只在首次加载时输出日志，避免重复
-            if !hasInitialized {
-                print("🔄 Avatar - 组件加载: URL=\(url), name=\(name)")
-                // 异步更新状态，避免在视图更新期间修改状态
-                DispatchQueue.main.async {
-                    self.hasInitialized = true
-                }
-            }
-            
-            // 尝试加载自定义头像
+            // 🚀 性能优化：仅在必要时加载自定义头像，移除日志输出
             if isCustomCharacter || url == "default_avatar" {
                 loadCustomAvatar()
             }

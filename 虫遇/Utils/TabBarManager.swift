@@ -26,6 +26,18 @@ class TabBarManager: ObservableObject {
     /// 隐藏状态栈 - 用于管理嵌套页面的TabBar状态
     var hideStateStack: [Bool] = []
     
+    /// 🚀 性能优化：缓存TabBarController引用
+    private weak var cachedTabBarController: UITabBarController?
+    
+    /// 🚀 性能优化：缓存失效标记
+    private var cacheInvalidated: Bool = false
+    
+    /// 🚀 性能优化：上次搜索时间戳，用于防抖
+    private var lastSearchTime: TimeInterval = 0
+    
+    /// 🚀 性能优化：搜索防抖间隔（秒）
+    private let searchDebounceInterval: TimeInterval = 0.1
+    
     /// 获取完整的底部区域高度（TabBar + 安全区域）
     var fullBottomAreaHeight: CGFloat {
         return isVisible ? (tabBarHeight + bottomSafeAreaHeight) : 0
@@ -51,6 +63,21 @@ class TabBarManager: ObservableObject {
     private init() {
         // 获取初始安全区域高度
         setupSafeAreaHeight()
+        
+        // 🚀 性能优化：监听场景变化，及时清除缓存
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(invalidateTabBarCache),
+            name: UIScene.willConnectNotification,
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(invalidateTabBarCache),
+            name: UIScene.didDisconnectNotification,
+            object: nil
+        )
         
         // 监听屏幕旋转和应用状态变化重新计算安全区域
         NotificationCenter.default.addObserver(
@@ -174,9 +201,9 @@ class TabBarManager: ObservableObject {
                     self.heightConstraint = nil
                 }
                 
-                // 给TabBar添加零高度约束，避免重复添加
+                // 🔧 给TabBar添加零高度约束，使用优先级999避免与系统约束冲突
                 let newHeightConstraint = tabBarController.tabBar.heightAnchor.constraint(equalToConstant: 0)
-                newHeightConstraint.priority = .required
+                newHeightConstraint.priority = UILayoutPriority(999) // 稍低于required(1000)，避免冲突
                 newHeightConstraint.isActive = true
                 self.heightConstraint = newHeightConstraint
                 
@@ -352,8 +379,52 @@ class TabBarManager: ObservableObject {
         }
     }
     
-    /// 查找TabBarController
+    /// 🚀 性能优化：智能获取TabBarController（使用缓存）
     private func findTabBarController() -> UITabBarController? {
+        #if DEBUG
+        searchCount += 1
+        #endif
+        
+        // 防抖：避免短时间内重复搜索
+        let currentTime = CACurrentMediaTime()
+        if currentTime - lastSearchTime < searchDebounceInterval && cachedTabBarController != nil {
+            #if DEBUG
+            cacheHitCount += 1
+            #endif
+            return cachedTabBarController
+        }
+        
+        // 如果缓存有效且存在，直接返回
+        if !cacheInvalidated, let cached = cachedTabBarController {
+            #if DEBUG
+            cacheHitCount += 1
+            if debugModeEnabled {
+                print("🚀 缓存命中，避免了递归搜索")
+            }
+            #endif
+            return cached
+        }
+        
+        // 执行搜索并更新缓存
+        let tabBarController = performTabBarControllerSearch()
+        
+        // 更新缓存
+        cachedTabBarController = tabBarController
+        cacheInvalidated = false
+        lastSearchTime = currentTime
+        
+        #if DEBUG
+        if debugModeEnabled {
+            print("🔍 执行了递归搜索，结果已缓存")
+            printPerformanceStats()
+        }
+        #endif
+        
+        return tabBarController
+    }
+    
+    /// 🚀 性能优化：实际执行TabBarController搜索的方法
+    private func performTabBarControllerSearch() -> UITabBarController? {
         if #available(iOS 15.0, *) {
             let windowScenes = UIApplication.shared.connectedScenes
                 .filter { $0.activationState == .foregroundActive }
@@ -371,6 +442,36 @@ class TabBarManager: ObservableObject {
             }
         }
         return nil
+    }
+    
+    /// 🚀 性能优化：缓存失效方法
+    @objc private func invalidateTabBarCache() {
+        cachedTabBarController = nil
+        cacheInvalidated = true
+        
+        #if DEBUG
+        if debugModeEnabled {
+            print("🚀 TabBarController缓存已失效")
+        }
+        #endif
+    }
+    
+    /// 🚀 最优性能方案：直接设置TabBarController引用
+    /// 这个方法应该在AppTabView中调用，避免所有递归搜索
+    public func setTabBarController(_ tabBarController: UITabBarController) {
+        cachedTabBarController = tabBarController
+        cacheInvalidated = false
+        
+        #if DEBUG
+        if debugModeEnabled {
+            print("🚀 TabBarController直接引用已设置，性能优化生效")
+        }
+        #endif
+    }
+    
+    /// 🚀 性能检查：获取当前缓存状态
+    public var hasCachedTabBarController: Bool {
+        return cachedTabBarController != nil && !cacheInvalidated
     }
     
     /// 递归查找TabBarController
@@ -1014,24 +1115,41 @@ class TabBarManager: ObservableObject {
     /// 打印当前堆栈状态 - 仅在调试模式可用
     func printStackState() {
         if debugModeEnabled {
-            print("TabBar堆栈状态: 深度 \(hideStateStack.count)")
-            print("TabBar可见性: \(isVisible ? "可见" : "隐藏")")
-            print("TabBar完全隐藏: \(isFullyHidden ? "是" : "否")")
+            print("📊 TabBar状态报告:")
+            print("  ├─ 堆栈深度: \(hideStateStack.count)")
+            print("  ├─ 可见性: \(isVisible ? "✅ 可见" : "❌ 隐藏")")
+            print("  ├─ 完全隐藏: \(isFullyHidden ? "❌ 是" : "✅ 否")")
+            print("  ├─ 缓存状态: \(hasCachedTabBarController ? "🚀 已缓存" : "⚠️ 未缓存")")
+            print("  └─ 浮动按钮: \(showFloatingButtons ? "✅ 显示" : "❌ 隐藏")")
         }
     }
 
     /// 启用调试模式
     func enableDebugMode() {
         debugModeEnabled = true
-        print("TabBar调试模式已启用")
+        print("🐛 TabBar调试模式已启用")
         printStackState()
     }
 
     /// 重置并打印状态
     func resetAndPrintState() {
         showImmediately()
-        print("TabBar已强制重置并显示")
+        print("🔄 TabBar已强制重置并显示")
         printStackState()
+    }
+    
+    /// 🚀 性能统计：获取缓存命中率等信息
+    private var searchCount: Int = 0
+    private var cacheHitCount: Int = 0
+    
+    func printPerformanceStats() {
+        if debugModeEnabled && searchCount > 0 {
+            let hitRate = Double(cacheHitCount) / Double(searchCount) * 100
+            print("🚀 性能统计:")
+            print("  ├─ 搜索总次数: \(searchCount)")
+            print("  ├─ 缓存命中: \(cacheHitCount)")
+            print("  └─ 命中率: \(String(format: "%.1f", hitRate))%")
+        }
     }
     #endif
     

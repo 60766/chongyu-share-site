@@ -750,17 +750,7 @@ struct PostCardView: View {
         return max(1, Int(ceil(Double(text.count) / Double(averageCharsPerLine))))
     }
     
-    // 新增：智能初始化CommentLoader
-    private func smartInitializeCommentLoader() {
-        // 🔧 修复：避免重复初始化CommentLoader
-        // 只有当CommentLoader未初始化或帖子ID发生变化时才初始化
-        guard let loader = commentLoader else { return }
-        
-        if !loader.isInitialized || !loader.isForPost(post.id) {
-            // 减少日志输出，只在真正需要初始化时输出
-            loader.initialize(with: post.comments, postID: post.id)
-        }
-    }
+
     
     // 新增：评论预览获取逻辑
     private var previewComments: [DetailedCommentModel] {
@@ -909,25 +899,15 @@ struct PostCardView: View {
             }
         }
         .onAppear {
-            // 🔧 优化：避免重复初始化CommentLoader
+            // 🚀 性能优化：仅在必要时初始化CommentLoader
             if commentLoader == nil {
                 commentLoader = CommentLoaderManager.shared.getLoader(for: post.id)
-                // 🔧 优化：只在首次初始化时输出日志
-        
             }
             
-            // 🔧 优化：使用智能初始化方法，避免重复初始化CommentLoader
-            smartInitializeCommentLoader()
-            
-            // 只在详情模式下预加载评论
+            // 🚀 性能优化：只在详情模式下才预加载评论，避免不必要的网络请求
             if displayMode == .detail && showCommentSection {
-                // 🔧 修复：使用guard let安全处理commentLoader
-                guard let loader = commentLoader else { return }
-                loader.loadNextPage()
+                commentLoader?.loadNextPage()
             }
-            
-            // 🔧 优化：减少重复的用户头像日志输出
-            // print("🔍 PostCardView - 用户头像URL: \(post.userAvatarURL), 用户名: \(post.username)")
         }
         .onDisappear {
             // 可以在这里进行清理，但由于使用全局管理器，暂时不需要特殊处理

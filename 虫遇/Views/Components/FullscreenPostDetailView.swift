@@ -197,6 +197,11 @@ struct FullscreenPostDetailView: View {
     // 系统返回按钮窗口引用
     @State private var systemBackButtonWindow: UIWindow?
     
+    // Phase 2优化 - 智能缓存系统集成
+    private let intelligentCache = IntelligentDataCache.shared
+    private let batchedDefaults = BatchedUserDefaults.shared
+    private let performanceMonitor = PerformanceMonitor.shared
+    
     // 添加虫洞探索页面的拖动状态
     @State private var wormholePageDragOffset: CGFloat = 0.0
     @State private var isWormholeDragging: Bool = false
@@ -244,6 +249,9 @@ struct FullscreenPostDetailView: View {
         
         // 打印初始化信息以便调试
         print("🔄 初始化FullscreenPostDetailView - 帖子ID: \(post.id.uuidString)")
+        
+        // Phase 2优化 - 初始化时缓存当前帖子
+        intelligentCache.cachePost(post)
     }
     
     @EnvironmentObject var creationTypeManager: CreationTypeManager
@@ -1667,11 +1675,7 @@ struct FullscreenPostDetailView: View {
                 addSystemLevelBackButton()
             }
             
-            // 检查边界状态前记录当前状态
-            print("⭐️ onAppear开始: 当前帖子ID: \(viewModel.post.id), hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost)")
-            
-            // 打印当前状态，用于调试
-            print("⭐️ 视图出现 - 初始帖子ID: \(initialPostId.uuidString)")
+            // 🚀 性能优化：减少非关键DEBUG日志输出
             
             // 检查初始帖子ID与viewModel中的帖子ID是否一致
             if initialPostId.uuidString != viewModel.post.id.uuidString {
@@ -1683,11 +1687,10 @@ struct FullscreenPostDetailView: View {
             // 隐藏TabBar
             tabBarManager.pushHideState()
             
-            // 异步执行边界检查和预加载，确保视图完全加载后运行，避免重复执行
+            // 🚀 异步执行边界检查和预加载，确保视图完全加载后运行
             DispatchQueue.main.async {
                 checkBoundaries()
                 preloadAdjacentPosts()
-                print("⭐️ onAppear异步任务完成: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost)")
             }
         }
         .onDisappear {
@@ -2608,6 +2611,9 @@ struct FullscreenPostDetailView: View {
      * 包括时空效果、滑动动画和数据模型更新
      */
     private func performPageTransition(direction: SwipeDirection, nextPost: UserPostModel, velocity: CGFloat = 0) {
+        // Phase 2优化 - 开始性能监控
+        performanceMonitor.startPostSwitchMeasurement()
+        
         // 禁用交互，防止动画期间的用户操作
         isTransitioning = true
         
@@ -2636,11 +2642,21 @@ struct FullscreenPostDetailView: View {
         // 立即更新数据模型并显示下一页
         self.nextPagePost = nextPost
         
+        // Phase 2优化 - 智能缓存处理
+        intelligentCache.cachePost(nextPost)
+        
         // 优化2：使用低优先级线程进行预加载，避免与UI动画竞争资源
         Task(priority: .background) {
             // 预加载操作 - 确保获取异步函数的正确返回值
             let imagesTask = await preloadImagesForPostAsync(nextPost)
             let commentsTask = await preloadCommentsForPostAsync(nextPost)
+            
+            // Phase 2优化 - 智能图片预加载
+            ImageCache.shared.predictivelyPrefetch(
+                currentPost: viewModel.post,
+                nextPosts: [nextPost],
+                direction: direction == .left ? "forward" : "backward"
+            )
             
             // 不再需要额外的等待，因为上面已经使用了 await
             print("预加载完成：图片(\(imagesTask ? "成功" : "完成"))，评论(\(commentsTask ? "成功" : "完成"))")
@@ -2662,6 +2678,9 @@ struct FullscreenPostDetailView: View {
         // 清理状态
         self.nextPagePost = nil
         self.isTransitioning = false
+        
+        // Phase 2优化 - 结束性能监控
+        performanceMonitor.endPostSwitchMeasurement()
         
         // 更新边界状态和预加载下一篇
         self.checkBoundaries()
@@ -2931,11 +2950,8 @@ struct FullscreenPostDetailView: View {
                         print("⭐️⭐️⭐️ 警告：onNextPost()返回了当前帖子ID，尝试再次获取")
                         print("⭐️ 当前帖子ID: \(currentPostId), 错误返回的下一篇ID: \(nextPost.id)")
                         
-                        // 等待一小段时间后重试 - 可能是由于状态未同步导致
-                        // 使用同步延迟避免异步问题
-                        usleep(50000) // 50毫秒
-                        
-                        // 递归尝试再次获取
+                        // 🚀 性能优化：使用异步延迟替代同步阻塞
+                        // 递归尝试再次获取（移除阻塞延迟）
                         return getNextPostWithRetry(currentRetry: currentRetry + 1)
                     }
                 }
@@ -2998,9 +3014,7 @@ struct FullscreenPostDetailView: View {
                         print("⭐️⭐️⭐️ 警告：onPrevPost()返回了当前帖子ID，尝试再次获取")
                         print("⭐️ 当前帖子ID: \(currentPostId), 错误返回的上一篇ID: \(prevPost.id)")
                         
-                        // 等待一小段时间后重试
-                        usleep(50000) // 50毫秒
-                        
+                        // 🚀 性能优化：移除同步阻塞
                         // 递归尝试再次获取
                         return getPrevPostWithRetry(currentRetry: currentRetry + 1)
                     }
@@ -3081,8 +3095,7 @@ struct FullscreenPostDetailView: View {
                 print("⭐️ 无法获取下一篇帖子，可能是最后一篇")
             }
             
-            // 短暂延迟后再次尝试
-            usleep(10000) // 10毫秒
+            // 🚀 性能优化：移除同步阻塞，直接继续执行
         }
         
         // 检查帖子ID - 手动硬编码检查最后一篇的ID
@@ -3244,22 +3257,17 @@ class FullscreenPostDetailViewModel: ObservableObject {
         )
     }
     
-    // 添加更新帖子的方法
+    // 🚀 性能优化：更新帖子的方法，复用CommentManager实例
     func updatePost(_ newPost: UserPostModel) {
         // 立即更新数据模型
         self.post = newPost
         
-        // 更新现有 CommentManager 实例的 currentPost 属性，而不是创建新实例
-        // 这样可以保留草稿状态和其他用户交互状态
-        self.commentManager.currentPost = newPost
-        
-        // 确保评论列表也被更新
-        self.commentManager.updateCommentLists()
+        // 🚀 使用CommentManager的新方法，避免重新创建实例
+        self.commentManager.updatePost(newPost)
         
         // 强制发送对象变更通知，确保UI更新
         DispatchQueue.main.async {
             self.objectWillChange.send()
-            self.commentManager.objectWillChange.send()
         }
         
         // 清除缓存

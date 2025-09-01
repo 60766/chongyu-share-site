@@ -1184,41 +1184,31 @@ struct HomeView: View {
                 }
             }
             .onAppear {
-                // 更新顶部角色栏
+                // 🚀 轻量化onAppear，避免页面切换卡顿
+                
+                // 立即更新顶部角色栏（轻量操作）
                 updateTopCharacters()
 
-                // 确保数据存在
+                // 立即确保数据存在（轻量操作）
                 postViewModel.ensureDataExists()
                 
-                // 在视图重新出现时添加延迟检查，防止切换回来显示空白
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                // 立即触发内容出现状态，无需动画延迟
+                contentAppeared = true
+                
+                // 延迟执行重型操作，不阻塞页面切换
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     // 二次确认数据存在
                     if postViewModel.posts.isEmpty {
                         postViewModel.posts = ModelData.samplePosts
-                        // 不再强制刷新，让SwiftUI自然处理数据变化
-                        // forceRefreshID = UUID()
                     }
+                    
+                    // 延迟注册订阅，避免阻塞主线程
+                    postViewModel.objectWillChange
+                        .sink { _ in
+                            // SwiftUI自然处理数据变化
+                        }
+                        .store(in: &cancellables)
                 }
-                
-                // 内容出现动画
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    withAnimation(.easeOut(duration: 0.5)) {
-                        contentAppeared = true
-                    }
-                }
-                
-                // 注册为publisher的订阅者，确保数据变化时能收到通知
-                postViewModel.objectWillChange
-                    .sink { _ in
-                        // 不再强制刷新视图，让SwiftUI自然处理数据变化
-                        // forceRefreshID = UUID()
-                    }
-                    .store(in: &cancellables)
-                
-                // 移除定时刷新机制，让SwiftUI自然管理视图更新
-                // DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                //     forceRefreshID = UUID()
-                // }
             }
             .onDisappear {
                 // 在视图消失时清理资源

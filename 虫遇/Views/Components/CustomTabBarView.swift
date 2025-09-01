@@ -230,7 +230,7 @@ struct TimePortalIcon: View {
     @State private var lastSelected: Bool = false
     
     var body: some View {
-        TimelineView(.animation) { timeline in
+        TimelineView(.periodic(from: .now, by: 0.1)) { timeline in
             // 在每一帧更新角度
             let now = timeline.date
             let elapsed = now.timeIntervalSince(lastUpdateTime)
@@ -318,10 +318,9 @@ struct TimePortalIcon: View {
                 }
             }
             .onChange(of: timeline.date) { _, newDate in
-                // 防抖：避免同一帧内多次更新
+                // 🚀 性能优化：降低更新频率，防止过度刷新
                 let timeSinceLastUpdate = newDate.timeIntervalSince(lastUpdateTime)
-                if abs(timeSinceLastUpdate) > 0.016 { // ~60fps阈值
-                    // 保存当前时间作为下一帧的参考
+                if abs(timeSinceLastUpdate) > 0.1 { // 降低到10fps，减少性能开销
                     lastUpdateTime = newDate
                     // 更新存储的角度值，确保在0-360范围内
                     rotationAngle = currentAngle.truncatingRemainder(dividingBy: 360)

@@ -648,35 +648,47 @@ struct ExploreView: View {
             }
         }
         .onAppear {
-            loadAllCharacters()
-            loadRecentInteractions() // 加载最近互动数据
-            loadFavoriteCharacters() // 加载关注列表
-            loadHiddenCharacters() // 加载隐藏角色
-            loadPinnedCharacters() // 加载置顶角色列表
-            // 确保TabBar可见
+            // 🚀 轻量化onAppear，避免页面切换卡顿
+            // 只在真正需要时进行数据加载
+            if characters.isEmpty {
+                // 快速同步加载核心数据，避免异步阻塞
+                loadAllCharactersSync()
+                
+                // 延迟加载辅助数据，不阻塞页面切换
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    Task {
+                        await loadAuxiliaryDataConcurrently()
+                    }
+                }
+            }
+            
+            // 🔧 通知监听器优化 - 使用防抖机制
+            setupOptimizedNotificationListeners()
+            
+            // 🔧 确保TabBar可见（立即执行，无需异步）
             tabBarManager.ensureTabBarVisible()
-            
-            // 添加通知监听，当收到关注状态变化通知时更新UI
-            NotificationCenter.default.addObserver(forName: Notification.Name("FavoriteStatusChanged"), object: nil, queue: .main) { _ in
-                // 收到通知后，重新加载关注列表
-                self.loadFavoriteCharacters()
-            }
-            
-            // 添加通知监听，当创建新角色时更新UI
-            NotificationCenter.default.addObserver(forName: Notification.Name("CharacterCreated"), object: nil, queue: .main) { _ in
-                // 收到通知后，重新加载所有角色
-                self.loadAllCharacters()
-            }
         }
         .onDisappear {
+            // 🔧 取消正在进行的异步任务，避免内存泄漏
+            favoriteUpdateTask?.cancel()
+            characterCreatedTask?.cancel()
+            
             // 移除通知监听，避免内存泄漏
             NotificationCenter.default.removeObserver(self, name: Notification.Name("FavoriteStatusChanged"), object: nil)
             NotificationCenter.default.removeObserver(self, name: Notification.Name("CharacterCreated"), object: nil)
         }
     }
     
-    // 加载所有角色
+    // 加载所有角色 - 保持兼容性，同时支持异步优化
     private func loadAllCharacters() {
+        // 🚀 优化：直接使用异步加载，避免线程检查导致的问题
+        Task {
+            await loadCoreDataImmediately()
+        }
+    }
+    
+    /// 同步版本的加载所有角色（向后兼容）
+    private func loadAllCharactersSync() {
         // 加载预定义角色
         var allCharacters = CharacterModel.getAllCharacters()
         
@@ -688,8 +700,6 @@ struct ExploreView: View {
         
         // 更新角色列表
         self.characters = allCharacters
-        
-
     }
     
     // 完整重新实现improvedCharacterCard方法
@@ -1336,6 +1346,215 @@ struct ExploreView: View {
         
         // 重新排序角色列表，让置顶角色显示在前面
         // 不需要重新加载所有角色，因为filteredCharacters和displayCharacters会根据置顶状态重新排序
+    }
+
+    // MARK: - 🚀 异步数据加载优化
+    
+    /// 异步并发数据加载 - 保持现有功能和效果
+    private func loadDataAsynchronously() {
+        Task {
+            // 🎯 第一阶段：立即加载核心数据（角色列表）
+            // 这是用户最先看到的内容，需要优先加载
+            await loadCoreDataImmediately()
+            
+            // 🎯 第二阶段：并发加载辅助数据
+            // 这些数据影响筛选和状态，但不阻塞初始显示
+            await loadAuxiliaryDataConcurrently()
+        }
+    }
+
+    /// 第一阶段：立即加载核心数据
+    private func loadCoreDataImmediately() async {
+        // 在后台线程加载角色数据
+        let loadedCharacters = await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                // 保持原有的加载逻辑
+                var allCharacters = CharacterModel.getAllCharacters()
+                
+                // 加载用户创建的角色
+                let userChars = self.loadUserCharactersSync()
+                allCharacters.append(contentsOf: userChars)
+                
+                continuation.resume(returning: allCharacters)
+            }
+        }
+        
+        // 在主线程更新UI
+        await MainActor.run {
+            self.characters = loadedCharacters
+            self.userCharacters = loadedCharacters.filter { $0.id.hasPrefix("custom_") }
+        }
+    }
+
+    /// 第二阶段：并发加载辅助数据
+    private func loadAuxiliaryDataConcurrently() async {
+        // 🚀 并发执行4个辅助数据加载任务
+        await withTaskGroup(of: Void.self) { group in
+            // 任务1：加载最近互动
+            group.addTask {
+                let interactions = await self.loadRecentInteractionsAsync()
+                await MainActor.run {
+                    self.recentInteractions = interactions
+                }
+            }
+            
+            // 任务2：加载关注列表
+            group.addTask {
+                let favorites = await self.loadFavoriteCharactersAsync()
+                await MainActor.run {
+                    self.favoriteCharacters = favorites
+                }
+            }
+            
+            // 任务3：加载隐藏角色
+            group.addTask {
+                let hidden = await self.loadHiddenCharactersAsync()
+                await MainActor.run {
+                    self.hiddenCharacters = hidden
+                }
+            }
+            
+            // 任务4：加载置顶角色
+            group.addTask {
+                let pinned = await self.loadPinnedCharactersAsync()
+                await MainActor.run {
+                    self.pinnedCharacters = pinned
+                }
+            }
+        }
+    }
+
+    // MARK: - 异步数据加载方法
+
+    /// 异步加载用户角色（保持原有逻辑）
+    private func loadUserCharactersSync() -> [CharacterModel] {
+        guard let data = UserDefaults.standard.data(forKey: "CustomCharactersData") else {
+            return []
+        }
+        
+        do {
+            if let characterDicts = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                var loadedCharacters: [CharacterModel] = []
+                
+                for dict in characterDicts {
+                    if let id = dict["id"] as? String,
+                       let name = dict["name"] as? String,
+                       let avatar = dict["avatar"] as? String,
+                       let profession = dict["profession"] as? String,
+                       let bio = dict["bio"] as? String,
+                       let categoryRawValue = dict["category"] as? String,
+                       let era = dict["era"] as? String {
+                        
+                        let category = CharacterCategory(rawValue: categoryRawValue) ?? .fictionCharacter
+                        
+                        let character = CharacterModel(
+                            id: id,
+                            name: name,
+                            avatar: avatar,
+                            era: era,
+                            profession: profession,
+                            bio: bio,
+                            category: category
+                        )
+                        
+                        loadedCharacters.append(character)
+                    }
+                }
+                
+                return loadedCharacters
+            }
+        } catch {
+            print("加载自定义角色失败: \(error)")
+        }
+        
+        return []
+    }
+
+    /// 异步加载最近互动数据
+    private func loadRecentInteractionsAsync() async -> [CharacterInteraction] {
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                if let data = UserDefaults.standard.data(forKey: "recentInteractions"),
+                   let interactions = try? JSONDecoder().decode([CharacterInteraction].self, from: data) {
+                    continuation.resume(returning: interactions)
+                } else {
+                    continuation.resume(returning: [])
+                }
+            }
+        }
+    }
+
+    /// 异步加载关注角色数据
+    private func loadFavoriteCharactersAsync() async -> [String] {
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                if let savedFavorites = UserDefaults.standard.data(forKey: "favoriteCharacters"),
+                   let decoded = try? JSONDecoder().decode([String].self, from: savedFavorites) {
+                    continuation.resume(returning: decoded)
+                } else {
+                    continuation.resume(returning: [])
+                }
+            }
+        }
+    }
+
+    /// 异步加载隐藏角色数据
+    private func loadHiddenCharactersAsync() async -> [String] {
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                if let data = UserDefaults.standard.data(forKey: "HiddenCharacters"),
+                   let decodedIds = try? JSONDecoder().decode([String].self, from: data) {
+                    continuation.resume(returning: decodedIds)
+                } else {
+                    continuation.resume(returning: [])
+                }
+            }
+        }
+    }
+
+    /// 异步加载置顶角色数据
+    private func loadPinnedCharactersAsync() async -> [String] {
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                if let data = UserDefaults.standard.data(forKey: "PinnedCharacters"),
+                   let decodedIds = try? JSONDecoder().decode([String].self, from: data) {
+                    continuation.resume(returning: decodedIds)
+                } else {
+                    continuation.resume(returning: [])
+                }
+            }
+        }
+    }
+
+    // MARK: - 🔧 优化通知监听器
+    
+    // 🔧 将Task存储为实例变量，避免被过早释放
+    @State private var favoriteUpdateTask: Task<Void, Never>?
+    @State private var characterCreatedTask: Task<Void, Never>?
+
+    /// 设置优化的通知监听器（防抖机制）
+    private func setupOptimizedNotificationListeners() {
+        // 关注状态变化通知（300ms防抖）
+        NotificationCenter.default.addObserver(forName: Notification.Name("FavoriteStatusChanged"), object: nil, queue: .main) { _ in
+            favoriteUpdateTask?.cancel()
+            favoriteUpdateTask = Task {
+                try? await Task.sleep(nanoseconds: 300_000_000) // 300ms防抖
+                await MainActor.run {
+                    self.loadFavoriteCharacters()
+                }
+            }
+        }
+        
+        // 角色创建通知（500ms防抖）
+        NotificationCenter.default.addObserver(forName: Notification.Name("CharacterCreated"), object: nil, queue: .main) { _ in
+            characterCreatedTask?.cancel()
+            characterCreatedTask = Task {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 500ms防抖
+                await MainActor.run {
+                    self.loadAllCharacters()
+                }
+            }
+        }
     }
 }
 

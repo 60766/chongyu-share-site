@@ -131,4 +131,105 @@ struct CachedImage: View {
             }
         }.resume()
     }
+}
+
+// MARK: - Phase 2优化扩展
+
+extension ImageCache {
+    
+    /**
+     * 批量预加载帖子图片（智能优化）
+     */
+    func prefetchPostImages(posts: [UserPostModel]) {
+        downloadQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            print("🖼️ 开始批量预加载 \(posts.count) 个帖子的图片")
+            
+            for post in posts {
+                // 预加载所有图片
+                for imageURL in post.images {
+                    if !imageURL.isEmpty && self.getImage(for: imageURL) == nil {
+                        self.prefetchImage(url: imageURL, priority: 0.3)
+                    }
+                }
+                
+                // 预加载头像（如果有的话）
+                if !post.userAvatar.isEmpty {
+                    if self.getImage(for: post.userAvatar) == nil {
+                        self.prefetchImage(url: post.userAvatar, priority: 0.2)
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 智能内存优化
+     */
+    func optimizeMemoryUsage() {
+        downloadQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            // 获取当前内存使用情况
+            let processInfo = ProcessInfo.processInfo
+            let usedMemory = processInfo.physicalMemory
+            
+            // 如果内存使用过高，减少缓存限制
+            if usedMemory > 150 * 1024 * 1024 { // 150MB
+                self.cache.totalCostLimit = 30 * 1024 * 1024 // 降低到30MB
+                self.cache.countLimit = 50 // 降低图片数量
+                print("🧠 检测到内存压力，降低图片缓存限制")
+            } else {
+                // 恢复正常缓存限制
+                self.cache.totalCostLimit = 50 * 1024 * 1024
+                self.cache.countLimit = 100
+            }
+        }
+    }
+    
+    /**
+     * 预测性预加载（基于滑动方向）
+     */
+    func predictivelyPrefetch(currentPost: UserPostModel, nextPosts: [UserPostModel], direction: String) {
+        downloadQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            let prefetchCount = direction == "forward" ? 3 : 2 // 向前预加载更多
+            let postsToLoad = Array(nextPosts.prefix(prefetchCount))
+            
+            for post in postsToLoad {
+                for imageURL in post.images {
+                    if !imageURL.isEmpty && self.getImage(for: imageURL) == nil {
+                        self.prefetchImage(url: imageURL, priority: 0.4)
+                    }
+                }
+            }
+            
+            print("🔮 预测性预加载: \(postsToLoad.count) 个帖子，方向: \(direction)")
+        }
+    }
+    
+    /**
+     * 获取缓存统计信息
+     */
+    func getCacheStats() -> (count: Int, size: Int, limit: Int) {
+        return (
+            count: cache.countLimit,
+            size: cache.totalCostLimit,
+            limit: cache.totalCostLimit
+        )
+    }
+    
+    /**
+     * 打印缓存统计
+     */
+    func printCacheStats() {
+        let stats = getCacheStats()
+        print("""
+        🖼️ 图片缓存统计:
+        - 缓存限制: \(stats.count) 张图片
+        - 大小限制: \(stats.size / (1024*1024)) MB
+        """)
+    }
 } 

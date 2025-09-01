@@ -81,6 +81,10 @@ class CommentManager: ObservableObject {
     private var protectedCommentIds: Set<UUID> = []
     private let commentProtectionQueue = DispatchQueue(label: "comment.protection", qos: .userInitiated)
     
+    // Phase 2优化 - 智能缓存系统集成
+    private let intelligentCache = IntelligentDataCache.shared
+    private let batchedDefaults = BatchedUserDefaults.shared
+    
     /**
      * 初始化评论管理器
      * @param post 当前帖子
@@ -92,14 +96,24 @@ class CommentManager: ObservableObject {
         self.currentUsername = username
         self.currentUserAvatar = userAvatar
         
+        // 🚀 优化：异步执行重量级初始化操作
+        DispatchQueue.main.async {
         // 初始化评论列表
-        updateCommentLists()
+            self.updateCommentLists()
+            
+            // Phase 2优化 - 尝试从缓存加载评论
+            if let cachedComments = self.intelligentCache.getComments(for: post.id) {
+                print("📈 评论缓存命中，直接使用缓存评论")
+                self.allComments = cachedComments
+                self.topLevelComments = cachedComments.filter { $0.parentCommentId == nil }
+            }
         
         // 加载所有已保存的草稿到内存字典
-        loadAllDraftsFromUserDefaults()
+            self.loadAllDraftsFromUserDefaults()
         
         // 恢复当前帖子的草稿内容
-        loadDraftForCurrentPost()
+            self.loadDraftForCurrentPost()
+        }
         
         // 添加对清除草稿通知的监听
         NotificationCenter.default.addObserver(
@@ -147,7 +161,8 @@ class CommentManager: ObservableObject {
             }
         }
         
-        print("📝 已从 UserDefaults 加载 \(draftDictionary.count) 个草稿和 \(userClearedDictionary.count) 个清除标记")
+        // 🚀 性能优化：减少非关键日志输出
+        // print("📝 已从 UserDefaults 加载 \(draftDictionary.count) 个草稿和 \(userClearedDictionary.count) 个清除标记")
     }
     
     /**
@@ -268,19 +283,20 @@ class CommentManager: ObservableObject {
         
         // 如果文本为空，则删除草稿
         if text.isEmpty {
-            UserDefaults.standard.removeObject(forKey: draftKey)
+            // Phase 2优化 - 使用批量UserDefaults
+            batchedDefaults.removeValue(forKey: draftKey)
             draftDictionary.removeValue(forKey: currentPost.id)
         } else {
-            // 否则保存草稿到 UserDefaults 和内存字典
-            UserDefaults.standard.set(text, forKey: draftKey)
+            // Phase 2优化 - 使用批量UserDefaults保存草稿
+            batchedDefaults.setString(text, forKey: draftKey)
             draftDictionary[currentPost.id] = text
             
             // 如果用户开始输入新内容，清除"用户已明确清除草稿"的标记
-            UserDefaults.standard.removeObject(forKey: userClearedKey)
+            batchedDefaults.removeValue(forKey: userClearedKey)
             userClearedDictionary[currentPost.id] = false
             
-            // 立即同步UserDefaults，确保数据被保存
-            UserDefaults.standard.synchronize()
+            // 注释掉立即同步，使用批量写入机制
+            // UserDefaults.standard.synchronize()
         }
     }
     
@@ -318,32 +334,33 @@ class CommentManager: ObservableObject {
     
     /**
      * 更新评论列表（严格对话流排序）
+     * 🚀 性能优化：移除DEBUG日志，优化算法效率
      */
     func updateCommentLists() {
         let allCommentsArray = currentPost.comments
-        print("==== DEBUG: currentPost.comments ====")
-        for c in allCommentsArray {
-            print("id=\(c.id), parentCommentId=\(String(describing: c.parentCommentId)), user=\(c.username), content=\(c.content)")
-        }
-        print("==== END ====")
         
         // 首先获取所有顶级评论并按时间倒序排序（新的在上方）
         let topLevelComments = allCommentsArray
             .filter { $0.parentCommentId == nil }
             .sorted { $0.datePosted > $1.datePosted }
         
+        // 🚀 优化：构建父子关系映射，避免重复遍历
+        let repliesMap = Dictionary(grouping: allCommentsArray.filter { $0.parentCommentId != nil }) { comment in
+            comment.parentCommentId!
+        }
+        
         // 递归平铺：每个评论后紧跟所有直接回复它的评论（同级按时间正序）
         func flatten(comment: DetailedCommentModel) -> [DetailedCommentModel] {
-            // 获取直接回复该评论的所有评论，并按时间正序排列
-            let directReplies = allCommentsArray
-                .filter { $0.parentCommentId == comment.id }
-                .sorted { $0.datePosted < $1.datePosted }
-            
             var result: [DetailedCommentModel] = [comment]
             
+            // 从映射表获取直接回复，并按时间正序排列
+            if let directReplies = repliesMap[comment.id] {
+                let sortedReplies = directReplies.sorted { $0.datePosted < $1.datePosted }
+            
             // 对每个直接回复，递归获取其所有子回复
-            for reply in directReplies {
+                for reply in sortedReplies {
                 result.append(contentsOf: flatten(comment: reply))
+                }
             }
             
             return result
@@ -355,14 +372,11 @@ class CommentManager: ObservableObject {
             flat.append(contentsOf: flatten(comment: topComment))
         }
         
-        print("==== DEBUG: allComments (平铺后) ====")
-        for c in flat {
-            print("id=\(c.id), parentCommentId=\(String(describing: c.parentCommentId)), user=\(c.username), content=\(c.content)")
-        }
-        print("==== END ====")
-        
         self.allComments = flat
         self.topLevelComments = topLevelComments
+        
+        // Phase 2优化 - 更新评论缓存
+        intelligentCache.cacheComments(flat, for: currentPost.id)
     }
     
     /**
@@ -1733,6 +1747,30 @@ class CommentManager: ObservableObject {
                 print("🔄 恢复丢失的虚拟角色评论: \(expectedComment.username)")
                 addCommentSafely(expectedComment)
             }
+        }
+    }
+    
+    /**
+     * 更新帖子数据而不重新创建CommentManager
+     * 🚀 性能优化：复用现有实例，避免重复初始化
+     */
+    func updatePost(_ newPost: UserPostModel) {
+        // 保存当前帖子的草稿
+        if !commentText.isEmpty && currentPost.id != newPost.id {
+            draftDictionary[currentPost.id] = commentText
+            saveDraft(commentText)
+        }
+        
+        // 更新帖子数据
+        self.currentPost = newPost
+        
+        // 清除回复状态，确保切换帖子后不会保留上一个帖子的回复状态
+        replyingToComment = nil
+        
+        // 异步更新评论列表和加载草稿
+        DispatchQueue.main.async {
+            self.updateCommentLists()
+            self.loadDraftForCurrentPost()
         }
     }
 }
