@@ -91,7 +91,7 @@ class CommentManager: ObservableObject {
      * @param username 当前用户名
      * @param userAvatar 当前用户头像
      */
-    init(post: UserPostModel, username: String = "当前用户", userAvatar: String = "user_avatar") {
+    init(post: UserPostModel, username: String = UserProfileManager.shared.getCurrentUsername(), userAvatar: String = UserProfileManager.shared.getCurrentAvatarURL()) {
         self.currentPost = post
         self.currentUsername = username
         self.currentUserAvatar = userAvatar
@@ -535,13 +535,22 @@ class CommentManager: ObservableObject {
                         "newCommentId": newCommentId.uuidString,
                         "parentCommentId": rootCommentId.uuidString,
                         "immediateDisplay": true,
-                        "preventScroll": true // 确保不会滚动页面
+                        "preventScroll": true, // 确保不会滚动页面
+                        "isCurrentUserComment": true, // 标记这是当前用户的评论
+                        "isVirtualCharacter": false // 标记这不是虚拟角色评论
                     ]
                 )
                 
                 // 检查是否回复的是虚拟角色的评论
                 if replyTo.isVirtualCharacter {
                     print("🤖 检测到回复的是虚拟角色评论，将触发针对性回复")
+                    
+                    // 发送显示加载动画的通知
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("ShowLoadingAnimation"),
+                        object: nil,
+                        userInfo: ["commentId": newCommentId.uuidString]
+                    )
                     
                     // 获取虚拟角色ID
                     if let characterID = replyTo.characterID {
@@ -588,7 +597,9 @@ class CommentManager: ObservableObject {
                         "preventCollapse": true,
                         "newCommentId": newCommentId.uuidString,
                         "immediateDisplay": true,
-                        "preventScroll": true // 确保不会滚动页面
+                        "preventScroll": true, // 确保不会滚动页面
+                        "isCurrentUserComment": true, // 标记这是当前用户的评论
+                        "isVirtualCharacter": false // 标记这不是虚拟角色评论
                     ]
                 )
         
@@ -906,8 +917,15 @@ class CommentManager: ObservableObject {
                                     // self.debugCommentState()
                                     // self.restoreLostVirtualComments()
                                     
+                                                                // 隐藏加载动画
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("HideLoadingAnimation"),
+                                object: nil,
+                                userInfo: ["commentId": targetCommentID.uuidString]
+                            )
+                                    
                                     // 直接添加到虫洞通知
-                                                                    NotificationService.shared.createCommentNotification(
+                                    NotificationService.shared.createCommentNotification(
                                     characterId: characterID,
                                     characterName: characterDisplayName,
                                     characterAvatar: characterAvatar,
@@ -1119,6 +1137,13 @@ class CommentManager: ObservableObject {
                             
                             // 确保评论可见（展开评论链）
                             self.ensureReplyVisible(commentId: rootCommentId)
+                            
+                            // 隐藏加载动画
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("HideLoadingAnimation"),
+                                object: nil,
+                                userInfo: ["commentId": parentCommentID.uuidString]
+                            )
                             
                             // 发送PreventScrollAfterSubmit通知，确保页面不会滚动
                             NotificationCenter.default.post(

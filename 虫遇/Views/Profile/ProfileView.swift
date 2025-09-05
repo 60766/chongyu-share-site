@@ -4,6 +4,11 @@ import UIKit
 import Combine
 import PhotosUI
 
+// 通知名称扩展
+extension Notification.Name {
+    static let userProfileUpdated = Notification.Name("userProfileUpdated")
+}
+
 // 用户资料管理服务
 class UserProfileManager: ObservableObject {
     static let shared = UserProfileManager()
@@ -59,6 +64,8 @@ class UserProfileManager: ObservableObject {
     func updateUsername(_ newUsername: String) {
         username = newUsername
         userDefaults.set(newUsername, forKey: usernameKey)
+        // 发送通知，通知其他组件用户信息已更新
+        NotificationCenter.default.post(name: .userProfileUpdated, object: nil)
     }
     
     func updatePersonalSignature(_ newSignature: String) {
@@ -73,6 +80,8 @@ class UserProfileManager: ObservableObject {
         
         // 保存图片到本地
         saveImageToDocuments(image, name: name)
+        // 发送通知，通知其他组件用户信息已更新
+        NotificationCenter.default.post(name: .userProfileUpdated, object: nil)
     }
     
     // MARK: - 等级系统核心方法
@@ -325,6 +334,16 @@ class UserProfileManager: ObservableObject {
         }
     }
     
+    private func loadImageFromDocuments(name: String) -> UIImage? {
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileURL = documentsDirectory.appendingPathComponent("\(name).jpg")
+        
+        if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
+            return image
+        }
+        return nil
+    }
+    
     func loadAvatarImage() -> UIImage? {
         if let image = avatarImage {
             return image
@@ -335,11 +354,60 @@ class UserProfileManager: ObservableObject {
         let fileURL = documentsDirectory.appendingPathComponent("\(avatarImageName).jpg")
         
         if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
-            avatarImage = image
+            // 使用DispatchQueue.main.async避免在视图更新期间发布更改
+            DispatchQueue.main.async {
+                self.avatarImage = image
+            }
             return image
         }
         
         return UIImage(named: avatarImageName)
+    }
+    
+    // MARK: - 公开的用户信息获取方法
+    
+    /// 获取当前用户名
+    func getCurrentUsername() -> String {
+        return username
+    }
+    
+    /// 获取当前用户头像名称
+    func getCurrentAvatarName() -> String {
+        return avatarImageName
+    }
+    
+    /// 获取当前用户头像图片
+    func getCurrentAvatarImage() -> UIImage? {
+        if let avatarImage = avatarImage {
+            return avatarImage
+        }
+        
+        // 尝试从文档目录加载
+        if let image = loadImageFromDocuments(name: avatarImageName) {
+            // 使用DispatchQueue.main.async避免在视图更新期间发布更改
+            DispatchQueue.main.async {
+                self.avatarImage = image
+            }
+            return image
+        }
+        
+        // 尝试从Bundle加载
+        if let bundleImage = UIImage(named: avatarImageName) {
+            return bundleImage
+        }
+        
+        return nil
+    }
+    
+    /// 获取用户头像URL字符串（优先返回自定义头像路径，否则返回默认头像名称）
+    func getCurrentAvatarURL() -> String {
+        // 如果有自定义头像，返回文档路径
+        if avatarImageName != "default_avatar", getCurrentAvatarImage() != nil {
+            return avatarImageName
+        }
+        
+        // 否则返回默认的系统图标
+        return "person.crop.circle.fill"
     }
 }
 
@@ -2114,7 +2182,7 @@ struct ProfileView: View {
                         .overlay(
                                 Text(String(relation.characterName.prefix(1)))
                                     .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.primaryColor)
+                                    .foregroundColor(DesignSystem.Colors.primary)
                         )
                     
                     VStack(alignment: .leading, spacing: 2) {
@@ -2131,7 +2199,7 @@ struct ProfileView: View {
                         
                         Text("\(relation.interactionCount)")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.primaryColor)
+                            .foregroundColor(DesignSystem.Colors.primary)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)

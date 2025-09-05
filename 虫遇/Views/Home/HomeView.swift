@@ -1538,6 +1538,10 @@ struct HomeView: View {
                 shareContent(content)
                 HapticFeedbackManager.shared.selectionChanged()
             },
+            onAddComment: { post, content, replyToId in
+                // 处理用户评论
+                handleAddComment(to: post, content: content, replyToId: replyToId)
+            },
             // 不指定maxPreviewLines和maxPreviewLength，使用PostCardView默认值
             // 这样列表页面也会使用相同的智能显示逻辑
             displayMode: .preview,
@@ -1800,12 +1804,13 @@ struct HomeView: View {
         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedContent.isEmpty else { return }
         
-        // 创建新评论
+        // 创建新评论 - 使用UserProfileManager的数据
         let _ = DetailedCommentModel(
-            username: "当前用户",  // 应该使用实际的当前用户名
-            userAvatar: "person.circle.fill",  // 应该使用实际的当前用户头像
+            username: UserProfileManager.shared.getCurrentUsername(),
+            userAvatar: UserProfileManager.shared.getCurrentAvatarURL(),
             content: trimmedContent,
             datePosted: Date(),
+            isCurrentUser: true,
             isVirtualCharacter: false,
             characterID: nil,
             likes: 0
@@ -1816,8 +1821,8 @@ struct HomeView: View {
             // 如果是回复评论
             if let replyID = replyingTo {
                 postViewModel.posts[index].addComment(
-                    username: "当前用户",
-                    userAvatar: "person.circle.fill",
+                    username: UserProfileManager.shared.getCurrentUsername(),
+                    userAvatar: UserProfileManager.shared.getCurrentAvatarURL(),
                     content: trimmedContent,
                     parentCommentId: replyID.id,
                     replyToUsername: replyID.username // 使用被回复评论的用户名
@@ -1825,8 +1830,8 @@ struct HomeView: View {
             } else {
                 // 直接添加评论
                 postViewModel.posts[index].addComment(
-                    username: "当前用户",
-                    userAvatar: "person.circle.fill",
+                    username: UserProfileManager.shared.getCurrentUsername(),
+                    userAvatar: UserProfileManager.shared.getCurrentAvatarURL(),
                     content: trimmedContent
                 )
             }
@@ -1842,6 +1847,20 @@ struct HomeView: View {
             if selectedPost?.id == post.id {
                 selectedPost = postViewModel.posts[index]
             }
+        }
+    }
+    
+    /**
+     * 处理添加评论
+     */
+    private func handleAddComment(to post: UserPostModel, content: String, replyToId: String?) {
+        // 直接使用postViewModel的addUserComment方法
+        if let replyToIdString = replyToId, let replyToUUID = UUID(uuidString: replyToIdString) {
+            // 如果是回复评论
+            postViewModel.addUserComment(to: post, content: content, replyToCommentID: replyToUUID)
+        } else {
+            // 如果是新评论
+            postViewModel.addUserComment(to: post, content: content)
         }
     }
     

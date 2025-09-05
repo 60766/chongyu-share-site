@@ -30,8 +30,22 @@ struct AvatarView: View {
             .onAppear {
                 print("🔍 AvatarView - 显示虚拟角色头像: \(characterID), 用户名: \(comment.username)")
             }
+        } else if comment.isCurrentUser {
+            // 当前用户评论使用UserProfileManager的数据
+            Avatar(
+                url: UserProfileManager.shared.getCurrentAvatarURL(),
+                name: UserProfileManager.shared.getCurrentUsername(),
+                size: size
+            )
+            .overlay(
+                Circle()
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
+                    )
+            .onAppear {
+                print("🔍 AvatarView - 显示当前用户头像: \(UserProfileManager.shared.getCurrentAvatarURL()), 用户名: \(UserProfileManager.shared.getCurrentUsername())")
+            }
         } else {
-            // 普通用户使用userAvatar
+            // 其他用户使用userAvatar
             Avatar(
                 url: comment.userAvatar,
                 name: comment.username,
@@ -42,7 +56,7 @@ struct AvatarView: View {
                     .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
                     )
             .onAppear {
-                print("🔍 AvatarView - 显示普通用户头像: \(comment.userAvatar), 用户名: \(comment.username)")
+                print("🔍 AvatarView - 显示其他用户头像: \(comment.userAvatar), 用户名: \(comment.username)")
             }
         }
     }

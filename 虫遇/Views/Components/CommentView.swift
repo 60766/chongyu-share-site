@@ -58,8 +58,8 @@ struct CommentView: View {
                     
                     // 用户名和标签区域
                     HStack(alignment: .top, spacing: 4) {
-                        // 用户名 - 使用中文名称而不是ID
-                        Text(getUserDisplayName(comment: comment))
+                        // 用户名 - 根据评论类型使用不同数据源
+                        Text(comment.isCurrentUser ? UserProfileManager.shared.getCurrentUsername() : getUserDisplayName(comment: comment))
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(.primary)
                         

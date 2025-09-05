@@ -288,7 +288,8 @@ struct CommentsListView: View {
     // 初始化点点动画状态 - 回归第一性原理：动画只显示在当前用户没有收到回复的评论上
     private func initializeWaveAnimationState() {
         // 获取当前用户名列表（可能的用户标识）
-        let currentUserNames = ["当前用户", "科学爱好者"]
+        let currentUsername = UserProfileManager.shared.getCurrentUsername()
+        let currentUserNames = ["当前用户", "科学爱好者", currentUsername] // 包含动态获取的当前用户名
         let currentUserId = UserDefaults.standard.string(forKey: "current_user_id") ?? ""
         
         // 创建一个映射，记录所有已收到回复的评论ID
@@ -400,30 +401,19 @@ struct CommentsListView: View {
     
     // 处理回复通知 - 增强版本
     private func handleReplyNotification(isVirtualCharacterReply: Bool, replyToUsername: String?, parentCommentId: UUID?) {
-        // 无论是什么类型的回复，都应该移除被回复评论的动画
-        if let commentId = parentCommentId {
-            commentsWithWaveAnimation.remove(commentId)
+        // 只有当虚拟角色回复当前用户时，才移除被回复评论的动画
+        if let commentId = parentCommentId, isVirtualCharacterReply {
+            // 检查被回复的是否是当前用户
+            let currentUsername = UserProfileManager.shared.getCurrentUsername()
+            if let replyUsername = replyToUsername, 
+               (replyUsername == currentUsername || replyUsername == "当前用户" || replyUsername == "科学爱好者") {
+                commentsWithWaveAnimation.remove(commentId)
+            }
         }
         
-        // 如果有回复目标用户名，移除该用户的所有评论动画
-        if let username = replyToUsername {
-            // 递归查找并移除该用户名的所有评论动画
-            func removeAnimationForUsername(in commentsList: [DetailedCommentModel]) {
-                for comment in commentsList {
-                    if comment.username == username {
-                        // 确保不是虚拟角色的评论
-                        if !comment.isVirtualCharacter {
-                            commentsWithWaveAnimation.remove(comment.id)
-                        }
-                    }
-                    
-                    // 递归处理回复
-                    removeAnimationForUsername(in: comment.replies)
-                }
-            }
-            
-            removeAnimationForUsername(in: comments)
-        }
+        // 只有当虚拟角色回复当前用户，且不是当前用户自己的评论时，才考虑移除其他动画
+        // 这里避免过度移除用户评论的动画
+        // 由于上面已经处理了特定评论的动画移除，这里不需要额外处理
         
         // 重新初始化动画状态，确保一致性
         initializeWaveAnimationState()
@@ -545,9 +535,6 @@ struct CommentsListView: View {
         DispatchQueue.main.async {
             // 先保存展开状态
             self.saveExpandedCommentsState()
-            
-            // 强制刷新动画状态
-            self.initializeWaveAnimationState()
             
             // 更新refreshID，触发视图内部更新
             // self.refreshID = UUID() // 已移除
@@ -810,8 +797,8 @@ struct CommentsListView: View {
                             parentCommentId: parentCommentId
                         )
                     } else {
-                        // 如果是顶级评论，重新初始化动画状态
-                        self.initializeWaveAnimationState()
+                        // 如果是顶级评论，清除所有动画状态
+                        self.commentsWithWaveAnimation.removeAll()
                     }
                     
                     // 如果没有指定滚动到的评论ID，则默认滚动到新评论
@@ -823,7 +810,7 @@ struct CommentsListView: View {
                 // 立即执行，不使用延迟
                 if shouldKeepState && preserveExpandState {
                     // 重新初始化动画状态
-                    self.initializeWaveAnimationState()
+                    self.commentsWithWaveAnimation.removeAll()
                     
                     // 只刷新视图，不修改展开状态
                     if preventScroll {
@@ -901,6 +888,22 @@ struct CommentsListView: View {
             self.refreshWithoutScrolling()
         }
         
+        // 监听显示加载动画的通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ShowLoadingAnimation"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let commentIdString = notification.userInfo?["commentId"] as? String,
+               let commentId = UUID(uuidString: commentIdString) {
+                // 添加到波浪动画集合
+                DispatchQueue.main.async {
+                    self.commentsWithWaveAnimation.insert(commentId)
+                    self.refreshWithoutScrolling() // 刷新界面显示动画
+                }
+            }
+        }
+        
         // 监听PrepareForNewComments通知 - 为即将到来的新评论做准备
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("PrepareForNewComments"),
@@ -908,7 +911,7 @@ struct CommentsListView: View {
             queue: .main
         ) { notification in
             // 重新初始化动画状态
-            self.initializeWaveAnimationState()
+            self.commentsWithWaveAnimation.removeAll()
             
             // 显示顶部加载动画
             withAnimation(.easeIn(duration: 0.2)) {
@@ -934,10 +937,9 @@ struct CommentsListView: View {
             
             // 强制刷新视图，确保动画显示
             DispatchQueue.main.async {
-                self.refreshWithoutScrolling()
-                
                 // 确保其他动画状态被清理，避免多个动画同时显示
                 self.commentsWithWaveAnimation.removeAll()
+                self.refreshWithoutScrolling()
             }
         }
         
@@ -947,11 +949,34 @@ struct CommentsListView: View {
             object: nil,
             queue: .main
         ) { notification in
-                // 刷新视图
-                self.refreshWithoutScrolling()
+            // 刷新视图
+            self.refreshWithoutScrolling()
+            
+            // 清除所有波浪动画
+            self.commentsWithWaveAnimation.removeAll()
+            
 
-            // 重新初始化动画状态，确保新评论的动画状态正确
-            self.initializeWaveAnimationState()
+            
+            // 隐藏顶部加载动画
+            withAnimation(.easeOut(duration: 0.2)) {
+                self.showTopLoadingAnimation = false
+            }
+        }
+        
+        // 监听隐藏加载动画的通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("HideLoadingAnimation"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let commentIdString = notification.userInfo?["commentId"] as? String,
+               let commentId = UUID(uuidString: commentIdString) {
+                // 从波浪动画集合中移除
+                DispatchQueue.main.async {
+                    self.commentsWithWaveAnimation.remove(commentId)
+                    self.refreshWithoutScrolling() // 刷新界面隐藏动画
+                }
+            }
         }
     }
     
@@ -1303,25 +1328,39 @@ struct CommentItemView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 14) { // 增加水平间距
-                // 用户头像 - 使用Avatar组件
-                Avatar(url: comment.isVirtualCharacter ? 
-                      (comment.characterID ?? comment.userAvatar) : 
-                      comment.userAvatar, 
-                      name: comment.username,
+                // 用户头像 - 根据评论类型使用不同数据源
+                Avatar(url: {
+                    if comment.isVirtualCharacter {
+                        return comment.characterID ?? comment.userAvatar
+                    } else if comment.isCurrentUser {
+                        return UserProfileManager.shared.getCurrentAvatarURL()
+                    } else {
+                        return comment.userAvatar
+                    }
+                }(), 
+                name: {
+                    if comment.isCurrentUser {
+                        return UserProfileManager.shared.getCurrentUsername()
+                    } else {
+                        return comment.username
+                    }
+                }(),
                       category: comment.characterID != nil ? getCharacterTag(for: comment.characterID!) : "",
                       size: 38)
                     .frame(width: 38, height: 38)
                     .onAppear {
                         if comment.isVirtualCharacter {
                             print("📱 评论头像 - 角色ID: \(comment.characterID ?? "nil"), 传递给Avatar的URL: \(comment.characterID ?? comment.userAvatar)")
+                        } else if comment.isCurrentUser {
+                            print("📱 评论头像 - 当前用户: \(UserProfileManager.shared.getCurrentUsername())")
                         }
                     }
                 
                 VStack(alignment: .leading, spacing: 6) { // 增加垂直间距
                     // 用户信息行
                     HStack(alignment: .center, spacing: 8) { // 增加水平间距
-                        // 用户名 - 使用与评论创建时相同的数据源
-                        Text(getUserDisplayName(comment: comment))
+                        // 用户名 - 根据评论类型使用不同数据源
+                        Text(comment.isCurrentUser ? UserProfileManager.shared.getCurrentUsername() : getUserDisplayName(comment: comment))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.primary)
                         

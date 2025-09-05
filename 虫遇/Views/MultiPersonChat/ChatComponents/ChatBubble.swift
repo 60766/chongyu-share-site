@@ -182,10 +182,12 @@ struct UserMessageBubble: View {
             }
             .frame(maxWidth: UIScreen.main.bounds.width * 0.7, alignment: .trailing)
             
-            // 用户头像
-            Image(systemName: "person.circle.fill")
-                .font(.system(size: 32))
-                .foregroundColor(Color(hex: "B8B5FF"))
+            // 用户头像 - 使用统一的Avatar组件和UserProfileManager数据
+            Avatar(
+                url: UserProfileManager.shared.getCurrentAvatarURL(),
+                name: UserProfileManager.shared.getCurrentUsername(),
+                size: 32
+            )
                 .padding(.top, 2)
         }
         .padding(.horizontal, 4)

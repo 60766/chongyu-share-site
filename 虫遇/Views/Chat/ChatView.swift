@@ -1637,11 +1637,12 @@ struct ChatMessageBubbleView: View {
                         .frame(width: 36, height: 36)  // 减小头像尺寸从38到36，更符合iOS标准
                         .shadow(color: Color.black.opacity(0.06), radius: 2, x: 0, y: 1)  // 减弱阴影不透明度从0.08到0.06
                     
-                    // 用户头像
-                    Image(systemName: "person.crop.circle.fill")
-                        .resizable()
-                        .foregroundColor(Color.blue.opacity(0.7))
-                        .frame(width: 32, height: 32)  // 减小头像尺寸从34到32
+                    // 用户头像 - 使用统一的Avatar组件和UserProfileManager数据
+                    Avatar(
+                        url: UserProfileManager.shared.getCurrentAvatarURL(),
+                        name: UserProfileManager.shared.getCurrentUsername(),
+                        size: 32
+                    )
                         .clipShape(Circle())
                         .overlay(
                             Circle()

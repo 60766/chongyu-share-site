@@ -275,21 +275,23 @@ struct UserPostListView: View {
                 
                 // 查找回复的评论
                 if let replyToComment = findComment(in: posts[index].comments, id: replyToID) {
-                    // 添加带有回复信息的评论
+                    // 添加带有回复信息的评论 - 使用UserProfileManager的数据
                     posts[index].addComment(
-                        username: "当前用户",  // 应替换为实际用户名
-                        userAvatar: "person.circle.fill",  // 应替换为实际用户头像
+                        username: UserProfileManager.shared.getCurrentUsername(),
+                        userAvatar: UserProfileManager.shared.getCurrentAvatarURL(),
                         content: content,
                         parentCommentId: replyToID,
-                        replyToUsername: replyToComment.username
+                        replyToUsername: replyToComment.username,
+                        isCurrentUser: true
                     )
                 }
             } else {
-                // 直接添加评论
+                // 直接添加评论 - 使用UserProfileManager的数据
                 posts[index].addComment(
-                    username: "当前用户",  // 应替换为实际用户名
-                    userAvatar: "person.circle.fill",  // 应替换为实际用户头像
-                    content: content
+                    username: UserProfileManager.shared.getCurrentUsername(),
+                    userAvatar: UserProfileManager.shared.getCurrentAvatarURL(),
+                    content: content,
+                    isCurrentUser: true
                 )
             }
         }

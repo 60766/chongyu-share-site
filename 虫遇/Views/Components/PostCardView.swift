@@ -698,6 +698,14 @@ struct PostCardView: View {
     
     // 点击回调
     var onPostTap: () -> Void = {}
+    
+    // 计算属性：判断是否为用户发布的动态
+    private var isUserPost: Bool {
+        // 获取所有虚拟角色名称
+        let allCharacterNames = CharacterDataManager.shared.getAllCharactersInfo().map { $0.name }
+        // 不是虚拟角色且不是AI助手的动态，认为是用户发布的
+        return !allCharacterNames.contains(post.username) && post.username != "AI助手"
+    }
     var onLikeToggle: ((Bool) -> Void)?
     var onCommentToggle: (() -> Void)?
     var onBookmarkToggle: ((Bool) -> Void)?
@@ -941,18 +949,30 @@ struct PostCardView: View {
     // 用户信息区域
     private var userInfoSection: some View {
         HStack(alignment: .center, spacing: 12) {
-            // 用户头像 - 直接使用通用的Avatar组件
-            Avatar(url: post.userAvatar, name: post.username, category: post.username.contains("探索") ? "历史爱好者" : "", size: 46.0)
-                // 🔧 优化：移除重复的日志输出
-                // .onAppear {
-                //     print("🔍 PostCardView - 用户头像URL: \(post.userAvatar), 用户名: \(post.username)")
-                // }
+            // 用户头像 - 根据是否为用户发布的动态使用不同数据源
+            if isUserPost {
+                // 用户发布的动态使用UserProfileManager的数据
+                Avatar(
+                    url: UserProfileManager.shared.getCurrentAvatarURL(),
+                    name: UserProfileManager.shared.getCurrentUsername(),
+                    category: "",
+                    size: 46.0
+                )
+            } else {
+                // 其他用户或历史人物发布的动态使用原始数据
+                Avatar(
+                    url: post.userAvatar,
+                    name: post.username,
+                    category: post.username.contains("探索") ? "历史爱好者" : "",
+                    size: 46.0
+                )
+            }
             
             // 用户信息 - 更紧凑的布局
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    // 用户名 - 增加字体粗细区分
-                    Text(post.username)
+                    // 用户名 - 根据是否为用户发布的动态使用不同数据源
+                    Text(isUserPost ? UserProfileManager.shared.getCurrentUsername() : post.username)
                         .font(.system(size: 16.0, weight: .semibold))
                         .foregroundColor(DesignSystem.Colors.primaryText)
                     
@@ -2723,8 +2743,8 @@ struct PostCardView: View {
                     } else {
                 // 如果是新评论
                 let newComment = DetailedCommentModel(
-                    username: "当前用户",
-                    userAvatar: "person.crop.circle.fill",
+                    username: UserProfileManager.shared.getCurrentUsername(),
+                    userAvatar: UserProfileManager.shared.getCurrentAvatarURL(),
                     content: trimmedText,
                     datePosted: Date(),
                     isVirtualCharacter: false,

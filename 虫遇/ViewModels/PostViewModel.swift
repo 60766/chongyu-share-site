@@ -489,8 +489,8 @@ class PostViewModel: ObservableObject {
                 
                 // 创建用户回复评论
                 let userReply = DetailedCommentModel(
-                    username: "当前用户",
-                    userAvatar: "current_user_avatar",
+                    username: UserProfileManager.shared.getCurrentUsername(),
+                    userAvatar: UserProfileManager.shared.getCurrentAvatarURL(),
                     content: formattedContent,
                     datePosted: Date(),
                     isVirtualCharacter: false,
@@ -542,12 +542,13 @@ class PostViewModel: ObservableObject {
                     )
                 }
             } else {
-                // 创建顶级评论
+                // 创建顶级评论 - 使用UserProfileManager的数据
                 let newComment = DetailedCommentModel(
-                    username: "当前用户",
-                    userAvatar: "current_user_avatar",
+                    username: UserProfileManager.shared.getCurrentUsername(),
+                    userAvatar: UserProfileManager.shared.getCurrentAvatarURL(),
                     content: formattedContent,
                     datePosted: Date(),
+                    isCurrentUser: true,
                     isVirtualCharacter: false,
                     characterID: nil
                 )
@@ -1276,8 +1277,8 @@ class PostViewModel: ObservableObject {
         // 创建用户回复评论
         let userReply = DetailedCommentModel(
             id: UUID(),
-            username: "当前用户",
-            userAvatar: "user_avatar",
+            username: UserProfileManager.shared.getCurrentUsername(),
+            userAvatar: UserProfileManager.shared.getCurrentAvatarURL(),
             content: replyContent,
             datePosted: Date(),
             isVirtualCharacter: false,
@@ -1555,8 +1556,8 @@ class PostViewModel: ObservableObject {
         
         // 创建用户回复评论
         let userReply = DetailedCommentModel(
-            username: "当前用户",
-            userAvatar: "person.circle.fill",
+            username: UserProfileManager.shared.getCurrentUsername(),
+            userAvatar: UserProfileManager.shared.getCurrentAvatarURL(),
             content: commentContent,
             datePosted: Date(),
             isVirtualCharacter: false,

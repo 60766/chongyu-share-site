@@ -876,8 +876,8 @@ struct PublishPanelView: View {
         // 创建用户帖子（无预设评论）
         let userPost = UserPostModel(
             id: UUID(uuidString: postData.id) ?? UUID(),
-            username: "当前用户", // 使用当前用户名
-            userAvatar: "person.circle.fill", // 使用当前用户头像
+            username: UserProfileManager.shared.getCurrentUsername(), // 使用当前用户名
+            userAvatar: UserProfileManager.shared.getCurrentAvatarURL(), // 使用当前用户头像
             content: postData.content,
             images: imageIdentifiers, // 添加图片标识符
             datePosted: postData.timestamp,

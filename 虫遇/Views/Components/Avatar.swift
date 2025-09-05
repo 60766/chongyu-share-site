@@ -154,7 +154,13 @@ struct Avatar: View {
         }
         .onAppear {
             // 🚀 性能优化：仅在必要时加载自定义头像，移除日志输出
-            if isCustomCharacter || url == "default_avatar" {
+            if isCustomCharacter || url == "default_avatar" || url == UserProfileManager.shared.getCurrentAvatarName() {
+                loadCustomAvatar()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .userProfileUpdated)) { _ in
+            // 当用户资料更新时，重新加载头像
+            if url == UserProfileManager.shared.getCurrentAvatarName() || url == UserProfileManager.shared.getCurrentAvatarURL() {
                 loadCustomAvatar()
             }
         }
@@ -302,6 +308,12 @@ struct Avatar: View {
         let characterId = cleanCharacterId
         if let image = CustomAvatarLoader.shared.loadCustomAvatar(characterId: characterId, avatarName: url) {
             self.customImage = image
+        } else if url != "person.crop.circle.fill" && url != "default_avatar" {
+            // 尝试加载用户头像（从UserProfileManager）
+            if let userImage = UserProfileManager.shared.getCurrentAvatarImage(), 
+               url == UserProfileManager.shared.getCurrentAvatarName() {
+                self.customImage = userImage
+            }
         }
     }
 }
