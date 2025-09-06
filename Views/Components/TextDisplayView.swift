@@ -13,7 +13,7 @@ struct EnhancedTextDisplayView: View {
     
     var body: some View {
         // 使用UIKitTextView替代TextEditor
-        UIKitTextView(text: $text, placeholder: placeholder)
+        LocalUIKitTextView(text: $text, placeholder: placeholder)
             .frame(height: 100)
             .overlay(
                 // 紫色边框
@@ -23,7 +23,7 @@ struct EnhancedTextDisplayView: View {
     }
 }
 
-struct UIKitTextView: UIViewRepresentable {
+struct LocalUIKitTextView: UIViewRepresentable {
     @Binding var text: String
     var placeholder: String
     
@@ -55,9 +55,9 @@ struct UIKitTextView: UIViewRepresentable {
     }
     
     class Coordinator: NSObject, UITextViewDelegate {
-        var parent: UIKitTextView
+        var parent: LocalUIKitTextView
         
-        init(_ parent: UIKitTextView) {
+        init(_ parent: LocalUIKitTextView) {
             self.parent = parent
         }
         
