@@ -19,6 +19,8 @@ struct AppTabView: View {
     var body: some View {
         // 主容器
         ZStack(alignment: .bottom) {
+
+            
             // 主内容区域 - 使用修改过的TabView确保内容能延伸到底部
             TabView(selection: $selectedTab) {
                 // 首页 - 虫遇主界面
@@ -139,6 +141,8 @@ struct AppTabView: View {
             // 🚀 性能优化：直接设置TabBarController引用，避免递归搜索
             setupTabBarControllerReference()
             
+
+            
             // 添加通知监听，处理返回首页的请求
             NotificationCenter.default.addObserver(
                 forName: NSNotification.Name("NavigateToHomeTab"),
@@ -208,6 +212,8 @@ struct AppTabView: View {
             tabBarManager.showImmediately()
         }
     }
+    
+
 }
 
 /**

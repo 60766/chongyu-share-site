@@ -171,6 +171,12 @@ struct ChongYuApp: App {
         // 设置导航栏标题颜色
         UINavigationBar.appearance().largeTitleTextAttributes = [.foregroundColor: UIColor(red: 0.2, green: 0.2, blue: 0.2, alpha: 1.0)]
         UINavigationBar.appearance().titleTextAttributes = [.foregroundColor: UIColor(red: 0.2, green: 0.2, blue: 0.2, alpha: 1.0)]
+        
+        // 设置窗口背景为透明，解决底部白色区域问题
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.backgroundColor = .clear
+        }
     }
     
     private func setupAPIConfig() {

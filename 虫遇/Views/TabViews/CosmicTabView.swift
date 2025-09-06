@@ -399,7 +399,7 @@ struct CosmicTabView: View {
             .padding(.horizontal, 30)
             .padding(.vertical, 25)
             .background(
-                CosmicBlurView(style: .systemUltraThinMaterialDark)
+                BlurView(style: .systemUltraThinMaterialDark)
             )
             .padding(.bottom, 100)
         }
@@ -722,23 +722,12 @@ struct CosmicTabView: View {
     private func setupTabBarAppearance() {
         // 设置tabBar的外观
         let appearance = UITabBarAppearance()
-        
-        // 使用自定义背景配置，而不是默认背景
         appearance.configureWithTransparentBackground()
         
-        // 添加自定义模糊效果
-        let blur = UIBlurEffect(style: .systemUltraThinMaterial)
-        appearance.backgroundEffect = blur
-        
-        // 设置背景色透明
-        appearance.backgroundColor = UIColor.clear
-        
-        // 设置全局不透明度，使整个Tab Bar更透明
-        if #available(iOS 15.0, *) {
-            // appearance.backgroundEffectOpacity = 0.25 // 降低模糊效果的不透明度
-            // 备注：iOS 17使用自定义视图实现更高透明度效果
-            UITabBar.appearance().alpha = 0.95 // 使用全局alpha实现类似效果
-        }
+        // 增强磨砂玻璃效果
+        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+        // 添加轻微的背景色以增强磨砂质感
+        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.3)
         
         // 设置颜色属性
         let normalAttributes = createTabBarAttributes(isSelected: false)
@@ -753,10 +742,6 @@ struct CosmicTabView: View {
         if #available(iOS 15.0, *) {
             UITabBar.appearance().scrollEdgeAppearance = appearance
         }
-        
-        // 确保移除底部边框
-        UITabBar.appearance().shadowImage = UIImage()
-        UITabBar.appearance().backgroundImage = UIImage()
     }
     
     // 创建标签栏文本属性
@@ -773,19 +758,7 @@ struct CosmicTabView: View {
     }
 }
 
-// 半透明背景模糊视图
-struct CosmicBlurView: UIViewRepresentable {
-    var style: UIBlurEffect.Style
-    
-    func makeUIView(context: Context) -> UIVisualEffectView {
-        let view = UIVisualEffectView(effect: UIBlurEffect(style: style))
-        return view
-    }
-    
-    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
-        uiView.effect = UIBlurEffect(style: style)
-    }
-}
+
 
 /**
  * 发布选项类型
