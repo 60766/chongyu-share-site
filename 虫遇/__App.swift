@@ -177,6 +177,11 @@ struct ChongYuApp: App {
            let window = windowScene.windows.first {
             window.backgroundColor = .clear
         }
+        
+        // 全局设置TabBar背景为透明
+        UITabBar.appearance().backgroundColor = .clear
+        UITabBar.appearance().barTintColor = .clear
+        UITabBar.appearance().isTranslucent = true
     }
     
     private func setupAPIConfig() {

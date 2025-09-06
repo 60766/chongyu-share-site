@@ -1,20 +1,22 @@
+
 import SwiftUI
+import UIKit
 
 /**
- * 自定义底部导航栏组件
- * 设计符合"虫遇"应用时空穿越主题的导航图标
- * 优化设计：更轻量化，更高透明度效果，减小高度
+ * 自定义底部导航栏
+ * 特点：
+ * - 磨砂玻璃背景效果
+ * - 自定义图标设计
+ * - 统一的iPhone 16 Pro样式
  */
 struct CustomTabBarView: View {
     @Binding var selectedTab: Int
     
     var body: some View {
-        // 完全透明的容器
         ZStack {
-            // 磨砂背景层 - 大幅增强透明效果
-            TabBarBackground()
-                .zIndex(0)
-                .blendMode(.normal)
+            // 磨砂玻璃背景
+            VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+                .ignoresSafeArea(.all, edges: .bottom)
             
             // 内容层 - 按钮和文字
             HStack(spacing: 0) {
@@ -36,11 +38,13 @@ struct CustomTabBarView: View {
                 )
                 .frame(maxWidth: .infinity)
                 
-                // 中间空间（为中央发布按钮预留）
-                Spacer()
+                // 中间空间 - 使用透明按钮而非Spacer，确保点击不会触发任何操作
+                Color.clear
                     .frame(maxWidth: 80)
+                    .contentShape(Rectangle())
+                    .allowsHitTesting(false)
                 
-                // 动态
+                // 通知
                 CustomTabButton(
                     isSelected: selectedTab == 3,
                     title: "通知",
@@ -58,89 +62,56 @@ struct CustomTabBarView: View {
                 )
                 .frame(maxWidth: .infinity)
             }
-            .padding(.top, 5) // 减小顶部内边距
-            .padding(.bottom, 5) // 减小底部内边距
-            .zIndex(1)
+            .padding(.vertical, 5)
         }
-        // 移除任何背景色
         .background(Color.clear)
-        // 确保按钮和文字清晰可见
-        .opacity(1)
     }
 }
 
+// 磨砂玻璃效果视图
+struct VisualEffectView: UIViewRepresentable {
+    let effect: UIVisualEffect
+    
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        let view = UIVisualEffectView(effect: effect)
+        view.backgroundColor = .clear // 保持背景透明
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+        uiView.effect = effect
+    }
+}
+
+
+
 /**
  * 自定义底部导航栏背景
- * 极大增强半透明效果，提高内容融合度
+ * 实现轻微磨砂玻璃效果，更亮的底色与上方白色搭配
  */
 struct TabBarBackground: View {
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         GeometryReader { geometry in
-            if #available(iOS 15.0, *) {
-                // iOS 15 - 使用极度透明的模糊材质
-                ZStack {
-                    // 使用超薄的白色背景
-                    Rectangle()
-                        .fill(colorScheme == .dark ? Color.black.opacity(0.01) : Color.white.opacity(0.01))
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                    
-                    // 使用超轻的模糊材质
-                    Rectangle()
-                        .fill(Material.ultraThinMaterial)
-                        .opacity(0.4) // 进一步降低不透明度
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                }
-                .allowsHitTesting(false)
-                .compositingGroup()
-                .blendMode(.normal)
-            } else {
-                // iOS 14 - 使用同样非常轻的模糊效果
-                ZStack {
-                    // 使用超薄的白色背景
-                    Rectangle()
-                        .fill(colorScheme == .dark ? Color.black.opacity(0.01) : Color.white.opacity(0.01))
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                    
-                    // 使用更轻的模糊效果
-                    VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-                        .opacity(0.4) // 进一步降低不透明度
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                }
-                .allowsHitTesting(false)
-                .compositingGroup()
-                .blendMode(.normal)
-            }
+            // iPhone 16 Pro 的实现 - 使用更轻的模糊效果，移除白色背景层
+                Rectangle()
+                .fill(.clear) // 使用完全透明而不是Material.ultraThinMaterial
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                .background(
+                    // 使用透明度更高的模糊效果
+                    .ultraThinMaterial.opacity(0.7)
+                )
+                    .allowsHitTesting(false) // 允许点击穿透
         }
-        // 确保延伸到所有边缘，没有内边距
+        // 确保延伸到所有边缘
         .edgesIgnoringSafeArea(.all)
-    }
-}
-
-/**
- * 优化的磨砂玻璃背景视图
- * 使用超轻度模糊效果以增强透明度
- */
-struct VisualEffectView: UIViewRepresentable {
-    var effect: UIVisualEffect?
-    
-    func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView {
-        let view = UIVisualEffectView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }
-    
-    func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) {
-        uiView.effect = effect
-        // 使用更低的不透明度，大幅增加透明感
-        uiView.alpha = 0.4
+        .allowsHitTesting(false) // 确保整个背景视图不拦截点击事件
     }
 }
 
 /**
  * 标签按钮组件
- * 提供带有图标和文本的交互按钮，优化清晰度和清新感
  */
 struct CustomTabButton<IconContent: View>: View {
     let isSelected: Bool
@@ -150,23 +121,21 @@ struct CustomTabButton<IconContent: View>: View {
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 3) { // 减小间距
-                // 图标 - 提高清晰度
+            VStack(spacing: 3) {
+                // 图标
                 icon()
-                    .frame(height: 22) // 减小高度
+                    .frame(height: 22)
                     .brightness(isSelected ? 0.1 : 0)
                 
-                // 文本 - 减轻字重，增加清新感
+                // 文本
                 Text(title)
-                    .font(.system(size: 9, weight: isSelected ? .semibold : .medium)) // 减小字体
-                    .foregroundColor(isSelected ? Color.primaryColor : Color.gray)
+                    .font(.system(size: 9, weight: isSelected ? .semibold : .medium))
+                    .foregroundColor(isSelected ? Color.primaryColor : Color.gray.opacity(0.8))
             }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-            .padding(.vertical, 4) // 减小垂直内边距
+            .contentShape(Rectangle()) // 确保整个区域可点击
+            .padding(.vertical, 4)
         }
         .buttonStyle(PlainButtonStyle())
-        .background(Color.clear)
     }
 }
 
@@ -255,7 +224,7 @@ struct TimePortalIcon: View {
     @State private var lastSelected: Bool = false
     
     var body: some View {
-        TimelineView(.animation) { timeline in
+        TimelineView(.periodic(from: .now, by: 0.1)) { timeline in
             // 在每一帧更新角度
             let now = timeline.date
             let elapsed = now.timeIntervalSince(lastUpdateTime)
@@ -342,11 +311,14 @@ struct TimePortalIcon: View {
                     }
                 }
             }
-            .onChange(of: timeline.date) { _, _ in
-                // 保存当前时间作为下一帧的参考
-                lastUpdateTime = now
-                // 更新存储的角度值，确保在0-360范围内
-                rotationAngle = currentAngle.truncatingRemainder(dividingBy: 360)
+            .onChange(of: timeline.date) { _, newDate in
+                // 🚀 性能优化：降低更新频率，防止过度刷新
+                let timeSinceLastUpdate = newDate.timeIntervalSince(lastUpdateTime)
+                if abs(timeSinceLastUpdate) > 0.1 { // 降低到10fps，减少性能开销
+                    lastUpdateTime = newDate
+                    // 更新存储的角度值，确保在0-360范围内
+                    rotationAngle = currentAngle.truncatingRemainder(dividingBy: 360)
+                }
             }
         }
     }

@@ -19,7 +19,10 @@ struct AppTabView: View {
     var body: some View {
         // 主容器
         ZStack(alignment: .bottom) {
-
+            // 添加透明背景层覆盖整个视图，特别是底部白色区域
+            Color.clear
+                .ignoresSafeArea(.all)
+                .zIndex(-1) // 确保在最底层
             
             // 主内容区域 - 使用修改过的TabView确保内容能延伸到底部
             TabView(selection: $selectedTab) {
@@ -93,6 +96,7 @@ struct AppTabView: View {
                         CustomTabBarView(selectedTab: $selectedTab)
                             .frame(height: tabBarManager.tabBarHeight) // 使用管理器中的高度
                             .opacity(tabBarManager.isVisible ? 1 : 0)
+                            .background(Color.clear) // 确保背景是透明的
                         
                         // 虫洞发布按钮 - 位置微调，更轻量化
                         CosmicPublishButton(isPressed: $isPublishButtonPressed) {
@@ -108,6 +112,7 @@ struct AppTabView: View {
                 }
                 // 将导航栏层级提高，但保持下方内容可见
                 .zIndex(1)
+                .background(Color.clear) // 确保容器背景也是透明的
             }
         }
         .overlay(
@@ -141,7 +146,8 @@ struct AppTabView: View {
             // 🚀 性能优化：直接设置TabBarController引用，避免递归搜索
             setupTabBarControllerReference()
             
-
+            // 彻底移除UITabBar的白色背景
+            setupTransparentTabBarAppearance()
             
             // 添加通知监听，处理返回首页的请求
             NotificationCenter.default.addObserver(
@@ -213,7 +219,12 @@ struct AppTabView: View {
         }
     }
     
-
+    /// 设置UITabBar的背景为透明
+    private func setupTransparentTabBarAppearance() {
+        UITabBar.appearance().barTintColor = .clear
+        UITabBar.appearance().backgroundImage = UIImage()
+        UITabBar.appearance().shadowImage = UIImage()
+    }
 }
 
 /**
