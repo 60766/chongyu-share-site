@@ -22,6 +22,7 @@ struct SettingsView: View {
     @State private var showingAbout = false
     /// API设置展示状态
     @State private var showingAPISettings = false
+    @State private var balanceText: String = "—"
     
     // 在初始化时加载当前的角色分配模式
     init() {

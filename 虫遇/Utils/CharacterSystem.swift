@@ -715,62 +715,6 @@ class CharacterSystem {
         }
     }
     
-    /// 根据类型和子类型筛选角色
-    /// - Parameters:
-    ///   - type: 角色类型
-    ///   - subtype: 子类型(可选)
-    /// - Returns: 筛选后的角色列表
-    static func filterCharacters(byType type: CharacterType?, subtype: String? = nil) -> [CharacterIdentity] {
-        // 从JSON文件加载角色数据
-        var filteredCharacters: [CharacterIdentity] = []
-        
-        // 这里应该从JSON文件加载数据，暂时返回空数组
-        // TODO: 实现从JSON文件加载角色数据
-        
-        if let type = type {
-            filteredCharacters = filteredCharacters.filter { $0.type == type }
-        }
-        
-        if let subtype = subtype {
-            filteredCharacters = filteredCharacters.filter { $0.subtype == subtype }
-        }
-        
-        return filteredCharacters
-    }
-    
-    /// 获取所有可用的子类型（按类型分组）
-    /// - Returns: 类型及其对应的子类型字典
-    static func getAllSubtypesByType() -> [CharacterType: Set<String>] {
-        var subtypesByType: [CharacterType: Set<String>] = [:]
-        
-        // 从JSON文件加载角色数据
-        // TODO: 实现从JSON文件加载角色数据
-        let characters: [CharacterIdentity] = []
-        
-        for character in characters {
-            if let subtype = character.subtype {
-                var subtypes = subtypesByType[character.type] ?? Set<String>()
-                subtypes.insert(subtype)
-                subtypesByType[character.type] = subtypes
-            }
-        }
-        
-        return subtypesByType
-    }
-    
-    /// 获取特定类型的所有子类型
-    /// - Parameter type: 角色类型
-    /// - Returns: 子类型集合
-    static func getSubtypes(forType type: CharacterType) -> Set<String> {
-        // 从JSON文件加载角色数据
-        // TODO: 实现从JSON文件加载角色数据
-        let characters: [CharacterIdentity] = []
-        
-        return characters
-            .filter { $0.type == type }
-            .compactMap { $0.subtype }
-            .reduce(into: Set<String>()) { $0.insert($1) }
-    }
     
     /**
      * 更新角色信息

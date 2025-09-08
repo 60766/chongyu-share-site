@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import StoreKit
 
 /**
  * 创建自定义角色视图
@@ -69,6 +70,11 @@ struct CreateCharacterView: View {
         isGeneratingInfo || !isFormValid
     }
     
+    // 充值相关
+    @State private var showRechargeSheet: Bool = false
+    @State private var purchaseErrorMessage: String? = nil
+    @ObservedObject private var storeKitManager = StoreKitManager.shared
+    
     var body: some View {
         Form {
             // 快速创建区域 - 优化布局和用户体验
@@ -128,7 +134,7 @@ struct CreateCharacterView: View {
                                     .font(.system(size: 14))
                                     .foregroundColor(.secondary)
                                     .padding(.leading, 8)
-                                    Spacer()
+                                Spacer()
                                 }
                             .padding(.vertical, 4)
                             .background(Color(hex: "F2F2F7").opacity(0.5))
@@ -198,228 +204,89 @@ struct CreateCharacterView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 40, height: 40)
-                                .foregroundColor(Color(hex: "BDBDBD"))
                         }
                         .padding(.vertical, 5)
-                    }
-                    
-                    // 选择头像按钮 - 更现代化的设计
-                    Button(action: {
-                        isShowingImagePicker = true
-                    }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "photo")
-                                .font(.system(size: 14))
-                            Text(selectedImage != nil ? "更换头像" : "选择角色头像")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .foregroundColor(Color(hex: "6A7FDB"))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(hex: "6A7FDB").opacity(0.1))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color(hex: "6A7FDB").opacity(0.3), lineWidth: 1)
-                        )
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 5)
-                .sheet(isPresented: $isShowingImagePicker) {
-                    CharacterImagePicker(selectedImage: $selectedImage, isPresented: $isShowingImagePicker, avatarSelected: .constant(false))
-                }
-            }
-            
-            // 基本信息区域 - 优化设计
-            Section(header: Text("基本信息").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
-                // 角色名称 - 添加图标和样式
-                HStack(spacing: 10) {
-                    Image(systemName: "person.text.rectangle")
-                        .foregroundColor(Color(hex: "6A7FDB"))
-                        .font(.system(size: 16))
-                    TextField("角色名称 *", text: $name)
-                        .font(.system(size: 15))
-                }
-                .padding(.vertical, 4)
-                
-                // 职业/身份 - 添加图标和样式
-                HStack(spacing: 10) {
-                    Image(systemName: "briefcase")
-                        .foregroundColor(Color(hex: "6A7FDB"))
-                        .font(.system(size: 16))
-                    TextField("职业/身份 *", text: $field)
-                        .font(.system(size: 15))
-                }
-                .padding(.vertical, 4)
-                
-                // 地区/国家 - 添加图标和样式
-                HStack(spacing: 10) {
-                    Image(systemName: "map")
-                        .foregroundColor(Color(hex: "6A7FDB"))
-                        .font(.system(size: 16))
-                    TextField("地区/国家", text: $region)
-                        .font(.system(size: 15))
-                }
-                .padding(.vertical, 4)
-                
-                // 角色简介 - 优化样式
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "text.quote")
-                            .foregroundColor(Color(hex: "6A7FDB"))
-                            .font(.system(size: 16))
-                        Text("角色简介 *")
-                            .foregroundColor(introduction.isEmpty ? .gray : .primary)
-                            .font(.system(size: 15))
-                    }
-                    .padding(.bottom, 2)
-                    
-                    TextEditor(text: $introduction)
-                        .frame(height: 100)
-                        .padding(4)
-                        .background(Color(hex: "F2F2F7").opacity(0.5))
-                        .cornerRadius(8)
-                }
-                .padding(.vertical, 4)
-            }
-            
-            // 角色分类 - 优化设计
-            Section(header: Text("角色分类").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
-                VStack(spacing: 10) {
-                    // 角色类型选择器
-                    HStack(spacing: 10) {
-                        Image(systemName: "tag")
-                            .foregroundColor(Color(hex: "6A7FDB"))
-                            .font(.system(size: 16))
                         
-                Picker("角色类型", selection: $selectedCategory) {
-                    ForEach(selectableCategories, id: \.self) { category in
-                        Text(category.displayName).tag(category)
-                    }
-                }
-                .pickerStyle(MenuPickerStyle())
-                    }
-                    .padding(.vertical, 4)
-                
-                    // 选中类型显示
-                HStack {
-                    Spacer()
-                    Text(selectedCategory.displayName)
-                            .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(selectedCategory.color)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(selectedCategory.color.opacity(0.15))
-                        )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(selectedCategory.color.opacity(0.3), lineWidth: 1)
-                            )
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-            
-            // 时间信息 - 优化设计
-            Section(header: Text("时间信息").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
-                // 出生年份
-                HStack(spacing: 10) {
-                    Image(systemName: "calendar")
-                        .foregroundColor(Color(hex: "6A7FDB"))
-                        .font(.system(size: 16))
-                TextField("出生年份", text: $birthYear)
-                        .font(.system(size: 15))
-                    .keyboardType(.numberPad)
-                }
-                .padding(.vertical, 4)
-                
-                // 逝世年份
-                HStack(spacing: 10) {
-                    Image(systemName: "calendar.badge.clock")
-                        .foregroundColor(Color(hex: "6A7FDB"))
-                        .font(.system(size: 16))
-                TextField("逝世年份（如适用）", text: $deathYear)
-                        .font(.system(size: 15))
-                    .keyboardType(.numberPad)
-                }
-                .padding(.vertical, 4)
-                
-                // 时代/世界
-                HStack(spacing: 10) {
-                    Image(systemName: "globe")
-                        .foregroundColor(Color(hex: "6A7FDB"))
-                        .font(.system(size: 16))
-                
-                Picker("时代/世界", selection: $selectedEraIndex) {
-                    ForEach(0..<eras.count, id: \.self) { index in
-                        Text(eras[index])
-                    }
-                }
-            }
-                .padding(.vertical, 4)
-            }
-            
-            // 角色特点 - 优化设计
-            Section(header: Text("角色特点").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
-                // 名言/经典台词
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "quote.bubble")
+                        HStack(spacing: 12) {
+                            Button(action: {
+                                selectedImageSource = .photoLibrary
+                                isShowingImagePicker = true
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "photo")
+                                    Text("从相册选择")
+                                }
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
                             .foregroundColor(Color(hex: "6A7FDB"))
-                            .font(.system(size: 16))
-                        Text("名言/经典台词")
-                            .foregroundColor(keyThoughts.isEmpty ? .gray : .primary)
-                            .font(.system(size: 15))
+                            
+                            Button(action: {
+                                selectedImageSource = .camera
+                                isShowingImagePicker = true
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "camera")
+                                    Text("拍摄头像")
+                                }
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                            .foregroundColor(Color(hex: "6A7FDB"))
+                        }
+                        .font(.system(size: 14, weight: .medium))
+                    }
                 }
-                    .padding(.bottom, 2)
+                .sheet(isPresented: $isShowingImagePicker) {
+                    CharacterImagePicker(selectedImage: $selectedImage, isPresented: $isShowingImagePicker, avatarSelected: .constant(true))
+                }
+            }
+            
+            // 基本信息
+            Section(header: Text("基本信息").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("角色名称 (中文/英文)", text: $name)
+                        .font(.system(size: 16))
+                        .padding(.vertical, 4)
                     
-                TextEditor(text: $keyThoughts)
-                        .frame(height: 70)
+                    TextField("职业/身份，如科学家、作家", text: $field)
+                        .font(.system(size: 16))
+                        .padding(.vertical, 4)
+                    
+                    TextField("地区/国家，如中国、美国", text: $region)
+                        .font(.system(size: 16))
+                        .padding(.vertical, 4)
+                    
+                    Text("角色简介")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                        .padding(.top, 2)
+                    TextEditor(text: $introduction)
+                        .frame(height: 80)
                         .padding(4)
                         .background(Color(hex: "F2F2F7").opacity(0.5))
                         .cornerRadius(8)
                 }
-                .padding(.vertical, 4)
-                
-                // 主要成就
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "trophy")
-                            .foregroundColor(Color(hex: "6A7FDB"))
-                            .font(.system(size: 16))
-                        Text("主要成就（用逗号分隔）")
-                            .foregroundColor(achievements.isEmpty ? .gray : .primary)
-                            .font(.system(size: 15))
-                                }
-                    .padding(.bottom, 2)
-                
-                TextEditor(text: $achievements)
+            }
+            
+            // 特色信息
+            Section(header: Text("主要成就、作品").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("主要成就 (用逗号分隔)")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                        .padding(.bottom, 2)
+                    
+                    TextEditor(text: $achievements)
                         .frame(height: 70)
                         .padding(4)
                         .background(Color(hex: "F2F2F7").opacity(0.5))
                         .cornerRadius(8)
-                }
-                .padding(.vertical, 4)
-                
-                // 主要作品
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "book")
-                            .foregroundColor(Color(hex: "6A7FDB"))
-                            .font(.system(size: 16))
-                        Text("主要作品（用逗号分隔）")
-                            .foregroundColor(mainWorks.isEmpty ? .gray : .primary)
-                            .font(.system(size: 15))
-                                }
-                    .padding(.bottom, 2)
-                
-                TextEditor(text: $mainWorks)
+                    
+                    Text("主要作品 (用逗号分隔)")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                        .padding(.bottom, 2)
+                    
+                    TextEditor(text: $mainWorks)
                         .frame(height: 70)
                         .padding(4)
                         .background(Color(hex: "F2F2F7").opacity(0.5))
@@ -455,6 +322,73 @@ struct CreateCharacterView: View {
                 message: Text(errorMessage),
                 dismissButton: .default(Text("确定"))
             )
+        }
+        .sheet(isPresented: $showRechargeSheet, onDismiss: {
+            purchaseErrorMessage = nil
+        }) {
+            NavigationView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if storeKitManager.products.isEmpty {
+                        VStack {
+                            ProgressView()
+                            Text("正在加载商品...")
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        List {
+                            ForEach(storeKitManager.products, id: \.id) { product in
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(product.displayName)
+                                            .font(.system(size: 16, weight: .medium))
+                                        Text(product.displayPrice)
+                                            .foregroundColor(.secondary)
+                                            .font(.system(size: 14))
+                                    }
+                                    Spacer()
+                                    Button("购买") {
+                                        Task {
+                                            do {
+                                                try await storeKitManager.purchase(product)
+                                                purchaseErrorMessage = nil
+                                                showRechargeSheet = false
+                                            } catch {
+                                                purchaseErrorMessage = error.localizedDescription
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                        .listStyle(InsetGroupedListStyle())
+                    }
+                    if let msg = purchaseErrorMessage {
+                        Text(msg)
+                            .foregroundColor(.red)
+                            .font(.footnote)
+                            .padding(.horizontal)
+                    }
+                }
+                .navigationTitle("充值")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("关闭") { showRechargeSheet = false }
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("恢复") {
+                            Task { await storeKitManager.loadProducts() }
+                        }
+                    }
+                }
+                .task {
+                    if storeKitManager.products.isEmpty {
+                        await storeKitManager.loadProducts()
+                    }
+                }
+            }
         }
     }
     
@@ -592,101 +526,71 @@ struct CreateCharacterView: View {
         // 使用URLSession直接调用API，避免使用Combine
         Task {
             do {
-                // 获取API配置
-                guard let apiKey = apiConfigManager.apiKey else {
-                    await MainActor.run {
-                        generationError = "未设置API密钥"
-                        isGeneratingInfo = false
-                    }
-                    return
-                }
-                
-                // 创建URL请求
-                guard let url = URL(string: apiConfigManager.deepSeekEndpoint) else {
-                    await MainActor.run {
-                        generationError = "无效的API URL"
-                        isGeneratingInfo = false
-                    }
-                    return
-                }
-                
-                // 构建请求体
-                let requestBody: [String: Any] = [
-                    "model": apiConfigManager.modelName,
-                    "messages": [
-                        ["role": "system", "content": "你是一个角色信息生成助手，请根据用户的描述生成角色信息。"],
-                        ["role": "user", "content": prompt]
-                    ],
+                // 改为通过后端代理请求
+                let messages: [[String: String]] = [
+                    ["role": "system", "content": "你是一个角色信息生成助手，请根据用户的描述生成角色信息。只返回JSON。"],
+                    ["role": "user", "content": prompt]
+                ]
+                let resp = try await WalletService.shared.proxyChat(messages: messages, params: [
                     "temperature": 0.7,
                     "max_tokens": 1000,
                     "top_p": 0.95,
                     "stream": false
-                ]
-                
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-                request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-                
-                // 发送请求
-                let (data, response) = try await URLSession.shared.data(for: request)
-                
-                // 检查HTTP响应
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    await MainActor.run {
-                        generationError = "无效的响应"
-                        isGeneratingInfo = false
-                    }
-                    return
-                }
-                
-                // 检查状态码
-                if httpResponse.statusCode != 200 {
-                    await MainActor.run {
-                        generationError = "HTTP错误: \(httpResponse.statusCode)"
-                        isGeneratingInfo = false
-                    }
-                    return
-                }
-                
-                // 解析响应
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let choices = json["choices"] as? [[String: Any]],
-                   let firstChoice = choices.first,
-                   let message = firstChoice["message"] as? [String: Any],
+                ])
+                if let choices = resp["choices"] as? [[String: Any]],
+                   let first = choices.first,
+                   let message = first["message"] as? [String: Any],
                    let content = message["content"] as? String {
-                    
                     // 解析角色信息JSON
-                    if let jsonData = content.data(using: .utf8) {
-                        do {
-                            let decoder = JSONDecoder()
-                            let characterInfo = try decoder.decode(CharacterInfo.self, from: jsonData)
-                            
-                            // 使用新的方法填充表单
-                            await fillFormWithCharacterInfo(characterInfo)
-                        } catch {
+                    if let data = content.data(using: .utf8) {
+                        if let info = try? JSONDecoder().decode(CharacterInfo.self, from: data) {
+                            await fillFormWithCharacterInfo(info)
+                        } else if let jsonObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                             await MainActor.run {
-                                self.generationError = "无法解析角色信息: \(error.localizedDescription)"
+                                self.name = optimizeCharacterName(jsonObj["name"] as? String ?? "")
+                                self.field = jsonObj["field"] as? String ?? ""
+                                self.region = jsonObj["region"] as? String ?? ""
+                                self.introduction = jsonObj["introduction"] as? String ?? ""
+                                self.achievements = jsonObj["achievements"] as? String ?? ""
+                                self.mainWorks = jsonObj["mainWorks"] as? String ?? ""
+                                if let categoryStr = jsonObj["category"] as? String, let category = mapStringToCategory(categoryStr) {
+                                    self.selectedCategory = category
+                                }
+                                if let eraStr = jsonObj["era"] as? String, let eraIndex = mapStringToEraIndex(eraStr) {
+                                    self.selectedEraIndex = eraIndex
+                                }
                                 self.isGeneratingInfo = false
+                            }
+                        } else {
+                            await MainActor.run {
+                                generationError = "返回内容非JSON"
+                                isGeneratingInfo = false
                             }
                         }
                     } else {
                         await MainActor.run {
-                            self.generationError = "无法解析API响应"
-                            self.isGeneratingInfo = false
+                            generationError = "返回内容非JSON"
+                            isGeneratingInfo = false
                         }
                     }
                 } else {
                     await MainActor.run {
-                        self.generationError = "无法解析API响应"
-                        self.isGeneratingInfo = false
+                        generationError = "响应解析失败"
+                        isGeneratingInfo = false
                     }
                 }
             } catch {
                 await MainActor.run {
-                    self.generationError = "获取角色信息失败: \(error.localizedDescription)"
-                    self.isGeneratingInfo = false
+                    let nsError = error as NSError
+                    if nsError.domain == "wallet" && nsError.code == 402 {
+                        generationError = "余额不足，请先充值。"
+                        isGeneratingInfo = false
+                        showRechargeSheet = true
+                        Task { await storeKitManager.loadProducts() }
+                    } else {
+                        generationError = error.localizedDescription
+                        isGeneratingInfo = false
+                    }
                 }
             }
         }
@@ -757,27 +661,7 @@ struct CreateCharacterView: View {
             
             // 写入数据
             try data.write(to: fileURL)
-            print("✅ CreateCharacterView - 头像保存成功: \(fileURL.path)")
-            
-            // 验证文件是否已写入
-            if FileManager.default.fileExists(atPath: fileURL.path) {
-                if let savedData = try? Data(contentsOf: fileURL),
-                   let _ = UIImage(data: savedData) {
-                    print("✅ CreateCharacterView - 头像验证成功")
-                } else {
-                    print("⚠️ CreateCharacterView - 头像已保存但验证失败")
-                }
-            } else {
-                print("⚠️ CreateCharacterView - 头像保存后文件不存在")
-            }
-            
-            // 列出目录中的所有文件
-            if let files = try? FileManager.default.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil) {
-                print("📁 CreateCharacterView - 保存后文档目录中的文件:")
-                for file in files {
-                    print("   - \(file.lastPathComponent)")
-                }
-            }
+            print("✅ CreateCharacterView - 头像已保存到: \(fileURL.path)")
         } catch {
             print("❌ CreateCharacterView - 保存头像失败: \(error)")
         }

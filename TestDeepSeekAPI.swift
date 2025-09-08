@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 
 // DeepSeek API 测试脚本
@@ -156,4 +157,5 @@ func testAPI(endpointIndex: Int = 0) {
 }
 
 // 执行测试
-testAPI() 
+testAPI()
+#endif 

@@ -433,7 +433,7 @@ struct MyLikesView: View {
     }
     
     private func handleRecordTap(_ record: LikeRecord) {
-        // TODO: 实现跳转到具体帖子或评论的逻辑
+        
         print("点击了\(record.type.rawValue): \(record.postId)")
     }
     

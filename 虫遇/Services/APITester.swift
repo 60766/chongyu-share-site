@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import Combine
 
@@ -160,3 +161,4 @@ class APITester {
         VirtualCharacterService.shared.testGenerateCharacterComment(characterID: "einstein")
     }
 }
+#endif

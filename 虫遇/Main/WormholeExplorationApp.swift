@@ -10,7 +10,9 @@ struct WormholeExplorationApp: App {
     
     // 应用初始化
     init() {
+        #if DEBUG
         print("🚀 应用启动 - 初始化资源")
+        #endif
         // 复制历史人物图片到运行时目录
         HistoricalFigureImageCopier.shared.copyAllImages()
     }

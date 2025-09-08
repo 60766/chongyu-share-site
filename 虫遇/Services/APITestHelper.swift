@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import SwiftUI
 
@@ -316,4 +317,5 @@ class APITestHelper {
         
         return false
     }
-} 
+}
+#endif 

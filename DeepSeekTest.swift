@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 
 // API配置
@@ -60,4 +61,5 @@ func testDeepSeekAPI() {
 // 执行测试
 print("开始测试DeepSeek API...")
 testDeepSeekAPI()
-print("测试完成") 
+print("测试完成")
+#endif 

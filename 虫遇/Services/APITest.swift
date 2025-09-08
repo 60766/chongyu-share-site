@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import Combine
 
@@ -76,4 +77,5 @@ class APITest {
             print("无效的API端点URL")
         }
     }
-} 
+}
+#endif 

@@ -503,6 +503,9 @@ struct ProfileView: View {
     
     // 添加用户资料管理服务依赖
     @ObservedObject private var userProfileManager = UserProfileManager.shared
+    
+    // 添加钱包管理服务依赖
+    @ObservedObject private var walletManager = WalletManager.shared
 
     // 显示完整点赞视图的状态
     @State private var showAllLikes = false
@@ -1245,6 +1248,43 @@ struct ProfileView: View {
     
     // 已删除旧的互动统计卡片
     
+    // 钱包按钮
+    private var walletButton: some View {
+        Button(action: {
+            walletManager.showPurchaseSheet()
+        }) {
+            HStack(spacing: 4) {
+                if walletManager.isLoading {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                        .tint(.white.opacity(0.7))
+                } else {
+                    Image(systemName: "diamond.fill")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.cyan.opacity(0.8))
+                    
+                    Text(walletManager.formatBalance())
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(0.08))
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.cyan.opacity(0.3), lineWidth: 0.5)
+                    )
+            )
+            .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        }
+        .sheet(isPresented: $walletManager.showingPurchaseSheet) {
+            PurchaseView()
+        }
+    }
+    
     // 设置按钮
     private var settingsButton: some View {
                                 Button(action: {
@@ -1304,6 +1344,9 @@ struct ProfileView: View {
             VStack {
                 HStack {
                     Spacer()
+                    // 钱包按钮
+                    walletButton
+                    // 设置按钮
                     settingsButton
                 }
                 .padding(.horizontal, 16)

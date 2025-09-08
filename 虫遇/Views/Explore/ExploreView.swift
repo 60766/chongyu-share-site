@@ -152,7 +152,7 @@ struct ExploreView: View {
                         
                         // 扫码按钮 - 圆润极简设计
                         Button(action: {
-                            // TODO: 实现扫码功能
+                            // 扫码功能暂未开放
                             print("扫码按钮被点击")
                         }) {
                             ZStack {

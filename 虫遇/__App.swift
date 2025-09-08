@@ -49,6 +49,7 @@ struct ChongYuApp: App {
         // 初始化全局点赞状态管理器
         _ = LikeStateManager.shared
         
+        #if DEBUG
         print("🖼️ 初始化历史人物图片资源...")
         print("📱 应用路径: \(Bundle.main.bundlePath)")
         if let resourcePath = Bundle.main.resourcePath {
@@ -76,37 +77,21 @@ struct ChongYuApp: App {
         if let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.path {
             print("📂 文档路径: \(documentsPath)")
         }
+        #endif
         
-        // 复制历史人物图片到运行时目录和Documents目录
+        // 复制历史人物图片到运行时目录和Documents目录（功能保留）
         HistoricalFigureImageCopier.shared.copyAllImages()
         
-        // 手动注册图片到运行时
-        HistoricalFigureImageCopier.shared.registerImagesManually()
-        
-        // 验证图片是否成功复制
-        verifyHistoricalFigureImages()
-        
-        // 测试API调用 - 已禁用自动测试以节省API调用费用
-        /*
+        // 手动注册图片到运行时（仅调试时执行）
         #if DEBUG
-        // 在应用启动后进行API诊断
-        DispatchQueue.global(qos: .background).async {
-            // 延迟3秒，确保应用完全初始化
-            Thread.sleep(forTimeInterval: 3)
-            
-            // 执行API测试
-            print("\n========== API 诊断开始 ==========")
-            print("🔑 API密钥：\(APIConfigManager.shared.apiKey ?? "未设置")")
-            print("🌐 当前端点：\(APIConfigManager.shared.deepSeekEndpoint)")
-            print("🤖 测试模型：\(APIConfigManager.shared.modelName)")
-            
-            // 测试生成虚拟角色评论
-            VirtualCharacterService.shared.testGenerateCharacterComment()
-        }
+        HistoricalFigureImageCopier.shared.registerImagesManually()
         #endif
-        */
         
+        // 验证图片是否成功复制（改到视图出现后异步执行）
+        
+        #if DEBUG
         print("应用启动完成")
+        #endif
     }
     
     /// 验证历史人物图片是否成功复制到运行时目录
@@ -153,6 +138,14 @@ struct ChongYuApp: App {
         WindowGroup {
             AppTabView()
                 .environmentObject(CreationTypeManager.shared)
+                .task {
+                    #if DEBUG
+                    // 在视图出现后异步验证，避免阻塞启动
+                    DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 1.0) {
+                        verifyHistoricalFigureImages()
+                    }
+                    #endif
+                }
         }
         .modelContainer(sharedModelContainer)
     }
@@ -188,9 +181,13 @@ struct ChongYuApp: App {
         // 直接设置ARK API密钥
         let arkApiKey = "5ec25df2-f799-4fc0-8ee2-ac13d473131b"
         
+        #if DEBUG
         print("🔑 正在设置ARK格式API密钥...")
+        #endif
         APIConfigManager.shared.setAPIKey(arkApiKey)
+        #if DEBUG
         print("✅ API密钥已设置: \(arkApiKey.prefix(8))...")
+        #endif
         
         // 自动API测试已删除以节省API调用费用
     }

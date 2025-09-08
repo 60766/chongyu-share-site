@@ -22,26 +22,40 @@ class ThoughtJourneyService: ObservableObject {
      * 生成虫遇回忆报告
      */
     func generateReport(timeRange: TimeRange, modelContext: ModelContext) {
+        print("🚀 开始生成次元回放报告 - 时间范围: \(timeRange.description)")
         isGenerating = true
         errorMessage = nil
         
         // 1. 收集用户数据
         let (userData, allChatMessages) = collectUserData(timeRange: timeRange, modelContext: modelContext)
         
+        print("📊 数据收集完成:")
+        print("  - 帖子数: \(userData.posts.count)")
+        print("  - 评论数: \(userData.comments.count)")
+        print("  - 聊天数: \(userData.chats.count)")
+        print("  - 事件数: \(userData.events.count)")
+        
         // 2. 构建AI提示词
         let prompt = buildPrompt(userData: userData, timeRange: timeRange, allChatMessages: allChatMessages)
+        print("📝 AI提示词长度: \(prompt.count) 字符")
         
         // 3. 调用AI
+        print("🌐 开始调用AI服务...")
         aiNetworkService.sendRequest(prompt: prompt)
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] completion in
                     self?.isGenerating = false
                     if case .failure(let error) = completion {
+                        print("❌ 次元回放生成失败: \(error.localizedDescription)")
                         self?.errorMessage = "生成失败: \(error.localizedDescription)"
+                    } else {
+                        print("✅ 次元回放API调用完成")
                     }
                 },
                 receiveValue: { [weak self] response in
+                    print("📥 收到AI响应，长度: \(response.count) 字符")
+                    print("📄 响应预览: \(String(response.prefix(100)))...")
                     self?.parseAndSaveReport(response: response, userData: userData)
                 }
             )
@@ -611,6 +625,8 @@ class ThoughtJourneyService: ObservableObject {
      * 解析并保存报告
      */
     private func parseAndSaveReport(response: String, userData: UserDataDigest) {
+        print("🔄 开始解析并保存次元回放报告...")
+        
         let report = ThoughtJourneyReport(
             id: UUID(),
             timeRange: userData.timeRange,
@@ -624,8 +640,15 @@ class ThoughtJourneyService: ObservableObject {
             )
         )
         
+        print("📋 报告统计:")
+        print("  - ID: \(report.id)")
+        print("  - 时间范围: \(report.timeRange.description)")
+        print("  - 内容长度: \(report.content.count) 字符")
+        print("  - 统计数据: posts=\(report.stats.postsCount), comments=\(report.stats.commentsCount), chats=\(report.stats.chatsCount), characters=\(report.stats.charactersCount)")
+        
         currentReport = report
         saveReportToCache(report)
+        print("✅ 次元回放报告生成并保存完成!")
     }
     
     /**

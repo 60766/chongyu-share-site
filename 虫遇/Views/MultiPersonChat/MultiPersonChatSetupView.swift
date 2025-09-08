@@ -621,7 +621,7 @@ struct MultiPersonChatSetupView: View {
     /// 加载所有角色
     private func loadCharacters() {
         let characters = CharacterModel.getAllCharacters() // 改为let
-        // TODO: 也需要加载用户创建的角色
+        // 后续支持加载用户创建的角色
         self.allCharacters = characters
     }
     

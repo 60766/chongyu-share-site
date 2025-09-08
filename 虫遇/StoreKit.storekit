@@ -1,0 +1,106 @@
+{
+  "identifier" : "A1B2C3D4",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "6449356781",
+      "localizations" : [
+        {
+          "description" : "少量虫币",
+          "displayName" : "虫币小包",
+          "locale" : "zh_CN"
+        },
+        {
+          "description" : "Small amount of credits",
+          "displayName" : "Small Credits Pack",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "credits.small",
+      "referenceName" : "虫币小包",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "6449356782",
+      "localizations" : [
+        {
+          "description" : "中等数量虫币",
+          "displayName" : "虫币中包",
+          "locale" : "zh_CN"
+        },
+        {
+          "description" : "Medium amount of credits",
+          "displayName" : "Medium Credits Pack",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "credits.medium",
+      "referenceName" : "虫币中包",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "6449356783",
+      "localizations" : [
+        {
+          "description" : "大量虫币",
+          "displayName" : "虫币大包",
+          "locale" : "zh_CN"
+        },
+        {
+          "description" : "Large amount of credits",
+          "displayName" : "Large Credits Pack",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "credits.large",
+      "referenceName" : "虫币大包",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "19.99",
+      "familyShareable" : false,
+      "internalID" : "6449356784",
+      "localizations" : [
+        {
+          "description" : "超大量虫币",
+          "displayName" : "虫币超值包",
+          "locale" : "zh_CN"
+        },
+        {
+          "description" : "Extra large amount of credits",
+          "displayName" : "XLarge Credits Pack",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "credits.xlarge",
+      "referenceName" : "虫币超值包",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "1234567890",
+    "_developerTeamID" : "ABC123DEF4",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 757411200.00000006,
+    "_locale" : "zh_CN",
+    "_storefront" : "CHN",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+} 

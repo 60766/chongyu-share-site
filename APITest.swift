@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import Combine
 
@@ -39,4 +40,5 @@ func runTest() {
 }
 
 // 执行测试
-runTest() 
+runTest()
+#endif 

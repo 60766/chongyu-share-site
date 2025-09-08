@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 
 // ARK API 测试脚本
@@ -132,4 +133,5 @@ func testAPI() {
 }
 
 // 执行测试
-testAPI() 
+testAPI()
+#endif 

@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import Combine
 
@@ -158,4 +159,5 @@ func testAPI(endpointIndex: Int = 0) {
 }
 
 // 执行测试
-testAPI() 
+testAPI()
+#endif 
