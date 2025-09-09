@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BAC6701E2E7042930017FE36 /* StoreKit.storekit in Resources */ = {isa = PBXBuildFile; fileRef = BAC6701D2E7042930017FE35 /* StoreKit.storekit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		BA4D94B72D899C0100DE7DBE /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		BA4D94A22D899C0000DE7DBE /* 虫遇.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "虫遇.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BA4D94B62D899C0100DE7DBE /* 虫遇Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "虫遇Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BA4D94C02D899C0100DE7DBE /* 虫遇UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "虫遇UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		BAC6701D2E7042930017FE35 /* StoreKit.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = StoreKit.storekit; path = "虫遇/StoreKit.storekit"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -88,6 +93,7 @@
 		BA4D94992D899C0000DE7DBE = {
 			isa = PBXGroup;
 			children = (
+				BAC6701D2E7042930017FE35 /* StoreKit.storekit */,
 				BA4D94A42D899C0000DE7DBE /* 虫遇 */,
 				BA4D94B92D899C0100DE7DBE /* 虫遇Tests */,
 				BA4D94C32D899C0100DE7DBE /* 虫遇UITests */,
@@ -225,6 +231,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BAC6701E2E7042930017FE36 /* StoreKit.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -304,7 +311,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.shilong111234-icloud.--";
+				PRODUCT_BUNDLE_IDENTIFIER = com.shilong111234.chongyu;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -334,7 +341,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.shilong111234-icloud.--";
+				PRODUCT_BUNDLE_IDENTIFIER = com.shilong111234.chongyu;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

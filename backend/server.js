@@ -65,10 +65,10 @@ app.post('/purchase/confirm', (req, res) => {
 
   // TODO: verify with App Store Server API using receipt. For MVP, accept and credit by SKU table.
   const skuToCredits = {
-    'credits.small': 1200,
-    'credits.medium': 3200,
-    'credits.large': 7800,
-    'credits.xlarge': 16000,
+    'credits.small': 1800,      // ¥6 入门包
+    'credits.medium': 6000,     // ¥18 标准包
+    'credits.large': 13800,     // ¥38 豪华包
+    'credits.xlarge': 26800,    // ¥68 至尊包
   }
   const credits = skuToCredits[productId]
   if (!credits) return res.status(400).json({ error: 'unknown productId', productId })

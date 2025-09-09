@@ -12,13 +12,14 @@ class AppAccountManager {
         #if DEBUG
         // 使用固定测试令牌，确保与本地后端的测试一致
         return "test-token"
-        #endif
+        #else
         if let existing = retrieveTokenFromKeychain() {
             return existing
         }
         let newToken = UUID().uuidString
         saveTokenToKeychain(newToken)
         return newToken
+        #endif
     }
     
     private func saveTokenToKeychain(_ token: String) {

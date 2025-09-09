@@ -1,99 +1,83 @@
 {
-  "identifier" : "A1B2C3D4",
+  "identifier" : "com.shilong111234.chongyu",
   "nonRenewingSubscriptions" : [
 
   ],
   "products" : [
     {
-      "displayPrice" : "1.99",
+      "displayPrice" : "6.00",
       "familyShareable" : false,
       "internalID" : "6449356781",
       "localizations" : [
         {
-          "description" : "少量虫币",
-          "displayName" : "虫币小包",
+          "description" : "新手体验，1800虫洞币",
+          "displayName" : "虫币入门包",
           "locale" : "zh_CN"
-        },
-        {
-          "description" : "Small amount of credits",
-          "displayName" : "Small Credits Pack",
-          "locale" : "en_US"
         }
       ],
       "productID" : "credits.small",
-      "referenceName" : "虫币小包",
+      "referenceName" : "虫币入门包",
       "type" : "Consumable"
     },
     {
-      "displayPrice" : "4.99",
+      "displayPrice" : "18.00",
       "familyShareable" : false,
       "internalID" : "6449356782",
       "localizations" : [
         {
-          "description" : "中等数量虫币",
-          "displayName" : "虫币中包",
+          "description" : "日常使用，6000虫洞币",
+          "displayName" : "虫币标准包",
           "locale" : "zh_CN"
-        },
-        {
-          "description" : "Medium amount of credits",
-          "displayName" : "Medium Credits Pack",
-          "locale" : "en_US"
         }
       ],
       "productID" : "credits.medium",
-      "referenceName" : "虫币中包",
+      "referenceName" : "虫币标准包",
       "type" : "Consumable"
     },
     {
-      "displayPrice" : "9.99",
+      "displayPrice" : "38.00",
       "familyShareable" : false,
       "internalID" : "6449356783",
       "localizations" : [
         {
-          "description" : "大量虫币",
-          "displayName" : "虫币大包",
+          "description" : "深度体验，13800虫洞币",
+          "displayName" : "虫币豪华包",
           "locale" : "zh_CN"
-        },
-        {
-          "description" : "Large amount of credits",
-          "displayName" : "Large Credits Pack",
-          "locale" : "en_US"
         }
       ],
       "productID" : "credits.large",
-      "referenceName" : "虫币大包",
+      "referenceName" : "虫币豪华包",
       "type" : "Consumable"
     },
     {
-      "displayPrice" : "19.99",
+      "displayPrice" : "68.00",
       "familyShareable" : false,
       "internalID" : "6449356784",
       "localizations" : [
         {
-          "description" : "超大量虫币",
-          "displayName" : "虫币超值包",
+          "description" : "畅享无忧，26800虫洞币",
+          "displayName" : "虫币至尊包",
           "locale" : "zh_CN"
-        },
-        {
-          "description" : "Extra large amount of credits",
-          "displayName" : "XLarge Credits Pack",
-          "locale" : "en_US"
         }
       ],
       "productID" : "credits.xlarge",
-      "referenceName" : "虫币超值包",
+      "referenceName" : "虫币至尊包",
       "type" : "Consumable"
     }
   ],
   "settings" : {
-    "_applicationInternalID" : "1234567890",
-    "_developerTeamID" : "ABC123DEF4",
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 757411200.00000006,
-    "_locale" : "zh_CN",
-    "_storefront" : "CHN",
     "_storeKitErrors" : [
-
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      }
     ]
   },
   "subscriptionGroups" : [

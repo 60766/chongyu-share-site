@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import StoreKit
 
 // AppDelegate已经存在，不再重复声明
 
@@ -15,6 +16,9 @@ import UIKit
 struct ChongYuApp: App {
     // 添加AppDelegate
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
+    // 添加 StoreKit 管理器
+    @StateObject private var storeKitManager = StoreKitManager.shared
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -138,6 +142,7 @@ struct ChongYuApp: App {
         WindowGroup {
             AppTabView()
                 .environmentObject(CreationTypeManager.shared)
+                .environmentObject(storeKitManager)
                 .task {
                     #if DEBUG
                     // 在视图出现后异步验证，避免阻塞启动
@@ -145,6 +150,11 @@ struct ChongYuApp: App {
                         verifyHistoricalFigureImages()
                     }
                     #endif
+                    
+                    // StoreKit 测试
+                    print("[APP] 应用启动，开始测试 StoreKit...")
+                    await storeKitManager.loadProducts()
+                    print("[APP] StoreKit 测试完成，产品数量: \(storeKitManager.products.count)")
                 }
         }
         .modelContainer(sharedModelContainer)
