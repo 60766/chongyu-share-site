@@ -79,8 +79,19 @@ struct AstronomyPictureOfDay: Codable {
 class AstronomyAPIService: ObservableObject {
     static let shared = AstronomyAPIService()
     
-    private let baseURL = "https://api.nasa.gov"
-    private let apiKey = "DEMO_KEY" // 建议申请真实API密钥
+    private var baseURL: String {
+        if let url = Bundle.main.object(forInfoDictionaryKey: "NASA_API_BASE_URL") as? String {
+            return url
+        }
+        return "https://api.nasa.gov"
+    }
+    
+    private var apiKey: String {
+        if let key = Bundle.main.object(forInfoDictionaryKey: "NASA_API_KEY") as? String, !key.isEmpty {
+            return key
+        }
+        return "DEMO_KEY" // 建议申请真实API密钥
+    }
     
     @Published var realStars: [RealStar] = []
     @Published var constellations: [Constellation] = []

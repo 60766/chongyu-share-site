@@ -12,9 +12,20 @@ class APIConfigManager {
     // DeepSeek API密钥
     private(set) var apiKey: String?
     
-    // API端点选项
-    private let primaryEndpoint = "https://api.deepseek.com/v1/chat/completions"
-    private let fallbackEndpoint = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+    // API端点选项 - 支持从配置文件读取
+    private var primaryEndpoint: String {
+        if let endpoint = Bundle.main.object(forInfoDictionaryKey: "DEEPSEEK_PRIMARY_ENDPOINT") as? String {
+            return endpoint
+        }
+        return "https://api.deepseek.com/v1/chat/completions"
+    }
+    
+    private var fallbackEndpoint: String {
+        if let endpoint = Bundle.main.object(forInfoDictionaryKey: "DEEPSEEK_FALLBACK_ENDPOINT") as? String {
+            return endpoint
+        }
+        return "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+    }
     
     // 当前使用的端点索引 (0:主要端点, 1:备用端点)
     private(set) var currentEndpointIndex = 0

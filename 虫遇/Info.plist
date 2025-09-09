@@ -33,6 +33,14 @@
 	<string>5ec25df2-f799-4fc0-8ee2-ac13d473131b</string>
 	<key>BACKEND_BASE_URL</key>
 	<string>http://127.0.0.1:8787</string>
+	<key>DEEPSEEK_PRIMARY_ENDPOINT</key>
+	<string>https://api.deepseek.com/v1/chat/completions</string>
+	<key>DEEPSEEK_FALLBACK_ENDPOINT</key>
+	<string>https://ark.cn-beijing.volces.com/api/v3/chat/completions</string>
+	<key>NASA_API_BASE_URL</key>
+	<string>https://api.nasa.gov</string>
+	<key>NASA_API_KEY</key>
+	<string>DEMO_KEY</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

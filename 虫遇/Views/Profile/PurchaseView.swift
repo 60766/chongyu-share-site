@@ -295,16 +295,16 @@ struct PurchaseView: View {
                         .foregroundColor(.white.opacity(0.7))
                     
                     HStack(spacing: 12) {
-                        DevPurchaseButton(title: "+1200", productId: "credits.small", isPurchasing: isPurchasing) {
+                        DevPurchaseButton(title: "+1800", productId: "credits.small", isPurchasing: isPurchasing) {
                             devTopup(productId: "credits.small")
                         }
-                        DevPurchaseButton(title: "+3200", productId: "credits.medium", isPurchasing: isPurchasing) {
+                        DevPurchaseButton(title: "+6000", productId: "credits.medium", isPurchasing: isPurchasing) {
                             devTopup(productId: "credits.medium")
                         }
-                        DevPurchaseButton(title: "+7800", productId: "credits.large", isPurchasing: isPurchasing) {
+                        DevPurchaseButton(title: "+13800", productId: "credits.large", isPurchasing: isPurchasing) {
                             devTopup(productId: "credits.large")
                         }
-                        DevPurchaseButton(title: "+16000", productId: "credits.xlarge", isPurchasing: isPurchasing) {
+                        DevPurchaseButton(title: "+26800", productId: "credits.xlarge", isPurchasing: isPurchasing) {
                             devTopup(productId: "credits.xlarge")
                         }
                     }
@@ -578,10 +578,10 @@ struct FallbackPurchaseOptionCard: View {
     
     private func productDescription(for productId: String) -> String {
         switch productId {
-        case "credits.small": return "适合轻度使用\n1200 虫洞币"
-        case "credits.medium": return "性价比之选\n3200 虫洞币"
-        case "credits.large": return "深度体验\n7800 虫洞币"
-        case "credits.xlarge": return "无限探索\n16000 虫洞币"
+        case "credits.small": return "适合轻度使用\n1800 虫洞币"
+        case "credits.medium": return "性价比之选\n6000 虫洞币"
+        case "credits.large": return "深度体验\n13800 虫洞币"
+        case "credits.xlarge": return "无限探索\n26800 虫洞币"
         default: return "虫洞币充值包"
         }
     }

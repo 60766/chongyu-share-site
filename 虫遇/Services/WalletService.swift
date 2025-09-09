@@ -69,6 +69,13 @@ final class WalletService {
             let text = String(data: data, encoding: .utf8) ?? ""
             throw NSError(domain: "proxy", code: http.statusCode, userInfo: ["body": text])
         }
+        // 从响应头更新余额（如果提供）
+        if let balanceStr = (http.allHeaderFields["X-Balance-After"] as? String) ?? (http.allHeaderFields["x-balance-after"] as? String),
+           let newBalance = Int(balanceStr) {
+            await MainActor.run {
+                WalletManager.shared.balance = newBalance
+            }
+        }
         return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
     }
     

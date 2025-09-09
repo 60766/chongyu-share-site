@@ -50,3 +50,12 @@ tmp/
 Pods/
 *.xcworkspace
 .build/ 
+# 环境变量与日志（避免提交敏感信息）
+.env
+backend/.env
+*.log
+backend/server.log
+
+# Node 依赖
+node_modules/
+backend/node_modules/ 

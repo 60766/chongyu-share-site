@@ -60,6 +60,22 @@ class AINetworkService {
         #endif
     }
     
+    // 从响应头更新余额（如果提供）
+    private func updateWalletBalanceIfAvailable(from httpResponse: HTTPURLResponse) {
+        let headers = httpResponse.allHeaderFields
+        let candidates = ["X-Balance-After", "x-balance-after"]
+        var balanceString: String?
+        for key in candidates {
+            if let v = headers[key] as? String { balanceString = v; break }
+            if let v = headers[key] as? NSNumber { balanceString = v.stringValue; break }
+        }
+        if let balanceString = balanceString, let newBalance = Int(balanceString) {
+            Task { @MainActor in
+                WalletManager.shared.balance = newBalance
+            }
+        }
+    }
+    
     /**
      * 发送请求到DeepSeek API
      * @param prompt 提示词
@@ -115,12 +131,17 @@ class AINetworkService {
                 print("📥 HTTP status: \(httpResponse.statusCode)")
                 if httpResponse.statusCode == 402 {
                     print("💳 402 Payment Required from backend")
+                    Task { @MainActor in
+                        WalletManager.shared.showPurchaseSheet()
+                    }
                     return Fail(error: AINetworkError.httpError(402)).eraseToAnyPublisher()
                 }
                 if httpResponse.statusCode != 200 {
                     print("❌ Non-200 status: \(httpResponse.statusCode)")
                     return Fail(error: AINetworkError.httpError(httpResponse.statusCode)).eraseToAnyPublisher()
                 }
+                // 更新钱包余额（如果后端提供）
+                self.updateWalletBalanceIfAvailable(from: httpResponse)
                 do {
                     if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let choices = json["choices"] as? [[String: Any]],
@@ -228,12 +249,17 @@ class AINetworkService {
                 print("📥 HTTP status (chat): \(httpResponse.statusCode)")
                 if httpResponse.statusCode == 402 {
                     print("💳 402 Payment Required from backend (chat)")
+                    Task { @MainActor in
+                        WalletManager.shared.showPurchaseSheet()
+                    }
                     return Fail(error: AINetworkError.httpError(402)).eraseToAnyPublisher()
                 }
                 if httpResponse.statusCode != 200 {
                     print("❌ Non-200 status (chat): \(httpResponse.statusCode)")
                     return Fail(error: AINetworkError.httpError(httpResponse.statusCode)).eraseToAnyPublisher()
                 }
+                // 更新钱包余额（如果后端提供）
+                self.updateWalletBalanceIfAvailable(from: httpResponse)
                 do {
                     if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let choices = json["choices"] as? [[String: Any]],
