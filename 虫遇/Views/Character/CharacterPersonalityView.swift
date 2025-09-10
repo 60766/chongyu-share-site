@@ -44,7 +44,8 @@ struct CharacterPersonalityView: View {
                 // 顶部导航栏
                 topBar
                     .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                    .padding(.vertical, 0)
+                    .padding(.top, getSafeAreaTop())
                     .padding(.bottom, 12)
                 
                 // 滚动内容区
@@ -108,7 +109,7 @@ struct CharacterPersonalityView: View {
             
             // 页面标题
             Text(title)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 17, weight: .medium))
                 .foregroundColor(.primary)
             
             Spacer()
@@ -130,6 +131,15 @@ struct CharacterPersonalityView: View {
                     )
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 0)  // 完全移除垂直内边距，让标题紧贴顶部
+        .padding(.top, getSafeAreaTop())
+        .background(
+            // 背景 - 统一样式
+            Rectangle()
+                .fill(Color(.systemBackground))
+                .edgesIgnoringSafeArea(.top)
+        )
     }
     
     // 角色信息头部
@@ -367,6 +377,15 @@ struct CharacterPersonalityView: View {
                 .foregroundColor(.white)
             }
         }
+    }
+    
+    // 获取顶部安全区域高度
+    private func getSafeAreaTop() -> CGFloat {
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            return window.safeAreaInsets.top
+        }
+        return 0
     }
 }
 

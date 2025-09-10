@@ -174,7 +174,7 @@ struct SetChatThemeView: View {
         ZStack {
             // 中间标题
             Text("设定对话场景")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 17, weight: .medium))
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity)
             

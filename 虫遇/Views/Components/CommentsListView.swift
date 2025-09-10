@@ -1096,7 +1096,8 @@ struct CommentThreadView: View {
                     id: comment.id,
                     isNestedReply: false
                 )
-                .padding(.bottom, 4)    // 添加少量底部间距
+                .padding(.top, -4)      // 向上移动，减少与评论内容的距离
+                .padding(.bottom, 4)    // 减小底部间距，从8改为4
                 .id("main_wave_\(comment.id)")
             }
             
@@ -1139,7 +1140,8 @@ struct CommentThreadView: View {
                                 id: reply.id,
                                 isNestedReply: true
                             )
-                            .padding(.bottom, 4)    // 添加少量底部间距
+                            .padding(.top, -4)      // 向上移动，减少与回复内容的距离
+                            .padding(.bottom, 4)    // 减小底部间距，从8改为4
                                 .transition(.opacity)
                         }
                     }
@@ -1560,7 +1562,7 @@ struct WormholeWaveView: View {
     var isNestedReply: Bool = false
     
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) { // 减小点点之间的间距
             ForEach(0..<3) { index in
                 Circle()
                     .fill(Color(.systemGray3))
@@ -1575,9 +1577,9 @@ struct WormholeWaveView: View {
                     )
             }
         }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.horizontal, isNestedReply ? 0 : -20) // 嵌套回复不需要负边距
-        .frame(maxWidth: isNestedReply ? .infinity : UIScreen.main.bounds.width, alignment: .center) // 嵌套回复不需要强制宽度
+        .frame(maxWidth: .infinity, alignment: .center) // 保持居中对齐
+        .padding(.horizontal, isNestedReply ? 0 : -20) // 恢复原来的水平边距设置
+        .frame(maxWidth: isNestedReply ? .infinity : UIScreen.main.bounds.width, alignment: .center) // 恢复原来的宽度设置
         .onAppear { isAnimating = true }
         .id("wave_\(id)") // 确保每个动画实例都有唯一ID
     }

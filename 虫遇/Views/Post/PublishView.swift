@@ -54,7 +54,8 @@ struct PublishView: View {
                     Spacer()
                     
                     Text("穿越时光")
-                        .font(.headline)
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(.primary)
                     
                     Spacer()
                     
@@ -69,7 +70,15 @@ struct PublishView: View {
                     }
                     .disabled(postText.isEmpty || isPublishing)
                 }
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 0)  // 完全移除垂直内边距，让标题紧贴顶部
+                .padding(.top, getSafeAreaTop())
+                .background(
+                    // 背景 - 统一样式
+                    Rectangle()
+                        .fill(Color(.systemBackground))
+                        .edgesIgnoringSafeArea(.top)
+                )
                 
                 // 主要内容区域
                 ScrollView {
@@ -184,6 +193,15 @@ struct PublishView: View {
             isPublishing = false
             dismiss()
         }
+    }
+    
+    // 获取顶部安全区域高度
+    private func getSafeAreaTop() -> CGFloat {
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            return window.safeAreaInsets.top
+        }
+        return 0
     }
 }
 

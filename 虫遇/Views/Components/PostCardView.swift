@@ -2728,6 +2728,9 @@ struct PostCardView: View {
         // 触觉反馈
         feedbackGenerator.impactOccurred(intensity: 0.6)
         
+        // 立即清空输入框，提升用户体验
+        commentText = ""
+        
         // 设置提交状态
         isCommentSubmitting = true
         
@@ -2764,7 +2767,6 @@ struct PostCardView: View {
             }
             
             // 重置状态
-            commentText = ""
             isCommentSubmitting = false
             replyingTo = nil
             

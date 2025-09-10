@@ -386,7 +386,7 @@ struct ChatView: View {
                                 .disabled(false)
                                 .opacity(1)
                             }
-                            .frame(minHeight: textFieldFocused ? 44 : 34)  // 减小输入框高度从46/36到44/34，更紧凑
+                            .frame(minHeight: textFieldFocused ? 48 : 38)  // 考虑行间距，从44/34调整到48/38
                             .background(
                                 RoundedRectangle(cornerRadius: 18)  // 减小圆角从20到18，更符合iOS标准
                                     .fill(Color(UIColor.systemGray6))

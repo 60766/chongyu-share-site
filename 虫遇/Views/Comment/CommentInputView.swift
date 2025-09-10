@@ -94,7 +94,8 @@ struct CommentInputView: View {
                             Spacer()
                             
                             Text("添加评论")
-                                .font(.headline)
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(.primary)
                             
                             Spacer()
                             
@@ -106,12 +107,25 @@ struct CommentInputView: View {
                                 Text("发送")
                                     .font(.system(size: 15, weight: .medium))
                                     .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.blue)
+                                    )
                             }
                             .disabled(commentManager.commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             .padding(.trailing)
                         }
-                        .padding(.vertical, 12)
-                        .background(Color(.systemBackground))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 0)  // 完全移除垂直内边距，让标题紧贴顶部
+                        .padding(.top, getSafeAreaTop())
+                        .background(
+                            // 背景 - 统一样式
+                            Rectangle()
+                                .fill(Color(.systemBackground))
+                                .edgesIgnoringSafeArea(.top)
+                        )
                         .overlay(
                             Rectangle()
                                 .frame(height: 0.5)
@@ -167,7 +181,7 @@ struct CommentInputView: View {
                                     textViewHeight = min(height, 200)
                                 }
                             })
-                            .frame(minHeight: 100)
+                            .frame(minHeight: 108) // 考虑行间距增加，从100增加到108
                             .padding(.horizontal, 12)
                             .background(
                                 RoundedRectangle(cornerRadius: 16)
@@ -425,7 +439,7 @@ struct CommentInputView: View {
                             .padding(.horizontal, 14)
                             .padding(.vertical, textFieldFocused ? 6 : 2)
                         }
-                        .frame(minHeight: textFieldFocused ? 46 : 36)
+                        .frame(minHeight: textFieldFocused ? 50 : 48) // 考虑行间距，从46/44调整到50/48
                         .background(
                             RoundedRectangle(cornerRadius: 20)
                                 .fill(Color(UIColor.systemGray6))
@@ -704,7 +718,7 @@ struct CommentInputView: View {
         
         let fixedWidth = textView.frame.size.width
         let newSize = textView.sizeThatFits(CGSize(width: fixedWidth, height: CGFloat.greatestFiniteMagnitude))
-        let minHeight: CGFloat = 36 // 最小高度从38减小到36
+        let minHeight: CGFloat = 44 // 最小高度调整为44，与梦幻联动保持一致
         let maxHeight: CGFloat = isExpanded ? 200 : 100 // 根据是否展开设置最大高度
         
         // 使用异步方式更新状态，避免在视图更新过程中修改状态
@@ -897,6 +911,15 @@ struct CommentInputView: View {
                 self.updateViewOffset()
             }
         }
+    }
+    
+    // 获取顶部安全区域高度
+    private func getSafeAreaTop() -> CGFloat {
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            return window.safeAreaInsets.top
+        }
+        return 0
     }
 }
 

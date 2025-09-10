@@ -161,10 +161,10 @@ struct ChongYuApp: App {
     }
     
     private func setupAppearance() {
-        // 配置导航栏外观
+        // 配置导航栏外观 - 使用透明配置避免白色背景遮盖
         let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .clear // 改为透明背景，解决白色遮挡问题
+        appearance.configureWithTransparentBackground() // 改用透明背景配置
+        appearance.backgroundColor = .clear
         appearance.shadowColor = .clear
         
         UINavigationBar.appearance().standardAppearance = appearance

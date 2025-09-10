@@ -1876,10 +1876,11 @@ struct FullscreenPostDetailView: View {
         
         // 配置返回按钮
         let backButton = UIButton(type: .system)
-        backButton.frame = CGRect(x: 16, y: topPadding + 10, width: 32, height: 32)
+        // 调整按钮高度与"动态详情"文字高度一致（17号字体约22像素高度）
+        backButton.frame = CGRect(x: 16, y: topPadding + 6, width: 28, height: 22)
         
-        // 设置按钮图标
-        let imageConfig = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+        // 设置按钮图标 - 调整大小以匹配文字高度
+        let imageConfig = UIImage.SymbolConfiguration(pointSize: 15, weight: .medium)
         let image = UIImage(systemName: "chevron.left", withConfiguration: imageConfig)
         backButton.setImage(image, for: .normal)
         
@@ -2008,7 +2009,7 @@ struct FullscreenPostDetailView: View {
                 .frame(width: 33, height: 33)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, 0)  // 完全移除垂直内边距，让标题紧贴顶部
         .padding(.top, getSafeAreaTop())
         .background(
             // 背景 - 根据滚动状态改变透明度

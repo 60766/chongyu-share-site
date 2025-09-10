@@ -177,15 +177,10 @@ struct MultiPersonChatSetupView: View {
     private var headerView: some View {
         ZStack {
             // 中间标题 - 使用系统标准字体，确保居中
-            VStack(spacing: 2) {
-                Text("选择参与者")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(Color.warmTextPrimary)
-                Text("(\(selectedCharacterIDs.count)/4)")
-                    .font(.system(size: 13))
-                    .foregroundColor(Color.warmTextSecondary)
-            }
-            .frame(maxWidth: .infinity)
+            Text("选择参与者")
+                .font(.system(size: 17, weight: .medium))
+                .foregroundColor(.primary)
+                .frame(maxWidth: .infinity)
             
             HStack {
                 // 返回按钮
@@ -212,9 +207,14 @@ struct MultiPersonChatSetupView: View {
         VStack(spacing: 0) {
             // 标题与清空按钮
             HStack {
-                Text("已选择")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.secondary) // 统一的灰色
+                HStack(spacing: 4) {
+                    Text("已选择")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.secondary) // 统一的灰色
+                    Text("(\(selectedCharacterIDs.count)/4)")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
                 
                 Spacer()
                 

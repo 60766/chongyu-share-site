@@ -880,7 +880,7 @@ struct HomeView: View {
     /// 滚动位置
     @State private var scrollOffset: CGFloat = 0
     /// 是否显示顶部导航栏
-    @State private var showNavBar: Bool = true
+    // 移除showNavBar状态变量，因为不再需要导航栏
     /// 是否显示历史人物选择器
     @State private var showCharacterPicker: Bool = false {
         didSet {
@@ -954,7 +954,7 @@ struct HomeView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .ignoresSafeArea(.all, edges: .bottom)
+                .ignoresSafeArea(.all) // 忽略所有安全区域，包括顶部，避免白色背景遮盖
                 .allowsHitTesting(false) // 背景不阻止点击事件
                 
                 // 主滚动视图
@@ -972,18 +972,9 @@ struct HomeView: View {
                     .allowsHitTesting(false) // 确保整个GeometryReader不拦截点击事件
                     
                     VStack(spacing: 0) {
-                        // 顶部UI区域 - 简化结构，确保点击事件传递
+                        // 顶部UI区域 - 移除导航栏，让历史人物区域更靠近顶部
                         VStack(spacing: 0) {
-                            // 顶部导航栏 - 简化修饰符
-                            navBar
-                                .opacity(showNavBar ? 1 : 0)
-                                .offset(y: showNavBar ? 0 : -20)
-                                .animation(.easeInOut(duration: 0.3), value: showNavBar)
-                                .padding(.bottom, 8)
-                                .contentShape(Rectangle()) // 确保整个区域可点击
-                                .allowsHitTesting(true) // 明确允许点击事件
-                            
-                            // 历史人物横向滚动区 - 简化结构
+                            // 历史人物横向滚动区 - 移到顶部位置，添加适当顶部间距
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 25) {
                                     // 角色卡片 - 使用 topCharacters
@@ -1031,12 +1022,10 @@ struct HomeView: View {
                                     )
                                 }
                                 .padding(.horizontal, 16)
-                                .padding(.bottom, 12)
+                                .padding(.top, 0)  // 移除顶部间距，让头像更靠近顶部
+                                .padding(.bottom, 8)  // 稍微增加底部间距
                             }
                         }
-                        .opacity(showNavBar ? 1 : 0)
-                        .offset(y: showNavBar ? 0 : -20)
-                        .animation(.easeInOut(duration: 0.3), value: showNavBar)
                         
                         // 内容分类标签
                         tabSection
@@ -1049,9 +1038,7 @@ struct HomeView: View {
                 .scrollIndicators(.hidden)
                 .coordinateSpace(name: "scroll")
                 .onPreferenceChange(AppScrollOffsetPreferenceKey.self) { value in
-                    withAnimation {
-                        showNavBar = value < 50
-                    }
+                    // 移除导航栏显示/隐藏逻辑
                 }
                 
                 // 添加一键生成内容按钮
@@ -1362,30 +1349,7 @@ struct HomeView: View {
     }
     
     // MARK: - 导航栏
-    private var navBar: some View {
-        HStack {
-            // 应用标题 - 简洁扁平风格
-            Text("虫遇")
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundColor(Color(red: 90/255, green: 120/255, blue: 190/255))
-            
-            // 应用副标题 - 轻量化设计
-            Text("·穿越时空对话")
-                .font(.system(size: 13, weight: .light))
-                .foregroundColor(Color(red: 130/255, green: 150/255, blue: 200/255))
-                .kerning(0.3)
-                .offset(y: 1)
-            
-            Spacer()
-            
-            // 已移除编辑按钮
-            // 已移除搜索按钮，使界面更加简洁
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 6)
-        .padding(.bottom, 6)
-        // 直接暴露在渐变背景中
-    }
+    // 移除navBar定义 - 采用更简洁的设计，让内容区域获得更多空间
     
     // MARK: - 标签区域
     private var tabSection: some View {
@@ -1396,16 +1360,16 @@ struct HomeView: View {
                         selectedTab = tab
                     }
                 }) {
-                    VStack(spacing: 2) {
+                    VStack(spacing: 4) {
                         Text(tab.rawValue)
                             .font(.system(size: 14, weight: selectedTab == tab ? .medium : .regular))
                             .foregroundColor(selectedTab == tab ? Color(red: 80/255, green: 110/255, blue: 200/255) : Color(red: 150/255, green: 160/255, blue: 190/255))
                         
-                        // 选中指示器 - 更微妙的设计
-                        Rectangle()
+                        // 选中指示器 - 长度与文字匹配，更精致的设计
+                        RoundedRectangle(cornerRadius: 1)
                             .fill(selectedTab == tab ? Color(red: 80/255, green: 110/255, blue: 200/255) : Color.clear)
-                            .frame(width: 16, height: 1.5)
-                            .opacity(selectedTab == tab ? 1 : 0)
+                            .frame(width: selectedTab == tab ? textWidth(for: tab.rawValue) : 0, height: 2)
+                            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedTab)
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 30)
@@ -1413,9 +1377,17 @@ struct HomeView: View {
                 .buttonStyle(PlainButtonStyle())
             }
         }
-        .padding(.top, 0)
+        .padding(.top, 8)  // 调整与上方头像的间距
         .padding(.bottom, 0)
         // 直接暴露在渐变背景中
+    }
+    
+    // MARK: - 辅助函数
+    private func textWidth(for text: String) -> CGFloat {
+        let font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        let attributes = [NSAttributedString.Key.font: font]
+        let size = (text as NSString).size(withAttributes: attributes)
+        return size.width
     }
     
     // MARK: - 内容区域

@@ -123,7 +123,7 @@ struct ExploreView: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .ignoresSafeArea(.all, edges: .bottom)
+            .ignoresSafeArea(.all) // 忽略所有安全区域，包括顶部，避免白色背景遮盖
             
             // 主内容区
             VStack(spacing: 0) {
@@ -436,13 +436,14 @@ struct ExploreView: View {
                                             Text(tab.rawValue)
                                                 .font(.system(size: 13, weight: selectedTab == tab ? .semibold : .regular))
                                                 .foregroundColor(selectedTab == tab ? Color(.label) : Color(.systemGray2))
-                                                .padding(.horizontal, 12) // 减小水平内边距
+                                                .padding(.horizontal, 8) // 减小水平内边距，原来是12
                                         }
                                         .frame(maxWidth: .infinity)
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 }
                             }
+                            .padding(.horizontal, 24) // 增加整体的水平内边距，使按钮向中间集中
                             
                             // 推荐角色 - 纵向网格布局
                             VStack(alignment: .leading, spacing: 0) {
@@ -888,7 +889,7 @@ struct ExploreView: View {
     
     // 在ExploreView中，找到displayCharacters计算属性，并将其修改为：
     private var displayCharacters: [CharacterModel] {
-        // 如果是“最近互动”模式，则直接返回按时间排序的列表，不应用任何置顶逻辑
+        // 如果是"最近互动"模式，则直接返回按时间排序的列表，不应用任何置顶逻辑
         if showingRecentInteractions {
             return recentInteractionCharacters
         }
@@ -920,7 +921,7 @@ struct ExploreView: View {
             result = pinnedChars + unpinnedChars
         }
         
-        // 对除“最近互动”外的所有情况，应用置顶排序
+        // 对除"最近互动"外的所有情况，应用置顶排序
         return CharacterPinManager.shared.getSortedCharacters(characters: result, idKeyPath: \.id)
     }
     

@@ -8,8 +8,8 @@ struct AutoSizingTextView: UIViewRepresentable {
     
     // 添加防抖动计时器
     private static var heightUpdateTimer: Timer?
-    // 添加上次计算的高度缓存
-    private static var lastCalculatedHeight: CGFloat = 36
+    // 添加上次计算的高度缓存 - 考虑行间距后的最小高度
+    private static var lastCalculatedHeight: CGFloat = 42
     
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
@@ -21,6 +21,15 @@ struct AutoSizingTextView: UIViewRepresentable {
         textView.delegate = context.coordinator
         textView.textContainerInset = UIEdgeInsets(top: 7, left: 0, bottom: 7, right: 0)
         textView.returnKeyType = .default
+        
+        // 设置行间距
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4 // 增加行间距为4点
+        paragraphStyle.paragraphSpacing = 2 // 段落间距
+        textView.typingAttributes = [
+            .font: UIFont.systemFont(ofSize: 15),
+            .paragraphStyle: paragraphStyle
+        ]
         
         // 设置文本内容
         textView.text = text
@@ -52,7 +61,30 @@ struct AutoSizingTextView: UIViewRepresentable {
         // 同步文本内容，但保留光标位置
         if uiView.text != text {
             let selectedRange = uiView.selectedRange
+            
+            // 应用行间距到现有文本
+            if !text.isEmpty {
+                let paragraphStyle = NSMutableParagraphStyle()
+                paragraphStyle.lineSpacing = 4 // 增加行间距为4点
+                paragraphStyle.paragraphSpacing = 2 // 段落间距
+                
+                let attributedText = NSMutableAttributedString(string: text)
+                attributedText.addAttribute(.font, value: UIFont.systemFont(ofSize: 15), range: NSRange(location: 0, length: text.count))
+                attributedText.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: text.count))
+                
+                uiView.attributedText = attributedText
+            } else {
             uiView.text = text
+            }
+            
+            // 确保typingAttributes也有行间距设置
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.lineSpacing = 4
+            paragraphStyle.paragraphSpacing = 2
+            uiView.typingAttributes = [
+                .font: UIFont.systemFont(ofSize: 15),
+                .paragraphStyle: paragraphStyle
+            ]
             
             // 只有在输入框获得焦点时才计算高度
             if isFocused {
@@ -103,8 +135,8 @@ struct AutoSizingTextView: UIViewRepresentable {
         let size = textView.sizeThatFits(CGSize(width: textView.frame.width, height: .infinity))
         let newHeight = size.height
         
-        // 防抖动逻辑，增加阈值和延迟时间
-        if abs(newHeight - AutoSizingTextView.lastCalculatedHeight) > 3 { // 增加高度变化阈值
+        // 防抖动逻辑，考虑行间距后调整阈值
+        if abs(newHeight - AutoSizingTextView.lastCalculatedHeight) > 4 { // 行间距增加后相应调整阈值
             AutoSizingTextView.heightUpdateTimer?.invalidate()
             AutoSizingTextView.heightUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { _ in
                 // 在主线程上更新高度，使用动画
