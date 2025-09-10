@@ -237,44 +237,29 @@ struct CharacterPickerView: View {
             }
         }) {
             VStack(spacing: 8) {
-                // 角色头像
+                // 角色头像 - 🚀 统一使用Avatar组件
                 ZStack(alignment: .bottomTrailing) {
-                    if let image = UIImage(named: character.avatar) {
-                        Image(uiImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 70, height: 70)
-                            .clipShape(Circle())
-                            .overlay(
-                                Circle().stroke(character.category.color.opacity(0.6), lineWidth: 2)
-                            )
-                            .shadow(color: character.category.color.opacity(0.3), radius: 4, x: 0, y: 2)
-                    } else {
-                        Circle()
-                            .fill(character.category.color.opacity(0.1))
-                            .frame(width: 70, height: 70)
-                            .overlay(
-                                Text(String(character.name.prefix(1)))
-                                    .font(.system(size: 24, weight: .semibold))
-                                    .foregroundColor(character.category.color)
-                            )
-                            .overlay(
-                                Circle().stroke(character.category.color.opacity(0.6), lineWidth: 2)
-                            )
-                    }
+                    Avatar(
+                        url: character.avatar,
+                        name: character.name,
+                        category: character.category.displayName,
+                        size: 70
+                    )
+                    .overlay(
+                        Circle().stroke(character.category.color.opacity(0.6), lineWidth: 2)
+                    )
+                    .shadow(color: character.category.color.opacity(0.3), radius: 4, x: 0, y: 2)
                     
                     // 热度指示器 (示例，实际应从模型中获取)
                     if ["爱因斯坦", "莎士比亚", "达芬奇"].contains(character.name) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white)
-                            .padding(4)
-                            .background(
-                                Circle()
-                                    .fill(Color.orange.opacity(0.9))
-                                    .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 16, height: 16)
+                            .overlay(
+                                Text("🔥")
+                                    .font(.system(size: 8))
                             )
-                            .offset(x: 0, y: 0)
+                            .offset(x: 2, y: 2)
                     }
                 }
                 
@@ -283,33 +268,24 @@ struct CharacterPickerView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.primary)
                     .lineLimit(1)
+                    .frame(maxWidth: .infinity)
                 
-                // 角色时代或职业
+                // 角色职业
                 Text(character.profession)
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
-                
-                // 类型标签
-                Text(character.category.displayName)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(character.category.color)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(character.category.color.opacity(0.1))
-                    .cornerRadius(8)
+                    .frame(maxWidth: .infinity)
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 8)
-            .frame(maxWidth: .infinity)
+            .frame(width: 90)
+            .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                    .fill(Color(UIColor.systemBackground))
+                    .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
             )
-            .contentShape(Rectangle())
         }
-        .buttonStyle(HomeScaleButtonStyle(scaleAmount: 0.97))
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -858,6 +834,7 @@ struct HomeScaleButtonStyle: ButtonStyle {
 struct HomeView: View {
     // 添加场景状态环境变量
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.modelContext) private var modelContext
     
     /// 当前选中的标签
     @State private var selectedTab: HomeTab = .recommended
@@ -1938,16 +1915,74 @@ struct HomeView: View {
 
     // 新增方法：更新顶部角色栏
     private func updateTopCharacters() {
-        // 确保有一些模拟的互动数据
-        ensureInteractionData()
+        // 第一性原理：获取最近互动角色，不足则用默认角色补充
+        let recentChatCharacters = getRecentChatCharacters()
         
-        let sortedFollowed = postViewModel.getFollowedCharactersSortedByInteraction()
-        
-        if sortedFollowed.isEmpty {
-            // 如果用户没有关注任何人或没有互动，显示默认推荐的角色
-            self.topCharacters = Array(CharacterModel.sampleCharacters.prefix(5))
+        if recentChatCharacters.count >= 5 {
+            // 足够的最近互动角色，取前5个
+            self.topCharacters = Array(recentChatCharacters.prefix(5))
         } else {
-            self.topCharacters = sortedFollowed
+            // 不足5个，用默认角色补充，确保去重
+            let defaultCharacters = CharacterModel.sampleCharacters
+            let usedIds = Set(recentChatCharacters.map { $0.id })
+            let supplementCharacters = defaultCharacters.filter { !usedIds.contains($0.id) }
+            
+            let neededCount = 5 - recentChatCharacters.count
+            let finalSupplementCharacters = Array(supplementCharacters.prefix(neededCount))
+            
+            // 最近互动角色排在前面
+            self.topCharacters = recentChatCharacters + finalSupplementCharacters
+        }
+    }
+    
+    // 获取最近私聊互动的角色列表（按最后互动时间倒序）
+    private func getRecentChatCharacters() -> [CharacterModel] {
+        // 第一性原理：统一使用与探索页面相同的数据源
+        do {
+            let fetchDescriptor = FetchDescriptor<SDConversation>(
+                sortBy: [SortDescriptor(\.lastMessageTime, order: .reverse)]
+            )
+            let conversations = try modelContext.fetch(fetchDescriptor)
+            
+            print("🔍 [HomeView] 数据库中的对话记录总数: \(conversations.count)")
+            
+            // 简化：直接提取唯一的角色ID，保持时间顺序
+            var seenCharacterIds = Set<String>()
+            let uniqueCharacterIds = conversations.compactMap { conversation -> String? in
+                guard !seenCharacterIds.contains(conversation.characterId) else { return nil }
+                seenCharacterIds.insert(conversation.characterId)
+                return conversation.characterId
+            }
+            
+            print("🎯 [HomeView] 唯一角色ID列表: \(uniqueCharacterIds)")
+            
+            // 🚀 关键修改：使用与探索页面相同的数据源
+            let allCharacters = CharacterModel.getAllCharacters()
+            print("📚 [HomeView] 使用getAllCharacters()获取角色总数: \(allCharacters.count)")
+            
+            let recentCharacters = uniqueCharacterIds.compactMap { characterId -> CharacterModel? in
+                // 第一性原理：尝试多种匹配方式，找到就返回
+                let matchedCharacter = allCharacters.first { character in
+                    character.id == characterId || 
+                    character.characterID == characterId ||
+                    character.name == characterId
+                }
+                
+                if let matched = matchedCharacter {
+                    print("✅ [HomeView] 匹配成功: \(characterId) -> \(matched.name)")
+                } else {
+                    print("❌ [HomeView] 匹配失败: \(characterId)")
+                }
+                
+                return matchedCharacter
+            }
+            
+            print("🏆 [HomeView] 最终匹配的最近聊天角色: \(recentCharacters.map { $0.name })")
+            return recentCharacters
+            
+        } catch {
+            print("❌ [HomeView] 获取对话记录失败: \(error)")
+            return []
         }
     }
     
@@ -2022,7 +2057,7 @@ struct HomeView: View {
         CharacterCardButton(character: character)
     }
 
-    // 新增CharacterCardButton组件
+    // 角色卡片按钮组件 - 使用正确的Avatar组件
     struct CharacterCardButton: View {
         let character: CharacterModel
         @State private var showCharacterDetail: Bool = false
@@ -2032,70 +2067,44 @@ struct HomeView: View {
             Button(action: {
                 showCharacterDetail = true
             }) {
-            VStack(spacing: 4) {
-                // 头像部分 - 极简设计
-                ZStack {
-                    // 圆形背景，更浅的蓝色调，几乎不可见的边框
-                    Circle()
-                        .fill(Color(red: 240/255, green: 245/255, blue: 255/255))
-                        .frame(width: 46, height: 46)
+                VStack(spacing: 4) {
+                    // 使用与PostCardView相同的Avatar组件
+                    Avatar(
+                        url: character.characterID ?? character.id,
+                        name: character.name,
+                        category: character.profession,
+                        size: 46.0
+                    )
                     
-                    // 使用Avatar组件加载头像，增大尺寸
-                    Avatar(url: character.characterID ?? character.name, size: 42)
-                        .frame(width: 42, height: 42)
+                    // 角色名称
+                    Text(character.name)
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(character.category.color)
+                        .frame(width: 48)
+                        .lineLimit(1)
                 }
-                
-                // 人物名称
-                Text(character.name)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(Color(red: 80/255, green: 100/255, blue: 180/255))
-                    .frame(width: 48)
-                    .fixedSize(horizontal: false, vertical: true)
+                .frame(width: 50)
             }
-            .frame(width: 50)
-        }
             .buttonStyle(PlainButtonStyle())
-            .contentShape(Rectangle())
-            .allowsHitTesting(true)
             .fullScreenCover(isPresented: $showCharacterDetail) {
-                // 使用ZStack包装NavigationView，确保底部导航栏在整个导航过程中保持可见
-                ZStack {
-                    // 使用NavigationView包装CharacterDetailView
-                    NavigationView {
-                        CharacterDetailView(character: createCharacterFromModel(character))
-                    }
-                    .edgesIgnoringSafeArea(.all)
-                    
-                    // 添加一个透明视图，确保底部导航栏区域不被覆盖
-                    VStack {
-                        Spacer()
-                        Rectangle()
-                            .fill(Color.clear)
-                            .frame(height: tabBarManager.fullBottomAreaHeight)
-                    }
-                    .edgesIgnoringSafeArea(.bottom)
+                NavigationView {
+                    CharacterDetailView(character: convertToCharacter(character))
                 }
             }
         }
         
-        // 内部转换方法
-        private func createCharacterFromModel(_ characterModel: CharacterModel) -> Character {
-            // 创建一个新的Character实例
+        // 简化的角色转换
+        private func convertToCharacter(_ characterModel: CharacterModel) -> Character {
             return Character(
                 id: characterModel.id,
-                name: characterModel.name, 
+                name: characterModel.name,
                 introduction: characterModel.bio,
-                field: characterModel.category.rawValue,
+                field: characterModel.profession,
                 birthYear: characterModel.era,
-                deathYear: "",
                 avatarUrl: characterModel.avatar,
-                eraTag: characterModel.era,
-                achievements: [characterModel.profession],
+                achievements: [],
                 mainWorks: [],
-                keyThoughts: [],
-                followerCount: Int.random(in: 1000...5000),
-                interactionCount: Int.random(in: 5000...15000),
-                rating: Double.random(in: 4.0...5.0)
+                keyThoughts: []
             )
         }
     }
