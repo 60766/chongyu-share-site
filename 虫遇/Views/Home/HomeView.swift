@@ -925,8 +925,8 @@ struct HomeView: View {
                 // 背景色 - 更加接近白色的淡色渐变
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(red: 255/255, green: 248/255, blue: 245/255),  // 极淡的暖白色
-                        Color(red: 245/255, green: 248/255, blue: 255/255)   // 极淡的蓝白色
+                        Color(hex: "F5F7FA"),  // 浅灰蓝色
+                        Color(hex: "F5F7FA")   // 保持同一颜色，不使用渐变
                     ]),
                     startPoint: .top,
                     endPoint: .bottom
@@ -1340,11 +1340,11 @@ struct HomeView: View {
                     VStack(spacing: 4) {
                         Text(tab.rawValue)
                             .font(.system(size: 14, weight: selectedTab == tab ? .medium : .regular))
-                            .foregroundColor(selectedTab == tab ? Color(red: 80/255, green: 110/255, blue: 200/255) : Color(red: 150/255, green: 160/255, blue: 190/255))
+                            .foregroundColor(selectedTab == tab ? Color.primaryColor : Color.secondary)
                         
                         // 选中指示器 - 长度与文字匹配，更精致的设计
                         RoundedRectangle(cornerRadius: 1)
-                            .fill(selectedTab == tab ? Color(red: 80/255, green: 110/255, blue: 200/255) : Color.clear)
+                            .fill(selectedTab == tab ? Color.primaryColor : Color.clear)
                             .frame(width: selectedTab == tab ? textWidth(for: tab.rawValue) : 0, height: 2)
                             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedTab)
                     }
@@ -2075,11 +2075,12 @@ struct HomeView: View {
                         category: character.profession,
                         size: 46.0
                     )
+                    .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 1)
                     
                     // 角色名称
                     Text(character.name)
                         .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(character.category.color)
+                        .foregroundColor(Color.warmTextSecondary)
                         .frame(width: 48)
                         .lineLimit(1)
                 }
