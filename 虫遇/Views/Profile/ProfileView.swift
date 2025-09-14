@@ -1678,7 +1678,7 @@ struct ProfileView: View {
     private var timeTravelStatsSecondRow: some View {
         HStack(spacing: 12) {
             TimeStatItem(
-                value: "\(travelCount)天",
+                value: "\(explorationDays)天",
                 label: "探索天数",
                 color: Color.orange.opacity(0.7),
                 backgroundColor: Color.orange.opacity(0.08)
@@ -1967,6 +1967,11 @@ struct ProfileView: View {
         return cachedTravelCount
     }
     
+    // 新增：探索天数（基于实际的探索时间计算）
+    private var explorationDays: Int {
+        return calculateExplorationDays()
+    }
+    
     // 新增：认知升华次数（使用缓存）
     private var cognitionCount: Int {
         return cachedCognitionCount
@@ -2102,24 +2107,31 @@ struct ProfileView: View {
     /// 计算探索天数：从最早的帖子或消息时间计算到现在
     private func calculateExplorationDays() -> Int {
         let posts = PostViewModel.shared.posts
-        let earliestPostDate = posts.map { $0.datePosted }.min() ?? Date()
+        var earliestDate: Date? = posts.map { $0.datePosted }.min()
         
         // 检查SwiftData中的最早消息时间
-        var earliestMessageDate = Date()
         do {
             let msgDescriptor = FetchDescriptor<Message>(sortBy: [SortDescriptor(\.timestamp)])
             let messages = try modelContext.fetch(msgDescriptor)
             if let firstMessage = messages.first {
-                earliestMessageDate = firstMessage.timestamp
+                if let currentEarliest = earliestDate {
+                    earliestDate = min(currentEarliest, firstMessage.timestamp)
+                } else {
+                    earliestDate = firstMessage.timestamp
+                }
             }
         } catch {
-
+            print("获取消息失败: \(error)")
         }
         
-        let earliestDate = min(earliestPostDate, earliestMessageDate)
-        let days = Calendar.current.dateComponents([.day], from: earliestDate, to: Date()).day ?? 0
+        // 如果没有任何数据，返回0天
+        guard let startDate = earliestDate else {
+            return 0
+        }
         
-        return max(days, 1) // 至少返回1天
+        let days = Calendar.current.dateComponents([.day], from: startDate, to: Date()).day ?? 0
+        
+        return max(days, 1) // 至少返回1天（如果有数据的话）
     }
     
     /// 计算点赞收藏数：用户点赞的帖子数量
