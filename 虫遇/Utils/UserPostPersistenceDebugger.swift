@@ -105,14 +105,14 @@ class UserPostPersistenceDebugger: ObservableObject {
         let userPosts = allPosts.filter { $0.source == "user" }
         let aiPosts = allPosts.filter { post in
             guard let source = post.source else { return false }
-            return source != "user" && source != "sample"
+            return source != "user" && source != "welcome"
         }
         
         debugInfo += "📊 PostViewModel状态:\n"
         debugInfo += "   总帖子数: \(allPosts.count)\n"
         debugInfo += "   用户帖子数: \(userPosts.count)\n"
         debugInfo += "   AI生成帖子数: \(aiPosts.count)\n"
-        debugInfo += "   示例帖子数: \(allPosts.filter { $0.source == "sample" }.count)\n\n"
+        debugInfo += "   欢迎帖子数: \(allPosts.filter { $0.source == "welcome" }.count)\n\n"
         
         if !userPosts.isEmpty {
             debugInfo += "🎯 PostViewModel中的用户帖子:\n"
@@ -202,7 +202,7 @@ class UserPostPersistenceDebugger: ObservableObject {
         // 从PostViewModel中移除AI生成的帖子
         let aiPosts = PostViewModel.shared.posts.filter { post in
             guard let source = post.source else { return false }
-            return source != "user" && source != "sample"
+            return source != "user" && source != "welcome"
         }
         
         for post in aiPosts {

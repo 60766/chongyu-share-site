@@ -298,17 +298,17 @@ struct NotificationModel: Identifiable, Codable {
         // 系统通知
         NotificationModel(
             type: .system,
-            avatar: "system",
-            username: "系统通知 有新的时空旅者加入平台",
+            avatar: "assistant_avatar",
+            username: "虫遇小助手",
             content: "玛丽·居里 已穿越虫洞来",
             time: "1天前",
             isOnline: false,
             actionText: nil,
             character: CharacterInfo(
-                name: "玛丽·居里",
-                era: "20世纪初",
-                category: .scientist,
-                image: "curie"
+                name: "虫遇小助手",
+                era: "现代",
+                category: .all,
+                image: "assistant_avatar"
             ),
             previewContent: nil,
             relatedPostId: nil,

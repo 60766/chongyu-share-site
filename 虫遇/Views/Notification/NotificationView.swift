@@ -332,6 +332,7 @@ struct NotificationView: View {
                             )
                         
                         // 通知列表 - 优化间距和布局
+                        ScrollViewReader { scrollProxy in
                         ScrollView {
                             
                             // 偏好设置检测
@@ -363,7 +364,7 @@ struct NotificationView: View {
                                 ForEach(Array(filteredNotifications.enumerated()), id: \.element.id) { index, notification in
                                     Group {
                                         if notification.type == .system {
-                                            SystemNotificationView(notification: notification)
+                                            SystemNotificationView(notification: notification, scrollProxy: scrollProxy)
                                         } else {
                                             NotificationItemView(notification: notification)
                                         }
@@ -394,6 +395,7 @@ struct NotificationView: View {
                             withAnimation(.interactiveSpring(response: 0.4, dampingFraction: 0.8)) {
                                 scrollOffset = -offset
                             }
+                            }
                         }
                     }
                 }
@@ -406,6 +408,12 @@ struct NotificationView: View {
                     
                     // 延迟执行重型操作，不阻塞页面切换
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        // 修复系统通知内容
+                        notificationService.fixSystemNotificationContent()
+                        
+                        // 清理重复通知
+                        notificationService.manualCleanupDuplicates()
+                        
                         // 生成系统通知（如果还没有的话）
                         notificationService.generateAdditionalSystemNotifications()
                     }
@@ -621,7 +629,8 @@ struct NotificationView: View {
     private func shouldShowNotification(type: NotificationModel.NotificationType, selectedTab: NotificationTab) -> Bool {
         switch selectedTab {
         case .all:
-            return true
+            // 全部标签只显示非系统通知
+            return type != .system
         case .interactions:
             return type == .comment || type == .like || type == .follow
         case .system:

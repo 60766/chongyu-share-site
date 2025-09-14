@@ -6,275 +6,43 @@ import SwiftUI
  * 提供应用中使用的示例数据
  */
 struct ModelData {
-    // 示例评论数据
+    // 示例评论数据 - 只保留欢迎帖子的示例评论
     static let sampleComments: [DetailedCommentModel] = [
         DetailedCommentModel(
-            username: "李白",
-            userAvatar: "person.fill",
-            content: "青山遮不住，毕竟东流去。江湖几度夕阳红。",
-            datePosted: Date().addingTimeInterval(-3600 * 24 * 3),
-            isVirtualCharacter: true,
-            characterID: "libai",
-            likes: 42
-        ),
-        DetailedCommentModel(
-            username: "爱因斯坦",
-            userAvatar: "atom",
-            content: "想象力比知识更重要。知识是有限的，而想象力概括着世界上的一切。",
-            datePosted: Date().addingTimeInterval(-3600 * 12),
-            isVirtualCharacter: true,
-            characterID: "einstein",
-            likes: 38
-        ),
-        DetailedCommentModel(
-            username: "用户123",
-            userAvatar: "person.circle",
-            content: "这篇文章写得太好了，我获得了很多启发！",
-            datePosted: Date().addingTimeInterval(-3600 * 5),
+            username: "虫遇小助手",
+            userAvatar: "assistant_avatar",
+            content: "🎪 次元聚会已开启！想看更多骚操作？试试邀请哈利·波特+奇异博士+洛基开魔法大会～ 有问题@我！",
+            datePosted: Date().addingTimeInterval(-3600 * 2),
             isVirtualCharacter: false,
             likes: 15
-        ),
-        DetailedCommentModel(
-            username: "莎士比亚",
-            userAvatar: "book.fill",
-            content: "生活中最重要的事情是要有爱人的能力和被爱的能力。",
-            datePosted: Date().addingTimeInterval(-3600 * 2),
-            isVirtualCharacter: true,
-            characterID: "shakespeare",
-            likes: 27
-        ),
-        DetailedCommentModel(
-            username: "用户456",
-            userAvatar: "person.2.circle",
-            content: "感谢分享这么有价值的内容！",
-            datePosted: Date().addingTimeInterval(-1800),
-            isVirtualCharacter: false,
-            likes: 8
-        ),
-        DetailedCommentModel(
-            username: "牛顿",
-            userAvatar: "appletv.fill",
-            content: "如果我比别人看得更远，那是因为我站在巨人的肩膀上。",
-            datePosted: Date().addingTimeInterval(-3600 * 8),
-            isVirtualCharacter: true,
-            characterID: "newton",
-            likes: 31
-        ),
-        DetailedCommentModel(
-            username: "用户789",
-            userAvatar: "person.3.fill",
-            content: "这个观点非常有见地，让我思考了很多。",
-            datePosted: Date().addingTimeInterval(-900),
-            isVirtualCharacter: false,
-            likes: 5
-        ),
-        DetailedCommentModel(
-            username: "孔子",
-            userAvatar: "scroll.fill",
-            content: "学而不思则罔，思而不学则殆。",
-            datePosted: Date().addingTimeInterval(-3600 * 36),
-            isVirtualCharacter: true,
-            characterID: "confucius",
-            likes: 48
-        ),
-        DetailedCommentModel(
-            username: "用户101112",
-            userAvatar: "person.fill.questionmark",
-            content: "我对这个话题很感兴趣，有没有更多资料推荐？",
-            datePosted: Date().addingTimeInterval(-300),
-            isVirtualCharacter: false,
-            likes: 2
-        ),
-        DetailedCommentModel(
-            username: "达芬奇",
-            userAvatar: "paintpalette.fill",
-            content: "简单是终极的复杂。",
-            datePosted: Date().addingTimeInterval(-3600 * 18),
-            isVirtualCharacter: true,
-            characterID: "davinci",
-            likes: 36
         )
     ]
 
     // 模拟图片资源
     static let sampleImages: [String: String] = [
-        // 爱因斯坦相关图片
-        "einstein_portrait": "爱因斯坦肖像",
-        "relativity_formula": "相对论公式图",
-        "princeton_office": "普林斯顿办公室",
-        
-        // 达芬奇相关图片
-        "davinci_workshop": "达芬奇工作室",
-        "vitruvian_man": "维特鲁威人",
-        "anatomical_studies": "解剖学研究",
-        
-        // 李白相关图片
-        "libai_drinking": "李白饮酒图",
-        "mountain_river": "山水画卷",
-        "ancient_poem": "古诗手稿",
-        "calligraphy": "书法作品"
+        "welcome_banner": "photo.fill",
+        "app_features": "star.fill",
+        "community_icon": "person.3.fill"
     ]
 
-    // 样本帖子数据 - 使用恰当的嵌套方式构建
+    // 示例帖子数据 - 只保留一篇官方欢迎帖子
     static let samplePosts: [UserPostModel] = {
-        // 创建一些顶级评论和对应的回复
-        // 示例1: 爱因斯坦的帖子
-        var einsteinComment = sampleComments.first(where: { $0.characterID == "einstein" })!
-        var shakespeareComment = sampleComments.first(where: { $0.characterID == "shakespeare" })!
+        // 创建欢迎帖子的示例评论
+        let welcomeComment = sampleComments[0]
         
-        // 用户对爱因斯坦的回复
-        let replyToEinstein1 = DetailedCommentModel(
-            username: "科学爱好者",
-            userAvatar: "person.circle",
-            content: "爱因斯坦先生，您能解释一下时间相对性的概念吗？",
-            datePosted: Date().addingTimeInterval(-3600 * 10),
-            isVirtualCharacter: false,
-            parentCommentId: einsteinComment.id,
-            replyToUsername: "爱因斯坦",
-            likes: 12
-        )
-        
-        // 爱因斯坦对用户的回复
-        let einsteinReply = DetailedCommentModel(
-            username: "爱因斯坦",
-            userAvatar: "atom",
-            content: "时间相对性可以这样理解：当你坐在美丽姑娘旁边时，两小时感觉只有一分钟；当你坐在热炉子上时，一分钟感觉有两小时那么长。这就是相对论。",
-            datePosted: Date().addingTimeInterval(-3600 * 9),
-            isVirtualCharacter: true,
-            characterID: "einstein",
-            parentCommentId: replyToEinstein1.id,
-            replyToUsername: "科学爱好者",
-            likes: 28
-        )
-        
-        // 添加回复到评论中
-        var modifiedReplyToEinstein1 = replyToEinstein1
-        modifiedReplyToEinstein1.replies.append(einsteinReply)
-        einsteinComment.replies.append(modifiedReplyToEinstein1)
-        
-        // 用户对莎士比亚的回复
-        let replyToShakespeare = DetailedCommentModel(
-            username: "文学爱好者",
-            userAvatar: "person.2.circle",
-            content: "莎翁，您认为爱情和理智哪个更重要？",
-            datePosted: Date().addingTimeInterval(-3600 * 1),
-            isVirtualCharacter: false,
-            parentCommentId: shakespeareComment.id,
-            replyToUsername: "莎士比亚",
-            likes: 9
-        )
-        
-        // 添加回复到莎士比亚评论中
-        shakespeareComment.replies.append(replyToShakespeare)
-        
-        // 示例2: 达芬奇的帖子
-        var davinciComment = sampleComments.first(where: { $0.characterID == "davinci" })!
-        var newtonComment = sampleComments.first(where: { $0.characterID == "newton" })!
-        
-        // 用户对达芬奇的回复
-        let replyToDavinci = DetailedCommentModel(
-            username: "艺术学生",
-            userAvatar: "person.circle",
-            content: "达芬奇大师，能分享一下您的创作灵感来源吗？",
-            datePosted: Date().addingTimeInterval(-3600 * 16),
-            isVirtualCharacter: false,
-            parentCommentId: davinciComment.id,
-            replyToUsername: "达芬奇",
-            likes: 18
-        )
-        
-        // 达芬奇的回复
-        let davinciReply = DetailedCommentModel(
-            username: "达芬奇",
-            userAvatar: "paintpalette.fill",
-            content: "灵感来源于观察自然。大自然是最伟大的老师，它包含了一切完美的比例和规则。",
-            datePosted: Date().addingTimeInterval(-3600 * 15),
-            isVirtualCharacter: true,
-            characterID: "davinci",
-            parentCommentId: replyToDavinci.id,
-            replyToUsername: "艺术学生",
-            likes: 25
-        )
-        
-        // 添加嵌套回复
-        var modifiedReplyToDavinci = replyToDavinci
-        modifiedReplyToDavinci.replies.append(davinciReply)
-        davinciComment.replies.append(modifiedReplyToDavinci)
-        
-        // 示例3: 李白和孔子的帖子
-        var libaiComment = sampleComments.first(where: { $0.characterID == "libai" })!
-        var confuciusComment = sampleComments.first(where: { $0.characterID == "confucius" })!
-        
-        // 用户对李白的回复
-        let replyToLibai = DetailedCommentModel(
-            username: "诗歌爱好者",
-            userAvatar: "person.3.fill",
-            content: "李白先生，您认为写诗最重要的是什么？",
-            datePosted: Date().addingTimeInterval(-3600 * 24 * 2),
-            isVirtualCharacter: false,
-            parentCommentId: libaiComment.id,
-            replyToUsername: "李白",
-            likes: 22
-        )
-        
-        // 李白的回复
-        let libaiReply = DetailedCommentModel(
-            username: "李白",
-            userAvatar: "person.fill",
-            content: "诗贵有灵气，要能表达内心真实的情感。'诗仙'之名我不敢当，唯有饮酒赋诗，逍遥人间。",
-            datePosted: Date().addingTimeInterval(-3600 * 24 * 2 + 1800),
-            isVirtualCharacter: true,
-            characterID: "libai",
-            parentCommentId: replyToLibai.id,
-            replyToUsername: "诗歌爱好者",
-            likes: 31
-        )
-        
-        // 添加嵌套回复
-        var modifiedReplyToLibai = replyToLibai
-        modifiedReplyToLibai.replies.append(libaiReply)
-        libaiComment.replies.append(modifiedReplyToLibai)
-        
-        // 返回构建好的帖子数组
         return [
             UserPostModel(
                 id: UUID(uuidString: "11111111-1111-1111-1111-111111111111") ?? UUID(),
-                username: "历史探索者",
-                userAvatar: "person.fill",
-                content: "今天与爱因斯坦探讨了关于相对论的一些基本原理，他的解释让我对时间和空间有了全新的认识。他说：\n\"想象你坐在一个美丽女孩身边，一小时会感觉像一分钟；但当你坐在一个滚烫的火炉上时，一分钟会感觉像一小时。这就是相对论。\"",
-                images: ["einstein_portrait", "relativity_formula"],
+                username: "虫遇小助手",
+                userAvatar: "assistant_avatar", // 使用虫遇小助手专属头像
+                 content: "🌌 欢迎来到虫遇！\n这是一个打破次元壁的AI社交平台。\n在这里，你可以与任何时代、任何世界的角色对话互动，\n吃瓜他们的朋友圈，体验前所未有的跨次元陪伴。\n\n🔥 梦幻联动功能：\n🦸‍♂️ 邀请次元英雄团（孙悟空+蜘蛛侠+路飞）开超能力交流会\n❄️ 让冰雪女王组（艾莎+黑寡妇+初音未来）讨论如何征服世界\n\n🗨️ 私聊深度体验：\n⚔️ 荆轲刺秦前最后一夜的真实心理独白\n🎭 莎翁创作《哈姆雷特》时的灵感来源\n🎮 马里奥第一次吃到蘑菇变大时的震惊体验\n\n💬 次元朋友圈爆料：\n⚡ 皮卡丘：\"今天又电了小智，他怎么还不长记性？\"\n🔥 炭治郎：\"刚学会新呼吸法，感觉能一刀秒鬼了！\"\n\n🕳️ 虫洞探索（生成帖子）：进入动态详情右滑即可生成精彩内容！\n主页右侧的时空漩涡点击一键可生成12篇帖子\n\n🎯 快来体验跨时空的奇妙对话吧！",
+                images: ["welcome_banner", "app_features"],
                 datePosted: Date().addingTimeInterval(-86400),
-                likes: 128,
-                comments: [einsteinComment, shakespeareComment],
+                likes: 42,
+                comments: [welcomeComment],
                 isLikedByCurrentUser: false,
                 isBookmarkedByCurrentUser: false,
-                source: "sample"
-            ),
-            UserPostModel(
-                id: UUID(uuidString: "22222222-2222-2222-2222-222222222222") ?? UUID(),
-                username: "艺术爱好者",
-                userAvatar: "person.2.fill",
-                content: "拜访了达芬奇的工作室，他向我展示了他的绘画技巧和对解剖学的深入研究。他的《维特鲁威人》展现了完美的人体比例，体现了他对数学与艺术结合的追求。",
-                images: ["davinci_workshop", "vitruvian_man", "anatomical_studies"],
-                datePosted: Date().addingTimeInterval(-172800),
-                likes: 86,
-                comments: [davinciComment, newtonComment],
-                isLikedByCurrentUser: true,
-                isBookmarkedByCurrentUser: true,
-                source: "sample"
-            ),
-            UserPostModel(
-                id: UUID(uuidString: "33333333-3333-3333-3333-333333333333") ?? UUID(),
-                username: "诗词鉴赏家",
-                userAvatar: "person.3.fill",
-                content: "与李白畅饮江边，他即兴作诗：\"抽刀断水水更流，举杯消愁愁更愁。\" 诗仙果然名不虚传，短短数语便道尽人生苦乐。",
-                images: ["libai_drinking", "mountain_river", "ancient_poem", "calligraphy"],
-                datePosted: Date().addingTimeInterval(-259200),
-                likes: 114,
-                comments: [libaiComment, confuciusComment],
-                isLikedByCurrentUser: false,
-                isBookmarkedByCurrentUser: false,
-                source: "sample"
+                source: "welcome"
             )
         ]
     }()

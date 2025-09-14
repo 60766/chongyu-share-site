@@ -61,6 +61,15 @@ struct DebugTestView: View {
                         .cornerRadius(8)
                 }
                 
+                // 测试虫遇小助手头像显示
+                NavigationLink(destination: assistantAvatarTest) {
+                    Text("虫遇小助手头像测试")
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.yellow.opacity(0.1))
+                        .cornerRadius(8)
+                }
+                
                 Spacer()
                 
                 // 调试信息
@@ -80,6 +89,126 @@ struct DebugTestView: View {
                 }
             }
         }
+    }
+
+    // 测试虫遇小助手头像显示
+    private var assistantAvatarTest: some View {
+        VStack(spacing: 20) {
+            Text("虫遇小助手头像测试")
+                .font(.headline)
+            
+            VStack(spacing: 15) {
+                // 1. 测试UIImage能否加载
+                VStack {
+                    if let uiImage = UIImage(named: "assistant_avatar") {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 80, height: 80)
+                            .clipShape(Circle())
+                        Text("✅ UIImage 加载成功")
+                            .foregroundColor(.green)
+                    } else {
+                        Circle()
+                            .fill(Color.red.opacity(0.3))
+                            .frame(width: 80, height: 80)
+                        Text("❌ UIImage 加载失败")
+                            .foregroundColor(.red)
+                    }
+                    Text("UIImage 测试")
+                        .font(.caption)
+                }
+                
+                // 2. 测试SwiftUI Image能否加载
+                VStack {
+                    Image("assistant_avatar")
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
+                        .onAppear {
+                            print("🔍 SwiftUI Image 尝试加载 assistant_avatar")
+                        }
+                    Text("SwiftUI Image 测试")
+                        .font(.caption)
+                }
+                
+                // 3. 测试Bundle中的资源
+                VStack {
+                    if let path = Bundle.main.path(forResource: "assistant_avatar", ofType: nil) {
+                        Text("✅ Bundle 路径: \(path)")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    } else {
+                        Text("❌ Bundle 中未找到资源")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+                
+                // 4. 测试 NotificationCharacterView
+                VStack {
+                    NotificationCharacterView(
+                        character: NotificationModel.CharacterInfo(
+                            name: "虫遇小助手",
+                            era: "现代",
+                            category: .all,
+                            image: "assistant_avatar"
+                        ),
+                        isOnline: false
+                    )
+                    Text("NotificationCharacterView 测试")
+                        .font(.caption)
+                }
+            }
+            
+            // 完整的通知项测试
+            VStack(alignment: .leading) {
+                Text("完整通知项测试")
+                    .font(.subheadline)
+                    .padding(.bottom, 10)
+                
+                NotificationItemView(notification: NotificationModel(
+                    type: .system,
+                    avatar: "assistant_avatar",
+                    username: "虫遇小助手",
+                    content: "欢迎来到虫遇！开始你的时空对话之旅吧！",
+                    time: "刚刚",
+                    isOnline: false,
+                    actionText: nil,
+                    character: NotificationModel.CharacterInfo(
+                        name: "虫遇小助手",
+                        era: "现代",
+                        category: .all,
+                        image: "assistant_avatar"
+                    ),
+                    previewContent: nil,
+                    relatedPostId: nil,
+                    relatedCommentId: nil,
+                    triggeredByAction: "system",
+                    isGenerated: false,
+                    userComment: nil,
+                    userPost: nil,
+                    originalPost: nil,
+                    originalPostAuthor: nil
+                ))
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(12)
+            }
+            
+            Button("清理缓存并重新加载") {
+                // 清理图片缓存
+                if NSClassFromString("ImageCache") != nil {
+                    print("🔄 尝试清理图片缓存")
+                }
+                // 强制重新渲染
+                print("🔄 强制重新渲染视图")
+            }
+            .padding()
+            .background(Color.blue.opacity(0.1))
+            .cornerRadius(8)
+        }
+        .padding()
     }
 }
 

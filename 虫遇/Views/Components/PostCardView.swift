@@ -703,8 +703,10 @@ struct PostCardView: View {
     private var isUserPost: Bool {
         // 获取所有虚拟角色名称
         let allCharacterNames = CharacterDataManager.shared.getAllCharactersInfo().map { $0.name }
-        // 不是虚拟角色且不是AI助手的动态，认为是用户发布的
-        return !allCharacterNames.contains(post.username) && post.username != "AI助手"
+        // 不是虚拟角色且不是AI助手或虫遇小助手的动态，认为是用户发布的
+        return !allCharacterNames.contains(post.username) && 
+               post.username != "AI助手" && 
+               post.username != "虫遇小助手"
     }
     var onLikeToggle: ((Bool) -> Void)?
     var onCommentToggle: (() -> Void)?
@@ -2847,12 +2849,12 @@ struct PostCardView: View {
 struct PostCardView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
-            // AI生成的帖子预览
+            // 欢迎帖子预览
             PostCardView(post: ModelData.samplePosts[0], postSource: .aiGenerated)
-                .previewDisplayName("AI生成帖子")
+                .previewDisplayName("欢迎帖子")
             
-            // 用户自己生成的帖子预览
-            PostCardView(post: ModelData.samplePosts[1], isOwnPost: true, postSource: .userGenerated)
+            // 用户自己生成的帖子预览（使用欢迎帖子作为示例）
+            PostCardView(post: ModelData.samplePosts[0], isOwnPost: true, postSource: .userGenerated)
                 .previewDisplayName("用户生成帖子")
         }
     }

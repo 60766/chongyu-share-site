@@ -526,8 +526,8 @@ public struct WormholeExplorationView: View {
         if backupPosts.isEmpty {
             backupPosts.append(UserPostModel(
                 id: UUID(),
-                username: "系统",
-                userAvatar: "exclamationmark.triangle",
+                username: "虫遇小助手",
+                userAvatar: "assistant_avatar",
                 content: "虫洞探索遇到了一些小问题，但我们仍在继续前进。",
                 images: [],
                 datePosted: Date(),

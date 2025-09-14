@@ -29,7 +29,7 @@ class DataPersistenceTest {
             
             let memoryAIPosts = viewModel.posts.filter { post in
                 guard let source = post.source else { return false }
-                return source != "user" && source != "sample"
+                return source != "user" && source != "welcome"
             }
             let savedAIPosts = viewModel.restoreAIPostsData()
             

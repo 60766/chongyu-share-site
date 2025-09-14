@@ -193,7 +193,7 @@ class PostViewModel: ObservableObject {
         // AI生成的帖子包括：wormhole, onekey, virtual, ai等来源
         let aiPosts = posts.filter { post in
             guard let source = post.source else { return false }
-            return source != "user" && source != "sample" // 排除用户帖子和示例帖子
+            return source != "user" && source != "welcome" // 排除用户帖子和欢迎帖子
         }
         
         do {
@@ -3036,7 +3036,7 @@ class PostViewModel: ObservableObject {
             let currentUserPosts = self.posts.filter { $0.source == "user" }
             let currentAIPosts = self.posts.filter { post in
                 guard let source = post.source else { return false }
-                return source != "user" && source != "sample"
+                return source != "user" && source != "welcome"
             }
             
             // 检查数据一致性

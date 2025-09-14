@@ -25,6 +25,9 @@ class NotificationService: ObservableObject {
         
         // 监听应用内的用户行为
         setupBehaviorListeners()
+        
+        // 确保系统通知存在（包括新手指南）
+        generateAdditionalSystemNotifications()
     }
     
     // MARK: - 行为监听器
@@ -430,17 +433,17 @@ class NotificationService: ObservableObject {
         
         let notification = NotificationModel(
             type: .system,
-            avatar: "system",
-            username: "系统通知 欢迎来到虫遇",
+            avatar: "assistant_avatar",
+            username: "虫遇小助手",
             content: "开始你的时空对话之旅吧！",
             time: formatTimeAgo(Date()),
             isOnline: false,
             actionText: nil,
             character: NotificationModel.CharacterInfo(
-                name: "系统",
+                name: "虫遇小助手",
                 era: "现代",
                 category: .all,
-                image: character
+                image: "assistant_avatar"
             ),
             previewContent: nil,
             relatedPostId: nil,
@@ -458,56 +461,38 @@ class NotificationService: ObservableObject {
     
     // 添加更多系统通知的方法
     func generateAdditionalSystemNotifications() {
-        // 检查是否已经有系统通知了
-        let hasSystemNotifications = notifications.contains { $0.type == .system }
+        print("🔍 NotificationService: 开始生成系统通知，当前通知数量: \(notifications.count)")
         
-        if !hasSystemNotifications {
+        // 检查是否已经有欢迎通知了
+        let hasWelcomeNotification = notifications.contains { $0.type == .system && $0.username == "虫遇小助手" }
+        print("🔍 NotificationService: 是否已有欢迎通知: \(hasWelcomeNotification)")
+        
+        if !hasWelcomeNotification {
             // 生成欢迎通知
             generateSystemWelcomeNotification()
-            
-            // 生成功能介绍通知
-            let featureNotification = NotificationModel(
-                type: .system,
-                avatar: "system",
-                username: "功能介绍",
-                content: "你可以与历史上的著名人物对话，体验跨越时空的思想碰撞！",
-                time: formatTimeAgo(Date().addingTimeInterval(-3600)), // 1小时前
-                isOnline: false,
-                actionText: nil,
-                character: NotificationModel.CharacterInfo(
-                    name: "助手",
-                    era: "现代",
-                    category: .all,
-                    image: "davinci"
-                ),
-                previewContent: nil,
-                relatedPostId: nil,
-                relatedCommentId: nil,
-                triggeredByAction: "system",
-                isGenerated: false,
-                userComment: nil,
-                userPost: nil,
-                originalPost: nil,
-                originalPostAuthor: nil
-            )
-            
-            addNotification(featureNotification)
-            
+            print("✅ NotificationService: 已生成欢迎通知")
+        }
+        
+        // 检查是否已经有新手指南通知了
+        let hasGuideNotification = notifications.contains { $0.type == .system && $0.username == "功能指南" }
+        print("🔍 NotificationService: 是否已有新手指南通知: \(hasGuideNotification)")
+        
+        // 简化版本已删除，只保留详细版本
+        
+        // 检查是否已经有版本更新通知了
+        let hasUpdateNotification = notifications.contains { $0.type == .system && $0.username == "版本更新" }
+        
+        if !hasUpdateNotification {
             // 生成更新通知
             let updateNotification = NotificationModel(
                 type: .system,
-                avatar: "system",
+                avatar: "arrow.up.circle",
                 username: "版本更新",
                 content: "新增了更多历史人物，快来探索吧！",
                 time: formatTimeAgo(Date().addingTimeInterval(-7200)), // 2小时前
                 isOnline: false,
                 actionText: nil,
-                character: NotificationModel.CharacterInfo(
-                    name: "系统",
-                    era: "现代",
-                    category: .all,
-                    image: "shakespeare"
-                ),
+                character: nil, // 系统通知不需要角色信息
                 previewContent: nil,
                 relatedPostId: nil,
                 relatedCommentId: nil,
@@ -547,7 +532,13 @@ class NotificationService: ObservableObject {
         DispatchQueue.main.async {
             // 检查是否存在重复通知 - 使用更严格的去重条件
             let isDuplicate = self.notifications.contains { existingNotification in
-                // 基本条件：同一角色、同一类型、同一帖子
+                // 对于系统通知，使用username来区分
+                if notification.type == .system {
+                    return existingNotification.type == .system && 
+                           existingNotification.username == notification.username
+                }
+                
+                // 对于其他通知，使用原来的逻辑
                 let basicMatch = existingNotification.character?.name == notification.character?.name &&
                        existingNotification.type == notification.type &&
                                existingNotification.relatedPostId == notification.relatedPostId
@@ -630,6 +621,13 @@ class NotificationService: ObservableObject {
         
         for notification in notifications {
             let isDuplicate = cleanedNotifications.contains { existingNotification in
+                // 对于系统通知，使用username来区分
+                if notification.type == .system {
+                    return existingNotification.type == .system && 
+                           existingNotification.username == notification.username
+                }
+                
+                // 对于其他通知，使用原来的逻辑
                 let basicMatch = existingNotification.character?.name == notification.character?.name &&
                                existingNotification.type == notification.type &&
                                existingNotification.relatedPostId == notification.relatedPostId
@@ -745,6 +743,129 @@ class NotificationService: ObservableObject {
     func manualCleanupDuplicates() {
         DispatchQueue.main.async {
             self.cleanupDuplicateNotifications()
+        }
+    }
+    
+    // 清除所有通知并重新生成系统通知
+    func resetSystemNotifications() {
+        DispatchQueue.main.async {
+            print("🔄 重置系统通知...")
+            // 清除所有通知
+            self.notifications.removeAll()
+            self.saveNotifications()
+            
+            // 重新生成系统通知
+            self.generateAdditionalSystemNotifications()
+            print("✅ 系统通知重置完成，当前通知数量: \(self.notifications.count)")
+        }
+    }
+    
+    // 修复系统通知内容
+    func fixSystemNotificationContent() {
+        DispatchQueue.main.async {
+            print("🔧 修复系统通知内容...")
+            
+            // 找到虫遇小助手通知并修复内容
+            for i in 0..<self.notifications.count {
+                if self.notifications[i].type == .system && self.notifications[i].username == "虫遇小助手" {
+                    // 创建正确的虫遇小助手通知
+                    let correctedNotification = NotificationModel(
+                        type: .system,
+                        avatar: "assistant_avatar",
+                        username: "虫遇小助手",
+                        content: "开始你的时空对话之旅吧！",
+                        time: self.formatTimeAgo(Date()),
+                        isOnline: false,
+                        actionText: nil,
+                        character: NotificationModel.CharacterInfo(
+                            name: "虫遇小助手",
+                            era: "现代",
+                            category: .all,
+                            image: "assistant_avatar"
+                        ),
+                        previewContent: nil,
+                        relatedPostId: nil,
+                        relatedCommentId: nil,
+                        triggeredByAction: "system",
+                        isGenerated: false,
+                        userComment: nil,
+                        userPost: nil,
+                        originalPost: nil,
+                        originalPostAuthor: nil
+                    )
+                    
+                    self.notifications[i] = correctedNotification
+                    print("✅ 已修复虫遇小助手通知内容")
+                    break
+                }
+            }
+            
+            // 找到功能指南通知并修复内容
+            for i in 0..<self.notifications.count {
+                if self.notifications[i].type == .system && self.notifications[i].username == "功能指南" {
+                    let correctedGuide = NotificationModel(
+                        type: .system,
+                        avatar: "sparkles",
+                        username: "功能指南",
+                        content: """
+                🌟 欢迎来到虫遇！这里有丰富的功能等你探索：
+                
+                🕳️ 生成帖子：右滑首帖 → 「探索虫洞深处」 → 「启动虫洞捕捉」。多个角色会发布自己的感悟和朋友圈，分享不同视角的生活体验。
+                
+                可选方向（一次最多生成12篇）：
+                • 虫洞共鸣：不同次元角色围绕你的主题展开对话
+                • 日常心情：发布各自时代的真实感受和生活情绪体验
+                • 古潮新语：用各自智慧和思想体系分享对现代话题的深度见解
+                • 穿越吐槽：各种角色以各自时代视角，对现代事物发表有梗有料的幽默吐槽
+                • 时空记事：分享各自时代的重要时刻和亲历历史的真实感受
+                
+                ⚡ 一键生成：点击主页右侧彩球，让AI为你精心调配四种风味（日常心情、古潮新语、穿越吐槽、时空记事），12篇内容一次满足，比例还能按你喜好调整！
+                
+                ✍️ 发布动态：点击底部中间的发布按钮，编辑文字/图片，可选择互动角色后发布，角色会根据自己的视角给你点赞和有趣的回复
+                
+                💬 互动评论：在任何帖子下评论和点赞，角色会以独特视角回复，虚拟角色点赞用于成就系统，你的点赞记录可在空间页面查看
+                
+                📤 精彩分享：在角色详情页或对话页面使用分享功能，生成精美卡片分享到微信朋友圈，展示你与历史人物的对话瞬间
+                
+                💫 角色对话：在探索中选择角色进入详情，开始与 TA 一对一对话
+                
+                🎨 角色调校：在角色详情页点击个性化调节按钮，可调整角色的表达方式、语言风格、情感程度等5个维度，让每个历史人物更符合你的对话偏好
+                
+                🎭 梦幻联动：在探索页面点击「梦幻联动」，选择主题与参与角色，开启多人对话
+                
+                🎨 创建角色：在探索页面点击「创建角色」，快速创建新角色开始对话
+                
+                🏆 成就系统：通过与角色互动、获得虚拟角色点赞等行为解锁各种成就徽章，在空间页面查看你的成就收藏
+                
+                🎬 次元回放：用AI温柔地解读你与历史人物的互动轨迹，发现你在寻找什么、思考什么、成长什么，看见那个在时空中探索的真实自己
+                
+                💰 虫洞币充值：虫洞币是所有AI功能的基础货币，包括角色对话、内容生成、智能回复等都需要消耗虫洞币。在空间页面点击右上角钻石图标查看余额并充值，支持四档套餐（6-68元）
+                
+                现在开始，让思绪如光，穿越时空的边界......
+                """,
+                        time: self.formatTimeAgo(Date()),
+                        isOnline: false,
+                        actionText: nil,
+                        character: nil,
+                        previewContent: nil,
+                        relatedPostId: nil,
+                        relatedCommentId: nil,
+                        triggeredByAction: "system",
+                        isGenerated: false,
+                        userComment: nil,
+                        userPost: nil,
+                        originalPost: nil,
+                        originalPostAuthor: nil
+                    )
+                    
+                    self.notifications[i] = correctedGuide
+                    print("✅ 已修复功能指南通知内容")
+                    break
+                }
+            }
+            
+            self.saveNotifications()
+            print("✅ 系统通知内容修复完成")
         }
     }
 }
