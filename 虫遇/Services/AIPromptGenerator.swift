@@ -5,90 +5,7 @@ import Foundation
  * 负责生成动态提示词，用于引导AI生成更智能的回复
  */
 class AIPromptGenerator {
-    /**
-     * 生成动态提示词
-     */
-    func generateDynamicPrompt(
-        characterID: String,
-        userComment: String,
-        postContent: String,
-        postAuthor: String? = nil,
-        semanticModel: SemanticModel,
-        conversationContext: ConversationContext
-    ) -> String {
-        // 获取角色特征
-        let traits = getCharacterTraits(characterID)
-        
-        // 获取帖子作者信息 - 如果提供了作者名称则使用，否则使用默认值
-        let authorName = postAuthor ?? "帖子作者"
-        
-        // 基础提示词
-        var prompt = """
-        你是\(traits.name)，正在回复一条关于"\(semanticModel.focusAspect ?? "一般话题")"的评论。
-        
-        原评论："\(userComment)"
-        原帖内容："\(String(postContent.prefix(150)))..."
-        帖子作者：\(authorName)
-        
-        你的特点：\(traits.description)
-        
-        评论分析：
-        - 情感倾向：\(formatSentiment(semanticModel.sentiment))
-        - 意图类型：\(formatIntent(semanticModel.intent))
-        - 关注点：\(semanticModel.focusAspect ?? "整体内容")
-        - 主要关键词：\(semanticModel.keywords.joined(separator: "、"))
-        
-        重要任务：请创造一个有思想深度的回复，与用户产生有趣的思想碰撞。
-        
-        1. 找到连接点：
-           - 用户关注的点与你的经历或思想有何关联？
-           - 你的时代背景如何帮助你对当代话题提供独特视角？
-           - 用户情感和观点如何触发你的共鸣或不同见解？
-           - 你的专业领域如何为这个话题提供新的思考维度？
-           - 帖子作者(\(authorName))的身份或观点如何影响你的回应方式？
-        
-        2. 创造思想碰撞：
-           - 提出用户没想到但有价值的观点或角度
-           - 用你特有的表达方式阐述深刻见解
-           - 在认可用户观点的基础上拓展或提供新思路
-           - 创造让用户感到"这个回复真有深度"的惊喜
-           - 可以在适当情况下直接称呼作者名字，增加互动感
-        
-        请以你的风格回复，但注意：
-        1. 保持自然，像真人对话一样
-        2. 不要用固定句式开头
-        3. 不要总是引用对方内容
-        4. 使用符合你性格的表达方式
-        """
-        
-        // 添加对话历史上下文
-        if !conversationContext.relevantHistory.isEmpty {
-            prompt += "\n\n对话历史：\n"
-            for entry in conversationContext.relevantHistory {
-                prompt += "用户：\(entry.userComment)\n"
-                prompt += "你的回复：\(entry.characterReply)\n"
-            }
-        }
-        
-        // 添加避免重复的指引
-        if !conversationContext.usedExpressions.isEmpty {
-            prompt += "\n\n请避免使用以下已使用过的表达：\n"
-            prompt += Array(conversationContext.usedExpressions.prefix(5)).joined(separator: "、")
-        }
-        
-        // 根据对话深度调整回复复杂度
-        if conversationContext.conversationDepth > 2 {
-            prompt += "\n\n这是一段持续对话，请展现出对之前交流的记忆，并使回复更加深入。随着对话深入，可以逐渐展示更多你的个性和独特视角。"
-        }
-        
-        // 添加角色特定的语言风格指导
-        prompt += "\n\n" + generateStyleGuidance(for: traits)
-        
-        // 添加随机指令，增加回复多样性
-        prompt += "\n\n" + generateRandomInstructions()
-        
-        return prompt
-    }
+
     
     /**
      * 生成回复提示词
@@ -268,8 +185,8 @@ class AIPromptGenerator {
         帖子作者：\(authorName)
         
         你的特点：\(traits.description)
-        你的语调：\(characterTraits.tone)
-        你的知识领域：\(characterTraits.knowledgeAreas.joined(separator: "、"))
+        你的语调：友好专业
+        你的知识领域：一般知识
         
         重要任务：请从你的角度与这篇帖子及其作者建立有趣的思想连接，然后进行评论。
         

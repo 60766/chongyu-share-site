@@ -183,8 +183,7 @@ class MultiCharacterChatService {
         return characters.map { character in
             let name = character.name
             let description = character.bio
-            let personalityObj = personalityManager.getPersonality(for: character.id)
-            let personality = personalityObj?.tone ?? "智慧而深刻"
+            let personality = "智慧而深刻"  // 简洁版本：使用统一描述，个性化调整会在提示词中体现
             
             return """
             [\(character.id)] \(name) （@时使用中文名：@\(name)）

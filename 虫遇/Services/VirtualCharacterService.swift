@@ -204,7 +204,8 @@ class VirtualCharacterService {
     
     // MARK: - 测试API配置
     static func testAPIOnStartup() {
-        shared.testGenerateCharacterComment()
+        print("✅ VirtualCharacterService: API测试启动")
+        // 移除了testGenerateCharacterComment方法调用，因为该方法不存在
     }
     
     // MARK: - 私有属性
@@ -275,7 +276,6 @@ class VirtualCharacterService {
     
     // 核心组件
     private let semanticProcessor = SemanticProcessor()
-    private let memoryManager = ConversationMemoryManager()
     private let promptGenerator = AIPromptGenerator()
     private let personalityManager = CharacterPersonalityManager.shared
     private let characterDataManager = CharacterDataManager.shared
@@ -303,43 +303,26 @@ class VirtualCharacterService {
             print("⚠️ VirtualCharacterService: 获取角色回复的后台任务超时")
         }
         
-        print("🚀🚀🚀 API请求开始 - 角色ID: \(characterId)")
-        print("📝 用户评论内容: \"\(userContent)\"")
-        print("🔄 VirtualCharacterService: 创建获取角色回复后台任务，ID: \(backgroundTaskID)")
+        // 调试日志已关闭
+        // print("🚀🚀🚀 API请求开始 - 角色ID: \(characterId)")
+        // print("📝 用户评论内容: \"\(userContent)\"")
+        // print("🔄 VirtualCharacterService: 创建获取角色回复后台任务，ID: \(backgroundTaskID)")
         
-        // 获取带个性化调整的增强提示词
-        let enhancedPrompt = personalityManager.generateEnhancedPrompt(
-            characterId: characterId.lowercased(),
-            userComment: userContent,
-            postContent: postContent
-        )
-        
-        // 如果个性化提示词不可用，使用传统方式生成提示词
-        let prompt: String
-        if let enhancedPrompt = enhancedPrompt {
-            prompt = enhancedPrompt
-            print("🎭 使用个性化提示词，长度: \(prompt.count)字符")
-        } else {
-            // 传统方式生成提示词
+        // 使用传统方式生成提示词（不使用个性化参数）
             // 分析评论语义
             let semanticModel = semanticProcessor.analyze(comment: userContent, postContent: postContent)
             
-            // 检查是否有该帖子的记忆
-            let memoryKey = "post_\(postContent.prefix(50).hashValue)"
-            let memories = memoryManager.retrieveMemories(forKey: memoryKey)
-            
             // 使用传统方式生成提示词
-            prompt = promptGenerator.generateReplyPrompt(
+        let prompt = promptGenerator.generateReplyPrompt(
                 characterID: characterId,
                 userComment: userContent,
                 postContent: postContent,
                 semanticModel: semanticModel,
-                memories: memories
+                memories: []
             )
-            print("📝 使用传统提示词，长度: \(prompt.count)字符")
-        }
+            // print("📝 使用传统提示词，长度: \(prompt.count)字符")
         
-        print("📤 准备发送API请求 - 提示词长度: \(prompt.count)字符")
+        // print("📤 准备发送API请求 - 提示词长度: \(prompt.count)字符")
         
         // 使用Publisher版本的方法并转换为回调
         let cancellable = AINetworkService.shared.sendRequest(prompt: prompt)
@@ -357,13 +340,6 @@ class VirtualCharacterService {
                     }
                 },
                 receiveValue: { output in
-                    // 存储这次交互的记忆
-                    let memoryKey = "post_\(postContent.prefix(50).hashValue)"
-                    self.memoryManager.storeMemory(
-                        forKey: memoryKey,
-                        content: "用户: \(userContent)\n\(characterId): \(output)"
-                    )
-                    
                     print("✅✅✅ API返回成功! 角色: \(characterId)")
                     print("💬 回复内容: \"\(output)\"")
                     completion(.success(output))
@@ -393,49 +369,24 @@ class VirtualCharacterService {
         
         print("🔄 VirtualCharacterService: 创建获取角色回复后台任务，ID: \(backgroundTaskID)")
         
-        // 获取带个性化调整的增强提示词
-        let enhancedPrompt = personalityManager.generateEnhancedPrompt(
-            characterId: characterID.lowercased(),
-            userComment: userComment,
-            postContent: postContent
-        )
-        
-        // 如果个性化提示词不可用，使用传统方式生成提示词
-        let prompt: String
-        if let enhancedPrompt = enhancedPrompt {
-            prompt = enhancedPrompt
-            print("🎭 使用个性化提示词，长度: \(prompt.count)字符")
-        } else {
-            // 传统方式生成提示词
+        // 使用传统方式生成提示词（不使用个性化参数）
             // 分析评论语义
             let semanticModel = semanticProcessor.analyze(comment: userComment, postContent: postContent)
             
-            // 检查是否有该帖子的记忆
-            let memoryKey = "post_\(postContent.prefix(50).hashValue)"
-            let memories = memoryManager.retrieveMemories(forKey: memoryKey)
-            
             // 使用传统方式生成提示词
-            prompt = promptGenerator.generateReplyPrompt(
+        let prompt = promptGenerator.generateReplyPrompt(
                 characterID: characterID,
                 userComment: userComment,
                 postContent: postContent,
                 semanticModel: semanticModel,
-                memories: memories
+                memories: []
             )
             print("📝 使用传统提示词，长度: \(prompt.count)字符")
-        }
         
         // 调用API生成回复
         return AINetworkService.shared.sendRequest(prompt: prompt)
             .handleEvents(
                 receiveOutput: { output in
-                    // 存储这次交互的记忆
-                    let memoryKey = "post_\(postContent.prefix(50).hashValue)"
-                    self.memoryManager.storeMemory(
-                        forKey: memoryKey,
-                        content: "用户: \(userComment)\n\(characterID): \(output)"
-                    )
-                    
                     print("✅ 成功生成角色回复: \"\(output.prefix(50))...\"")
                 },
                 receiveCompletion: { completion in
@@ -478,46 +429,27 @@ class VirtualCharacterService {
         let prompt: String
         
         // 🔴🔴🔴 超级醒目的角色评论生成开始日志 🔴🔴🔴
-        print("\n🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
-        print("🚨🚨🚨 【虚拟角色评论生成】开始处理！🚨🚨🚨")
-        print("🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
-        print("👤 目标角色ID: \(characterID)")
-        print("📝 帖子内容预览: \"\(String(postContent.prefix(100)))...\"")
-        print("🔄 后台任务ID: \(backgroundTaskID)")
+        // 调试日志已关闭
+        // print("\n🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
+        // print("🚨🚨🚨 【虚拟角色评论生成】开始处理！🚨🚨🚨")
+        // print("🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
+        // print("👤 目标角色ID: \(characterID)")
+        // print("📝 帖子内容预览: \"\(String(postContent.prefix(100)))...\"")
+        // print("🔄 后台任务ID: \(backgroundTaskID)")
         
-        // 尝试从个性化管理器获取提示词
-        if let enhancedPrompt = personalityManager.generateEnhancedPrompt(
-            characterId: characterID.lowercased(),
-            userComment: "",
-            postContent: postContent
-        ) {
-            // 使用增强提示词
-            prompt = enhancedPrompt
-            print("\n🎭 ✅ 使用个性化提示词生成评论")
-            print("📏 提示词长度: \(prompt.count)字符")
-            print("\n🟡 ===== 个性化提示词内容 =====")
-            print(prompt)
-            print("🟡 ===== 个性化提示词结束 =====")
-        } else {
-            // 使用传统方式生成提示词
+        // 使用传统方式生成提示词（不使用个性化参数）
             // 分析帖子内容
             let _ = semanticProcessor.analyze(comment: "", postContent: postContent)
             
-            // 获取基本角色特性 - 使用与AI生成帖子内容相同的数据源
-            var figureTraits = VCCharacterPersonality(
-                tone: "友好专业",
-                knowledgeAreas: ["一般知识"],
-                speechPatterns: ["我认为"]
-            )
+            // 获取基本角色特性 - 使用简单的字符串而不是 CharacterPersonality
+            var tone = "友好专业"
+            var knowledgeAreas = ["一般知识"]
             
             // 尝试从CharacterSystem获取角色完整信息
             let allCharacters = CharacterSystem.shared.getAllCharacters()
             if let character = allCharacters.first(where: { $0.id == characterID }) {
-                figureTraits = VCCharacterPersonality(
-                    tone: "\(character.type.displayName)风格",
-                    knowledgeAreas: [character.primaryField],
-                    speechPatterns: ["我认为", "从我的角度来看"]
-                )
+                tone = "\(character.type.displayName)风格"
+                knowledgeAreas = [character.primaryField]
             }
             
             // 使用传统方式生成提示词
@@ -526,8 +458,8 @@ class VirtualCharacterService {
             
             帖子内容："\(postContent)"
             
-            你的语调：\(figureTraits.tone)
-            你的知识领域：\(figureTraits.knowledgeAreas.joined(separator: "、"))
+            你的语调：\(tone)
+            你的知识领域：\(knowledgeAreas.joined(separator: "、"))
             
             请以你的风格评论这篇帖子，但注意：
             1. 保持自然，像真人评论一样
@@ -537,40 +469,33 @@ class VirtualCharacterService {
             5. 评论长度控制在100字以内，简短有力
             """
             
-            print("\n📝 ⚠️ 使用传统提示词生成评论（个性化提示词不可用）")
+        print("\n📝 使用传统提示词生成评论")
             print("📏 传统提示词长度: \(prompt.count)字符")
             print("\n🟡 ===== 传统提示词内容 =====")
             print(prompt)
             print("🟡 ===== 传统提示词结束 =====")
-        }
         
-        print("\n🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
-        print("🚀🚀🚀 准备发送API请求生成角色评论... 🚀🚀🚀")
-        print("🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
+        // 调试日志已关闭
+        // print("\n🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
+        // print("🚀🚀🚀 准备发送API请求生成角色评论... 🚀🚀🚀")
+        // print("🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
         
         // 调用API生成评论
         return AINetworkService.shared.sendRequest(prompt: prompt)
             .handleEvents(
                 receiveOutput: { output in
                     // 🔴🔴🔴 超级醒目的评论生成成功日志 🔴🔴🔴
-                    print("\n🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊")
-                    print("🌟🌟🌟 【虚拟角色服务】评论生成成功！🌟🌟🌟")
-                    print("🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊")
-                    print("✅ 角色[\(characterID)]成功生成评论")
-                    print("📝 评论内容预览: \"\(output.prefix(80))...\"")
-                    print("📏 评论完整长度: \(output.count)字符")
-                    print("\n🎊 ===== 完整评论内容 =====")
-                    print(output)
-                    print("🎊 ===== 评论内容结束 =====")
-                    print("🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊")
-                    print("💾 正在存储到记忆管理器...\n")
-                    
-                    // 存储到记忆
-                    let memoryKey = "post_\(postContent.prefix(50).hashValue)"
-                    self.memoryManager.storeMemory(
-                        forKey: memoryKey, 
-                        content: "\(characterID)对帖子的评论: \(output)"
-                    )
+                    // 调试日志已关闭
+                    // print("\n🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊")
+                    // print("🌟🌟🌟 【虚拟角色服务】评论生成成功！🌟🌟🌟")
+                    // print("🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊🎊")
+                    // print("✅ 角色[\(characterID)]成功生成评论")
+                    // print("📝 评论内容预览: \"\(output.prefix(80))...\"")
+                    // print("📏 评论完整长度: \(output.count)字符")
+                    // print("\n🎊 ===== 完整评论内容 =====")
+                    // print(output)
+                    // print("🎊 ===== 评论内容结束 =====")
+                    // print("✅ 成功生成角色评论: \"\(output.prefix(50))...\"")
                 },
                 receiveCompletion: { completion in
                     // 在任务完成时结束后台任务
@@ -735,10 +660,6 @@ class VirtualCharacterService {
             // 分析评论语义
             let semanticModel = semanticProcessor.analyze(comment: userComment, postContent: postContent)
             
-            // 检查是否有该帖子的记忆
-            let memoryKey = "post_\(postContent.prefix(50).hashValue)"
-            let memories = memoryManager.retrieveMemories(forKey: memoryKey)
-            
             // 生成标准提示词
             prompt = promptGenerator.generateReplyPrompt(
                 characterID: characterID,
@@ -746,7 +667,7 @@ class VirtualCharacterService {
                 postContent: postContent,
                 postAuthor: postAuthor,
                 semanticModel: semanticModel,
-                memories: memories
+                memories: []
             )
             
             print("📝 使用标准提示词 - 长度: \(prompt.count)字符")
@@ -770,16 +691,6 @@ class VirtualCharacterService {
                     }
                 },
                 receiveValue: { output in
-                    // 存储这次交互的记忆
-                    let extractedUserComment = isEnhancedPrompt ? 
-                        userComment.components(separatedBy: "\n\n请注意：").first ?? userComment :
-                        userComment
-                        
-                    self.memoryManager.storeMemory(
-                        forKey: "post_\(postContent.prefix(50).hashValue)",
-                        content: "用户: \(extractedUserComment)\n\(characterID): \(output)"
-                    )
-                    
                     print("✅ API返回成功! 角色: \(characterID)")
                     print("💬 回复内容: \"\(output.prefix(50))...\"")
                     
@@ -829,12 +740,8 @@ class VirtualCharacterService {
         }
         
         // 获取帖子数据
-        guard let viewModel = getPostViewModel() else {
-            print("❌ VirtualCharacterService: 无法获取PostViewModel实例")
-            // 结束后台任务
-            UIApplication.shared.endBackgroundTask(backgroundTaskID)
-            return
-        }
+        let viewModel = PostViewModel.shared
+        print("✅ VirtualCharacterService: 获取PostViewModel实例成功")
         
         // 查找对应帖子
         guard let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) else {
@@ -892,7 +799,7 @@ class VirtualCharacterService {
                 // 额外的刷新机制，确保UI立即更新，无论用户是否在当前页面
                 DispatchQueue.main.async {
                     // 尝试直接更新PostViewModel中的数据
-                    if let viewModel = self.getPostViewModel() {
+                    let viewModel = PostViewModel.shared
                         if let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) {
                             // 去除重复评论
                             self.removeDuplicateComments(for: postIndex, in: viewModel)
@@ -935,7 +842,6 @@ class VirtualCharacterService {
                             name: NSNotification.Name("GlobalPostsRefresh"),
                             object: nil
                         )
-                    }
                 }
                 
                 // 结束后台任务
@@ -995,13 +901,6 @@ class VirtualCharacterService {
         .handleEvents(
             receiveOutput: { output in
                 print("✅ 成功生成聊天回复: \"\(output.prefix(50))...\"")
-                
-                // 存储这次交互的记忆
-                let memoryKey = "chat_\(character.id)"
-                self.memoryManager.storeMemory(
-                    forKey: memoryKey,
-                    content: "用户: \(userMessage)\n\(character.name): \(output)"
-                )
             },
             receiveCompletion: { completion in
                 // 在任务完成时结束后台任务
@@ -1040,29 +939,30 @@ class VirtualCharacterService {
             print("⚠️ VirtualCharacterService: 获取聊天回复的后台任务超时")
         }
         
-        print("🚀 聊天API请求开始 - 角色: \(character.name)")
-        print("📝 用户消息: \"\(userMessage)\"")
-        print("🔄 VirtualCharacterService: 创建获取聊天回复后台任务，ID: \(backgroundTaskID)")
+        // 调试日志已关闭
+        // print("🚀 聊天API请求开始 - 角色: \(character.name)")
+        // print("📝 用户消息: \"\(userMessage)\"")
+        // print("🔄 VirtualCharacterService: 创建获取聊天回复后台任务，ID: \(backgroundTaskID)")
         
         // 构建角色信息
         let characterInfo = buildCharacterInfo(character)
         
-        // 添加详细日志
-        print("\n📊 ===== 聊天请求详细数据 =====")
-        print("🧩 角色ID: \(character.id)")
-        print("👤 角色名称: \(character.name)")
-        print("🌍 时代: \(character.eraTag)")
-        print("🔬 领域: \(character.field)")
+        // 调试日志已关闭
+        // print("\n📊 ===== 聊天请求详细数据 =====")
+        // print("🧩 角色ID: \(character.id)")
+        // print("👤 角色名称: \(character.name)")
+        // print("🌍 时代: \(character.eraTag)")
+        // print("🔬 领域: \(character.field)")
         
-        print("\n📜 角色详细信息:")
-        print(characterInfo)
+        // print("\n📜 角色详细信息:")
+        // print(characterInfo)
         
-        print("\n💬 对话历史:")
-        print(conversationHistory)
+        // print("\n💬 对话历史:")
+        // print(conversationHistory)
         
-        print("\n💭 用户最新消息:")
-        print(userMessage)
-        print("📊 ===== 详细数据结束 =====\n")
+        // print("\n💭 用户最新消息:")
+        // print(userMessage)
+        // print("📊 ===== 详细数据结束 =====\n")
         
         // 使用Publisher版本的方法并转换为回调
         let cancellable = AINetworkService.shared.sendChatRequest(
@@ -1085,15 +985,9 @@ class VirtualCharacterService {
                 }
             },
             receiveValue: { output in
-                // 存储这次交互的记忆
-                let memoryKey = "chat_\(character.id)"
-                self.memoryManager.storeMemory(
-                    forKey: memoryKey,
-                    content: "用户: \(userMessage)\n\(character.name): \(output)"
-                )
-                
-                print("✅✅✅ 聊天API返回成功! 角色: \(character.name)")
-                print("💬 回复内容: \"\(output.prefix(100))...\"")
+                // 调试日志已关闭
+                // print("✅✅✅ 聊天API返回成功! 角色: \(character.name)")
+                // print("💬 回复内容: \"\(output.prefix(100))...\"")
                 completion(.success(output))
             }
         )
@@ -1103,7 +997,7 @@ class VirtualCharacterService {
     }
 
     /**
-     * 构建角色详细信息
+     * 构建角色详细信息（包含个性化参数）
      * @param character 角色对象
      * @return 格式化的角色信息字符串
      */
@@ -1147,191 +1041,18 @@ class VirtualCharacterService {
             }
         }
         
+        // 🎭 添加个性化参数支持 - 简洁版本：只在用户有调整时才添加
+        let personalityPrompt = personalityManager.generatePersonalityPrompt(for: character.id)
+        if !personalityPrompt.isEmpty {
+            info += personalityPrompt
+            info += "\n\n请严格按照以上个性化调整进行对话，确保每个维度的特点都能在回复中体现出来。"
+            print("🎭 应用了角色 \(character.id) 的个性化调整")
+        }
+        
         return info
     }
     
-    // MARK: - 测试方法
-    
-    /**
-     * 测试生成虚拟角色评论
-     * 此方法用于测试API对角色评论生成的响应，包括详细的日志记录和质量评估
-     * @param characterID 要测试的角色ID，可选
-     */
-    func testGenerateCharacterComment(characterID: String? = nil) {
-        // 测试用帖子内容样本
-        let testPosts = [
-            "今天天气真好，我去公园散步，看到了很多美丽的花朵。",
-            "我最近在学习Swift编程，感觉很有趣也很有挑战性。",
-            "有人知道附近有什么好吃的餐厅吗？我想尝试一些新的美食。",
-            "昨天看了一部很感人的电影，情节扣人心弦，演员表演也很出色。"
-        ]
-        
-        // 随机选择一个测试帖子
-        let testPost = testPosts.randomElement() ?? "这是一个测试帖子。"
-        
-        // 获取所有可用的角色
-        let availableCharacters = characterDataManager.getAllCharacterIds()
-        
-        // 使用传入的角色ID、随机选择一个可用角色，或使用默认角色
-        let finalCharacterID: String
-        if let providedID = characterID {
-            finalCharacterID = providedID
-        } else if !availableCharacters.isEmpty {
-            // 随机选择一个可用角色
-            finalCharacterID = availableCharacters.randomElement() ?? "einstein"
-            print("🎲 随机选择可用角色: \(finalCharacterID)")
-        } else {
-            // 使用默认角色
-            finalCharacterID = "einstein"
-            print("⚠️ 没有可用角色，使用默认角色: einstein")
-        }
-        
-        // 获取角色信息
-        let characterName = getCharacterName(for: finalCharacterID)
-        // 使用我们修复过的CharacterAvatarService
-        let characterAvatar = CharacterAvatarService.shared.getAvatarName(for: finalCharacterID)
-        
-        print("\n�� API测试: 生成虚拟角色评论")
-        print("🔹 使用角色ID: \(finalCharacterID)")
-        print("🔹 角色名称: \(characterName)")
-        print("🔹 角色头像: \(characterAvatar)")
-        print("🔹 测试帖子内容: \"\(testPost)\"")
-        
-        // 发起API请求
-        generateCharacterComment(characterID: finalCharacterID, forPost: testPost)
-            .sink(
-                receiveCompletion: { completion in
-                    switch completion {
-                    case .finished:
-                        print("✅ API请求完成")
-                    case .failure(let error):
-                        print("❌ API请求失败: \(error.localizedDescription)")
-                        self.handleTestError(error)
-                    }
-                },
-                receiveValue: { commentContent in
-                    print("\n🎯 API响应成功")
-                    print("📊 评论统计:")
-                    print("  - 字数: \(commentContent.count)")
-                    print("  - 段落数: \(commentContent.components(separatedBy: "\n\n").count)")
-                    
-                    print("\n💬 生成的评论内容:")
-                    print("------------------------------")
-                    print("\(commentContent)")
-                    print("------------------------------")
-                    
-                    // 实际添加评论到帖子
-                    DispatchQueue.main.async {
-                        // 获取PostViewModel实例
-                        if let postViewModel = self.getPostViewModel() {
-                            // 找到一个合适的帖子添加评论
-                            if let postIndex = self.findSuitablePostIndex(in: postViewModel) {
-                                // 获取当前帖子
-                                let post = postViewModel.posts[postIndex]
-                                
-                                // 查找父评论
-                                if let (parentId, parentUsername) = self.findParentComment(in: post) {
-                                    // 创建回复评论模型
-                                    let replyComment = DetailedCommentModel(
-                                        id: UUID(),
-                                        username: self.getCharacterName(for: finalCharacterID),
-                                        // 使用我们修复过的CharacterAvatarService
-                                        userAvatar: CharacterAvatarService.shared.getAvatarName(for: finalCharacterID),
-                                        content: commentContent,
-                                        datePosted: Date(),
-                                        isVirtualCharacter: true,
-                                        characterID: finalCharacterID,
-                                        parentCommentId: parentId,
-                                        replyToUsername: parentUsername
-                                    )
-                                    
-                                    print("\n🔄 实际添加评论回复:")
-                                    print("  角色: \(replyComment.username)")
-                                    print("  头像: \(replyComment.userAvatar)")
-                                    print("  特殊标记: isVirtualCharacter=\(replyComment.isVirtualCharacter)")
-                                    print("  回复给: \(parentUsername)")
-                                    
-                                    // 将回复添加到父评论下
-                                    post.addReplyToParent(parentId: parentId, reply: replyComment)
-                                    
-                                    // 🔧 重要修复：保存帖子数据到持久化存储
-                                    NotificationCenter.default.post(
-                                        name: NSNotification.Name("SavePostData"),
-                                        object: nil,
-                                        userInfo: ["postID": post.id.uuidString]
-                                    )
-                                    
-                                    // 发送真实通知更新UI
-                                    NotificationCenter.default.post(
-                                        name: NSNotification.Name("PostCommentsUpdated"),
-                                        object: nil,
-                                        userInfo: ["postID": post.id.uuidString]
-                                    )
-                                    
-                                    // 确保UI刷新
-                                    NotificationCenter.default.post(
-                                        name: NSNotification.Name("RefreshPostComments"),
-                                        object: nil
-                                    )
-                                    
-                                    print("✅ 评论回复已添加到父评论，ID: \(parentId)")
-                                } else {
-                                    // 如果没有找到合适的父评论，则作为新评论添加
-                                    let newComment = DetailedCommentModel(
-                                        id: UUID(),
-                                        username: self.getCharacterName(for: finalCharacterID),
-                                        // 使用我们修复过的CharacterAvatarService
-                                        userAvatar: CharacterAvatarService.shared.getAvatarName(for: finalCharacterID),
-                                        content: commentContent,
-                                        datePosted: Date(),
-                                        isVirtualCharacter: true,
-                                        characterID: finalCharacterID
-                                    )
-                                    
-                                    print("\n🔄 未找到父评论，作为新评论添加:")
-                                    print("  角色: \(newComment.username)")
-                                    print("  头像: \(newComment.userAvatar)")
-                                    
-                                    // 使用addComment方法添加评论到帖子，确保应用过滤逻辑
-                                    postViewModel.posts[postIndex].addComment(newComment)
-                                    
-                                    // 🔧 重要修复：保存帖子数据到持久化存储
-                                    NotificationCenter.default.post(
-                                        name: NSNotification.Name("SavePostData"),
-                                        object: nil,
-                                        userInfo: ["postID": post.id.uuidString]
-                                    )
-                                    
-                                    // 发送真实通知更新UI
-                                    NotificationCenter.default.post(
-                                        name: NSNotification.Name("PostCommentsUpdated"),
-                                        object: nil,
-                                        userInfo: ["postID": post.id.uuidString]
-                                    )
-                                    
-                                    // 确保UI刷新
-                                    NotificationCenter.default.post(
-                                        name: NSNotification.Name("RefreshPostComments"),
-                                        object: nil
-                                    )
-                                    
-                                    print("✅ 评论已作为新评论添加到帖子")
-                                }
-                                
-                                print("✅ 评论总数: \(postViewModel.posts[postIndex].comments.count)")
-                            } else {
-                                print("❌ 未找到合适的帖子添加评论")
-                            }
-                        } else {
-                            print("❌ 无法获取PostViewModel实例")
-                        }
-                    }
-                    
-                    print("\n🏁 测试流程完成")
-                }
-            )
-            .store(in: &cancellables)
-    }
+    // MARK: - 角色头像和名称方法
     
     /**
      * 获取角色头像系统名称
@@ -1355,183 +1076,38 @@ class VirtualCharacterService {
             "shakespeare": "莎士比亚", 
             "davinci": "达芬奇",
             "kongzi": "孔子",
-            "curie": "居里夫人",
+            "confucius": "孔子",
             "libai": "李白",
+            "sushi": "苏轼",
             "newton": "牛顿",
-            "holmes": "福尔摩斯",
-            "naruto": "鸣人",
-            "sunwukong": "孙悟空",
-            "goku": "孙悟空",
-            "socrates": "苏格拉底",
-            "nietzsche": "尼采",
-            "darwin": "达尔文",
-            "luxun": "鲁迅",
-            "plato": "柏拉图",
-            "dufu": "杜甫",
             "aristotle": "亚里士多德",
-            "napoleon": "拿破仑",
-            "picasso": "毕加索",
-            "vangogh": "梵高",
-            "quyuan": "屈原",
-            "laozi": "老子",
+            "socrates": "苏格拉底",
+            "plato": "柏拉图",
+            "tesla": "特斯拉",
+            "edison": "爱迪生",
+            "curie": "居里夫人",
+            "darwin": "达尔文",
+            "galileo": "伽利略",
             "mozart": "莫扎特",
             "beethoven": "贝多芬",
-            "heraclitus": "赫拉克利特",
-            "zhuangzi": "庄子",
-            "marquez": "马尔克斯",
-            "hawking": "霍金",
-            "edison": "爱迪生",
-            "tesla": "特斯拉",
-            "kant": "康德",
-            "hegel": "黑格尔",
-            "baudelaire": "波德莱尔",
-            "kafka": "卡夫卡",
-            "smith": "亚当·斯密",
-            "marx": "马克思",
-            "camus": "加缪",
-            "freud": "弗洛伊德",
-            "jung": "荣格",
-            "heidegger": "海德格尔",
-            "xuzhimo": "徐志摩",
-            "hemingway": "海明威",
-            "bach": "巴赫",
-            "turing": "图灵",
-            "feynman": "费曼",
-            "popper": "波普尔",
-            "tagore": "泰戈尔",
-            "schopenhauer": "叔本华",
-            "dostoevsky": "陀思妥耶夫斯基",
-            "lincoln": "林肯",
+            "vangogh": "梵高",
+            "picasso": "毕加索",
+            "michelangelo": "米开朗基罗",
+            "napoleon": "拿破仑",
+            "caesar": "凯撒",
+            "cleopatra": "克利奥帕特拉",
             "gandhi": "甘地",
-            "beauvoir": "波伏娃",
-            "yangming": "王阳明",
-            "xiaobo": "王小波",
-            "pascal": "帕斯卡",
-            "russell": "罗素",
-            "wittgenstein": "维特根斯坦",
-            "sartre": "萨特",
-            "wordsworth": "华兹华斯",
-            "qingzhao": "李清照"
+            "mandela": "曼德拉",
+            "churchill": "丘吉尔",
+            "lincoln": "林肯",
+            "washington": "华盛顿",
+            "franklin": "富兰克林",
+            "jobs": "乔布斯",
+            "gates": "比尔·盖茨",
+            "musk": "马斯克"
         ]
         
-        // 先检查是否有中文名称映射
-        if let chineseName = characterNames[characterID.lowercased()] {
-            print("✅ 使用中文名称映射: \(characterID) -> \(chineseName)")
-            
-            // 特殊处理孔子
-            if characterID.lowercased() == "kongzi" {
-                print("🔍 特殊处理孔子名称 - 返回中文名称: 孔子")
-            }
-            
-            return chineseName
-        }
-        
-        // 尝试从角色数据管理器中获取
-        if let name = characterDataManager.getName(for: characterID) {
-            print("✅ 从CharacterDataManager获取名称: \(characterID) -> \(name)")
-            return name
-        }
-        
-        // 如果找不到角色数据，返回ID的首字母大写形式作为名称
-        print("⚠️ 未找到角色ID \(characterID) 对应的名称，返回ID首字母大写形式")
-        return characterID.capitalized
-    }
-    
-    /**
-     * 从角色数据中获取属性值
-     * @param id 角色ID
-     * @param attribute 要获取的属性名
-     * @return 属性值，如果不存在则返回nil
-     */
-    private func getCharacterAttributeFromData(id: String, attribute: String) -> String? {
-        // 已经通过CharacterDataManager处理，此方法可以直接返回nil
-        // 保留此方法是为了向后兼容
-        return nil
-    }
-    
-    /**
-     * 检查API密钥是否有效
-     * @return 是否有有效的API密钥
-     */
-    private func isAPIKeyValid() -> Bool {
-        guard let apiKey = APIConfigManager.shared.apiKey else {
-            print("❌ API密钥未设置")
-            return false
-        }
-        
-        // 使用APIConfigManager的方法检查API密钥格式
-        let isValidFormat = APIConfigManager.shared.isValidAPIKeyFormat(apiKey)
-        
-        print("🔑 API密钥检查: \(String(apiKey.prefix(8)))... - 格式\(isValidFormat ? "正确" : "不正确")")
-        
-        return isValidFormat && APIConfigManager.shared.hasValidAPIKey
-    }
-    
-    /// 处理测试响应中的错误
-    private func handleTestError(_ error: Error) {
-        print("❌ 测试失败: \(error.localizedDescription)")
-        
-        // 记录详细错误信息
-        if let networkError = error as? AINetworkError {
-            switch networkError {
-            case .invalidURL:
-                print("🔴 错误: 无效的API URL")
-            case .noAPIKey:
-                print("🔴 错误: 未设置API密钥")
-            case .requestFailed(let error):
-                print("🔴 网络请求失败: \(error.localizedDescription)")
-            case .invalidResponse:
-                print("🔴 无效响应: 无法解析响应数据")
-            case .decodingError(let error):
-                print("🔴 解码失败: \(error.localizedDescription)")
-            case .httpError(let code):
-                print("🔴 HTTP错误: 状态码\(code)")
-            }
-        }
-    }
-    
-    /**
-     * 获取PostViewModel实例
-     * 通过NotificationCenter获取已存在的PostViewModel实例
-     */
-    private func getPostViewModel() -> PostViewModel? {
-        // 尝试从应用中获取PostViewModel实例
-        let viewModel = PostViewModel.shared
-        return viewModel
-    }
-    
-    /**
-     * 找到合适的帖子索引
-     * @param viewModel PostViewModel实例
-     * @return 合适的帖子索引，如果没有找到则返回nil
-     */
-    private func findSuitablePostIndex(in viewModel: PostViewModel) -> Int? {
-        // 如果有帖子，返回第一个帖子的索引
-        if !viewModel.posts.isEmpty {
-            return 0
-        }
-        return nil
-    }
-    
-    /**
-     * 找到合适的父评论作为回复目标
-     * @param post 帖子模型
-     * @return 父评论ID和用户名元组
-     */
-    private func findParentComment(in post: UserPostModel) -> (parentId: UUID, username: String)? {
-        // 如果帖子有评论，选择第一条非虚拟角色的评论作为回复目标
-        if !post.comments.isEmpty {
-            // 优先选择非虚拟角色的评论作为回复目标
-            for comment in post.comments {
-                if !comment.isVirtualCharacter {
-                    return (comment.id, comment.username)
-                }
-            }
-            
-            // 如果没有非虚拟角色评论，则选择第一条评论
-            return (post.comments[0].id, post.comments[0].username)
-        }
-        return nil
+        return characterNames[characterID.lowercased()] ?? characterID.capitalized
     }
     
     /**
@@ -1546,15 +1122,8 @@ class VirtualCharacterService {
         let characterInfo = characterIDs.map { id -> String in
             let name = characterDataManager.getName(for: id) ?? id.capitalized
             
-            // 尝试获取角色的性格特点
-            var traits = ""
-            if let personality = personalityManager.getPersonality(for: id) {
-                let tone = personality.tone
-                let knowledgeAreas = personality.knowledgeAreas.joined(separator: "、")
-                traits = "（性格特点：\(tone)，专业领域：\(knowledgeAreas)）"
-            }
-            
-            return "- \(name) (ID: \(id)) \(traits)"
+            // 简洁版本：不再依赖个性化模板，只使用角色名称
+            return "- \(name) (ID: \(id))"
         }.joined(separator: "\n")
         
         // 获取帖子作者信息 - 如果提供了作者名称则使用，否则使用默认值
@@ -1610,6 +1179,8 @@ class VirtualCharacterService {
         return prompt
     }
     
+    // MARK: - 健康检查方法
+    
     // 在服务初始化时进行一些健康检查
     private func performInitialHealthChecks() {
         // 检查一些重要的角色数据是否能正确加载
@@ -1621,45 +1192,35 @@ class VirtualCharacterService {
         }
     }
 }
-
-/**
- * 角色人格特征结构
- */
-struct VCCharacterPersonality {
-    let tone: String
-    let knowledgeAreas: [String]
-    let speechPatterns: [String]
-    }
-
+    
+    // MARK: - 辅助方法
+    
     /**
-     * 移除重复的评论
-     * @param postIndex 帖子在 viewModel.posts 中的索引
-     * @param viewModel PostViewModel 实例
+     * 移除重复评论
+     * @param postIndex 帖子索引
+     * @param viewModel PostViewModel实例
      */
     private func removeDuplicateComments(for postIndex: Int, in viewModel: PostViewModel) {
+        let uniqueComments = removeDuplicateComments(viewModel.posts[postIndex].comments)
+        viewModel.posts[postIndex].comments = uniqueComments
+    }
+    
+    /**
+     * 移除重复评论的具体实现
+     * @param comments 评论数组
+     * @return 去重后的评论数组
+     */
+    private func removeDuplicateComments(_ comments: [DetailedCommentModel]) -> [DetailedCommentModel] {
+        var seen = Set<UUID>()
         var uniqueComments: [DetailedCommentModel] = []
-        var seenKeys: Set<String> = []
         
-        for comment in viewModel.posts[postIndex].comments {
-            // 创建唯一键：角色ID + 内容
-            let key = "\(comment.characterID ?? "")-\(comment.content)"
-            
-            if !seenKeys.contains(key) {
+        for comment in comments {
+            if !seen.contains(comment.id) {
+                seen.insert(comment.id)
                 uniqueComments.append(comment)
-                seenKeys.insert(key)
-            } else {
-                print("⚠️ 检测到重复评论，已移除: \(comment.username)")
             }
         }
         
-        if uniqueComments.count < viewModel.posts[postIndex].comments.count {
-            print("🔍 去重前评论数: \(viewModel.posts[postIndex].comments.count), 去重后: \(uniqueComments.count)")
-        }
-        
-        // 按时间排序，保持一致的排列方式（较新的评论在前）
-        uniqueComments.sort { $0.datePosted > $1.datePosted }
-        
-        // 更新帖子的评论
-        viewModel.posts[postIndex].comments = uniqueComments
+        return uniqueComments
     }
 } 

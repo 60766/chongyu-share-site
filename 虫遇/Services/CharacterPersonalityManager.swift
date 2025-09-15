@@ -4,52 +4,56 @@ import UIKit
 
 /**
  * 角色个性特性
- * 定义角色的性格、表达方式等特性
+ * 只存储用户的个性化调整参数
  */
 struct CharacterPersonality: Codable, Equatable {
-    // 基础特性
-    var tone: String                // 语调(例如：思考深入，富有哲理)
-    var knowledgeAreas: [String]    // 知识领域
-    var speechPatterns: [String]    // 常用表达方式
-    
-    // 个性化调整参数
-    var directness: Float = 0.5     // 直接程度 (0: 含蓄 - 1: 直接)
-    var formality: Float = 0.5      // 正式程度 (0: 随意 - 1: 正式)
-    var emotionality: Float = 0.5   // 情感程度 (0: 理性 - 1: 感性)
-    var verbosity: Float = 0.5      // 话语量 (0: 简短 - 1: 详细)
-    var creativity: Float = 0.5     // 创造性 (0: 保守 - 1: 创新)
-    
-    // 表达偏好
-    var expressionPreferences: [String: Bool] = [:]  // 表达偏好选项
+    // 个性化调整参数 - 只在用户调整时使用
+    var intimacy: Float = 0.5       // 亲密度 (0: 陌生人模式 - 1: 老朋友模式)
+    var engagementDepth: Float = 0.5 // 互动深度 (0: 浅层交流 - 1: 深度探索)
+    var emotionality: Float = 0.5   // 情感表达 (0: 理性克制 - 1: 感性丰富)
+    var responseStyle: Float = 0.5  // 回应方式 (0: 直接建议 - 1: 启发引导)
+    var communicationPace: Float = 0.5 // 交流节奏 (0: 精炼简洁 - 1: 详细展开)
     
     static func == (lhs: CharacterPersonality, rhs: CharacterPersonality) -> Bool {
-        return lhs.tone == rhs.tone &&
-               lhs.knowledgeAreas == rhs.knowledgeAreas &&
-               lhs.speechPatterns == rhs.speechPatterns &&
-               lhs.directness == rhs.directness &&
-               lhs.formality == rhs.formality &&
+        return lhs.intimacy == rhs.intimacy &&
+               lhs.engagementDepth == rhs.engagementDepth &&
                lhs.emotionality == rhs.emotionality &&
-               lhs.verbosity == rhs.verbosity &&
-               lhs.creativity == rhs.creativity &&
-               lhs.expressionPreferences == rhs.expressionPreferences
+               lhs.responseStyle == rhs.responseStyle &&
+               lhs.communicationPace == rhs.communicationPace
     }
 }
 
 /**
- * 角色模板
- * 角色的基础模板信息
+ * 用户调整的个性化参数 - 只存储用户实际调整的参数
  */
-struct CharacterTemplate: Codable {
-    var id: String                  // 角色ID
-    var name: String                // 角色名称
-    var basePersonality: CharacterPersonality  // 基础性格特性
-    var defaultAdjustments: [String: Float]    // 默认调整参数
-    var availableExpressions: [String]         // 可用表达方式
+struct UserPersonalityAdjustments: Codable {
+    var intimacy: Float?
+    var engagementDepth: Float?
+    var emotionality: Float?
+    var responseStyle: Float?
+    var communicationPace: Float?
+    
+    // 检查是否有任何调整
+    var hasAnyAdjustments: Bool {
+        return intimacy != nil || engagementDepth != nil || emotionality != nil || 
+               responseStyle != nil || communicationPace != nil
+    }
+    
+    // 转换为完整的CharacterPersonality（未调整的使用默认值0.5）
+    func toCharacterPersonality() -> CharacterPersonality {
+        return CharacterPersonality(
+            intimacy: intimacy ?? 0.5,
+            engagementDepth: engagementDepth ?? 0.5,
+            emotionality: emotionality ?? 0.5,
+            responseStyle: responseStyle ?? 0.5,
+            communicationPace: communicationPace ?? 0.5
+        )
+    }
 }
 
 /**
  * 角色个性化管理器
- * 负责管理角色预设模板和用户个性化调整
+ * 简洁版本：只管理用户的个性化调整，无需预设模板
  */
 class CharacterPersonalityManager {
     // 单例实例
@@ -57,211 +61,185 @@ class CharacterPersonalityManager {
     
     // MARK: - 私有属性
     
-    // 预设模板库
-    private var templateLibrary: [String: CharacterTemplate] = [:]
-    
-    // 用户调整存储
-    private var userAdjustments: [String: [String: Float]] = [:]
-    
-    // 用户表达偏好存储
-    private var userExpressionPreferences: [String: [String: Bool]] = [:]
-    
-    // 取消令牌
-    private var cancellables = Set<AnyCancellable>()
+    // 用户调整存储 - 只存储用户实际调整过的参数
+    private var userAdjustments: [String: UserPersonalityAdjustments] = [:]
     
     // 数据存储键
-    private let userAdjustmentsKey = "com.chongyu.characterAdjustments"
-    private let userExpressionPreferencesKey = "com.chongyu.expressionPreferences"
+    private let userAdjustmentsKey = "com.chongyu.characterPersonalityAdjustments"
     
     // MARK: - 初始化
     
     private init() {
-        loadTemplateLibrary()
-        loadUserPreferences()
+        loadUserAdjustments()
     }
     
     // MARK: - 公共方法
     
     /**
-     * 获取角色预设模板
+     * 检查用户是否对该角色进行了个性化调整
      * @param characterId 角色ID
-     * @return 角色模板
+     * @return 是否有调整
      */
-    func getTemplate(for characterId: String) -> CharacterTemplate? {
-        return templateLibrary[characterId]
+    func hasUserAdjustments(for characterId: String) -> Bool {
+        return userAdjustments[characterId]?.hasAnyAdjustments ?? false
     }
     
     /**
-     * 获取所有可用模板ID
-     * @return 模板ID数组
-     */
-    func getAllTemplateIds() -> [String] {
-        return Array(templateLibrary.keys)
-    }
-    
-    /**
-     * 获取角色个性化特性
+     * 获取用户的个性化调整
      * @param characterId 角色ID
-     * @return 角色个性化特性
+     * @return 个性化调整，如果用户没有调整则返回nil
      */
-    func getPersonality(for characterId: String) -> CharacterPersonality? {
-        guard let template = templateLibrary[characterId] else {
-            print("⚠️ CharacterPersonalityManager: 未找到角色模板 - \(characterId)")
+    func getUserAdjustments(for characterId: String) -> CharacterPersonality? {
+        guard let adjustments = userAdjustments[characterId], adjustments.hasAnyAdjustments else {
             return nil
         }
-        
-        // 获取基础模板
-        var personality = template.basePersonality
-        
-        // 应用用户调整
-        if let adjustments = userAdjustments[characterId] {
-            personality = applyUserAdjustments(personality, adjustments)
-        }
-        
-        // 应用表达偏好
-        if let preferences = userExpressionPreferences[characterId] {
-            personality.expressionPreferences = preferences
-        }
-        
-        return personality
+        return adjustments.toCharacterPersonality()
     }
     
     /**
-     * 更新角色特性参数
+     * 更新角色的个性化调整 - 智能保存，只保存用户调整的参数
      * @param characterId 角色ID
-     * @param adjustments 调整参数
+     * @param personality 个性化参数
      */
-    func updatePersonalityAdjustments(for characterId: String, adjustments: [String: Float]) {
-        // 确保角色模板存在
-        guard templateLibrary[characterId] != nil else {
-            print("⚠️ CharacterPersonalityManager: 无法更新不存在的角色 - \(characterId)")
-            return
+    func updatePersonality(for characterId: String, personality: CharacterPersonality) {
+        // 构建只包含非默认值的调整
+        var adjustments = UserPersonalityAdjustments()
+        
+        // 只存储非默认值(0.5)的参数
+        if personality.intimacy != 0.5 {
+            adjustments.intimacy = personality.intimacy
+        }
+        if personality.engagementDepth != 0.5 {
+            adjustments.engagementDepth = personality.engagementDepth
+        }
+        if personality.emotionality != 0.5 {
+            adjustments.emotionality = personality.emotionality
+        }
+        if personality.responseStyle != 0.5 {
+            adjustments.responseStyle = personality.responseStyle
+        }
+        if personality.communicationPace != 0.5 {
+            adjustments.communicationPace = personality.communicationPace
         }
         
-        // 更新调整参数
-        userAdjustments[characterId] = adjustments
+        // 如果没有任何调整，删除该角色的记录
+        if !adjustments.hasAnyAdjustments {
+            userAdjustments.removeValue(forKey: characterId)
+            print("✅ CharacterPersonalityManager: 重置了角色个性参数 - \(characterId)")
+        } else {
+            userAdjustments[characterId] = adjustments
+            let adjustedParams = [
+                adjustments.intimacy != nil ? "intimacy" : nil,
+                adjustments.engagementDepth != nil ? "engagementDepth" : nil,
+                adjustments.emotionality != nil ? "emotionality" : nil,
+                adjustments.responseStyle != nil ? "responseStyle" : nil,
+                adjustments.communicationPace != nil ? "communicationPace" : nil
+            ].compactMap { $0 }
+            print("✅ CharacterPersonalityManager: 更新了角色个性参数 - \(characterId), 调整的参数: \(adjustedParams)")
+        }
         
-        // 保存到持久化存储
-        saveUserPreferences()
-        
-        print("✅ CharacterPersonalityManager: 更新了角色个性参数 - \(characterId)")
+        saveUserAdjustments()
     }
     
     /**
-     * 更新表达偏好
+     * 重置角色的个性化调整
      * @param characterId 角色ID
-     * @param preferences 表达偏好
      */
-    func updateExpressionPreferences(for characterId: String, preferences: [String: Bool]) {
-        // 确保角色模板存在
-        guard templateLibrary[characterId] != nil else {
-            print("⚠️ CharacterPersonalityManager: 无法更新不存在的角色表达偏好 - \(characterId)")
-            return
-        }
-        
-        // 更新表达偏好
-        userExpressionPreferences[characterId] = preferences
-        
-        // 保存到持久化存储
-        saveUserPreferences()
-        
-        print("✅ CharacterPersonalityManager: 更新了角色表达偏好 - \(characterId)")
+    func resetPersonality(for characterId: String) {
+        userAdjustments.removeValue(forKey: characterId)
+        saveUserAdjustments()
+        print("✅ CharacterPersonalityManager: 重置了角色个性参数 - \(characterId)")
     }
     
     /**
-     * 重置角色个性化设置为默认
+     * 生成个性化提示词片段
      * @param characterId 角色ID
+     * @return 提示词片段，如果用户没有调整则返回空字符串
      */
-    func resetToDefault(characterId: String) {
-        guard let template = templateLibrary[characterId] else {
-            print("⚠️ CharacterPersonalityManager: 无法重置不存在的角色 - \(characterId)")
-            return
+    func generatePersonalityPrompt(for characterId: String) -> String {
+        guard let adjustments = userAdjustments[characterId], adjustments.hasAnyAdjustments else {
+            // 用户没有调整，返回空字符串
+            return ""
         }
         
-        // 重置为默认调整
-        userAdjustments[characterId] = template.defaultAdjustments
+        let personality = adjustments.toCharacterPersonality()
+        var prompt = "\n\n【个性化调整】"
         
-        // 重置表达偏好
-        var defaultPreferences: [String: Bool] = [:]
-        for expression in template.availableExpressions {
-            defaultPreferences[expression] = true
-        }
-        userExpressionPreferences[characterId] = defaultPreferences
-        
-        // 保存到持久化存储
-        saveUserPreferences()
-        
-        print("✅ CharacterPersonalityManager: 重置角色个性设置 - \(characterId)")
-    }
-    
-    /**
-     * 生成增强提示词
-     * 结合角色基础模板和用户调整，生成用于AI的提示词
-     * @param characterId 角色ID
-     * @param userComment 用户评论
-     * @param postContent 帖子内容
-     * @return 增强提示词
-     */
-    func generateEnhancedPrompt(
-        characterId: String,
-        userComment: String,
-        postContent: String
-    ) -> String? {
-        guard let personality = getPersonality(for: characterId),
-              let template = templateLibrary[characterId] else {
-            return nil
-        }
-        
-        // 构建基础提示词
-        var prompt = """
-        你是\(template.name)，正在回复一条评论。
-        
-        原评论："\(userComment)"
-        原帖内容："\(String(postContent.prefix(100)))..."
-        
-        【角色特性】
-        基本风格：\(personality.tone)
-        知识领域：\(personality.knowledgeAreas.joined(separator: "、"))
-        """
-        
-        // 添加个性化调整说明
-        prompt += "\n\n【个性化调整】"
-        prompt += "\n表达方式："
-        prompt += personality.directness < 0.4 ? "含蓄，倾向于间接表达" : (personality.directness > 0.7 ? "直接，喜欢开门见山" : "适度直接")
-        prompt += "\n语言风格："
-        prompt += personality.formality < 0.4 ? "随意，口语化" : (personality.formality > 0.7 ? "正式，文雅" : "中等正式度")
-        prompt += "\n情感表达："
-        prompt += personality.emotionality < 0.4 ? "理性，克制情感" : (personality.emotionality > 0.7 ? "感性，情感丰富" : "情感适中")
-        prompt += "\n回复详细度："
-        prompt += personality.verbosity < 0.4 ? "简短，点到为止" : (personality.verbosity > 0.7 ? "详细，乐于解释" : "中等详细度")
-        prompt += "\n创意程度："
-        prompt += personality.creativity < 0.4 ? "保守，遵循传统" : (personality.creativity > 0.7 ? "创新，独特视角" : "中等创意度")
-        
-        // 添加特定表达偏好
-        if !personality.expressionPreferences.isEmpty {
-            prompt += "\n\n【表达偏好】"
-            for (expression, isEnabled) in personality.expressionPreferences where isEnabled {
-                prompt += "\n- " + expression
+        // 只为用户实际调整的参数生成提示词
+        if adjustments.intimacy != nil {
+            prompt += "\n亲密度："
+            if personality.intimacy < 0.2 {
+                prompt += "陌生人模式，正式称呼，保持适当距离，客观回应"
+            } else if personality.intimacy < 0.4 {
+                prompt += "初识模式，礼貌友好，保持一定边界感"
+            } else if personality.intimacy < 0.6 {
+                prompt += "熟人模式，自然交流，适度亲近"
+            } else if personality.intimacy < 0.8 {
+                prompt += "朋友模式，亲切随和，分享个人想法"
+            } else {
+                prompt += "密友模式，可以使用昵称，关心对方日常，像老朋友般温暖"
             }
         }
         
-        // 添加示例表达方式
-        if !personality.speechPatterns.isEmpty {
-            prompt += "\n\n【参考表达方式】"
-            for pattern in personality.speechPatterns.prefix(3) {
-                prompt += "\n- " + pattern
+        if adjustments.engagementDepth != nil {
+            prompt += "\n互动深度："
+            if personality.engagementDepth < 0.2 {
+                prompt += "表面交流，轻松聊天，不深入探讨"
+            } else if personality.engagementDepth < 0.4 {
+                prompt += "浅层互动，关注话题本身，少量延伸"
+            } else if personality.engagementDepth < 0.6 {
+                prompt += "适度深入，结合话题进行一定思考"
+            } else if personality.engagementDepth < 0.8 {
+                prompt += "深入探索，追问背后原因，引导思考"
+            } else {
+                prompt += "深度挖掘，探索内心动机，帮助自我认知和成长"
             }
         }
         
-        // 通用指导
-        prompt += """
+        if adjustments.emotionality != nil {
+            prompt += "\n情感表达："
+            if personality.emotionality < 0.2 {
+                prompt += "极度理性，纯粹客观分析，避免情感色彩"
+            } else if personality.emotionality < 0.4 {
+                prompt += "偏向理性，以逻辑为主，适度体现理解"
+            } else if personality.emotionality < 0.6 {
+                prompt += "理性与感性平衡，既有逻辑也有温度"
+            } else if personality.emotionality < 0.8 {
+                prompt += "偏向感性，情感丰富，用心感受和回应"
+            } else {
+                prompt += "极度感性，情感充沛，用心感受对方情绪"
+            }
+        }
         
-        请按照以上角色特性和个性化调整回复评论。注意：
-        1. 保持自然，像真人对话一样
-        2. 不要用固定句式开头，如"作为[角色]"
-        3. 不要重复引用对方内容
-        4. 回复长度控制在100字以内，简短有力
-        """
+        if adjustments.responseStyle != nil {
+            prompt += "\n回应方式："
+            if personality.responseStyle < 0.2 {
+                prompt += "极其直接，给出明确答案和解决方案"
+            } else if personality.responseStyle < 0.4 {
+                prompt += "偏向直接，主要提供建议，少量引导"
+            } else if personality.responseStyle < 0.6 {
+                prompt += "平衡建议和启发，既给方向也引导思考"
+            } else if personality.responseStyle < 0.8 {
+                prompt += "偏向启发，主要引导思考，适度给建议"
+            } else {
+                prompt += "纯启发式，通过提问引导对方自己找到答案"
+            }
+        }
+        
+        if adjustments.communicationPace != nil {
+            prompt += "\n交流节奏："
+            if personality.communicationPace < 0.2 {
+                prompt += "极其简洁，点到为止，言简意赅"
+            } else if personality.communicationPace < 0.4 {
+                prompt += "偏向简洁，主要观点明确，少量展开"
+            } else if personality.communicationPace < 0.6 {
+                prompt += "适度详细，既不简陋也不冗长"
+            } else if personality.communicationPace < 0.8 {
+                prompt += "详细阐述，充分展开想法，提供丰富信息"
+            } else {
+                prompt += "详尽深入，全面展开，提供完整的思考过程"
+            }
+        }
         
         return prompt
     }
@@ -269,268 +247,78 @@ class CharacterPersonalityManager {
     // MARK: - 私有方法
     
     /**
-     * 加载预设模板库
+     * 检查是否为默认个性设置（全部0.5）
      */
-    private func loadTemplateLibrary() {
-        // 模拟预设模板数据 - 实际应用中可能从配置文件或API加载
-        let templates: [CharacterTemplate] = [
-            // 李白模板
-            CharacterTemplate(
-                id: "libai",
-                name: "李白",
-                basePersonality: CharacterPersonality(
-                    tone: "诗意飘逸，豪放不羁",
-                    knowledgeAreas: ["诗歌", "文学", "自然", "酒文化", "道家思想"],
-                    speechPatterns: [
-                        "人生得意须尽欢",
-                        "举杯邀明月",
-                        "大道如青天",
-                        "此情此景",
-                        "人生如梦"
-                    ]
-                ),
-                defaultAdjustments: [
-                    "directness": 0.7,
-                    "formality": 0.4,
-                    "emotionality": 0.8,
-                    "verbosity": 0.6,
-                    "creativity": 0.9
-                ],
-                availableExpressions: [
-                    "使用诗句",
-                    "提及酒",
-                    "引用古籍",
-                    "描述自然景象",
-                    "抒发豪情"
-                ]
-            ),
-            
-            // 爱因斯坦模板
-            CharacterTemplate(
-                id: "einstein",
-                name: "爱因斯坦",
-                basePersonality: CharacterPersonality(
-                    tone: "思考深入，富有哲理，语言通俗易懂",
-                    knowledgeAreas: ["物理学", "相对论", "宇宙", "科学哲学", "和平主义"],
-                    speechPatterns: [
-                        "我常思考的问题是",
-                        "从相对论的角度看",
-                        "这让我想起一个思想实验",
-                        "科学的本质在于质疑",
-                        "简单来说"
-                    ]
-                ),
-                defaultAdjustments: [
-                    "directness": 0.6,
-                    "formality": 0.5,
-                    "emotionality": 0.4,
-                    "verbosity": 0.7,
-                    "creativity": 0.8
-                ],
-                availableExpressions: [
-                    "使用比喻",
-                    "提出思想实验",
-                    "科学观点",
-                    "哲学思考",
-                    "引用自己的研究"
-                ]
-            ),
-            
-            // 莎士比亚模板
-            CharacterTemplate(
-                id: "shakespeare",
-                name: "莎士比亚",
-                basePersonality: CharacterPersonality(
-                    tone: "语言华丽，富有诗意，善用比喻",
-                    knowledgeAreas: ["文学", "戏剧", "诗歌", "人性", "爱情"],
-                    speechPatterns: [
-                        "正如我在剧作中所写",
-                        "这让我想起哈姆雷特的困境",
-                        "人生如戏，我们都是演员",
-                        "爱与恨常常交织",
-                        "用莎翁的话来说"
-                    ]
-                ),
-                defaultAdjustments: [
-                    "directness": 0.4,
-                    "formality": 0.8,
-                    "emotionality": 0.7,
-                    "verbosity": 0.8,
-                    "creativity": 0.7
-                ],
-                availableExpressions: [
-                    "使用修辞手法",
-                    "引用戏剧台词",
-                    "双关语",
-                    "诗意描述",
-                    "戏剧化表达"
-                ]
-            ),
-            
-            // 孔子模板
-            CharacterTemplate(
-                id: "confucius",
-                name: "孔子",
-                basePersonality: CharacterPersonality(
-                    tone: "儒雅谦逊，言简意赅，富含哲理",
-                    knowledgeAreas: ["伦理", "教育", "政治", "礼制", "人际关系"],
-                    speechPatterns: [
-                        "学而时习之",
-                        "吾日三省吾身",
-                        "君子和而不同",
-                        "中庸之道",
-                        "仁者爱人"
-                    ]
-                ),
-                defaultAdjustments: [
-                    "directness": 0.5,
-                    "formality": 0.9,
-                    "emotionality": 0.3,
-                    "verbosity": 0.4,
-                    "creativity": 0.5
-                ],
-                availableExpressions: [
-                    "引用论语",
-                    "使用类比",
-                    "伦理观点",
-                    "教育思想",
-                    "礼制观念"
-                ]
-            ),
-            
-            // 达芬奇模板
-            CharacterTemplate(
-                id: "davinci",
-                name: "达芬奇",
-                basePersonality: CharacterPersonality(
-                    tone: "观察细致，思维跨界，注重细节",
-                    knowledgeAreas: ["艺术", "解剖学", "工程学", "建筑", "自然科学"],
-                    speechPatterns: [
-                        "从艺术与科学的交汇处",
-                        "观察自然会发现",
-                        "细节决定成败",
-                        "完美在于平衡",
-                        "如同我设计的机械装置"
-                    ]
-                ),
-                defaultAdjustments: [
-                    "directness": 0.5,
-                    "formality": 0.6,
-                    "emotionality": 0.5,
-                    "verbosity": 0.7,
-                    "creativity": 0.9
-                ],
-                availableExpressions: [
-                    "多学科视角",
-                    "提及艺术原理",
-                    "观察细节",
-                    "科学思考",
-                    "提及设计"
-                ]
-            )
-        ]
-        
-        // 将模板数组转换为字典
-        for template in templates {
-            templateLibrary[template.id] = template
-        }
-        
-        print("✅ CharacterPersonalityManager: 加载了\(templates.count)个角色模板")
+    private func isDefaultPersonality(_ personality: CharacterPersonality) -> Bool {
+        return personality.intimacy == 0.5 &&
+               personality.engagementDepth == 0.5 &&
+               personality.emotionality == 0.5 &&
+               personality.responseStyle == 0.5 &&
+               personality.communicationPace == 0.5
     }
     
     /**
-     * 应用用户调整
-     * @param basePersonality 基础性格
-     * @param adjustments 调整参数
-     * @return 调整后的性格
+     * 加载用户调整
      */
-    private func applyUserAdjustments(_ basePersonality: CharacterPersonality, _ adjustments: [String: Float]) -> CharacterPersonality {
-        var personality = basePersonality
-        
-        // 应用各项调整
-        if let directness = adjustments["directness"] {
-            personality.directness = directness
-        }
-        
-        if let formality = adjustments["formality"] {
-            personality.formality = formality
-        }
-        
-        if let emotionality = adjustments["emotionality"] {
-            personality.emotionality = emotionality
-        }
-        
-        if let verbosity = adjustments["verbosity"] {
-            personality.verbosity = verbosity
-        }
-        
-        if let creativity = adjustments["creativity"] {
-            personality.creativity = creativity
-        }
-        
-        return personality
-    }
-    
-    /**
-     * 加载用户偏好
-     */
-    private func loadUserPreferences() {
-        // 从UserDefaults加载用户调整
-        if let savedAdjustments = UserDefaults.standard.data(forKey: userAdjustmentsKey) {
+    private func loadUserAdjustments() {
+        if let savedData = UserDefaults.standard.data(forKey: userAdjustmentsKey) {
             do {
-                userAdjustments = try JSONDecoder().decode([String: [String: Float]].self, from: savedAdjustments)
-                print("✅ CharacterPersonalityManager: 加载用户调整成功")
-            } catch {
-                print("⚠️ CharacterPersonalityManager: 加载用户调整失败 - \(error.localizedDescription)")
-            }
-        }
-        
-        // 从UserDefaults加载表达偏好
-        if let savedPreferences = UserDefaults.standard.data(forKey: userExpressionPreferencesKey) {
-            do {
-                userExpressionPreferences = try JSONDecoder().decode([String: [String: Bool]].self, from: savedPreferences)
-                print("✅ CharacterPersonalityManager: 加载表达偏好成功")
-            } catch {
-                print("⚠️ CharacterPersonalityManager: 加载表达偏好失败 - \(error.localizedDescription)")
-            }
-        }
-        
-        // 初始化缺失的默认值
-        for (id, template) in templateLibrary {
-            // 如果没有用户调整，使用默认调整
-            if userAdjustments[id] == nil {
-                userAdjustments[id] = template.defaultAdjustments
-            }
-            
-            // 如果没有表达偏好，使用默认全开启
-            if userExpressionPreferences[id] == nil {
-                var defaultPreferences: [String: Bool] = [:]
-                for expression in template.availableExpressions {
-                    defaultPreferences[expression] = true
+                userAdjustments = try JSONDecoder().decode([String: UserPersonalityAdjustments].self, from: savedData)
+                let totalAdjustments = userAdjustments.values.reduce(0) { count, adj in
+                    count + [adj.intimacy, adj.engagementDepth, adj.emotionality, adj.responseStyle, adj.communicationPace].compactMap { $0 }.count
                 }
-                userExpressionPreferences[id] = defaultPreferences
+                print("✅ CharacterPersonalityManager: 加载用户调整成功，共\(userAdjustments.count)个角色，\(totalAdjustments)个参数调整")
+            } catch {
+                print("⚠️ CharacterPersonalityManager: 加载用户调整失败，尝试加载旧格式 - \(error.localizedDescription)")
+                // 尝试加载旧格式并转换
+                if let oldAdjustments = try? JSONDecoder().decode([String: CharacterPersonality].self, from: savedData) {
+                    userAdjustments = convertOldFormat(oldAdjustments)
+                    print("✅ CharacterPersonalityManager: 成功转换旧格式数据，共\(userAdjustments.count)个角色")
+                    saveUserAdjustments() // 保存转换后的新格式
+                }
             }
+        } else {
+            print("📝 CharacterPersonalityManager: 首次启动，无用户调整数据")
         }
     }
     
     /**
-     * 保存用户偏好
+     * 转换旧格式数据
      */
-    private func saveUserPreferences() {
-        // 保存用户调整
+    private func convertOldFormat(_ oldAdjustments: [String: CharacterPersonality]) -> [String: UserPersonalityAdjustments] {
+        var newAdjustments: [String: UserPersonalityAdjustments] = [:]
+        
+        for (characterId, personality) in oldAdjustments {
+            var adjustments = UserPersonalityAdjustments()
+            
+            // 只保存非默认值的参数
+            if personality.intimacy != 0.5 { adjustments.intimacy = personality.intimacy }
+            if personality.engagementDepth != 0.5 { adjustments.engagementDepth = personality.engagementDepth }
+            if personality.emotionality != 0.5 { adjustments.emotionality = personality.emotionality }
+            if personality.responseStyle != 0.5 { adjustments.responseStyle = personality.responseStyle }
+            if personality.communicationPace != 0.5 { adjustments.communicationPace = personality.communicationPace }
+            
+            if adjustments.hasAnyAdjustments {
+                newAdjustments[characterId] = adjustments
+            }
+        }
+        
+        return newAdjustments
+    }
+    
+    /**
+     * 保存用户调整
+     */
+    private func saveUserAdjustments() {
         do {
-            let encodedAdjustments = try JSONEncoder().encode(userAdjustments)
-            UserDefaults.standard.set(encodedAdjustments, forKey: userAdjustmentsKey)
+            let encodedData = try JSONEncoder().encode(userAdjustments)
+            UserDefaults.standard.set(encodedData, forKey: userAdjustmentsKey)
+            let totalAdjustments = userAdjustments.values.reduce(0) { count, adj in
+                count + [adj.intimacy, adj.engagementDepth, adj.emotionality, adj.responseStyle, adj.communicationPace].compactMap { $0 }.count
+            }
+            print("💾 CharacterPersonalityManager: 保存用户调整成功，共\(userAdjustments.count)个角色，\(totalAdjustments)个参数调整")
         } catch {
             print("⚠️ CharacterPersonalityManager: 保存用户调整失败 - \(error.localizedDescription)")
-        }
-        
-        // 保存表达偏好
-        do {
-            let encodedPreferences = try JSONEncoder().encode(userExpressionPreferences)
-            UserDefaults.standard.set(encodedPreferences, forKey: userExpressionPreferencesKey)
-        } catch {
-            print("⚠️ CharacterPersonalityManager: 保存表达偏好失败 - \(error.localizedDescription)")
         }
     }
 } 

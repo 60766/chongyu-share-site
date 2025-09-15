@@ -728,12 +728,12 @@ struct ChatView: View {
         
         let content = messageText
         
-        // 添加详细日志
-        print("\n📱 ===== 用户发送消息 =====")
-        print("📤 消息内容: \"\(content)\"")
-        print("🗣️ 发送给角色: \(character.name) (ID: \(character.id))")
-        print("🔄 会话ID: \(conversationId)")
-        print("📱 ===== 消息详情结束 =====\n")
+        // 调试日志已关闭
+        // print("\n📱 ===== 用户发送消息 =====")
+        // print("📤 消息内容: \"\(content)\"")
+        // print("🗣️ 发送给角色: \(character.name) (ID: \(character.id))")
+        // print("🔄 会话ID: \(conversationId)")
+        // print("📱 ===== 消息详情结束 =====\n")
         
         // 创建用户消息
         let userMessage = Message(
@@ -941,8 +941,8 @@ struct ChatView: View {
      * 用于提供给API更好的上下文理解
      */
     private func buildConversationContext() -> String {
-        // 修改为保留最近3轮对话（最多6条消息）
-        let recentMessages = messages.suffix(6) // 最近6条消息，相当于3轮对话
+        // 优化为保留最近4轮对话（最多8条消息）- 产品经理建议的最佳平衡点
+        let recentMessages = messages.suffix(8) // 最近8条消息，相当于4轮对话
         
         // 极简上下文格式
         var context = ""
@@ -956,12 +956,12 @@ struct ChatView: View {
             context += "\(prefix)\(content) "
         }
         
-        // 添加详细日志
-        print("\n🔄 ===== 构建对话上下文 =====")
-        print("📜 最近消息数量: \(recentMessages.count)")
-        print("📝 对话上下文内容:")
-        print(context)
-        print("🔄 ===== 上下文构建结束 =====\n")
+        // 调试日志已关闭
+        // print("\n🔄 ===== 构建对话上下文 =====")
+        // print("📜 最近消息数量: \(recentMessages.count)")
+        // print("📝 对话上下文内容:")
+        // print(context)
+        // print("🔄 ===== 上下文构建结束 =====\n")
         
         return context
     }
@@ -996,9 +996,9 @@ struct ChatView: View {
                 // 更新UI，使用主线程同步执行以提高响应速度
                 await MainActor.run {
                     if historicalMessages.isEmpty {
-                        print("📱 没有找到历史消息记录")
+                        // print("📱 没有找到历史消息记录")
                     } else {
-                        print("📱 成功加载 \(historicalMessages.count) 条历史消息")
+                        // print("📱 成功加载 \(historicalMessages.count) 条历史消息")
                         
                         // 一次性更新消息数组，避免多次重绘
                         self.messages = historicalMessages

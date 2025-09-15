@@ -871,10 +871,13 @@ struct ExploreView: View {
     
     /// 获取最近互动的角色列表
     private var recentInteractionCharacters: [CharacterModel] {
-        // 获取所有互动过的角色ID
-        let characterIds = recentInteractions.map { $0.characterId }
+        // 首先按时间戳降序排序最近互动记录（最新的在前面）
+        let sortedInteractions = recentInteractions.sorted { $0.timestamp > $1.timestamp }
         
-        // 根据互动记录获取角色对象，并按最近互动时间排序
+        // 获取所有互动过的角色ID（保持时间顺序）
+        let characterIds = sortedInteractions.map { $0.characterId }
+        
+        // 根据互动记录获取角色对象，保持时间排序
         return characterIds
             .compactMap { id in characters.first { $0.id == id } }
             .uniqued() // 确保不重复
@@ -1026,10 +1029,12 @@ struct ExploreView: View {
         )
         
         if let index = existingInteractionIndex {
-            // 更新现有记录
-            recentInteractions[index] = newInteraction
+            // 删除旧记录
+            recentInteractions.remove(at: index)
+            // 在最前面插入更新的记录
+            recentInteractions.insert(newInteraction, at: 0)
         } else {
-            // 添加新记录
+            // 添加新记录到最前面
             recentInteractions.insert(newInteraction, at: 0)
             
             // 如果超过限制，删除最早的记录

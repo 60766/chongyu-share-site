@@ -399,41 +399,6 @@ struct APISettingsView: View {
                 }
                 .padding(.vertical, 5)
             }
-            
-            Section(header: Text("API测试")) {
-                Button(action: {
-                    // 直接使用ARK API密钥并测试
-                    APIConfigManager.shared.setAPIKey("5ec25df2-f799-4fc0-8ee2-ac13d473131b")
-                    VirtualCharacterService.shared.testGenerateCharacterComment()
-                }) {
-                    Text("测试API连接")
-                        .frame(maxWidth: .infinity)
-                        .foregroundColor(.white)
-                        .padding(.vertical, 10)
-                        .background(Color.blue)
-                        .cornerRadius(8)
-                }
-                
-                Button(action: {
-                    // 使用ARK API密钥并测试添加虚拟评论
-                    APIConfigManager.shared.setAPIKey("5ec25df2-f799-4fc0-8ee2-ac13d473131b")
-                    
-                    // 强制使用ARK端点
-                    if APIConfigManager.shared.currentEndpointIndex != 1 {
-                        APIConfigManager.shared.switchEndpoint()
-                    }
-                    
-                    // 测试虚拟角色评论
-                    VirtualCharacterService.shared.testGenerateCharacterComment(characterID: "einstein")
-                }) {
-                    Text("测试虚拟角色评论")
-                        .frame(maxWidth: .infinity)
-                        .foregroundColor(.white)
-                        .padding(.vertical, 10)
-                        .background(Color.green)
-                        .cornerRadius(8)
-                }
-            }
         }
         .navigationTitle("API设置")
         .navigationBarTitleDisplayMode(.inline)

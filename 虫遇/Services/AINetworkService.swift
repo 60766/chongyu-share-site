@@ -84,8 +84,9 @@ class AINetworkService {
     func sendRequest(prompt: String) -> AnyPublisher<String, AINetworkError> {
         let url = baseURL.appendingPathComponent("api/proxy")
         
-        print("🌐 AINetworkService baseURL: \(baseURL.absoluteString)")
-        print("➡️ POST \(url.absoluteString)")
+        // 调试日志已关闭
+        // print("🌐 AINetworkService baseURL: \(baseURL.absoluteString)")
+        // print("➡️ POST \(url.absoluteString)")
         
         // 构建请求体（后端将附加模型名等）
         let requestBody: [String: Any] = [
@@ -105,11 +106,11 @@ class AINetworkService {
         request.addValue("application/json", forHTTPHeaderField: "Accept")
         let token = AppAccountManager.shared.appAccountToken
         request.addValue(token, forHTTPHeaderField: "X-App-Account-Token")
-        print("🪪 X-App-Account-Token prefix: \(token.prefix(8))…")
+        // print("🪪 X-App-Account-Token prefix: \(token.prefix(8))…")
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-            print("📦 Request body size: \(request.httpBody?.count ?? 0) bytes")
+            // print("📦 Request body size: \(request.httpBody?.count ?? 0) bytes")
         } catch {
             return Fail(error: AINetworkError.requestFailed(error)).eraseToAnyPublisher()
         }
@@ -148,7 +149,7 @@ class AINetworkService {
                        let firstChoice = choices.first,
                        let message = firstChoice["message"] as? [String: Any],
                        let content = message["content"] as? String {
-                        print("📄 Response content prefix: \(content.prefix(60))…")
+                        // print("📄 Response content prefix: \(content.prefix(60))…")
                         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
                         return Just(trimmed).setFailureType(to: AINetworkError.self).eraseToAnyPublisher()
                     } else {
@@ -180,7 +181,7 @@ class AINetworkService {
     ) -> AnyPublisher<String, AINetworkError> {
         let url = baseURL.appendingPathComponent("api/proxy")
         
-        print("🔄 准备代理聊天请求 - 角色: \(characterName)")
+        // print("🔄 准备代理聊天请求 - 角色: \(characterName)")
         
         let systemPrompt = """
         你是\(characterName)，\(characterInfo)
@@ -246,7 +247,7 @@ class AINetworkService {
                 guard let httpResponse = response as? HTTPURLResponse else {
                     return Fail(error: AINetworkError.invalidResponse).eraseToAnyPublisher()
                 }
-                print("📥 HTTP status (chat): \(httpResponse.statusCode)")
+                // print("📥 HTTP status (chat): \(httpResponse.statusCode)")
                 if httpResponse.statusCode == 402 {
                     print("💳 402 Payment Required from backend (chat)")
                     Task { @MainActor in
@@ -266,7 +267,7 @@ class AINetworkService {
                        let firstChoice = choices.first,
                        let message = firstChoice["message"] as? [String: Any],
                        let content = message["content"] as? String {
-                        print("📄 Response content prefix (chat): \(content.prefix(60))…")
+                        // print("📄 Response content prefix (chat): \(content.prefix(60))…")
                         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
                         return Just(trimmed).setFailureType(to: AINetworkError.self).eraseToAnyPublisher()
                     } else {
