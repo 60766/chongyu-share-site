@@ -314,23 +314,48 @@ class ThoughtJourneyService: ObservableObject {
     }
     
     /**
-     * 构建AI提示词 - 虫遇回忆版本
+     * 构建AI提示词 - 虫遇回忆版本 (优化版)
      */
     private func buildPrompt(userData: UserDataDigest, timeRange: TimeRange, allChatMessages: [ChatContextItem]) -> String {
         let topCharacters = Array(Set(userData.chats.map { $0.characterName })).prefix(3)
         
-        // 构建对话上下文 - 按会话分组显示完整对话
-        _ = buildChatContexts(allChatMessages: allChatMessages, userChats: userData.chats)
-        
-        // 统计不同类型的对话
-        let normalChats = userData.chats.filter { $0.characterId != "user_observer" }
-        let observedChats = userData.chats.filter { $0.characterId == "user_observer" }
-        
         // 构建角色关系描述
-        let characterRelationships = buildCharacterRelationships(normalChats: normalChats, topCharacters: topCharacters)
+        let characterRelationships = buildCharacterRelationships(normalChats: userData.chats.filter { $0.characterId != "user_observer" }, topCharacters: topCharacters)
         
         // 构建情感体验数据
-        let emotionalExperiences = buildEmotionalExperiences(userData: userData, normalChats: normalChats, observedChats: observedChats)
+        let emotionalExperiences = buildEmotionalExperiences(userData: userData, 
+                                                            normalChats: userData.chats.filter { $0.characterId != "user_observer" }, 
+                                                            observedChats: userData.chats.filter { $0.characterId == "user_observer" })
+        
+        // 限制用户动态数量 - 最多显示5条最新的
+        let limitedPosts = Array(userData.posts.suffix(5))
+        
+        // 限制用户评论数量 - 最多显示5条最新的
+        let limitedComments = Array(userData.comments.suffix(5))
+        
+        let postsContent = limitedPosts.map { post in
+            var postInfo = "• \(post.content)"
+            if post.receivedLikes > 0 {
+                postInfo += "（收到\(post.receivedLikes)个赞）"
+            }
+            if !post.characterReplies.isEmpty {
+                postInfo += "（\(post.characterReplies.joined(separator: "、"))回复了）"
+            }
+            return postInfo
+        }.joined(separator: "\n")
+        
+        let commentsContent = limitedComments.map { comment in
+            var commentInfo = "• \(comment.content)"
+            if let targetAuthor = comment.targetPostAuthor, let targetContent = comment.targetPostContent {
+                commentInfo += "（回复\(targetAuthor)的动态：\(String(targetContent.prefix(20)))...）"
+            }
+            if !comment.repliedCharacters.isEmpty {
+                commentInfo += "（\(comment.repliedCharacters.joined(separator: "、"))回复了此评论）"
+            }
+            return commentInfo
+        }.joined(separator: "\n")
+        
+        let chatContent = buildOptimizedChatContexts(userData: userData, allChatMessages: allChatMessages)
         
         return """
         写一份用户的虫遇回忆，参考网易云年度总结的风格。
@@ -340,31 +365,13 @@ class ThoughtJourneyService: ObservableObject {
         - 主要聊天角色：\(characterRelationships)
         
         【用户发布的动态】
-        \(userData.posts.map { post in
-            var postInfo = "• [\(formatDate(post.date))] \(post.content)"
-            if post.receivedLikes > 0 {
-                postInfo += "（收到\(post.receivedLikes)个赞）"
-            }
-            if !post.characterReplies.isEmpty {
-                postInfo += "（\(post.characterReplies.joined(separator: "、"))回复了）"
-            }
-            return postInfo
-        }.joined(separator: "\n"))
+        \(postsContent)
         
         【用户发表的评论】
-        \(userData.comments.map { comment in
-            var commentInfo = "• [\(formatDate(comment.date))] \(comment.content)"
-            if let targetAuthor = comment.targetPostAuthor, let targetContent = comment.targetPostContent {
-                commentInfo += "（回复\(targetAuthor)的动态：\(String(targetContent.prefix(30)))...）"
-            }
-            if !comment.repliedCharacters.isEmpty {
-                commentInfo += "（\(comment.repliedCharacters.joined(separator: "、"))回复了此评论）"
-            }
-            return commentInfo
-        }.joined(separator: "\n"))
+        \(commentsContent)
         
         【具体对话内容】
-        \(buildDetailedChatContexts(userData: userData, allChatMessages: allChatMessages))
+        \(chatContent)
         
                  要求：
          1. 用简单直白的话，不要文艺腔
@@ -426,6 +433,11 @@ class ThoughtJourneyService: ObservableObject {
      * 获取一对一消息的角色名称
      */
     private func getCharacterNameFromMessage(_ message: Message) -> String {
+        // 特殊处理：如果是 currentUser，返回用户名
+        if message.receiverId == "currentUser" {
+            return "用户"
+        }
+        
         // 尝试通过receiverId获取角色名称
         let characterName = CharacterDataManager.shared.getName(for: message.receiverId) ?? message.receiverId
         return characterName
@@ -611,11 +623,17 @@ class ThoughtJourneyService: ObservableObject {
         
         var result = ""
         
-        // 显示最近的对话（最多显示10条消息）
-        let recentMessages = Array(sortedMessages.suffix(10))
+        // 显示最近的对话（最多显示8条消息）
+        let recentMessages = Array(sortedMessages.suffix(8))
+        
+        // 只在开头显示一个时间戳表示时间范围
+        if let firstMessage = recentMessages.first {
+            result += "[\(formatDate(firstMessage.timestamp))] 对话记录：\n"
+        }
+        
         for message in recentMessages {
             let speaker = message.isUserMessage ? "你" : message.characterName
-            result += "[\(formatDate(message.timestamp))] \(speaker)：\(message.content)\n"
+            result += "\(speaker)：\(message.content)\n"
         }
         
         return result + "\n"
@@ -732,6 +750,312 @@ class ThoughtJourneyService: ObservableObject {
         return experiences.isEmpty ? "暂无互动记录" : experiences.joined(separator: "，")
     }
     
+    /**
+     * 构建优化版聊天上下文 - 限制数量，优先最近内容，减少时间戳
+     */
+    private func buildOptimizedChatContexts(userData: UserDataDigest, allChatMessages: [ChatContextItem]) -> String {
+        print("🔍 构建优化版聊天上下文:")
+        print("  - userData.chats数量: \(userData.chats.count)")
+        print("  - allChatMessages数量: \(allChatMessages.count)")
+        
+        if userData.chats.isEmpty {
+            print("  - 结果: 无对话记录")
+            return "无对话记录"
+        }
+        
+        // 1. 过滤有价值的聊天消息
+        let meaningfulChats = filterMeaningfulChats(userData.chats)
+        print("  - 过滤后有价值的聊天: \(meaningfulChats.count)条")
+        
+        // 2. 分类聊天记录
+        var oneOnOneChats: [UserDataDigest.ChatData] = []
+        var groupChatSessions: [String: [UserDataDigest.ChatData]] = [:]
+        
+        for chat in meaningfulChats {
+            if chat.characterId == "user_observer" || chat.sessionTheme != nil {
+                // 梦幻联动：观察者记录或有sessionTheme的都是多人对话
+                // 保持原始sessionId，不要修改
+                if let sessionId = chat.sessionId {
+                    groupChatSessions[sessionId, default: []].append(chat)
+                } else {
+                    // 如果没有sessionId，使用临时ID但记录原始信息
+                    let tempSessionId = "group_\(chat.id)"
+                    groupChatSessions[tempSessionId, default: []].append(chat)
+                }
+            } else {
+                // 其他都是一对一聊天（包括原来的private_和没有sessionId的）
+                oneOnOneChats.append(chat)
+            }
+        }
+        
+        print("  - 一对一聊天记录: \(oneOnOneChats.count)条")
+        print("  - 多人对话会话数: \(groupChatSessions.count)个")
+        
+        var contextParts: [String] = []
+        
+        // 3. 处理多人对话（梦幻联动）- 只选择有用户回复的，最多2个
+        let groupChatsWithUserReplies = groupChatSessions.filter { (sessionId, sessionChats) in
+            // 检查是否有用户回复（非观察者的用户消息）
+            return sessionChats.contains { $0.characterId != "user_observer" }
+        }
+        
+        let sortedGroupChats = groupChatsWithUserReplies.sorted { (session1, session2) in
+            // 按活跃度排序
+            return session1.value.count > session2.value.count
+        }
+        
+        let selectedGroupChats = Array(sortedGroupChats.prefix(2))
+        for (sessionId, sessionChats) in selectedGroupChats {
+            let sessionContext = buildGroupChatSessionContext(
+                sessionId: sessionId,
+                chats: sessionChats,
+                allChatMessages: allChatMessages
+            )
+            if !sessionContext.isEmpty {
+                contextParts.append(sessionContext)
+            }
+        }
+        
+        // 4. 处理一对一聊天 - 按角色分组并选择最活跃的4个
+        var oneOnOneSessions: [String: [UserDataDigest.ChatData]] = [:]
+        for chat in oneOnOneChats {
+            // 按角色分组，确保每个角色的对话作为一个会话
+            let sessionKey = chat.characterId
+            oneOnOneSessions[sessionKey, default: []].append(chat)
+        }
+        
+        let sortedOneOnOneSessions = oneOnOneSessions.sorted { $0.value.count > $1.value.count }
+        let selectedOneOnOneSessions = Array(sortedOneOnOneSessions.prefix(4))
+        
+        for (characterId, sessionChats) in selectedOneOnOneSessions {
+            // 为一对一聊天构建sessionId
+            let sessionId = sessionChats.first?.sessionId ?? "oneOnOne_\(characterId)"
+            
+            let sessionContext = buildOptimizedSessionContext(
+                sessionId: sessionId,
+                chats: sessionChats,
+                allChatMessages: allChatMessages,
+                maxMessages: 8,
+                isFirstSession: false
+            )
+            if !sessionContext.isEmpty {
+                contextParts.append(sessionContext)
+            }
+        }
+        
+        let result = contextParts.joined(separator: "\n")
+        print("  - 最终包含: 多人对话(有用户回复)\(selectedGroupChats.count)个, 一对一聊天\(selectedOneOnOneSessions.count)个")
+        print("  - 生成的上下文长度: \(result.count) 字符")
+        
+        return result
+    }
+    
+    /**
+     * 过滤有价值的聊天消息
+     */
+    private func filterMeaningfulChats(_ chats: [UserDataDigest.ChatData]) -> [UserDataDigest.ChatData] {
+        return chats.filter { chat in
+            let content = chat.content.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // 观察者记录（多人聊天观看记录）始终保留
+            if chat.characterId == "user_observer" {
+                return true
+            }
+            
+            // 过滤条件
+            guard content.count >= 2 else { return false } // 至少2个字符
+            
+            // 排除纯数字、纯符号、简单回应
+            let excludePatterns = [
+                "^[0-9]+$",              // 纯数字
+                "^[好嗯啊哦呃]{1,3}$",      // 简单回应
+                "^[。，！？…]{1,5}$",       // 纯标点
+                "^在吗$",
+                "^你好$",
+                "^再见$",
+                "^谢谢$",
+                "^[哈]{2,}$"             // 纯笑声
+            ]
+            
+            for pattern in excludePatterns {
+                if content.range(of: pattern, options: .regularExpression) != nil {
+                    return false
+                }
+            }
+            
+            return true
+        }
+    }
+    
+    private func buildGroupChatSessionContext(
+        sessionId: String,
+        chats: [UserDataDigest.ChatData],
+        allChatMessages: [ChatContextItem]
+    ) -> String {
+        guard let firstChat = chats.first else { return "" }
+        
+        print("    🔍 构建多人对话会话上下文:")
+        print("      - sessionId: \(sessionId)")
+        print("      - chats数量: \(chats.count)")
+        print("      - allChatMessages总数: \(allChatMessages.count)")
+        
+        var sessionInfo = ""
+        
+        // 添加会话标题
+        if let sessionTheme = firstChat.sessionTheme, !sessionTheme.isEmpty {
+            sessionInfo += "【梦幻联动：\(sessionTheme)】\n"
+        } else {
+            sessionInfo += "【梦幻联动讨论】\n"
+        }
+        
+        // 检查是否有观察者记录
+        let observerChat = chats.first { $0.characterId == "user_observer" }
+        if let observer = observerChat {
+            sessionInfo += "\(observer.content)\n"
+        }
+        
+        // 获取该会话的完整对话消息
+        let sessionMessages = allChatMessages.filter { $0.sessionId == sessionId }
+            .sorted { $0.timestamp < $1.timestamp }
+        
+        print("      - 匹配到的sessionMessages数量: \(sessionMessages.count)")
+        
+        // 从用户发送的消息开始提取，最多10条消息
+        var extractedMessages: [ChatContextItem] = []
+        
+        // 找到最后一条用户消息的位置
+        if let lastUserMessageIndex = sessionMessages.lastIndex(where: { $0.isUserMessage }) {
+            // 从用户消息开始（包括那条用户消息），提取最多10条消息
+            let startIndex = lastUserMessageIndex
+            let endIndex = min(startIndex + 9, sessionMessages.count - 1)
+            extractedMessages = Array(sessionMessages[startIndex...endIndex])
+        }
+        
+        print("      - 提取的消息数量: \(extractedMessages.count)")
+        
+        // 如果没有匹配到消息，尝试其他匹配方式
+        if sessionMessages.isEmpty {
+            print("      - 尝试其他匹配方式...")
+            // 打印前几个allChatMessages的sessionId用于调试
+            for (index, msg) in allChatMessages.prefix(5).enumerated() {
+                print("      - allChatMessages[\(index)].sessionId: \(msg.sessionId ?? "nil")")
+            }
+        }
+        
+        if !extractedMessages.isEmpty {
+            // 只在开头显示一个时间戳表示时间范围
+            if let firstMessage = extractedMessages.first {
+                sessionInfo += "[\(formatDate(firstMessage.timestamp))] 对话内容：\n"
+            } else {
+                sessionInfo += "对话内容：\n"
+            }
+            
+            var lastContent = ""
+            var duplicateCount = 0
+            
+            for message in extractedMessages {
+                let speaker = message.isUserMessage ? "你" : message.characterName
+                let content = message.content
+                
+                // 去重逻辑
+                if content == lastContent {
+                    duplicateCount += 1
+                    if duplicateCount >= 2 { continue }
+                } else {
+                    duplicateCount = 0
+                    lastContent = content
+                }
+                
+                sessionInfo += "\(speaker)：\(content)\n"
+            }
+        } else {
+            print("      - 警告: 没有找到用户回复的消息，跳过此会话")
+        }
+        
+        print("      - 生成的sessionInfo长度: \(sessionInfo.count)")
+        return sessionInfo + "\n"
+    }
+    
+    /**
+     * 构建优化版单个会话上下文
+     */
+    private func buildOptimizedSessionContext(
+        sessionId: String,
+        chats: [UserDataDigest.ChatData],
+        allChatMessages: [ChatContextItem],
+        maxMessages: Int,
+        isFirstSession: Bool
+    ) -> String {
+        guard let firstChat = chats.first else { return "" }
+        
+        var sessionInfo = ""
+        
+        // 判断是否为观察者记录
+        if firstChat.characterId == "user_observer" {
+            if let sessionTheme = firstChat.sessionTheme, !sessionTheme.isEmpty {
+                sessionInfo += "【梦幻联动：\(sessionTheme)】\n"
+            } else {
+                sessionInfo += "【梦幻联动讨论】\n"
+            }
+            // 观察者记录只显示内容，不显示时间戳
+            sessionInfo += "\(firstChat.content)\n\n"
+        } else {
+            // 正常的用户参与记录
+            if let sessionTheme = firstChat.sessionTheme, !sessionTheme.isEmpty {
+                sessionInfo += "【梦幻联动：\(sessionTheme)】\n"
+            } else if sessionId.hasPrefix("private_") {
+                sessionInfo += "【与\(firstChat.characterName)的私聊】\n"
+            } else {
+                sessionInfo += "【与\(firstChat.characterName)的对话】\n"
+            }
+            
+            // 获取该会话的完整对话
+            let sessionMessages: [ChatContextItem]
+            if sessionId.hasPrefix("private_") {
+                let conversationId = sessionId.replacingOccurrences(of: "private_", with: "")
+                sessionMessages = allChatMessages.filter { $0.sessionId == conversationId }
+            } else {
+                sessionMessages = allChatMessages.filter { $0.sessionId == sessionId }
+            }
+            
+            // 按时间排序并取最近的消息
+            let sortedMessages = sessionMessages.sorted { $0.timestamp < $1.timestamp }
+            let recentMessages = Array(sortedMessages.suffix(maxMessages))
+            
+            if recentMessages.isEmpty {
+                sessionInfo += "暂无对话记录\n"
+            } else {
+                // 只在第一个会话显示一个时间戳作为时间参考
+                if isFirstSession && !recentMessages.isEmpty {
+                    sessionInfo += "[\(formatDate(recentMessages.first!.timestamp))] 开始\n"
+                }
+                
+                // 去重：避免连续重复的相同内容
+                var lastContent = ""
+                var duplicateCount = 0
+                
+                for message in recentMessages {
+                    let speaker = message.isUserMessage ? "你" : message.characterName
+                    let content = message.content
+                    
+                    // 去重逻辑
+                    if content == lastContent {
+                        duplicateCount += 1
+                        if duplicateCount >= 2 { continue } // 跳过重复内容
+                    } else {
+                        duplicateCount = 0
+                        lastContent = content
+                    }
+                    
+                    sessionInfo += "\(speaker)：\(content)\n"
+                }
+            }
+            
+            sessionInfo += "\n"
+        }
+        
+        return sessionInfo
+    }
 
 }
 
