@@ -34,7 +34,7 @@ struct EmptyCommentsView: View {
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color(hex: "8C699E").opacity(0.1), 
+                                Color(hex: "9A8BB0").opacity(0.1), 
                                 Color(hex: "A890B8").opacity(0.1)
                             ]),
                             startPoint: .topLeading,
@@ -48,7 +48,7 @@ struct EmptyCommentsView: View {
                     .stroke(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color(hex: "8C699E").opacity(0.2), 
+                                Color(hex: "9A8BB0").opacity(0.2), 
                             Color(hex: "A890B8").opacity(0.1)
                             ]),
                             startPoint: .topLeading,
@@ -69,7 +69,7 @@ struct EmptyCommentsView: View {
                 // 主图标 - 使用更符合情感沟通的图标
                 Image(systemName: "heart.text.square.fill")
                     .font(.system(size: 32))
-                    .foregroundColor(Color(hex: "8C699E").opacity(0.6))
+                    .foregroundColor(Color(hex: "9A8BB0").opacity(0.6))
             }
             .padding(.bottom, 4)
             
@@ -92,9 +92,9 @@ struct EmptyCommentsView: View {
                 .fill(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color(hex: "8C699E").opacity(0.0),
-                            Color(hex: "8C699E").opacity(0.2),
-                            Color(hex: "8C699E").opacity(0.0)
+                            Color(hex: "9A8BB0").opacity(0.0),
+                            Color(hex: "9A8BB0").opacity(0.2),
+                            Color(hex: "9A8BB0").opacity(0.0)
                         ]),
                         startPoint: .leading,
                         endPoint: .trailing
@@ -151,14 +151,14 @@ struct EmptyCommentsView: View {
                 .padding(.vertical, 10)
                 .background(
                     LinearGradient(
-                        gradient: Gradient(colors: [Color(hex: "8C699E"), Color(hex: "A890B8")]),
+                        gradient: Gradient(colors: [Color(hex: "9A8BB0"), Color(hex: "A890B8")]),
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .foregroundColor(.white)
                 .cornerRadius(20)
-                .shadow(color: Color(hex: "8C699E").opacity(0.3), radius: 4, x: 0, y: 2)
+                .shadow(color: Color(hex: "9A8BB0").opacity(0.3), radius: 4, x: 0, y: 2)
             }
             .buttonStyle(EmptyCommentsScaleButtonStyle(scaleAmount: 0.96))
             .padding(.top, 4)

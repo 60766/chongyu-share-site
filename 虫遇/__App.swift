@@ -188,15 +188,9 @@ struct ChongYuApp: App {
     }
     
     private func setupAPIConfig() {
-        // 直接设置ARK API密钥
-        let arkApiKey = "5ec25df2-f799-4fc0-8ee2-ac13d473131b"
-        
+        // API配置管理器已自动处理密钥设置
         #if DEBUG
-        print("🔑 正在设置ARK格式API密钥...")
-        #endif
-        APIConfigManager.shared.setAPIKey(arkApiKey)
-        #if DEBUG
-        print("✅ API密钥已设置: \(arkApiKey.prefix(8))...")
+        print("🔑 API配置管理器已自动初始化")
         #endif
         
         // 自动API测试已删除以节省API调用费用

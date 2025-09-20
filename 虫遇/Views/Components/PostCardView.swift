@@ -2401,7 +2401,7 @@ struct PostCardView: View {
     private func getCharacterColor(for characterID: String) -> Color {
         switch characterID.lowercased() {
         case "einstein": return Color(hex: "5B7AC9") // 软蓝色
-        case "shakespeare": return Color(hex: "8C699E") // 主紫色
+        case "shakespeare": return Color(hex: "9A8BB0") // 主紫色
         case "davinci": return Color(hex: "5C9A73") // 柔和绿色
         case "confucius": return Color(hex: "A77C4D") // 温暖棕色
         case "curie": return Color(hex: "C25B7A") // 柔和粉色

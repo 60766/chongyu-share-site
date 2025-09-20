@@ -31,7 +31,7 @@ extension Color {
     }
     
     /// 主色调 - 紫色
-    static let primaryColor = Color(hex: "8C699E")
+    static let primaryColor = Color(hex: "9A8BB0")
     
     /// 次要色调 - 淡棕色
     static let secondaryColor = Color(hex: "A890B8")
@@ -145,7 +145,7 @@ extension Color {
     static let warmHighlightBackground = Color(hex: "FBF8F1")
     
     /// 主题强调色 - 优雅的紫色，与米色背景和谐搭配
-    static let warmAccent = Color(hex: "8C699E")
+    static let warmAccent = Color(hex: "9A8BB0")
     
     /// 主题次要强调色 - 浅紫色
     static let warmAccentSecondary = Color(hex: "A890B8")
@@ -235,7 +235,7 @@ import UIKit
 
 extension UIColor {
     /// 主色调 - 紫色
-    static let primaryUIColor = UIColor(red: 140/255, green: 105/255, blue: 158/255, alpha: 1.0)
+    static let primaryUIColor = UIColor(red: 154/255, green: 139/255, blue: 176/255, alpha: 1.0)
     
     /// 次要色调 - 淡棕色
     static let secondaryColor = UIColor(red: 168/255, green: 144/255, blue: 184/255, alpha: 1.0)
@@ -270,7 +270,7 @@ extension UIColor {
     static let warmCardBackground = UIColor(red: 245/255, green: 242/255, blue: 234/255, alpha: 1.0)
     
     /// 温暖强调色 - 紫色
-    static let warmAccent = UIColor(red: 140/255, green: 105/255, blue: 158/255, alpha: 1.0)
+    static let warmAccent = UIColor(red: 154/255, green: 139/255, blue: 176/255, alpha: 1.0)
     
     /// 点赞颜色 - 红色
     static let likeColor = UIColor(red: 224/255, green: 82/255, blue: 82/255, alpha: 1.0)

@@ -429,7 +429,7 @@ class NotificationService: ObservableObject {
     
     func generateSystemWelcomeNotification() {
         let systemCharacters = ["einstein", "shakespeare", "davinci", "curie"]
-        let character = systemCharacters.randomElement()!
+        let _ = systemCharacters.randomElement()!
         
         let notification = NotificationModel(
             type: .system,

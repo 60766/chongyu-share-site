@@ -10,8 +10,11 @@ class WalletManager: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var showingPurchaseSheet: Bool = false
     
+    private var notificationObservers: [NSObjectProtocol] = []
+    
     private init() {
         loadBalance()
+        setupAccountObservers()
     }
     
     func loadBalance() {
@@ -34,20 +37,7 @@ class WalletManager: ObservableObject {
     }
     
     func refreshBalance() async {
-        await MainActor.run { isLoading = true }
-        do {
-            let walletBalance = try await WalletService.shared.fetchBalance()
-            await MainActor.run {
-                self.balance = walletBalance.balance
-                self.currency = walletBalance.currency
-                self.isLoading = false
-            }
-        } catch {
-            print("刷新余额失败: \(error)")
-            await MainActor.run {
-                self.isLoading = false
-            }
-        }
+        loadBalance()
     }
     
     func showPurchaseSheet() {
@@ -60,5 +50,35 @@ class WalletManager: ObservableObject {
     
     func formatBalanceWithCurrency() -> String {
         return "\(balance) \(currency)"
+    }
+    
+    private func setupAccountObservers() {
+        let center = NotificationCenter.default
+        
+        // 账号变更：刷新余额
+        let activeNames: [Notification.Name] = [.userAccountRestored, .userAccountCreated, .userAccountTokenReplaced]
+        activeNames.forEach { name in
+            let token = center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.loadBalance()
+            }
+            notificationObservers.append(token)
+        }
+        
+        // 退出账号：重置展示状态
+        let logout = center.addObserver(forName: .userAccountLogout, object: nil, queue: .main) { [weak self] _ in
+            guard let self = self else { return }
+            self.isLoading = false
+            self.balance = 0
+            self.showingPurchaseSheet = false
+        }
+        notificationObservers.append(logout)
+    }
+    
+    deinit {
+        let center = NotificationCenter.default
+        for obs in notificationObservers {
+            center.removeObserver(obs)
+        }
+        notificationObservers.removeAll()
     }
 } 

@@ -70,7 +70,8 @@ class APIConfigManager {
         // 如果API密钥为空或无效，使用默认密钥
         if !hasValidAPIKey || !isValidAPIKeyFormat(apiKey) {
             print("⚠️ API密钥无效或为空，使用默认密钥")
-            setAPIKey(defaultAPIKey)
+            self.apiKey = defaultAPIKey
+            saveAPIKeyToKeychain(defaultAPIKey)
         }
         
         // 确保使用ARK端点（更稳定的选择）
@@ -128,13 +129,7 @@ class APIConfigManager {
         print("⚙️ 当前使用模型: \(modelName)")
     }
     
-    // 手动设置API密钥
-    func setAPIKey(_ key: String) {
-        self.apiKey = key
-        // 保存到钥匙串
-        saveAPIKeyToKeychain(key)
-        print("已设置新的API密钥")
-    }
+
     
     // 检查是否有有效的API密钥
     var hasValidAPIKey: Bool {

@@ -7,11 +7,8 @@ import SwiftUI
 struct SettingsView: View {
     /// 环境变量，用于关闭sheet
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     
-    /// 是否开启角色互动通知
-    @State private var enableCharacterNotification = true
-    /// 角色互动方式
-    @State private var interactionMethod = "语音+文字"
     /// 暗黑模式选项
     @State private var darkModeOption = "跟随系统"
     /// 角色分配模式
@@ -23,6 +20,22 @@ struct SettingsView: View {
     /// API设置展示状态
     @State private var showingAPISettings = false
     @State private var balanceText: String = "—"
+    
+    // 优化的颜色系统
+    private var primaryAccentColor: Color {
+        Color(hex: "9A8BB0") // 统一的主题色
+    }
+    
+    private var iconColors: [String: Color] {
+        [
+            "character": Color(hex: "8B7EC8"),      // 紫色 - 角色相关
+            "system": Color(hex: "5C9BD5"),         // 蓝色 - 系统设置
+            "security": Color(hex: "E67E22"),       // 橙色 - 安全相关
+            "help": Color(hex: "27AE60"),           // 绿色 - 帮助支持
+            "account": Color(hex: "8E44AD"),        // 深紫色 - 账号管理
+            "danger": Color(hex: "E74C3C")          // 红色 - 危险操作
+        ]
+    }
     
     // 在初始化时加载当前的角色分配模式
     init() {
@@ -43,242 +56,163 @@ struct SettingsView: View {
         NavigationView {
             List {
                 // 角色互动设置
-                Section(header: Text("角色互动设置")) {
-                    // 开启角色互动通知
-                    Toggle(isOn: $enableCharacterNotification) {
-                        HStack {
-                            Image(systemName: "bell.fill")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("开启角色互动通知")
-                                .foregroundColor(.primary)
-                        }
-                    }
-                    .toggleStyle(SwitchToggleStyle(tint: .primaryColor))
-                    
-                    // 角色互动方式
-                    NavigationLink(destination: InteractionMethodView(selectedMethod: $interactionMethod)) {
-                        HStack {
-                            Image(systemName: "bubble.left.fill")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("角色互动方式")
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            Text(interactionMethod)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    
+                Section {
                     // 角色分配模式
                     NavigationLink(destination: CharacterDistributionModeView(selectedMode: $characterDistributionMode)) {
-                        HStack {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("角色分配模式")
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            Text(characterDistributionMode)
-                                .foregroundColor(.secondary)
-                        }
+                        SettingRowView(
+                            icon: "arrow.triangle.2.circlepath",
+                            title: "角色分配模式",
+                            subtitle: characterDistributionMode,
+                            iconColor: iconColors["character"]!
+                        )
                     }
                     
                     // 已屏蔽角色管理
                     NavigationLink(destination: BlockedCharactersView()) {
-                        HStack {
-                            Image(systemName: "hand.thumbsdown")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("已屏蔽角色")
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            // 显示已屏蔽角色数量
-                            if let blockedCount = getBlockedCharactersCount(), blockedCount > 0 {
-                                Text("\(blockedCount)个已屏蔽")
-                                    .foregroundColor(.orange)
-                            }
-                        }
+                        SettingRowView(
+                            icon: "hand.thumbsdown",
+                            title: "已屏蔽角色",
+                            subtitle: getBlockedCharactersCount().map { "\($0)个已屏蔽" },
+                            iconColor: iconColors["character"]!,
+                            subtitleColor: .orange
+                        )
                     }
+                } header: {
+                    Text("角色互动设置")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .textCase(.none)
+                } footer: {
+                    Text("管理角色在对话中的出现频率和屏蔽设置")
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.8))
                 }
                 
                 // 系统设置
-                Section(header: Text("系统设置")) {
+                Section {
                     // 暗黑模式
                     NavigationLink(destination: DarkModeSettingView(selectedOption: $darkModeOption)) {
-                        HStack {
-                            Image(systemName: "moon.fill")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("暗黑模式")
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            Text(darkModeOption)
-                                .foregroundColor(.secondary)
-                        }
+                        SettingRowView(
+                            icon: "moon.fill",
+                            title: "暗黑模式",
+                            subtitle: darkModeOption,
+                            iconColor: iconColors["system"]!
+                        )
                     }
                     
                     // 内容偏好设置
                     NavigationLink(destination: ContentPreferencesView()) {
-                        HStack {
-                            Image(systemName: "slider.horizontal.3")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("内容偏好")
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            // 显示已减少的内容类型数量
-                            if let reducedTypes = getReducedContentTypesCount(), reducedTypes > 0 {
-                                Text("\(reducedTypes)种已调整")
-                                    .foregroundColor(.orange)
-                            }
-                        }
+                        SettingRowView(
+                            icon: "slider.horizontal.3",
+                            title: "内容偏好",
+                            subtitle: getReducedContentTypesCount().map { "\($0)种已调整" },
+                            iconColor: iconColors["system"]!,
+                            subtitleColor: .orange
+                        )
                     }
                     
                     // 清除缓存
-                    Button(action: {
-                        clearCache()
-                    }) {
-                        HStack {
-                            Image(systemName: "trash.fill")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("清除缓存")
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
+                    Button(action: clearCache) {
+                        SettingRowView(
+                            icon: "trash.fill",
+                            title: "清除缓存",
+                            subtitle: isClearingCache ? nil : "25.6MB",
+                            iconColor: iconColors["system"]!,
+                            trailing: {
                             if isClearingCache {
                                 ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle())
-                            } else {
-                                Text("25.6MB")
-                                    .foregroundColor(.secondary)
+                                        .progressViewStyle(CircularProgressViewStyle(tint: primaryAccentColor))
+                                        .scaleEffect(0.8)
+                                }
                             }
-                        }
+                        )
                     }
+                    .foregroundColor(.primary)
+                } header: {
+                    Text("系统设置")
+                        .font(.caption)
+                                    .foregroundColor(.secondary)
+                        .textCase(.none)
                 }
                 
-                // 账号设置
-                Section(header: Text("账号设置")) {
-                    // 账号与安全
-                    NavigationLink(destination: Text("账号与安全设置")) {
-                        HStack {
-                            Image(systemName: "lock.fill")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("账号与安全")
-                                .foregroundColor(.primary)
-                        }
-                    }
-                    
-                    // API设置
-                    NavigationLink(destination: APISettingsView()) {
-                        HStack {
-                            Image(systemName: "key.fill")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("API密钥设置")
-                                .foregroundColor(.primary)
-                        }
+                // 账号设置 - 合并重复的section
+                Section {
+                    // 账号管理
+                    NavigationLink(destination: AccountManagementView()) {
+                        SettingRowView(
+                            icon: "person.circle.fill",
+                            title: "账号管理",
+                            subtitle: String(AppAccountManager.shared.accountDisplayId.prefix(3)) + " " + 
+                                     String(AppAccountManager.shared.accountDisplayId.dropFirst(3).prefix(3)) + " " +
+                                     String(AppAccountManager.shared.accountDisplayId.dropFirst(6).prefix(3)),
+                            iconColor: iconColors["account"]!
+                        )
                     }
                     
                     // 隐私设置
-                    NavigationLink(destination: Text("隐私设置")) {
-                        HStack {
-                            Image(systemName: "hand.raised.fill")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("隐私设置")
-                                .foregroundColor(.primary)
-                        }
+                    NavigationLink(destination: PrivacySettingsView()) {
+                        SettingRowView(
+                            icon: "lock.shield.fill",
+                            title: "隐私设置",
+                            iconColor: iconColors["security"]!
+                        )
                     }
+                } header: {
+                    Text("账号设置")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .textCase(.none)
+                } footer: {
+                    Text("管理您的账号信息和隐私设置")
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.8))
                 }
                 
                 // 帮助和关于
-                Section(header: Text("帮助和关于")) {
+                Section {
                     // 联系我们
-                    NavigationLink(destination: Text("联系我们")) {
-                        HStack {
-                            Image(systemName: "envelope.fill")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("联系我们")
-                                .foregroundColor(.primary)
-                        }
+                    NavigationLink(destination: ContactUsView()) {
+                        SettingRowView(
+                            icon: "envelope.fill",
+                            title: "联系我们",
+                            iconColor: iconColors["help"]!
+                        )
                     }
                     
                     // 关于我们
-                    Button(action: {
-                        showingAbout = true
-                    }) {
-                        HStack {
-                            Image(systemName: "info.circle.fill")
-                                .frame(width: 24)
-                                .foregroundColor(.primaryColor)
-                            
-                            Text("关于虫遇")
+                    Button(action: { showingAbout = true }) {
+                        SettingRowView(
+                            icon: "info.circle.fill",
+                            title: "关于虫遇",
+                            subtitle: "v1.0.0",
+                            iconColor: iconColors["help"]!
+                        )
+                    }
                                 .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            Text("v1.0.0")
+                } header: {
+                    Text("帮助和关于")
+                        .font(.caption)
                                 .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                
-                // 退出登录
-                Section {
-                    Button(action: {
-                        // 退出登录操作
-                    }) {
-                        HStack {
-                            Spacer()
-                            Text("退出登录")
-                                .foregroundColor(.red)
-                            Spacer()
-                        }
-                    }
+                        .textCase(.none)
                 }
             }
             .listStyle(InsetGroupedListStyle())
             .navigationBarTitle("设置", displayMode: .inline)
+            .navigationBarTitleTextColor(.primary)
             .navigationBarItems(
                 leading: Button(action: {
                     // 触觉反馈
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    let generator = UIImpactFeedbackGenerator(style: .light)
                     generator.impactOccurred()
-                    
                     dismiss()
                 }) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 15, weight: .medium))
                         Text("返回")
+                            .font(.system(size: 16, weight: .regular))
                     }
-                    .foregroundColor(.primaryColor)
+                    .foregroundColor(primaryAccentColor)
                 }
             )
             .onAppear {
@@ -287,25 +221,32 @@ struct SettingsView: View {
             .alert(isPresented: $showingAbout) {
                 Alert(
                     title: Text("关于虫遇"),
-                    message: Text("虫遇 v1.0.0\n一款让你与历史人物进行对话的应用\n技术支持: support@chongyu.com"),
+                    message: Text("虫遇 v1.0.0\n一款让你与历史人物进行对话的应用\n\n© 2024 虫遇团队\n技术支持: support@chongyu.com"),
                     dismissButton: .default(Text("确定"))
                 )
             }
         }
     }
     
+    // MARK: - 辅助方法
+    
     /**
      * 清除缓存
      */
     private func clearCache() {
+        // 触觉反馈
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
         isClearingCache = true
         
         // 模拟清除缓存过程
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             isClearingCache = false
             
-            // 显示清除成功提示
-            // 在实际应用中，这里应该有真实的缓存清理逻辑
+            // 轻微的成功反馈
+            let successGenerator = UINotificationFeedbackGenerator()
+            successGenerator.notificationOccurred(.success)
         }
     }
     
@@ -334,120 +275,88 @@ struct SettingsView: View {
     }
 }
 
-/**
- * API密钥设置视图
- */
-struct APISettingsView: View {
-    @State private var apiKey: String = APIConfigManager.shared.apiKey ?? ""
-    @State private var showSuccess = false
-    @State private var showError = false
-    @State private var selectedEndpoint = APIConfigManager.shared.currentEndpointIndex
+// MARK: - 设置行组件
+
+/// 统一的设置行视图组件
+/// 提供一致的视觉样式和交互体验
+struct SettingRowView<Trailing: View>: View {
+    let icon: String
+    let title: String
+    let subtitle: String?
+    let iconColor: Color
+    let subtitleColor: Color
+    let trailing: () -> Trailing
+    
+    init(
+        icon: String,
+        title: String,
+        subtitle: String? = nil,
+        iconColor: Color,
+        subtitleColor: Color = .secondary,
+        @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }
+    ) {
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self.iconColor = iconColor
+        self.subtitleColor = subtitleColor
+        self.trailing = trailing
+    }
     
     var body: some View {
-        Form {
-            Section(header: Text("API密钥配置"), footer: Text("请输入有效的API密钥，支持DeepSeek和ARK两种格式")) {
-                SecureField("API密钥", text: $apiKey)
-                    .autocapitalization(.none)
-                    .disableAutocorrection(true)
+        HStack(spacing: 12) {
+            // 图标容器
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(iconColor.opacity(0.1))
+                    .frame(width: 28, height: 28)
                 
-                Button(action: {
-                    if apiKey.isEmpty {
-                        showError = true
-                    } else {
-                        APIConfigManager.shared.setAPIKey(apiKey)
-                        showSuccess = true
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(iconColor)
                     }
-                }) {
-                    Text("保存API密钥")
-                        .frame(maxWidth: .infinity)
-                        .foregroundColor(.white)
-                        .padding(.vertical, 10)
-                        .background(Color.primaryColor)
-                        .cornerRadius(8)
+            
+            // 文本内容
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(.primary)
+                
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(subtitleColor)
                 }
             }
             
-            Section(header: Text("API端点选择")) {
-                Picker("API端点", selection: $selectedEndpoint) {
-                    Text("DeepSeek").tag(0)
-                    Text("ARK").tag(1)
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .onChange(of: selectedEndpoint) { oldValue, newValue in
-                    if newValue != APIConfigManager.shared.currentEndpointIndex {
-                        APIConfigManager.shared.switchEndpoint()
-                    }
-                }
-                
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("当前API端点:")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(APIConfigManager.shared.deepSeekEndpoint)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 5)
-                
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("当前模型:")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(APIConfigManager.shared.modelName)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 5)
+            Spacer()
+            
+            // 右侧内容
+            trailing()
+        }
+        .contentShape(Rectangle())
+        .padding(.vertical, 2)
             }
         }
-        .navigationTitle("API设置")
-        .navigationBarTitleDisplayMode(.inline)
-        .alert(isPresented: $showSuccess) {
-            Alert(
-                title: Text("成功"),
-                message: Text("API密钥已成功保存"),
-                dismissButton: .default(Text("确定"))
-            )
-        }
-        .alert(isPresented: $showError) {
-            Alert(
-                title: Text("错误"),
-                message: Text("请输入有效的API密钥"),
-                dismissButton: .default(Text("确定"))
-            )
+
+// 为可选值提供便利方法
+extension Optional where Wrapped == Int {
+    func map<T>(_ transform: (Wrapped) -> T) -> T? {
+        switch self {
+        case .some(let value):
+            return transform(value)
+        case .none:
+            return nil
         }
     }
 }
 
-/**
- * 互动方式设置视图
- */
-struct InteractionMethodView: View {
-    @Binding var selectedMethod: String
-    private let methods = ["仅文字", "语音+文字", "语音优先"]
-    
-    var body: some View {
-        List {
-            ForEach(methods, id: \.self) { method in
-                Button(action: {
-                    selectedMethod = method
-                }) {
-                    HStack {
-                        Text(method)
-                            .foregroundColor(.primary)
-                        
-                        Spacer()
-                        
-                        if selectedMethod == method {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.primaryColor)
-                        }
-                    }
-                }
-            }
+// 添加导航栏标题颜色扩展
+extension View {
+    func navigationBarTitleTextColor(_ color: Color) -> some View {
+        self.onAppear {
+            UINavigationBar.appearance().titleTextAttributes = [.foregroundColor: UIColor(color)]
         }
-        .navigationTitle("角色互动方式")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -455,8 +364,14 @@ struct InteractionMethodView: View {
  * 暗黑模式设置视图
  */
 struct DarkModeSettingView: View {
+    @Environment(\.dismiss) private var dismiss
     @Binding var selectedOption: String
     private let options = ["开启", "关闭", "跟随系统"]
+    
+    // 主题颜色
+    private var primaryAccentColor: Color {
+        Color(hex: "9A8BB0")
+    }
     
     var body: some View {
         List {
@@ -472,7 +387,7 @@ struct DarkModeSettingView: View {
                         
                         if selectedOption == option {
                             Image(systemName: "checkmark")
-                                .foregroundColor(.primaryColor)
+                                .foregroundColor(primaryAccentColor)
                         }
                     }
                 }
@@ -480,6 +395,23 @@ struct DarkModeSettingView: View {
         }
         .navigationTitle("暗黑模式")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .navigationBarItems(
+            leading: Button(action: {
+                // 触觉反馈
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                dismiss()
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .medium))
+                    Text("设置")
+                        .font(.system(size: 16, weight: .regular))
+                }
+                .foregroundColor(primaryAccentColor)
+            }
+        )
     }
 }
 
@@ -487,8 +419,14 @@ struct DarkModeSettingView: View {
  * 角色分配模式设置视图
  */
 struct CharacterDistributionModeView: View {
+    @Environment(\.dismiss) private var dismiss
     @Binding var selectedMode: String
     private let modes = ["均衡分配", "严格轮换", "关注优先"]
+    
+    // 主题颜色
+    private var primaryAccentColor: Color {
+        Color(hex: "9A8BB0")
+    }
     
     var body: some View {
         List {
@@ -544,7 +482,7 @@ struct CharacterDistributionModeView: View {
                             
                             if selectedMode == mode {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(.primaryColor)
+                                    .foregroundColor(primaryAccentColor)
                             }
                         }
                     }
@@ -570,6 +508,23 @@ struct CharacterDistributionModeView: View {
         }
         .navigationTitle("角色分配模式")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .navigationBarItems(
+            leading: Button(action: {
+                // 触觉反馈
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                dismiss()
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .medium))
+                    Text("设置")
+                        .font(.system(size: 16, weight: .regular))
+                }
+                .foregroundColor(primaryAccentColor)
+            }
+        )
     }
 }
 

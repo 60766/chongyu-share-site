@@ -5,8 +5,10 @@ import SwiftUI
  * 用于管理内容类型权重及其恢复
  */
 struct ContentPreferencesView: View {
+    @Environment(\.dismiss) private var dismiss
+    
     // 主题颜色
-    private let primaryColor = Color.purple // 使用和截图中一致的紫色主题
+    private let primaryColor = Color(hex: "9A8BB0") // 使用统一的主紫色
     private let secondaryColor = Color.orange
     
     // 内容类型权重管理器
@@ -58,6 +60,24 @@ struct ContentPreferencesView: View {
         }
         .listStyle(InsetGroupedListStyle())
         .navigationBarTitle("内容偏好", displayMode: .inline)
+        .navigationBarTitleTextColor(.primary)
+        .navigationBarBackButtonHidden(true)
+        .navigationBarItems(
+            leading: Button(action: {
+                // 触觉反馈
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                dismiss()
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .medium))
+                    Text("设置")
+                        .font(.system(size: 16, weight: .regular))
+                }
+                .foregroundColor(primaryColor)
+            }
+        )
         .onAppear {
             loadContentTypes()
         }

@@ -1,0 +1,464 @@
+{
+  "wallets": {
+    "debug-token": {
+      "balance": 1800
+    },
+    "TEST_TOKEN": {
+      "balance": 308600
+    },
+    "D08B9230-99EE-43D4-88AE-4626E001776C": {
+      "balance": 18128
+    }
+  },
+  "transactions": [
+    {
+      "id": "m55o2utc8PbNu2s5pCJ87",
+      "type": "topup",
+      "token": "debug-token",
+      "amount": 1800,
+      "ref": "tx-001",
+      "meta": {
+        "productId": "credits.small",
+        "receipt": {}
+      },
+      "at": 1758354492043
+    },
+    {
+      "id": "snkrn8iuSIIpBhVJHCf5C",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 1800,
+      "ref": "dev-92527EBB-DDA1-4267-83D6-74F21DF7CE61",
+      "meta": {
+        "productId": "credits.small",
+        "receipt": ""
+      },
+      "at": 1758354755839
+    },
+    {
+      "id": "LT7bUJtO3BILScX1HJO0-",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 6000,
+      "ref": "dev-A8097DCE-D2E4-46C2-9DE2-DBB352998C8B",
+      "meta": {
+        "productId": "credits.medium",
+        "receipt": ""
+      },
+      "at": 1758354756871
+    },
+    {
+      "id": "RYOF5BkeHTmWLguxQIaio",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 6000,
+      "ref": "dev-2AF97B34-CCB7-4448-8210-C535B690E130",
+      "meta": {
+        "productId": "credits.medium",
+        "receipt": ""
+      },
+      "at": 1758354757362
+    },
+    {
+      "id": "EA6gguekPF7Iv4PoGaWPm",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 26800,
+      "ref": "dev-AB565D95-06A4-4F74-AA4F-BE346A197EA1",
+      "meta": {
+        "productId": "credits.xlarge",
+        "receipt": ""
+      },
+      "at": 1758354758328
+    },
+    {
+      "id": "ddi2UyOvkss41ayuQymoF",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 26800,
+      "ref": "dev-0C10EFD2-706E-4732-8657-E96C40BEC497",
+      "meta": {
+        "productId": "credits.xlarge",
+        "receipt": ""
+      },
+      "at": 1758354758537
+    },
+    {
+      "id": "zHkYUk1G8KiqELYmAV2-T",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 26800,
+      "ref": "dev-A63082AE-6D40-44AF-BE6F-A88BB9B2CD25",
+      "meta": {
+        "productId": "credits.xlarge",
+        "receipt": ""
+      },
+      "at": 1758354758757
+    },
+    {
+      "id": "4b4MjOgavMLPNJQ3E2KjG",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 26800,
+      "ref": "dev-962009CA-8EF4-4100-B097-77DECFBF9728",
+      "meta": {
+        "productId": "credits.xlarge",
+        "receipt": ""
+      },
+      "at": 1758354758953
+    },
+    {
+      "id": "Ji_1TfC9hAk6NqXOXC4iZ",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 26800,
+      "ref": "dev-1D1A9920-EC0E-4E92-B444-D08DDC14E98A",
+      "meta": {
+        "productId": "credits.xlarge",
+        "receipt": ""
+      },
+      "at": 1758354759126
+    },
+    {
+      "id": "BsNtcR8HUWG6Fhab1Xzgr",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 26800,
+      "ref": "dev-3067D2C9-9571-4309-AA80-CDEF0F04CE8D",
+      "meta": {
+        "productId": "credits.xlarge",
+        "receipt": ""
+      },
+      "at": 1758354759290
+    },
+    {
+      "id": "pz5n28hHW3s3hfM1S1BNo",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 26800,
+      "ref": "dev-C210A1DC-C4E2-4416-9C9D-A56239D99708",
+      "meta": {
+        "productId": "credits.xlarge",
+        "receipt": ""
+      },
+      "at": 1758354759477
+    },
+    {
+      "id": "hIMRLfHH4onawB3hpWnql",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 26800,
+      "ref": "dev-7F5DE9F1-8899-48EA-86B4-9AD09235502C",
+      "meta": {
+        "productId": "credits.xlarge",
+        "receipt": ""
+      },
+      "at": 1758354759847
+    },
+    {
+      "id": "OG6gTI_5VksvWlikUg-l8",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 26800,
+      "ref": "dev-24E64974-7CDC-437D-B802-841C83DF4FAF",
+      "meta": {
+        "productId": "credits.xlarge",
+        "receipt": ""
+      },
+      "at": 1758354759971
+    },
+    {
+      "id": "Gj1KVBTg3Y02oFYOOHfpU",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 26800,
+      "ref": "dev-C72E67AA-D9CE-48BD-A57D-1A421BD359A0",
+      "meta": {
+        "productId": "credits.xlarge",
+        "receipt": ""
+      },
+      "at": 1758354760157
+    },
+    {
+      "id": "KqozfVL9kPt_qxyx2v5-H",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 26800,
+      "ref": "dev-3902D550-481C-41D0-BDA6-9EA638F5B189",
+      "meta": {
+        "productId": "credits.xlarge",
+        "receipt": ""
+      },
+      "at": 1758354796270
+    },
+    {
+      "id": "arI_7EsbGODhcDiXa_xOR",
+      "type": "topup",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 6000,
+      "ref": "dev-9DF3A383-5BC2-45D5-8298-BBC3B171813A",
+      "meta": {
+        "productId": "credits.medium",
+        "receipt": ""
+      },
+      "at": 1758355617373
+    },
+    {
+      "id": "Bal8N2EYLHHm36LIfTGjH",
+      "type": "topup",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 6000,
+      "ref": "dev-61720B98-DC2E-47C7-9ABB-414F09657F22",
+      "meta": {
+        "productId": "credits.medium",
+        "receipt": ""
+      },
+      "at": 1758355618611
+    },
+    {
+      "id": "zBPpJxz9boDEQ4--VZAHz",
+      "type": "topup",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 1800,
+      "ref": "dev-DC4F5B14-3417-40D9-A729-FE2A5DEA6521",
+      "meta": {
+        "productId": "credits.small",
+        "receipt": ""
+      },
+      "at": 1758355624468
+    },
+    {
+      "id": "pWII14bR2_FaqnFVUQA0Y",
+      "type": "topup",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 1800,
+      "ref": "dev-7E6F0375-366F-4B09-B333-136E85B20A64",
+      "meta": {
+        "productId": "credits.small",
+        "receipt": ""
+      },
+      "at": 1758355794832
+    },
+    {
+      "id": "zpb6aukbOGWS73AHsQ9pD",
+      "type": "topup",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 1800,
+      "ref": "dev-D13FF38B-58A2-4005-AE9C-AF9C7C3BF837",
+      "meta": {
+        "productId": "credits.small",
+        "receipt": ""
+      },
+      "at": 1758355795017
+    },
+    {
+      "id": "YnlnwqqiCxwIuM-zkn3QD",
+      "type": "topup",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 1800,
+      "ref": "dev-DF030216-415B-40C2-B706-0A85336FEF22",
+      "meta": {
+        "productId": "credits.small",
+        "receipt": ""
+      },
+      "at": 1758355795186
+    },
+    {
+      "id": "mex3GInz_aKrT6-ZsjFZo",
+      "type": "topup",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 1800,
+      "ref": "dev-F1DF8794-A91F-4109-B417-D2887E8D9564",
+      "meta": {
+        "productId": "credits.small",
+        "receipt": ""
+      },
+      "at": 1758355795369
+    },
+    {
+      "id": "wxSDnrQTxVV75_veFGIEc",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 191,
+      "ref": "Br6f-ObtRs0z_Pf_so7e-",
+      "meta": {
+        "totalTokens": 1910,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355831998
+    },
+    {
+      "id": "0RhyyTxQsSdj8fWw2On6O",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 203,
+      "ref": "0JYvA-r5ePuGDefA07JTp",
+      "meta": {
+        "totalTokens": 2029,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355834381
+    },
+    {
+      "id": "JaLxbVZAy0SH6lg18p3uT",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 218,
+      "ref": "ph72DcU8vHEZldB_Pre_Q",
+      "meta": {
+        "totalTokens": 2179,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355838067
+    },
+    {
+      "id": "qUHQomgV0yeyKuMLwzlSZ",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 214,
+      "ref": "T8RWqhpV4HWUxPBUrTSSp",
+      "meta": {
+        "totalTokens": 2134,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355854864
+    },
+    {
+      "id": "Prc0bjFRUwEruu6QGapsf",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 220,
+      "ref": "O-mMzIXbX5dKEqDpattJb",
+      "meta": {
+        "totalTokens": 2199,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355856912
+    },
+    {
+      "id": "o_LMBViGa6-BgQuP2YqDy",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 229,
+      "ref": "idAKS0I86G5VWcOQJzURH",
+      "meta": {
+        "totalTokens": 2285,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355858652
+    },
+    {
+      "id": "MN2upC74M2RLsovfLtcyE",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 204,
+      "ref": "ZRaw--PGBHNtAyfpopxWP",
+      "meta": {
+        "totalTokens": 2034,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355878208
+    },
+    {
+      "id": "7oQr1Z8RxNSf81sSFnv-H",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 203,
+      "ref": "SzKI2ur8WOeWMMJDdLpLI",
+      "meta": {
+        "totalTokens": 2024,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355878324
+    },
+    {
+      "id": "SmS_4KvW-mczeUdKAhEvy",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 217,
+      "ref": "WCyidoKiRXEOjMDzajhen",
+      "meta": {
+        "totalTokens": 2165,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355882000
+    },
+    {
+      "id": "IcU9Chqd--HtkyVQ_nWTN",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 209,
+      "ref": "2MuJDDCd8Ng9eSANeLJ47",
+      "meta": {
+        "totalTokens": 2090,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355901387
+    },
+    {
+      "id": "O5vZcjwtbdfNvDS3aw1Ss",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 231,
+      "ref": "dSqC7kgLk-dGrSx675_BQ",
+      "meta": {
+        "totalTokens": 2304,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355907294
+    },
+    {
+      "id": "jI4uhDhKGqtu5HLVhQ9qK",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 243,
+      "ref": "2LqhesobqWAplwFxp8vD-",
+      "meta": {
+        "totalTokens": 2427,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355910150
+    },
+    {
+      "id": "_c1_qU0iyBchfHQK_PyV9",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 290,
+      "ref": "zvBXL6rEPyVK7mwx4VEA3",
+      "meta": {
+        "totalTokens": 2898,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758355964535
+    }
+  ],
+  "processedIapTransactions": [
+    "tx-001",
+    "dev-92527EBB-DDA1-4267-83D6-74F21DF7CE61",
+    "dev-A8097DCE-D2E4-46C2-9DE2-DBB352998C8B",
+    "dev-2AF97B34-CCB7-4448-8210-C535B690E130",
+    "dev-AB565D95-06A4-4F74-AA4F-BE346A197EA1",
+    "dev-0C10EFD2-706E-4732-8657-E96C40BEC497",
+    "dev-A63082AE-6D40-44AF-BE6F-A88BB9B2CD25",
+    "dev-962009CA-8EF4-4100-B097-77DECFBF9728",
+    "dev-1D1A9920-EC0E-4E92-B444-D08DDC14E98A",
+    "dev-3067D2C9-9571-4309-AA80-CDEF0F04CE8D",
+    "dev-C210A1DC-C4E2-4416-9C9D-A56239D99708",
+    "dev-7F5DE9F1-8899-48EA-86B4-9AD09235502C",
+    "dev-24E64974-7CDC-437D-B802-841C83DF4FAF",
+    "dev-C72E67AA-D9CE-48BD-A57D-1A421BD359A0",
+    "dev-3902D550-481C-41D0-BDA6-9EA638F5B189",
+    "dev-9DF3A383-5BC2-45D5-8298-BBC3B171813A",
+    "dev-61720B98-DC2E-47C7-9ABB-414F09657F22",
+    "dev-DC4F5B14-3417-40D9-A729-FE2A5DEA6521",
+    "dev-7E6F0375-366F-4B09-B333-136E85B20A64",
+    "dev-D13FF38B-58A2-4005-AE9C-AF9C7C3BF837",
+    "dev-DF030216-415B-40C2-B706-0A85336FEF22",
+    "dev-F1DF8794-A91F-4109-B417-D2887E8D9564"
+  ],
+  "appleIdAccounts": {},
+  "backupCodeMap": {
+    "343-738-180-780": "D08B9230-99EE-43D4-88AE-4626E001776C"
+  },
+  "savedAt": 1758356207576
+}

@@ -5,10 +5,17 @@ import SwiftUI
  * 用于查看和管理被用户屏蔽的角色
  */
 struct BlockedCharactersView: View {
+    @Environment(\.dismiss) private var dismiss
+    
     // 获取所有被屏蔽的角色ID
     @State private var blockedCharacters: [String] = []
     @State private var showUnblockAlert = false
     @State private var selectedCharacter: String = ""
+    
+    // 主题颜色
+    private var primaryAccentColor: Color {
+        Color(hex: "9A8BB0")
+    }
     
     var body: some View {
         List {
@@ -89,6 +96,23 @@ struct BlockedCharactersView: View {
         .listStyle(InsetGroupedListStyle())
         .navigationTitle("已屏蔽角色")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .navigationBarItems(
+            leading: Button(action: {
+                // 触觉反馈
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                dismiss()
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .medium))
+                    Text("设置")
+                        .font(.system(size: 16, weight: .regular))
+                }
+                .foregroundColor(primaryAccentColor)
+            }
+        )
         .onAppear {
             loadBlockedCharacters()
         }
@@ -228,7 +252,7 @@ struct BlockedCharactersView: View {
         case "einstein":
             return Color.blue
         case "shakespeare":
-            return Color.purple
+            return Color(hex: "9A8BB0")
         case "davinci":
             return Color.orange
         case "kongzi":

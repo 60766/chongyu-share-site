@@ -74,8 +74,15 @@
             ReferencedContainer = "container:&#x866b;&#x9047;.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "TEST_APP_ACCOUNT_TOKEN"
+            value = "TEST_TOKEN"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
       <StoreKitConfigurationFileReference
-         identifier = "StoreKit.storekit">
+         identifier = "../../&#x866b;&#x9047;/StoreKit.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction

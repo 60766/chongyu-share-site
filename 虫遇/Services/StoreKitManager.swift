@@ -5,7 +5,13 @@ final class StoreKitManager: NSObject, ObservableObject {
     static let shared = StoreKitManager()
     @Published var products: [Product] = []
     @Published var isSimulatorFallback = false // 标识是否使用模拟器备用模式
-    private override init() {}
+    private var transactionListenerTask: Task<Void, Never>?
+    private override init() {
+        super.init()
+        transactionListenerTask = Task { [weak self] in
+            await self?.listenForTransactions()
+        }
+    }
     
     // 你的商品ID
     private let productIds: Set<String> = [
@@ -223,15 +229,28 @@ final class StoreKitManager: NSObject, ObservableObject {
         }
     }
     
+    private func listenForTransactions() async {
+        for await result in Transaction.updates {
+            do {
+                let transaction: Transaction = try checkVerified(result)
+                await handle(transaction)
+                await transaction.finish()
+            } catch {
+                print("[IAP] 交易监听处理失败: \(error)")
+            }
+        }
+    }
+    
     private func handle(_ transaction: Transaction) async {
         let txId = String(transaction.id)
         let productId = transaction.productID
+        let receiptJSON: String? = String(data: transaction.jsonRepresentation, encoding: .utf8)
         do {
             _ = try await WalletService.shared.confirmPurchase(
                 appAccountToken: AppAccountManager.shared.appAccountToken,
                 productId: productId,
                 transactionId: txId,
-                receipt: nil
+                receipt: receiptJSON
             )
         } catch {
             print("[IAP] 确认购买失败: \(error)")

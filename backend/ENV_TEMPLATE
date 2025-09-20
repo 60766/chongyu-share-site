@@ -10,4 +10,7 @@ MOCK_PROVIDER=0
 CREDITS_PER_1K_TOKENS=100
 
 # 服务器端口
-PORT=8787 
+PORT=8787
+
+# iOS 应用 Bundle ID (用于验证 Apple 身份令牌 aud)
+APP_BUNDLE_ID=com.example.chongyu 

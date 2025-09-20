@@ -938,7 +938,7 @@ class ThoughtJourneyService: ObservableObject {
             print("      - 尝试其他匹配方式...")
             // 打印前几个allChatMessages的sessionId用于调试
             for (index, msg) in allChatMessages.prefix(5).enumerated() {
-                print("      - allChatMessages[\(index)].sessionId: \(msg.sessionId ?? "nil")")
+                print("      - allChatMessages[\(index)].sessionId: \(msg.sessionId)")
             }
         }
         

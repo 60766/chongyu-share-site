@@ -60,7 +60,7 @@ struct ExplorationOptionsMenuView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: isFollowed ? "person.badge.minus" : "person.badge.plus")
                                     .font(.system(size: 12))
-                                    .foregroundColor(isFollowed ? Color.red.opacity(0.7) : Color.primaryColor)
+                                    .foregroundColor(isFollowed ? Color.red.opacity(0.7) : Color(hex: "9A8BB0"))
                                     .frame(width: 16, alignment: .center)
                                 
                                 Spacer()
