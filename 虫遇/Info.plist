@@ -30,9 +30,9 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>DEEPSEEK_API_KEY</key>
-	<string>5ec25df2-f799-4fc0-8ee2-ac13d473131b</string>
+	<string>PLACEHOLDER_API_KEY</string>
 	<key>BACKEND_BASE_URL</key>
-	<string>http://127.0.0.1:8787</string>
+	<string>http://121.40.184.29:3000</string>
 	<key>DEEPSEEK_PRIMARY_ENDPOINT</key>
 	<string>https://api.deepseek.com/v1/chat/completions</string>
 	<key>DEEPSEEK_FALLBACK_ENDPOINT</key>
@@ -55,6 +55,13 @@
 				<true/>
 			</dict>
 			<key>127.0.0.1</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>121.40.184.29</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>

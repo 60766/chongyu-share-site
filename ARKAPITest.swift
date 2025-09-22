@@ -1,4 +1,7 @@
-#if DEBUG
+// ⚠️ 安全警告：此文件仅用于测试目的
+// 生产环境中应使用后端代理 (/api/proxy) 而不是直接调用外部API
+// 请参考 API_SECURITY_SETUP.md 了解正确的API调用方式
+
 import Foundation
 
 // ARK API 测试脚本
@@ -10,7 +13,7 @@ if CommandLine.arguments.count > 1 {
     apiKey = CommandLine.arguments[1]
     print("🔑 使用提供的API密钥: \(apiKey.prefix(8))...")
 } else {
-    apiKey = "5ec25df2-f799-4fc0-8ee2-ac13d473131b" // 默认使用Info.plist中的密钥
+    apiKey = "PLACEHOLDER_API_KEY" // 请使用后端代理而不是直接调用
     print("ℹ️ 使用默认API密钥: \(apiKey.prefix(8))...")
 }
 

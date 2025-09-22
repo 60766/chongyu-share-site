@@ -20,11 +20,11 @@ final class WalletService {
         if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL"), let url = URL(string: userDefault) {
             return url
         }
-        #if targetEnvironment(simulator)
+        #if DEBUG
         return URL(string: "http://127.0.0.1:8787")!
         #else
-        // 真机默认同样使用 127.0.0.1（如需连接 Mac，请在 Info.plist 或环境变量 BACKEND_BASE_URL 中设置为局域网地址，如 http://192.168.x.x:8787）
-        return URL(string: "http://127.0.0.1:8787")!
+        // 生产环境使用阿里云服务器
+        return URL(string: "http://121.40.184.29:3000")!
         #endif
     }
     

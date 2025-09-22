@@ -1,12 +1,27 @@
-import express from 'express'
-import cors from 'cors'
-import morgan from 'morgan'
-import axios from 'axios'
-import { nanoid } from 'nanoid'
-import dotenv from 'dotenv'
-import { createRemoteJWKSet, jwtVerify } from 'jose'
-import fs from 'fs'
-import path from 'path'
+const express = require('express')
+const cors = require('cors')
+const morgan = require('morgan')
+const axios = require('axios')
+const crypto = require('crypto')
+const dotenv = require('dotenv')
+const { createRemoteJWKSet, jwtVerify } = require('jose')
+const fs = require('fs')
+const path = require('path')
+
+// Simple nanoid replacement for Node.js 16 compatibility
+function nanoid(size = 21) {
+  const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+  let result = ''
+  for (let i = 0; i < size; i++) {
+    result += alphabet[Math.floor(Math.random() * alphabet.length)]
+  }
+  return result
+}
+
+// Generate ID function for API responses
+function generateId() {
+  return nanoid(28)
+}
 
 dotenv.config()
 
@@ -338,7 +353,7 @@ app.post('/api/proxy', async (req, res) => {
     if (useMock) {
       const lastUser = Array.isArray(messages) ? messages[messages.length - 1]?.content : ''
       data = {
-        id: nanoid(),
+        id: generateId(),
         choices: [
           { message: { role: 'assistant', content: `这是模拟回答：${lastUser || 'Hello'}` } }
         ],
@@ -372,7 +387,7 @@ app.post('/api/proxy', async (req, res) => {
       return res.status(402).json({ error: 'insufficient_credits', needed: costCredits, balance: wallet.balance })
     }
 
-    const balanceAfter = debitWallet(appAccountToken, costCredits, nanoid(), { totalTokens, providerModel: payload.model })
+    const balanceAfter = debitWallet(appAccountToken, costCredits, generateId(), { totalTokens, providerModel: payload.model })
 
     res.setHeader('X-Usage-Tokens', String(totalTokens))
     res.setHeader('X-Cost-Credits', String(costCredits))

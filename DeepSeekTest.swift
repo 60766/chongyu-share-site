@@ -1,8 +1,11 @@
-#if DEBUG
+// ⚠️ 安全警告：此文件仅用于测试目的
+// 生产环境中应使用后端代理 (/api/proxy) 而不是直接调用外部API
+// 请参考 API_SECURITY_SETUP.md 了解正确的API调用方式
+
 import Foundation
 
 // API配置
-let apiKey = "5ec25df2-f799-4fc0-8ee2-ac13d473131b"
+let apiKey = "PLACEHOLDER_API_KEY" // 请使用后端代理而不是直接调用
 let apiEndpoint = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
 let modelName = "deepseek-r1-250120"
 

@@ -53,10 +53,10 @@ class AINetworkService {
         if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL"), let url = URL(string: userDefault) {
             return url
         }
-        #if targetEnvironment(simulator)
+        #if DEBUG
         return URL(string: "http://127.0.0.1:8787")!
         #else
-        return URL(string: "http://127.0.0.1:8787")!
+        return URL(string: "http://121.40.184.29:3000")!
         #endif
     }
     

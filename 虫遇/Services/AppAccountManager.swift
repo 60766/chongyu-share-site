@@ -455,7 +455,7 @@ class AppAccountManager: ObservableObject {
         #if DEBUG
         return URL(string: "http://127.0.0.1:8787")
         #else
-        return nil
+        return URL(string: "http://121.40.184.29:3000")
         #endif
     }
     

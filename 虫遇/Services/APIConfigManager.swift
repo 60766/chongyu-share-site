@@ -52,7 +52,7 @@ class APIConfigManager {
     
     // 默认API密钥 - 如果Info.plist中未设置，则使用此密钥
     // ARK格式API密钥，已设置为有效密钥
-    private let defaultAPIKey = "5ec25df2-f799-4fc0-8ee2-ac13d473131b"
+    private let defaultAPIKey = "PLACEHOLDER_API_KEY"
     
     // 用于存储异步操作的订阅
     var cancellables = Set<AnyCancellable>()
