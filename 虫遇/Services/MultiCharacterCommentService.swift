@@ -91,25 +91,8 @@ class MultiCharacterCommentService {
             isInvited: isInvited
         )
         
-        // 添加超时保护
-        let timeoutInterval: TimeInterval = 60.0
-        let timer = Timer.publish(every: timeoutInterval, on: .main, in: .common).autoconnect()
-        var timerCancellable: AnyCancellable?
-        
-        timerCancellable = timer
-            .sink { _ in
-                timerCancellable?.cancel()
-                
-                // 在主线程上调用完成回调
-                DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "MultiCharacterCommentService", code: -1, userInfo: [NSLocalizedDescriptionKey: "请求超时"])))
-                }
-                
-                // 结束后台任务
-                if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
-                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
-                }
-            }
+        // 移除60秒超时保护，允许长时间生成
+        var timerCancellable: AnyCancellable? = nil
         
         // 调用API生成批量评论
         print("🔥🔥🔥 === 正在调用 AINetworkService.sendRequest === 🔥🔥🔥")

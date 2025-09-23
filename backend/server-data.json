@@ -7,13 +7,19 @@
       "balance": 308542
     },
     "D08B9230-99EE-43D4-88AE-4626E001776C": {
-      "balance": 512731
+      "balance": 526531
     },
     "test-token": {
       "balance": 0
     },
     "test_token_123": {
       "balance": 1647
+    },
+    "test_user_token_123": {
+      "balance": 0
+    },
+    "test-token-123": {
+      "balance": 13438
     }
   },
   "transactions": [
@@ -1108,6 +1114,78 @@
         "providerModel": "deepseek-r1-250120"
       },
       "at": 1758515895026
+    },
+    {
+      "id": "Y4k35k6BABn0JXKLajQ8F",
+      "type": "topup",
+      "token": "test-token-123",
+      "amount": 13800,
+      "ref": "test-txn-456",
+      "meta": {
+        "productId": "credits.large",
+        "receipt": {}
+      },
+      "at": 1758553054975
+    },
+    {
+      "id": "6Vh7vgAvxneLO5LRKGbhF",
+      "type": "debit",
+      "token": "test-token-123",
+      "amount": 171,
+      "ref": "WXiDnDNguBmM7vnYUOY7v1ptkeLi",
+      "meta": {
+        "totalTokens": 1702,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758553106947
+    },
+    {
+      "id": "OHo1S9Thq1V5MG6Cg35iZ",
+      "type": "debit",
+      "token": "test-token-123",
+      "amount": 104,
+      "ref": "tMw9En3lNcrETEihjFAQhlq4SonP",
+      "meta": {
+        "totalTokens": 1039,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758554938988
+    },
+    {
+      "id": "xrV0xLXmWEgYm9cLQETWK",
+      "type": "debit",
+      "token": "test-token-123",
+      "amount": 64,
+      "ref": "W0R2ELn4bAIwpdQUUfbBxPglPhc7",
+      "meta": {
+        "totalTokens": 636,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758557057072
+    },
+    {
+      "id": "Ix4zIUtohiM8fQF6EWRW2",
+      "type": "debit",
+      "token": "test-token-123",
+      "amount": 23,
+      "ref": "Rl2hm0SOrUp2QVOPawVwyIc4SkGp",
+      "meta": {
+        "totalTokens": 226,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1758557077541
+    },
+    {
+      "id": "A03GaEDjC37cSEG0UYs1O",
+      "type": "topup",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 13800,
+      "ref": "test-txn-789",
+      "meta": {
+        "productId": "credits.large",
+        "receipt": {}
+      },
+      "at": 1758568463078
     }
   ],
   "processedIapTransactions": [
@@ -1162,11 +1240,13 @@
     "dev-83D2209D-CB75-45E2-BB14-1C9BA7087521",
     "dev-3793DB15-F5D3-4C1B-A137-102A9925C005",
     "dev-46A01983-ACD6-467F-98C1-00C3C0C63825",
-    "test_transaction_123"
+    "test_transaction_123",
+    "test-txn-456",
+    "test-txn-789"
   ],
   "appleIdAccounts": {},
   "backupCodeMap": {
     "343-738-180-780": "D08B9230-99EE-43D4-88AE-4626E001776C"
   },
-  "savedAt": 1758517193236
+  "savedAt": 1758628433727
 }

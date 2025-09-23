@@ -1481,7 +1481,7 @@ struct ChatMessageBubbleView: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 8)
                     } else {
-                Text(message.content)
+                Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.system(size: 15))
                     .lineSpacing(5) // 增加行间距改善阅读体验
                     .padding(.horizontal, 15)

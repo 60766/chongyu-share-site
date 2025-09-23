@@ -1708,6 +1708,20 @@ class AIContentGenerator {
             
             // 使用AI生成内容和评论
             AINetworkService.shared.sendRequest(prompt: prompt)
+                .catch { error -> AnyPublisher<String, AINetworkError> in
+                    // 对于部分数据可用的错误，尝试重试一次
+                    if case AINetworkError.partialDataAvailable(let urlError) = error {
+                        print("🔄 检测到部分数据传输失败，尝试重试...")
+                        // 简单重试一次，使用稍微不同的参数以避免完全相同的请求
+                        return AINetworkService.shared.sendRequest(prompt: prompt)
+                            .catch { retryError in
+                                print("❌ 重试后仍然失败: \(retryError.localizedDescription)")
+                                return Fail<String, AINetworkError>(error: retryError).eraseToAnyPublisher()
+                            }
+                            .eraseToAnyPublisher()
+                    }
+                    return Fail(error: error).eraseToAnyPublisher()
+                }
                 .sink(
                     receiveCompletion: { completion in
                         if case .failure(let error) = completion {

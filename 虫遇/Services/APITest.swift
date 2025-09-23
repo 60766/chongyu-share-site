@@ -49,6 +49,8 @@ class APITest {
                             print("请求失败: \(reqError)")
                         case .noAPIKey:
                             print("没有API密钥")
+                        case .partialDataAvailable(let urlError):
+                            print("部分数据传输失败: \(urlError.localizedDescription)")
                         }
                     }
                 },

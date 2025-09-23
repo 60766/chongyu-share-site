@@ -270,7 +270,12 @@ class AppleSignInManager: NSObject, ObservableObject {
         
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        // Use longer timeouts for backend API calls
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        let session = URLSession(configuration: config)
+        let (data, response) = try await session.data(for: request)
         
         if let httpResponse = response as? HTTPURLResponse,
            httpResponse.statusCode != 200 {
@@ -301,7 +306,12 @@ class AppleSignInManager: NSObject, ObservableObject {
         
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        // Use longer timeouts for backend API calls
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        let session = URLSession(configuration: config)
+        let (data, response) = try await session.data(for: request)
         
         if let httpResponse = response as? HTTPURLResponse,
            httpResponse.statusCode != 200 {
@@ -324,7 +334,12 @@ class AppleSignInManager: NSObject, ObservableObject {
             "appleUserId": appleUserId
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        let (data, response) = try await URLSession.shared.data(for: request)
+        // Use longer timeouts for backend API calls
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        let session = URLSession(configuration: config)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { return nil }
         if http.statusCode == 200 {
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

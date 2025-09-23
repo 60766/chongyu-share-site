@@ -16,7 +16,9 @@ final class BackendTestService {
             return url
         }
         #if DEBUG
-        return URL(string: "http://127.0.0.1:8787")!
+        // 临时测试生产环境后端
+        return URL(string: "http://121.40.184.29:3000")!
+        // return URL(string: "http://127.0.0.1:8787")!
         #else
         return URL(string: "http://121.40.184.29:3000")!
         #endif
@@ -31,9 +33,13 @@ final class BackendTestService {
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
             request.addValue("application/json", forHTTPHeaderField: "Accept")
-            request.timeoutInterval = 10.0
             
-            let (data, response) = try await URLSession.shared.data(for: request)
+            // Use longer timeouts for backend test calls
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = 300
+            config.timeoutIntervalForResource = 300
+            let session = URLSession(configuration: config)
+            let (data, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 return (false, "❌ 无效的HTTP响应", nil)
@@ -87,9 +93,13 @@ final class BackendTestService {
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
             request.addValue("application/json", forHTTPHeaderField: "Accept")
-            request.timeoutInterval = 10.0
             
-            let (data, response) = try await URLSession.shared.data(for: request)
+            // Use longer timeouts for backend test calls
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = 300
+            config.timeoutIntervalForResource = 300
+            let session = URLSession(configuration: config)
+            let (data, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 return (false, "❌ 无效的HTTP响应", nil)

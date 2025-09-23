@@ -399,26 +399,15 @@ app.post('/api/proxy', async (req, res) => {
     const responseStr = JSON.stringify(data)
     const responseSize = Buffer.byteLength(responseStr, 'utf8')
     
-    console.log(`[Response] Size: ${responseSize} bytes, will use ${responseSize > 2000 ? 'chunked' : 'standard'} transfer`)
-    
-    if (responseSize > 2000) {
-      // Large response: use chunked transfer encoding with smaller threshold
+    if (responseSize > 3000) {
+      // Large response: use chunked transfer encoding to avoid network interruption
       res.setHeader('Transfer-Encoding', 'chunked')
       res.setHeader('Content-Type', 'application/json')
-      res.setHeader('Cache-Control', 'no-cache')
-      
-      // 分多个小块发送，每块最大1000字节
-      const chunkSize = 1000
-      for (let i = 0; i < responseStr.length; i += chunkSize) {
-        const chunk = responseStr.slice(i, i + chunkSize)
-        res.write(chunk)
-        // 小延迟确保数据完整传输
-        await new Promise(resolve => setTimeout(resolve, 10))
-      }
+      res.write(responseStr)
       res.end()
     } else {
       // Small response: use standard JSON response
-      res.json(data)
+    res.json(data)
     }
   } catch (err) {
     const status = err.response?.status || 500

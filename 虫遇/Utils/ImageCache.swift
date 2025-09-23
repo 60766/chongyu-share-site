@@ -121,7 +121,12 @@ struct CachedImage: View {
             return
         }
         
-        URLSession.shared.dataTask(with: imageURL) { data, response, error in
+        // Use longer timeouts for image downloads
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        let session = URLSession(configuration: config)
+        session.dataTask(with: imageURL) { data, response, error in
             if let data = data, let downloadedImage = UIImage(data: data) {
                 DispatchQueue.main.async {
                     // 缓存图片

@@ -414,26 +414,24 @@ class ContentGeneratorService {
             let contentCount = count
             
             // 并行发布者集合，用于同时生成多篇内容
-            var publishers: [Future<(contentItem: ContentItem, comments: [CommentItem]), Error>] = []
+            var publishers: [AnyPublisher<(contentItem: ContentItem, comments: [CommentItem]), Never>] = []
             
             // 为每篇内容创建生成器
             for _ in 0..<contentCount {
                 // 使用generateRandomContentWithComments方法替代之前的批量生成方法
                 // 这个方法会根据内容类型动态调整评论数量
-                let publisher = self.generateRandomContentWithComments(contentType: contentType, topic: topic)
-                publishers.append(publisher)
+                let safePublisher = self.generateRandomContentWithComments(contentType: contentType, topic: topic)
+                    .catch { _ in
+                        Empty<(contentItem: ContentItem, comments: [CommentItem]), Never>(completeImmediately: true)
+                    }
+                    .eraseToAnyPublisher()
+                publishers.append(safePublisher)
             }
             
             // 使用MergeMany合并所有发布者的结果
             Publishers.MergeMany(publishers)
                 .collect() // 收集所有结果
                 .sink(
-                    receiveCompletion: { completion in
-                        if case .failure(let error) = completion {
-                            print("❌ 生成带评论的内容失败: \(error.localizedDescription)")
-                            promise(.failure(error))
-                        }
-                    },
                     receiveValue: { results in
                         print("✅ 成功生成\(results.count)篇带评论的内容")
                         
@@ -643,11 +641,15 @@ class ContentGeneratorService {
     ) -> Future<[(contentItem: ContentItem, comments: [CommentItem])], Error> {
         return Future { promise in
             // 创建一个内容生成任务组
-            var futures: [Future<(contentItem: ContentItem, comments: [CommentItem]), Error>] = []
+            var futures: [AnyPublisher<(contentItem: ContentItem, comments: [CommentItem]), Never>] = []
             
             // 添加指定数量的内容生成任务
             for _ in 0..<count {
                 let future = self.generateRandomContentWithComments(contentType: contentType, topic: topic)
+                    .catch { _ in
+                        Empty<(contentItem: ContentItem, comments: [CommentItem]), Never>(completeImmediately: true)
+                    }
+                    .eraseToAnyPublisher()
                 futures.append(future)
             }
             
@@ -655,11 +657,6 @@ class ContentGeneratorService {
             Publishers.MergeMany(futures)
                 .collect()
                 .sink(
-                    receiveCompletion: { completion in
-                        if case .failure(let error) = completion {
-                            promise(.failure(error))
-                        }
-                    },
                     receiveValue: { results in
                         promise(.success(results))
                     }

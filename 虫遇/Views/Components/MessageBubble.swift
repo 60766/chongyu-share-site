@@ -29,7 +29,7 @@ struct MessageBubble: View {
                 
                 VStack(alignment: .leading, spacing: 4) {
                     // 消息内容
-                    Text(message.content)
+                    Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                         .font(.system(size: 16))
                         .foregroundColor(.primary)
                         .padding(.horizontal, 16)
@@ -51,7 +51,7 @@ struct MessageBubble: View {
                 
                 VStack(alignment: .trailing, spacing: 4) {
                     // 消息内容
-                    Text(message.content)
+                    Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                         .font(.system(size: 16))
                         .foregroundColor(.white)
                         .padding(.horizontal, 16)

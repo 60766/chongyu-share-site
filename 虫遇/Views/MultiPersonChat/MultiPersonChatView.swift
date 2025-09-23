@@ -409,7 +409,7 @@ struct MultiPersonChatView: View {
                     .foregroundColor(Color(hex: "A78DC7")) // 使用更淡的紫色
                     .padding(.trailing, 4)
                 
-                Text(message.content)
+                Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.system(size: 15))
                     .lineSpacing(4)
                     .padding(.horizontal, 12)

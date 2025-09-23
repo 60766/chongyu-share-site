@@ -453,7 +453,9 @@ class AppAccountManager: ObservableObject {
         }
         }
         #if DEBUG
-        return URL(string: "http://127.0.0.1:8787")
+        // 临时测试生产环境后端
+        return URL(string: "http://121.40.184.29:3000")
+        // return URL(string: "http://127.0.0.1:8787")
         #else
         return URL(string: "http://121.40.184.29:3000")
         #endif
@@ -472,7 +474,12 @@ class AppAccountManager: ObservableObject {
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
         
         func fire(attemptsRemaining: Int) {
-            URLSession.shared.dataTask(with: req) { _, response, error in
+            // Use longer timeouts for backup operations
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = 300
+            config.timeoutIntervalForResource = 300
+            let session = URLSession(configuration: config)
+            session.dataTask(with: req) { _, response, error in
                 if let _ = error {
                     if attemptsRemaining > 0 {
                         DispatchQueue.global().asyncAfter(deadline: .now() + 0.8) {
@@ -496,10 +503,14 @@ class AppAccountManager: ObservableObject {
         var req = URLRequest(url: base.appendingPathComponent("/account/restore-by-backup"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.timeoutInterval = 10
         let body: [String: Any] = ["backupCode": backupCode]
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        URLSession.shared.dataTask(with: req) { data, response, error in
+        // Use longer timeouts for backup operations
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        let session = URLSession(configuration: config)
+        session.dataTask(with: req) { data, response, error in
             if let _ = error {
                 if attemptsRemaining > 0 {
                     DispatchQueue.global().asyncAfter(deadline: .now() + 0.8) {

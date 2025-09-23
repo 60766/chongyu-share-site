@@ -21,7 +21,9 @@ final class WalletService {
             return url
         }
         #if DEBUG
-        return URL(string: "http://127.0.0.1:8787")!
+        // 临时测试生产环境后端
+        return URL(string: "http://121.40.184.29:3000")!
+        // return URL(string: "http://127.0.0.1:8787")!
         #else
         // 生产环境使用阿里云服务器
         return URL(string: "http://121.40.184.29:3000")!
@@ -43,7 +45,12 @@ final class WalletService {
     
     func fetchBalance() async throws -> WalletBalance {
         let req = makeRequest(path: "balance")
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        // Use longer timeouts for wallet API calls
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        let session = URLSession(configuration: config)
+        let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
             let bodyText = String(data: data, encoding: .utf8) ?? ""
             let status = (resp as? HTTPURLResponse)?.statusCode ?? -1
@@ -60,7 +67,12 @@ final class WalletService {
         params.forEach { payload[$0.key] = $0.value }
         let body = try JSONSerialization.data(withJSONObject: payload)
         let req = makeRequest(path: "api/proxy", method: "POST", body: body)
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        // Use longer timeouts for AI proxy calls
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        let session = URLSession(configuration: config)
+        let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         if http.statusCode == 402 {
             throw NSError(domain: "wallet", code: 402, userInfo: ["message": "余额不足"]) 
@@ -88,7 +100,12 @@ final class WalletService {
         ]
         let body = try JSONSerialization.data(withJSONObject: bodyObj)
         let req = makeRequest(path: "purchase/confirm", method: "POST", body: body)
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        // Use longer timeouts for wallet API calls
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        let session = URLSession(configuration: config)
+        let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
@@ -97,5 +114,47 @@ final class WalletService {
             throw NSError(domain: "wallet.purchase", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: bodyText.isEmpty ? "充值请求失败(\(http.statusCode))" : bodyText])
         }
         return try JSONDecoder().decode(WalletBalance.self, from: data)
+    }
+
+    func getBalance() async throws -> Int {
+        let req = makeRequest(path: "api/balance", method: "GET")
+        // Use longer timeouts for wallet API calls
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        let session = URLSession(configuration: config)
+        let (data, resp) = try await session.data(for: req)
+        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        return json?["balance"] as? Int ?? 0
+    }
+
+    func consumeTokens(_ amount: Int, operation: String) async throws {
+        let payload = ["amount": amount, "operation": operation] as [String : Any]
+        let body = try JSONSerialization.data(withJSONObject: payload)
+        let req = makeRequest(path: "api/consume", method: "POST", body: body)
+        // Use longer timeouts for wallet API calls  
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        let session = URLSession(configuration: config)
+        let (data, resp) = try await session.data(for: req)
+        guard let http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        if http.statusCode == 402 {
+            throw NSError(domain: "wallet", code: 402, userInfo: ["message": "余额不足"])
+        }
+        guard http.statusCode == 200 else {
+            let text = String(data: data, encoding: .utf8) ?? ""
+            throw NSError(domain: "wallet", code: http.statusCode, userInfo: ["body": text])
+        }
+        // Update balance from response
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let newBalance = json["balance"] as? Int {
+            await MainActor.run {
+                WalletManager.shared.balance = newBalance
+            }
+        }
     }
 } 

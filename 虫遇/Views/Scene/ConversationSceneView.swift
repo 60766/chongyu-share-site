@@ -411,7 +411,7 @@ struct MessageBubbleView: View {
                 }
                 
                 // 消息气泡
-                Text(message.content)
+                Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.system(size: 15))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -427,7 +427,7 @@ struct MessageBubbleView: View {
                 Spacer()
                 
                 // 消息气泡
-                Text(message.content)
+                Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.system(size: 15))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)

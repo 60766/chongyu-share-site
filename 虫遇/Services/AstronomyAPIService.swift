@@ -124,7 +124,12 @@ class AstronomyAPIService: ObservableObject {
         }
         
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            // Use longer timeouts for external API calls
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = 300
+            config.timeoutIntervalForResource = 300
+            let session = URLSession(configuration: config)
+            let (data, _) = try await session.data(from: url)
             let picture = try JSONDecoder().decode(AstronomyPictureOfDay.self, from: data)
             
             await MainActor.run {

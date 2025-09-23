@@ -66,7 +66,7 @@ struct ChatBubble: View {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 } else {
-                    Text(message.content)
+                    Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                         .font(.system(size: 15))
                         .lineSpacing(5) // 增加行间距提升可读性
                         .padding(.horizontal, 14) // 稍微增加水平内边距
@@ -156,7 +156,7 @@ struct UserMessageBubble: View {
             
             VStack(alignment: .trailing, spacing: 4) {
                 // 消息内容
-                Text(message.content)
+                Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.system(size: 15))
                     .lineSpacing(5)
                     .padding(.horizontal, 14)
@@ -223,7 +223,7 @@ struct UserRolePlayingBubble: View {
                 }
                 
                 // 消息内容
-                Text(message.content)
+                Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.system(size: 15))
                     .lineSpacing(5)
                     .padding(.horizontal, 14)

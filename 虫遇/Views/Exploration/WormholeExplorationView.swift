@@ -724,8 +724,8 @@ public struct WormholeExplorationView: View {
             ("居里夫人", "testtube.2")
         ]
         
-        // 获取该类型配置的生成数量，或使用默认的2-4篇
-        let count = min(ExplorationCountManager.shared.getCount(for: contentType), 4)
+        // 获取该类型配置的生成数量
+        let count = ExplorationCountManager.shared.getCount(for: contentType)
         var backupPosts = [UserPostModel]()
         
         for i in 0..<count {
