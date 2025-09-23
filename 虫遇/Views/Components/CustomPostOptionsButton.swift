@@ -72,6 +72,29 @@ struct CustomPostOptionsButton: View {
             .contentShape(Circle())
         }
         .buttonStyle(PlainButtonStyle())
+        .onAppear {
+            // 检查关注状态
+            if let username = post?.username {
+                isFollowed = FollowManager.shared.isFollowing(username)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("FollowStatusChanged"))) { notification in
+            // 监听关注状态变化通知
+            if let userInfo = notification.userInfo,
+               let changedUsername = userInfo["username"] as? String,
+               let newFollowStatus = userInfo["isFollowed"] as? Bool,
+               let currentUsername = post?.username,
+               changedUsername == currentUsername {
+                // 只有当通知中的用户名与当前帖子的用户名匹配时才更新状态
+                isFollowed = newFollowStatus
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("FollowDataMigrationCompleted"))) { _ in
+            // 监听数据迁移完成通知，刷新关注状态
+            if let username = post?.username {
+                isFollowed = FollowManager.shared.isFollowing(username)
+            }
+        }
         .popover(isPresented: $showMenu, arrowEdge: .top) {
             VStack(spacing: 0) {
                 // 关注角色按钮 - 根据关注状态显示不同UI
@@ -79,8 +102,10 @@ struct CustomPostOptionsButton: View {
                     showMenu = false
                     
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        // 切换关注状态
-                        isFollowed.toggle()
+                        // 使用统一的FollowManager切换关注状态
+                        if let username = post?.username {
+                            let newFollowStatus = FollowManager.shared.toggleFollow(for: username)
+                            isFollowed = newFollowStatus
                         HapticFeedbackManager.shared.menuSelection()
                         
                         // 使用回调通知外部状态变化
@@ -88,8 +113,9 @@ struct CustomPostOptionsButton: View {
                         
                         // 显示操作反馈
                         ToastManager.shared.showToast(
-                            message: isFollowed ? "已关注「\(post?.username ?? "该角色")」" : "已取消关注"
+                                message: isFollowed ? "已关注「\(username)」" : "已取消关注"
                         )
+                        }
                     }
                 }) {
                     HStack(spacing: 4) {
@@ -393,8 +419,6 @@ struct CustomPostOptionsButton: View {
                .shadowVisibility(.hidden)
         }
         .onAppear {
-            // 检查是否已关注该角色
-            checkIfFollowed()
             // 检查是否已屏蔽该角色
             checkIfBlocked()
             // 加载当前生成数量设置
@@ -406,12 +430,8 @@ struct CustomPostOptionsButton: View {
     private func checkIfFollowed() {
         guard let post = post else { return }
         
-        // 获取当前用户关注的角色列表
-        let characterID = post.characterID ?? post.username
-        let followedCharacters = UserDefaults.standard.stringArray(forKey: "FollowedCharacters") ?? []
-        
-        // 更新关注状态
-        isFollowed = followedCharacters.contains(characterID)
+        // 使用统一的FollowManager检查关注状态
+        isFollowed = FollowManager.shared.isFollowing(post.username)
     }
     
     // 检查是否已屏蔽该角色

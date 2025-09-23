@@ -41,8 +41,9 @@ struct ExplorationOptionsMenuView: View {
                             }
                             
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                // 切换关注状态
-                                isFollowed.toggle()
+                                // 使用统一的FollowManager切换关注状态
+                                let newFollowStatus = FollowManager.shared.toggleFollow(for: post.username)
+                                isFollowed = newFollowStatus
                                 HapticFeedbackManager.shared.menuSelection()
                                 
                                 // 使用回调通知外部状态变化
@@ -52,9 +53,6 @@ struct ExplorationOptionsMenuView: View {
                                 ToastManager.shared.showToast(
                                     message: isFollowed ? "已关注「\(post.username)」" : "已取消关注"
                                 )
-                                
-                                // 更新本地存储
-                                updateFollowedCharacters(post.characterID ?? post.username, isFollowed: isFollowed)
                             }
                         }) {
                             HStack(spacing: 4) {
@@ -239,12 +237,8 @@ struct ExplorationOptionsMenuView: View {
     
     // 检查是否已关注该角色
     private func checkIfFollowed() {
-        // 获取当前用户关注的角色列表
-        let characterID = post.characterID ?? post.username
-        let followedCharacters = UserDefaults.standard.stringArray(forKey: "FollowedCharacters") ?? []
-        
-        // 更新关注状态
-        isFollowed = followedCharacters.contains(characterID)
+        // 使用统一的FollowManager检查关注状态
+        isFollowed = FollowManager.shared.isFollowing(post.username)
     }
     
     // 检查是否已屏蔽该角色
@@ -413,24 +407,7 @@ struct ExplorationOptionsMenuView: View {
         ToastManager.shared.showToast(message: "已设置生成\(currentCount)篇「\(contentTypeString)」")
     }
     
-    // 更新关注的角色列表
-    private func updateFollowedCharacters(_ characterID: String, isFollowed: Bool) {
-        // 获取当前关注列表
-        var followedCharacters = UserDefaults.standard.stringArray(forKey: "FollowedCharacters") ?? []
-        
-        if isFollowed {
-            // 添加到关注列表（避免重复）
-            if !followedCharacters.contains(characterID) {
-                followedCharacters.append(characterID)
-            }
-        } else {
-            // 从关注列表中移除
-            followedCharacters.removeAll { $0 == characterID }
-        }
-        
-        // 保存更新后的列表
-        UserDefaults.standard.set(followedCharacters, forKey: "FollowedCharacters")
-    }
+
     
     // 更新屏蔽的角色列表
     private func updateBlockedCharacters(_ characterID: String, isBlocked: Bool) {

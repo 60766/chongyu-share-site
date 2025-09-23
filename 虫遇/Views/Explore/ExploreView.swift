@@ -63,7 +63,8 @@ struct ExploreView: View {
     @State private var pinnedCharacters: [String] = []
     
     // 我的关注角色列表
-    @State private var favoriteCharacters: [String] = [] // 存储角色ID
+    // 使用统一的关注管理器
+    @StateObject private var followManager = FollowManager.shared
     
     // 时间轴数据
     private let timeEras = [
@@ -833,7 +834,7 @@ struct ExploreView: View {
         
         // 如果是在"我的关注"模式下，只显示关注的角色
         if showingFavorites {
-            result = result.filter { favoriteCharacters.contains($0.id) }
+            result = result.filter { followManager.isFollowing($0.name) }
         }
         
         // 如果是在"最近互动"模式下，显示最近互动的角色
@@ -886,8 +887,10 @@ struct ExploreView: View {
     /// 获取我的关注角色列表
     private var favoriteCharactersList: [CharacterModel] {
         // 根据关注列表获取角色对象
-        return favoriteCharacters
-            .compactMap { id in characters.first { $0.id == id } }
+        return followManager.followedUsers
+            .compactMap { username in 
+                characters.first { $0.name == username }
+            }
     }
     
     // 在ExploreView中，找到displayCharacters计算属性，并将其修改为：
@@ -958,7 +961,7 @@ struct ExploreView: View {
             followerCount: Int.random(in: 1000...5000),
             interactionCount: Int.random(in: 5000...15000),
             rating: Double.random(in: 4.0...5.0),
-            isFavorited: favoriteCharacters.contains(characterModel.id)
+            isFavorited: followManager.isFollowing(characterModel.name)
         )
         return character
     }
@@ -1106,56 +1109,34 @@ struct ExploreView: View {
     
     /// 添加角色到关注列表
     func toggleFavorite(for character: CharacterModel) {
-        if favoriteCharacters.contains(character.id) {
-            // 如果已经在关注列表中，则移除
-            favoriteCharacters.removeAll { $0 == character.id }
-            
-            // 如果当前在我的关注页面并且关注列表为空，可能需要重置显示模式
-            if showingFavorites && favoriteCharacters.isEmpty {
-                // 可以选择添加一个小延迟，让动画效果更好
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    withAnimation {
-                        if favoriteCharactersList.isEmpty {
-                            resetDisplayMode()
-                        }
+        let newFollowStatus = followManager.toggleFollow(for: character.name)
+        
+        // 如果当前在我的关注页面并且关注列表为空，可能需要重置显示模式
+        if showingFavorites && !newFollowStatus && favoriteCharactersList.isEmpty {
+            // 可以选择添加一个小延迟，让动画效果更好
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation {
+                    if favoriteCharactersList.isEmpty {
+                        resetDisplayMode()
                     }
                 }
             }
-        } else {
-            // 否则添加到关注列表
-            favoriteCharacters.append(character.id)
         }
-        
-        // 保存关注列表
-        saveFavoriteCharacters()
         
         // 发送通知，更新其他视图中的关注状态
         NotificationCenter.default.post(
             name: Notification.Name("FavoriteStatusChanged"), 
             object: nil,
-            userInfo: ["characterId": character.id, "isFavorited": favoriteCharacters.contains(character.id)]
+            userInfo: ["characterId": character.id, "isFavorited": newFollowStatus]
         )
     }
     
     /// 判断角色是否被关注
     func isFavorite(_ character: CharacterModel) -> Bool {
-        return favoriteCharacters.contains(character.id)
+        return followManager.isFollowing(character.name)
     }
     
-    /// 保存关注列表到UserDefaults
-    func saveFavoriteCharacters() {
-        if let encoded = try? JSONEncoder().encode(favoriteCharacters) {
-            UserDefaults.standard.set(encoded, forKey: "favoriteCharacters")
-        }
-    }
-    
-    /// 从UserDefaults加载关注列表
-    func loadFavoriteCharacters() {
-        if let savedFavorites = UserDefaults.standard.data(forKey: "favoriteCharacters"),
-           let decoded = try? JSONDecoder().decode([String].self, from: savedFavorites) {
-            favoriteCharacters = decoded
-        }
-    }
+
     
     /// 处理角色点赞
     func handleCharacterLike(for character: CharacterModel) {
@@ -1404,13 +1385,7 @@ struct ExploreView: View {
                 }
             }
             
-            // 任务2：加载关注列表
-            group.addTask {
-                let favorites = await self.loadFavoriteCharactersAsync()
-                await MainActor.run {
-                    self.favoriteCharacters = favorites
-                }
-            }
+            // 任务2：关注列表由FollowManager管理，无需额外加载
             
             // 任务3：加载隐藏角色
             group.addTask {
@@ -1490,19 +1465,7 @@ struct ExploreView: View {
         }
     }
 
-    /// 异步加载关注角色数据
-    private func loadFavoriteCharactersAsync() async -> [String] {
-        return await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .utility).async {
-                if let savedFavorites = UserDefaults.standard.data(forKey: "favoriteCharacters"),
-                   let decoded = try? JSONDecoder().decode([String].self, from: savedFavorites) {
-                    continuation.resume(returning: decoded)
-                } else {
-                    continuation.resume(returning: [])
-                }
-            }
-        }
-    }
+
 
     /// 异步加载隐藏角色数据
     private func loadHiddenCharactersAsync() async -> [String] {
@@ -1545,9 +1508,16 @@ struct ExploreView: View {
             favoriteUpdateTask?.cancel()
             favoriteUpdateTask = Task {
                 try? await Task.sleep(nanoseconds: 300_000_000) // 300ms防抖
-                await MainActor.run {
-                    self.loadFavoriteCharacters()
-                }
+                // 关注数据由FollowManager管理，UI会自动更新
+            }
+        }
+        
+        // 监听FollowManager的关注状态变化
+        NotificationCenter.default.addObserver(forName: Notification.Name("FollowStatusChanged"), object: nil, queue: .main) { _ in
+            favoriteUpdateTask?.cancel()
+            favoriteUpdateTask = Task {
+                try? await Task.sleep(nanoseconds: 300_000_000) // 300ms防抖
+                // 关注数据由FollowManager管理，UI会自动更新
             }
         }
         

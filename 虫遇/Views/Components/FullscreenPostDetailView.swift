@@ -2067,11 +2067,9 @@ struct FullscreenPostDetailView: View {
                 let generator = UIImpactFeedbackGenerator(style: .light)
                 generator.impactOccurred(intensity: 0.5)
                 
-                // 切换关注状态
-                isFollowed.toggle()
-                
-                // 保存关注状态到UserDefaults
-                saveFollowStatus()
+                // 使用统一的FollowManager切换关注状态
+                let newFollowStatus = FollowManager.shared.toggleFollow(for: viewModel.post.username)
+                isFollowed = newFollowStatus
                 
                 // 显示提示信息
                 let toastMessage = isFollowed ? "已关注 \(viewModel.post.username)" : "已取消关注 \(viewModel.post.username)"
@@ -2082,8 +2080,6 @@ struct FullscreenPostDetailView: View {
                     object: nil,
                     userInfo: ["message": toastMessage]
                 )
-                
-                // 这里可以添加实际的关注/取消关注API调用
             }) {
                 Text(isFollowed ? "已关注" : "关注")
                     .font(.system(size: 14))
@@ -2109,30 +2105,8 @@ struct FullscreenPostDetailView: View {
     
     // 添加检查关注状态的函数
     private func checkFollowStatus() {
-        // 从UserDefaults获取关注列表
-        let followedUsers = UserDefaults.standard.stringArray(forKey: "FollowedUsers") ?? []
-        
-        // 检查当前用户是否在关注列表中
-        isFollowed = followedUsers.contains(viewModel.post.username)
-    }
-    
-    // 添加保存关注状态的函数
-    private func saveFollowStatus() {
-        // 从UserDefaults获取当前关注列表
-        var followedUsers = UserDefaults.standard.stringArray(forKey: "FollowedUsers") ?? []
-        
-        if isFollowed {
-            // 如果是关注操作，将用户名添加到列表中（避免重复）
-            if !followedUsers.contains(viewModel.post.username) {
-                followedUsers.append(viewModel.post.username)
-            }
-        } else {
-            // 如果是取消关注操作，从列表中移除用户名
-            followedUsers.removeAll { $0 == viewModel.post.username }
-        }
-        
-        // 保存更新后的关注列表
-        UserDefaults.standard.set(followedUsers, forKey: "FollowedUsers")
+        // 使用统一的FollowManager检查关注状态
+        isFollowed = FollowManager.shared.isFollowing(viewModel.post.username)
     }
     
     // 帖子内容区域

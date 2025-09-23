@@ -47,6 +47,11 @@ struct ChongYuApp: App {
         // 初始化API配置
         setupAPIConfig()
         
+        // 执行关注数据迁移
+        if FollowDataMigration.shared.shouldMigrate() {
+            FollowDataMigration.shared.migrateFollowData()
+        }
+        
         // 初始化用户点赞服务
         _ = UserLikeService.shared
         
