@@ -1084,14 +1084,11 @@ class PostViewModel: ObservableObject {
         print("📝 帖子内容: \"\(String(post.content.prefix(100)))...\"")
         print("📏 帖子完整长度: \(post.content.count)字符")
         
-        // 检查API配置
-        if let apiKey = APIConfigManager.shared.apiKey {
-            print("\n✅ API配置检查通过")
-            print("🔑 API密钥已配置: \(apiKey.prefix(8))...")
-            print("🌐 当前API端点: \(APIConfigManager.shared.deepSeekEndpoint)")
-            print("🤖 使用模型: \(APIConfigManager.shared.modelName)")
+        // 检查后端配置
+        if APIConfigManager.shared.validateConfiguration() {
+            print("\n✅ 后端配置检查通过")
         } else {
-            print("\n❌ ⚠️ 警告: API密钥未配置，将导致API调用失败")
+            print("\n❌ ⚠️ 警告: 后端配置无效，API调用可能失败")
         }
         
         print("\n🔵 ===== 准备调用VirtualCharacterService =====")

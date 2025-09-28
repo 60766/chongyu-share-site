@@ -412,7 +412,7 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
                 print("🍎 Apple ID登录未处理")
             case .unknown:
                 print("🍎 Apple ID登录未知错误")
-            @unknown default:
+            default:
                 print("🍎 Apple ID登录其他错误")
             }
         }

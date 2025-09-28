@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 /**
  * 消息气泡组件，用于展示对话消息

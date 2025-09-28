@@ -104,7 +104,7 @@ struct PublishPanelView: View {
             VStack(spacing: 0) {
                 Spacer()
                 
-                // 面板内容
+                // 面板内容 - 应用键盘适配
                 VStack(spacing: 0) {
                     // 顶部拖拽条
                     Rectangle()
@@ -131,6 +131,7 @@ struct PublishPanelView: View {
                         .appCornerRadius(24, corners: [.topLeft, .topRight])
                         .shadow(color: Color.black.opacity(0.1), radius: 10, y: -5)
                 )
+                .keyboardAdaptive(dismissOnTap: false) // 将键盘适配应用到面板内容上
                 .offset(y: isVisible ? 0 : UIScreen.main.bounds.height)
                 .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isVisible) // 从0.25秒减少到0.2秒
                 // 简化键盘适配，只观察键盘高度变化，不自动调整视图
@@ -598,10 +599,13 @@ struct PublishPanelView: View {
         let characterProbabilitiesToPublish = getProbabilityDict()
         let publishModeToPublish = publishMode
         
-        // 立即关闭发布面板，给用户即时反馈
+        // 立即关闭发布面板并收起键盘，给用户即时反馈
         withAnimation(.easeOut(duration: 0.05)) {
             isVisible = false
         }
+        
+        // 确保键盘也一起收起
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         
         // 立即显示成功提示，与面板关闭同时进行
         showSuccessToastImmediately()

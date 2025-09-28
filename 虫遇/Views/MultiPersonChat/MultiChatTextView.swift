@@ -53,57 +53,21 @@ struct MultiChatTextView: UIViewRepresentable {
             }
         }
         
-        // 处理焦点状态变化
+        // 处理焦点状态变化，添加防抖动逻辑
+        DispatchQueue.main.async {
         if isFocused != uiView.isFirstResponder {
             print("MultiChatTextView - updateUIView - isFocused: \(isFocused), isFirstResponder: \(uiView.isFirstResponder)")
             
-            // 使用动画过渡，减少抖动
-            UIView.animate(withDuration: 0.25) {
-            if isFocused {
-                // 使用延迟确保视图已完全加载
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if isFocused && !uiView.isFirstResponder {
                     print("MultiChatTextView - 尝试激活键盘")
                     uiView.becomeFirstResponder()
-                    
-                        // 手动触发键盘通知，使用更平滑的动画
-                    let keyboardHeight = UIScreen.main.bounds.height * 0.35
-                    let keyboardFrame = CGRect(
-                        x: 0,
-                        y: UIScreen.main.bounds.height - keyboardHeight,
-                        width: UIScreen.main.bounds.width,
-                        height: keyboardHeight
-                    )
-                    
-                    let userInfo: [AnyHashable: Any] = [
-                        UIResponder.keyboardFrameEndUserInfoKey: keyboardFrame,
-                            UIResponder.keyboardAnimationDurationUserInfoKey: 0.3, // 增加动画时间
-                        UIResponder.keyboardAnimationCurveUserInfoKey: UIView.AnimationCurve.easeInOut.rawValue
-                    ]
-                    
-                    NotificationCenter.default.post(
-                        name: UIResponder.keyboardWillShowNotification,
-                        object: nil,
-                        userInfo: userInfo
-                    )
-                    
-                    // 延迟后再次发送通知，确保键盘显示
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        NotificationCenter.default.post(
-                            name: UIResponder.keyboardDidShowNotification,
-                            object: nil,
-                            userInfo: userInfo
-                        )
-                    }
                     
                     // 当获得焦点时，立即计算高度
                     if !text.isEmpty {
                         calculateAndUpdateHeight(uiView)
-                        
-                        // 获得焦点时也滚动到底部
                         scrollToBottom(uiView)
                     }
-                }
-            } else {
+                } else if !isFocused && uiView.isFirstResponder {
                 uiView.resignFirstResponder()
                 }
             }
@@ -114,9 +78,22 @@ struct MultiChatTextView: UIViewRepresentable {
     func calculateAndUpdateHeight(_ textView: UITextView) {
         guard let heightChanged = heightChanged else { return }
         
-        // 计算新高度
+        // 确保textView有有效的frame
+        guard textView.frame.width > 0 else { return }
+        
+        // 计算新高度，添加安全检查
         let size = textView.sizeThatFits(CGSize(width: textView.frame.width, height: .infinity))
-        let newHeight = size.height
+        var newHeight = size.height
+        
+        // 添加安全范围限制，防止异常高度
+        let minHeight: CGFloat = 40
+        let maxHeight: CGFloat = 120
+        newHeight = max(minHeight, min(newHeight, maxHeight))
+        
+        // 如果文本为空，使用最小高度
+        if textView.text.isEmpty {
+            newHeight = minHeight
+        }
         
         // 防抖动逻辑，增加阈值和延迟时间
         if abs(newHeight - MultiChatTextView.lastCalculatedHeight) > 3 { // 增加高度变化阈值
@@ -124,7 +101,7 @@ struct MultiChatTextView: UIViewRepresentable {
             MultiChatTextView.heightUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { _ in
                 // 在主线程上更新高度，使用动画
                 DispatchQueue.main.async {
-                    UIView.animate(withDuration: 0.25) {
+                    UIView.animate(withDuration: 0.2) {  // 缩短动画时间
                     heightChanged(newHeight)
                     MultiChatTextView.lastCalculatedHeight = newHeight
                     }

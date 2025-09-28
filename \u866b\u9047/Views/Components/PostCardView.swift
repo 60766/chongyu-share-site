@@ -46,6 +46,7 @@ private var userInfoSection: some View {
                         .font(.system(size: 13.0))
                         .foregroundColor(DesignSystem.Colors.tertiaryText)
                     
+                    // 注意：这个文件看起来是代码片段，如果需要区分AI生成和用户生成，请参考主PostCardView文件
                     Text(post.images.isEmpty ? "文字" : "图文")
                         .font(.system(size: 13.0, weight: .regular))
                         .foregroundColor(DesignSystem.Colors.tertiaryText)

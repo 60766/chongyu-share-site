@@ -1031,8 +1031,9 @@ struct PostCardView: View {
                             .font(.system(size: 13.0))
                             .foregroundColor(DesignSystem.Colors.tertiaryText)
                         
-                        // 显示帖子来源信息
-                        Text(postSource == .userGenerated ? "自己发布" : "AI生成")
+                        // 显示帖子来源信息（AI生成的帖子只显示"AI生成"，不显示"文字"）
+                        if postSource == .userGenerated {
+                            Text("自己发布")
                             .font(.system(size: 13.0, weight: .regular))
                             .foregroundColor(DesignSystem.Colors.tertiaryText)
                         
@@ -1043,6 +1044,12 @@ struct PostCardView: View {
                         Text(post.images.isEmpty ? "文字" : "图文")
                             .font(.system(size: 13.0, weight: .regular))
                             .foregroundColor(DesignSystem.Colors.tertiaryText)
+                        } else {
+                            // AI生成的帖子只显示"AI生成"，不显示内容类型
+                            Text("AI生成")
+                                .font(.system(size: 13.0, weight: .regular))
+                                .foregroundColor(DesignSystem.Colors.tertiaryText)
+                        }
                     }
                 }
             }

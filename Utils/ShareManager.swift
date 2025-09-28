@@ -149,6 +149,63 @@ class ShareManager {
     }
     
     /**
+     * 分享帖子（精美卡片模式）
+     * @param post 要分享的帖子
+     * @param viewController 当前视图控制器
+     */
+    func sharePost(_ post: UserPostModel, from viewController: UIViewController) {
+        // 生成精美分享卡片
+        let shareImage = generatePostShareImage(post)
+        
+        // 生成分享文本
+        let shareText = generatePostShareText(post)
+        
+        // 构建分享项目
+        var items: [Any] = [shareText]
+        if let image = shareImage {
+            items.append(image)
+        }
+        
+        // 显示系统分享菜单
+        let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        viewController.present(activityVC, animated: true)
+    }
+    
+    /**
+     * 生成帖子分享图像
+     * @param post 帖子内容
+     * @return 返回可用于分享的UI图像
+     */
+    private func generatePostShareImage(_ post: UserPostModel) -> UIImage? {
+        // 创建帖子分享卡片视图
+        let postShareCard = PostShareCard(
+            post: post,
+            includeFirstComment: true
+        )
+        
+        // 渲染为图像
+        return renderViewAsImage(postShareCard, size: CGSize(width: 375, height: 650))
+    }
+    
+    /**
+     * 生成帖子分享文本
+     * @param post 帖子内容
+     * @return 返回分享文本
+     */
+    private func generatePostShareText(_ post: UserPostModel) -> String {
+        let contentPreview = post.content.prefix(100)
+        let ellipsis = post.content.count > 100 ? "..." : ""
+        
+        return """
+        【\(post.username)的虫遇动态】
+        
+        \(contentPreview)\(ellipsis)
+        
+        来自虫遇App - 穿越时空的对话
+        """
+    }
+
+    /**
      * 将SwiftUI视图渲染为UIImage
      * @param view 要渲染的SwiftUI视图
      * @param size 渲染尺寸

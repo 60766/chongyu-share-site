@@ -2,41 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
-	<key>UIHomeIndicatorAutoHidden</key>
-	<true/>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIRequiresFullScreen</key>
-	<true/>
-	<key>UIScrollViewContentInsetAdjustmentBehavior</key>
-	<string>Never</string>
-	<key>UIStatusBarHidden</key>
-	<true/>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<false/>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-	</array>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<key>DEEPSEEK_API_KEY</key>
-	<string>PLACEHOLDER_API_KEY</string>
 	<key>BACKEND_BASE_URL</key>
 	<string>http://121.40.184.29:3000</string>
-	<key>DEEPSEEK_PRIMARY_ENDPOINT</key>
-	<string>https://api.deepseek.com/v1/chat/completions</string>
-	<key>DEEPSEEK_FALLBACK_ENDPOINT</key>
-	<string>https://ark.cn-beijing.volces.com/api/v3/chat/completions</string>
 	<key>NASA_API_BASE_URL</key>
 	<string>https://api.nasa.gov</string>
 	<key>NASA_API_KEY</key>
@@ -47,7 +14,7 @@
 		<false/>
 		<key>NSExceptionDomains</key>
 		<dict>
-			<key>localhost</key>
+			<key>121.40.184.29</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
@@ -61,7 +28,7 @@
 				<key>NSIncludesSubdomains</key>
 				<true/>
 			</dict>
-			<key>121.40.184.29</key>
+			<key>localhost</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
@@ -70,5 +37,15 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<key>UIHomeIndicatorAutoHidden</key>
+	<true/>
+	<key>UIScrollViewContentInsetAdjustmentBehavior</key>
+	<string>Never</string>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
 </dict>
 </plist>

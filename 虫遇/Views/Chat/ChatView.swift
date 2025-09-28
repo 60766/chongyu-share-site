@@ -45,12 +45,8 @@ struct ChatView: View {
     // 键盘和输入框状态
     @FocusState private var isInputFocused: Bool
     @State private var textFieldFocused: Bool = false  // 绑定到AutoSizingTextView
-    @State private var keyboardHeight: CGFloat = 0
-    @State private var keyboardVisible = false
-    @State private var bottomPadding: CGFloat = 0
-    @State private var viewOffset: CGFloat = 0 // 添加视图偏移量
+    // 使用ChatInputBar组件，移除不再需要的状态变量
     @State private var isExpanded: Bool = false // 控制是否展开全屏模式
-    @State private var textViewHeight: CGFloat = 36 // 默认高度
     @State private var lastText = "" // 用于检测文本变化
     
     // 添加用于API请求的取消令牌集合
@@ -233,7 +229,7 @@ struct ChatView: View {
                                     // 底部占位区域 - 增加高度确保内容能滚动到底部安全区以上
                                     // 增加更多空间，确保键盘弹出时消息不被遮挡
                                     Color.clear
-                                        .frame(height: keyboardVisible ? 300 : 180)
+                                        .frame(height: 180) // 使用固定高度，keyboardAdaptive会自动处理键盘适配
                                         .id("bottomId")
                                         // 添加一个onAppear处理器，确保当此视图出现时滚动到底部
                                         .onAppear {
@@ -247,7 +243,7 @@ struct ChatView: View {
                                         }
                                 }
                                 .padding(.horizontal, 16)
-                                .padding(.bottom, keyboardVisible ? 100 : 30)
+                                .padding(.bottom, 30) // 使用固定底部间距，keyboardAdaptive会自动处理键盘适配
                             }
                         }
                         .onChangeCompat(of: messages) { oldValue, newValue in
@@ -314,24 +310,7 @@ struct ChatView: View {
                                     }
                                 }
                         )
-                        // 监听键盘状态变化
-                        .onChangeCompat(of: keyboardVisible) { _, newValue in
-                            if newValue && !messages.isEmpty {
-                                // 键盘弹出时，确保消息可见
-                                // 使用更短的延迟，提高响应速度
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    // 只有在初始化完成后才使用动画滚动
-                                    if hasInitialized {
-                                        withAnimation(.easeInOut(duration: 0.25)) {
-                                            scrollView.scrollTo("bottomId", anchor: .center)
-                                        }
-                                    } else {
-                                        // 初始加载时直接滚动，不使用动画
-                                        scrollView.scrollTo("bottomId", anchor: .center)
-                                    }
-                                }
-                            }
-                        }
+                        // 移除键盘状态监听，keyboardAdaptive会自动处理
                     }
                     .simultaneousGesture(
                         TapGesture()
@@ -347,162 +326,17 @@ struct ChatView: View {
                     )
                 }
                 
-                // 底部输入区域
-                ZStack(alignment: .bottom) {
-                    // 键盘显示时的点击层已移除，使用系统键盘处理
-                    
-                    // 非展开模式 - 底部输入框
-                VStack(spacing: 0) {
-                        // 分隔线
-                    Rectangle()
-                            .fill(Color.gray.opacity(0.12))  // 减小不透明度从0.2到0.12
-                            .frame(height: 0.3)  // 减小高度从0.5到0.3
-                        
-                        // 输入框和发送按钮
-                        HStack(alignment: .bottom, spacing: 10) {
-                            // 录音按钮已删除
-                            
-                            // 评论输入框
-                            ZStack(alignment: .leading) {
-                                if messageText.isEmpty && !textFieldFocused {
-                                    Text("跨越时空的对话...")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(Color.gray.opacity(0.7))
-                                        .padding(.leading, 14)
-                                        .padding(.top, 5)
-                                        .zIndex(1)
-                                }
-                                
-                                AutoSizingTextView(text: $messageText, isFocused: $textFieldFocused, heightChanged: { height in
-                                    // 使用动画平滑过渡高度变化
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        // 限制最大高度为100
-                                        textViewHeight = min(height, 100)
-                                    }
-                                })
-                                .frame(height: textViewHeight)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, textFieldFocused ? 6 : 2)
-                                .disabled(false)
-                                .opacity(1)
-                            }
-                            .frame(minHeight: textFieldFocused ? 48 : 38)  // 考虑行间距，从44/34调整到48/38
-                            .background(
-                                RoundedRectangle(cornerRadius: 18)  // 减小圆角从20到18，更符合iOS标准
-                                    .fill(Color(UIColor.systemGray6))
-                                    .opacity(0.9)
-                            )
-                            .animation(.easeInOut(duration: 0.2), value: textFieldFocused) // 添加动画
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                if !textFieldFocused {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        textFieldFocused = true
-                                    }
-                                }
-                                
-                                // 立即滚动到底部，确保用户能看到最新内容
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    // 自定义通知，指定使用center锚点
-                                    NotificationCenter.default.post(
-                                        name: NSNotification.Name("ScrollToBottom"),
-                                        object: nil,
-                                        userInfo: ["anchorPoint": "center"]
-                                    )
-                                }
-                                
-                                // 如果有文字，立即根据文字内容调整高度
-                                if !messageText.isEmpty {
-                                    calculateTextViewHeight(messageText)
-                                }
-                                
-                                // 延迟触发键盘显示，确保状态已更新
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    // 触发键盘显示
-                                    UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
-                                    
-                                    // 键盘弹出后再次滚动，确保消息不被遮挡
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                        withAnimation(.easeInOut(duration: 0.3)) {
-                                            // 自定义通知，指定使用center锚点
-                                            NotificationCenter.default.post(
-                                                name: NSNotification.Name("ScrollToBottom"),
-                                                object: nil,
-                                                userInfo: ["anchorPoint": "center"]
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 20)
-                                            .fill(
-                                                LinearGradient(
-                                                    gradient: Gradient(colors: [
-                                                        characterThemeColor.opacity(0.05),
-                                                        Color(.systemGray6).opacity(0.35)
-                                                    ]),
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                )
-                                            )
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 20)
-                                                    .stroke(
-                                                        LinearGradient(
-                                                            gradient: Gradient(colors: [
-                                                                characterThemeColor.opacity(0.2),
-                                                                characterThemeColor.opacity(0.05)
-                                                            ]),
-                                                            startPoint: .topLeading,
-                                                            endPoint: .bottomTrailing
-                                                        ),
-                                                        lineWidth: 0.8
-                                                    )
-                                            )
-                                            .shadow(color: Color.black.opacity(0.04), radius: 1, x: 0, y: 1)
-                                    )
-                            .frame(maxWidth: .infinity)
-                            
-                            // 发送按钮
-                            Button(action: sendMessage) {
-                                Text("发送")
-                                    .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.white)
-                        .padding(.horizontal, 14)  // 减小水平内边距从16到14
-                        .padding(.vertical, 10)
-                .background(
-                                        RoundedRectangle(cornerRadius: 16)  // 减小圆角从18到16
-                                            .fill(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray.opacity(0.3) : characterThemeColor)
-                                            .shadow(color: characterThemeColor.opacity(0.2), radius: 3, x: 0, y: 1)
-                                    )
-                            }
-                            .disabled(messageText.isEmpty)
-                            .transition(.scale.combined(with: .opacity))
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        // 添加半透明背景，保持专业外观
-                            .background(
-                            Color(.systemBackground).opacity(0.9)
-                                    )
-                        // 修改分隔线使其更加明显
-                                    .overlay(
-                            Rectangle()
-                                .frame(height: 0.5)  // 减小高度从0.8到0.5
-                                .foregroundColor(Color.gray.opacity(0.15))  // 减小不透明度从0.3到0.15
-                                .offset(y: -0.5),
-                            alignment: .top
-                        )
+                // 底部输入区域 - 使用和多人聊天完全相同的组件
+                ChatInputBar(
+                    messageText: $messageText,
+                    isSending: $isSending,
+                    characterThemeColor: characterThemeColor,
+                    onSend: {
+                        sendMessage()
                     }
-                    // 添加键盘避让 - 使视图随键盘上移
-                    .offset(y: viewOffset)
-                    // 移除阴影效果
-                    .animation(.easeInOut(duration: 0.25), value: viewOffset) // 添加键盘弹出动画
-                    .zIndex(10) // 确保显示在最顶层
-                }
-                // 添加轻微阴影效果，增强层次感
-                .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: -1)
+                )
+                .background(Color(.systemBackground))
+                .edgesIgnoringSafeArea(.bottom)
             }
             
             // 录音界面已移除
@@ -543,6 +377,7 @@ struct ChatView: View {
                     }
                     .frame(height: 44)
                 }
+                .background(Color(.systemBackground)) // 添加背景色，确保贴合键盘
                 .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
                 
                 Spacer()
@@ -555,9 +390,8 @@ struct ChatView: View {
         .toolbarColorScheme(.light, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
-        .edgesIgnoringSafeArea(.bottom)
-        .keyboardAdaptive(enabled: true, dismissOnTap: true) // 添加键盘自适应
-        // 不在这里监听键盘通知，而是在onAppear中设置
+        .edgesIgnoringSafeArea(.bottom) // 忽略底部安全区域，确保输入框贴合屏幕底部
+        .dismissKeyboardOnTap() // 添加点击空白区域收起键盘的功能
         .onAppear {
             DispatchQueue.main.async {
                 // 不再处理TabBar状态，保持底部导航栏可见
@@ -609,11 +443,9 @@ struct ChatView: View {
                 // 添加系统级返回按钮
                 addSystemLevelBackButton()
                 
-                // 设置键盘通知
-                setupKeyboardNotifications()
+                // 使用keyboardAdaptive，无需手动设置键盘通知
                 
-                // 确保从其他页面进入时输入框高度为默认值
-                textViewHeight = 36
+                // ChatInputBar组件会自动管理高度
                 isExpanded = false
                 
                 // 触发输入框内文本显示到底部
@@ -655,8 +487,7 @@ struct ChatView: View {
                 systemBackButtonWindow = nil
             }
             
-            // 移除键盘通知
-            removeKeyboardNotifications()
+            // 使用keyboardAdaptive，无需手动移除键盘通知
         }
         // 修改返回按钮为中文
         .environment(\.locale, Locale(identifier: "zh_CN"))
@@ -671,12 +502,10 @@ struct ChatView: View {
             if !newValue {
                 // 使用动画重置状态
                 withAnimation(.easeInOut(duration: 0.25)) {
-                    viewOffset = 0
-                    keyboardVisible = false
-                    keyboardHeight = 0
+                    // keyboardAdaptive会自动处理键盘状态
                     
                     // 重置输入框高度为初始状态
-                    textViewHeight = 36
+                    // ChatInputBar组件会自动管理高度
                     
                     // 如果输入框已展开，则收起
                     if isExpanded {
@@ -701,23 +530,11 @@ struct ChatView: View {
         }
         // 监听消息文本变化
         .onChange(of: messageText) { oldValue, newValue in
-            // 如果输入框处于激活状态，根据文本内容调整高度
-            if textFieldFocused && oldValue != newValue {
-                calculateTextViewHeight(newValue)
-            }
+            // ChatInputBar组件会自动处理高度调整
         }
-        .onChange(of: viewOffset) { oldValue, newValue in
-            // 移除重复的动画，因为父视图已经添加了动画
-            viewOffset = newValue
-        }
-        .onChange(of: keyboardHeight) { oldValue, newValue in
-            // 移除重复的动画，因为父视图已经添加了动画
-            keyboardHeight = newValue
-        }
-        .onChange(of: textViewHeight) { oldValue, newHeight in
-            // 保留动画但简化代码
-            textViewHeight = min(newHeight, 100)
-        }
+        // 移除viewOffset的onChange，使用统一的键盘适配
+        // 移除keyboardHeight的onChange，使用keyboardAdaptive统一管理
+        // ChatInputBar组件会自动处理高度变化
     }
     
     /**
@@ -758,7 +575,7 @@ struct ChatView: View {
         // 发送消息后重置输入框状态
         textFieldFocused = false
         isInputFocused = false
-        textViewHeight = 36 // 重置输入框高度
+        // ChatInputBar组件会自动管理高度 // 重置输入框高度
         
         // 发送消息后隐藏键盘
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -1151,205 +968,16 @@ struct ChatView: View {
         buttonWindow.makeKeyAndVisible()
     }
     
-    // 更新视图偏移量以避开键盘（添加动画）
-    private func updateViewOffset() {
-        if keyboardVisible {
-            // 计算需要上移的距离，使输入框刚好在键盘上方
-            // 微信风格：将输入框移动到键盘上方，并额外增加一些空间
-            let baseOffset = -(keyboardHeight + 20) // 增加额外的20点偏移，让消息有更多显示空间
-            
-            // 设置最终的偏移量
-            viewOffset = baseOffset
-            
-            // 使用单次滚动通知，在视图偏移后立即执行
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("ScrollToBottom"),
-                        object: nil
-                    )
-                }
-            }
-        } else {
-            viewOffset = 0
-        }
-    }
+    // 移除updateViewOffset方法，使用统一的键盘适配
     
-    // 添加一个计算文本高度的辅助方法
-    private func calculateTextViewHeight(_ text: String) {
-        let textView = UITextView()
-        textView.font = UIFont.systemFont(ofSize: 15)
-        textView.frame.size.width = UIScreen.main.bounds.width - 80 // 估算宽度
-        textView.text = text
-        
-        let fixedWidth = textView.frame.size.width
-        let newSize = textView.sizeThatFits(CGSize(width: fixedWidth, height: CGFloat.greatestFiniteMagnitude))
-        let minHeight: CGFloat = 36 // 最小高度
-        let maxHeight: CGFloat = isExpanded ? 200 : 100 // 根据是否展开设置最大高度
-        
-        // 使用动画更新高度，并限制最大高度
-        withAnimation(.easeInOut(duration: 0.2)) {
-            textViewHeight = min(max(minHeight, newSize.height), maxHeight)
-        }
-    }
+    // 移除calculateTextViewHeight方法，ChatInputBar组件会自动处理
     
-    // 键盘通知处理方法 - 结构体版本
-    private func setupKeyboardNotifications() {
-        // 移除之前可能存在的观察者
-        removeKeyboardNotifications()
-        
-        // 监听键盘显示通知
-        NotificationCenter.default.addObserver(
-            forName: UIResponder.keyboardWillShowNotification,
-            object: nil,
-            queue: .main
-        ) { notification in
-            self.keyboardWillShow(notification)
-        }
-        
-        // 监听键盘隐藏通知
-        NotificationCenter.default.addObserver(
-            forName: UIResponder.keyboardWillHideNotification,
-            object: nil,
-            queue: .main
-        ) { notification in
-            self.keyboardWillHide(notification)
-        }
-    }
+            // 移除所有手动键盘监听方法，使用keyboardAdaptive统一管理
     
-    // 由于结构体不支持@objc，改为普通方法
-    private func keyboardWillShow(_ notification: Notification) {
-        handleKeyboardNotification(notification, isShowing: true)
-    }
-    
-    private func keyboardWillHide(_ notification: Notification) {
-        handleKeyboardNotification(notification, isShowing: false)
-    }
-    
-    private func removeKeyboardNotifications() {
-        // 移除所有键盘相关通知
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIResponder.keyboardWillShowNotification,
-            object: nil
-        )
-        
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIResponder.keyboardWillHideNotification,
-            object: nil
-        )
-        
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIResponder.keyboardDidShowNotification,
-            object: nil
-        )
-        
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIResponder.keyboardDidHideNotification,
-            object: nil
-        )
-        
-        // 移除滚动通知
-        NotificationCenter.default.removeObserver(
-            self,
-            name: NSNotification.Name("ScrollCommentToBottom"),
-            object: nil
-        )
-    }
-    
-    // 处理键盘显示和隐藏的通知
-    private func handleKeyboardNotification(_ notification: Notification, isShowing: Bool) {
-        if isShowing {
-            // 键盘显示
-            if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-                // 获取动画持续时间
-                let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
-                
-                // 获取动画曲线
-                let animationCurve = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt ?? 7
-                let animationOptions = UIView.AnimationOptions(rawValue: animationCurve << 16)
-                
-                // 使用系统提供的动画参数
-                UIView.animate(withDuration: duration, delay: 0, options: [.beginFromCurrentState, animationOptions]) {
-                    self.keyboardHeight = keyboardFrame.height
-                    self.keyboardVisible = true
-                    
-                    // 调整底部内边距，避免被键盘遮挡
-                    self.bottomPadding = keyboardFrame.height
-                    
-                    // 更新视图偏移量以避免键盘遮挡
-                    self.updateViewOffset()
-                }
-                
-                // 创建与键盘完全相同的动画参数
-                let animator = UIViewPropertyAnimator(
-                    duration: duration,
-                    curve: UIView.AnimationCurve(rawValue: Int(animationCurve)) ?? .easeInOut
-                )
-                
-                // 添加滚动动画，与键盘弹出完全同步
-                animator.addAnimations {
-                    // 发送滚动通知
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("ScrollToBottom"),
-                        object: nil
-                    )
-                }
-                
-                // 启动动画
-                animator.startAnimation()
-                
-                // 设置进度监听，中途时再次滚动以确保流畅
-                DispatchQueue.main.asyncAfter(deadline: .now() + duration * 0.5) {
-                    withAnimation(.easeInOut(duration: duration * 0.5)) {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("ScrollToBottom"),
-                            object: nil
-                        )
-                    }
-                }
-                
-                // 键盘完全弹出后再次确认滚动位置
-                DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("ScrollToBottom"),
-                            object: nil
-                        )
-                    }
-                }
-            }
-        } else {
-            // 键盘隐藏
-            // 获取动画持续时间
-            let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
-            
-            // 获取动画曲线
-            let animationCurve = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt ?? 7
-            let animationOptions = UIView.AnimationOptions(rawValue: animationCurve << 16)
-            
-            // 使用系统提供的动画参数
-            UIView.animate(withDuration: duration, delay: 0, options: [.beginFromCurrentState, animationOptions]) {
-                self.keyboardHeight = 0
-                self.keyboardVisible = false
-                self.bottomPadding = 0
-                self.viewOffset = 0
-            }
-        }
-    }
-    
-    // 重置键盘和视图偏移（不使用动画）
+    // 重置键盘状态（不使用动画）
     private func resetKeyboardAndOffset() {
-        // 隐藏键盘
+        // 隐藏键盘，keyboardAdaptive会自动处理状态
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        
-        // 直接重置所有状态，不使用动画
-        viewOffset = 0
-        keyboardVisible = false
-        keyboardHeight = 0
     }
     
     // 激活输入框并弹出键盘的方法
@@ -1364,11 +992,9 @@ struct ChatView: View {
             // 触发键盘显示
             UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
             
-            // 在模拟器中，可能需要手动触发键盘
+            // 在模拟器中，keyboardAdaptive会自动处理键盘
             #if targetEnvironment(simulator)
-            if !self.keyboardVisible {
-                self.simulateKeyboardForSimulator()
-            }
+            print("ChatView - 模拟器环境，keyboardAdaptive会自动处理")
             #endif
         }
         
@@ -1383,27 +1009,17 @@ struct ChatView: View {
         }
     }
     
-    // 在模拟器中模拟键盘弹出
+    // 在模拟器中模拟键盘弹出 - 简化版本
     private func simulateKeyboardForSimulator() {
         #if targetEnvironment(simulator)
-        // 在模拟器中，可能需要手动模拟键盘高度
-        if keyboardHeight == 0 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                // 固定模拟键盘高度，不受文本内容影响
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    self.keyboardHeight = 280 // 减小模拟键盘高度
-                    self.keyboardVisible = true
-                    self.updateViewOffset()
-                }
-            }
-        }
+                    // keyboardAdaptive会自动处理键盘适配，无需手动模拟
+        print("ChatView - 模拟器环境，keyboardAdaptive会自动处理键盘")
         #endif
     }
     
     private func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
-}
 
 /**
  * 消息气泡视图
@@ -1763,7 +1379,7 @@ struct ChatView_Previews: PreviewProvider {
             )
         }
     }
-}
+}}
 
 /**
  * UIScrollView扩展，用于查找和滚动操作

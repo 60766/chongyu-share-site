@@ -1019,9 +1019,8 @@ class AIContentGenerator {
                                 print("⚠️ API调用失败，错误: \(error.localizedDescription)")
                                 
                                 if currentTry < maxRetryCount {
-                                    print("🔄 尝试切换API端点并重试...")
-                                    // 切换API端点
-                                    APIConfigManager.shared.switchEndpoint()
+                                    print("🔄 重试API调用...")
+                                    // 注意：端点管理已迁移到后端服务器，无需客户端切换
                                     attemptAPICall()
                                 } else {
                                     print("❌ 已达到最大重试次数(\(maxRetryCount)次)，API调用失败")
@@ -1710,7 +1709,7 @@ class AIContentGenerator {
             AINetworkService.shared.sendRequest(prompt: prompt)
                 .catch { error -> AnyPublisher<String, AINetworkError> in
                     // 对于部分数据可用的错误，尝试重试一次
-                    if case AINetworkError.partialDataAvailable(let urlError) = error {
+                    if case AINetworkError.partialDataAvailable(_) = error {
                         print("🔄 检测到部分数据传输失败，尝试重试...")
                         // 简单重试一次，使用稍微不同的参数以避免完全相同的请求
                         return AINetworkService.shared.sendRequest(prompt: prompt)

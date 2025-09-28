@@ -176,6 +176,7 @@ struct PublishView: View {
                 }
             }
             .navigationBarHidden(true)
+            .keyboardAdaptive(dismissOnTap: true) // 添加键盘适配，让发布页面内容在键盘上方显示
             .sheet(isPresented: $showingImagePicker) {
                 PHImagePicker(selectedImages: $selectedImages, completion: { _ in }, maxSelectionCount: 3)
             }
@@ -187,6 +188,9 @@ struct PublishView: View {
         guard !postText.isEmpty else { return }
         
         isPublishing = true
+        
+        // 立即收起键盘
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         
         // 模拟发布过程
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {

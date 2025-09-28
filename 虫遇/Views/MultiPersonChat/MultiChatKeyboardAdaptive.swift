@@ -40,15 +40,22 @@ struct MultiChatKeyboardAdaptive: ViewModifier {
                     withAnimation(animation) {
                         previousKeyboardHeight = keyboardHeight
                         
-                        // 如果收到的高度为0且之前键盘是显示的，使用默认高度
+                        // 只在模拟器环境下使用默认高度，真机直接使用系统提供的高度
+                        #if targetEnvironment(simulator)
+                        // 如果收到的高度为0且之前键盘是显示的，使用默认高度（仅模拟器）
                         if height == 0 && previousKeyboardHeight > 0 && !hasManuallySetKeyboardHeight {
-                            print("MultiChatKeyboardAdaptive - 键盘高度为0，使用默认高度")
+                            print("MultiChatKeyboardAdaptive - 模拟器环境，键盘高度为0，使用默认高度")
                             keyboardHeight = UIScreen.main.bounds.height * 0.35
                             hasManuallySetKeyboardHeight = true
                         } else {
                             keyboardHeight = height
                             hasManuallySetKeyboardHeight = false
                         }
+                        #else
+                        // 真机环境直接使用系统提供的键盘高度
+                        keyboardHeight = height
+                        hasManuallySetKeyboardHeight = false
+                        #endif
                     }
                 }
                 .onAppear {

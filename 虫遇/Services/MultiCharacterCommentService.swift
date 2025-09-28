@@ -92,7 +92,7 @@ class MultiCharacterCommentService {
         )
         
         // 移除60秒超时保护，允许长时间生成
-        var timerCancellable: AnyCancellable? = nil
+        let timerCancellable: AnyCancellable? = nil
         
         // 调用API生成批量评论
         print("🔥🔥🔥 === 正在调用 AINetworkService.sendRequest === 🔥🔥🔥")

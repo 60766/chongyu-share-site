@@ -108,7 +108,7 @@ final class BackendTestService {
             let statusCode = httpResponse.statusCode
             let responseBody = String(data: data, encoding: .utf8) ?? ""
             
-            var details: [String: Any] = [
+            let details: [String: Any] = [
                 "url": url.absoluteString,
                 "status_code": statusCode,
                 "response_body": responseBody

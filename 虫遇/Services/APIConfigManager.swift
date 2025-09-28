@@ -3,199 +3,134 @@ import Security
 import Combine
 
 /**
- * API配置管理器
- * 负责管理和存储API密钥
+ * API配置管理器 (安全版本)
+ * 仅负责管理应用配置信息，所有API调用都通过后端代理
+ * 不再存储或管理真实API密钥
  */
 class APIConfigManager {
     static let shared = APIConfigManager()
     
-    // DeepSeek API密钥
-    private(set) var apiKey: String?
-    
-    // API端点选项 - 支持从配置文件读取
-    private var primaryEndpoint: String {
-        if let endpoint = Bundle.main.object(forInfoDictionaryKey: "DEEPSEEK_PRIMARY_ENDPOINT") as? String {
-            return endpoint
-        }
-        return "https://api.deepseek.com/v1/chat/completions"
-    }
-    
-    private var fallbackEndpoint: String {
-        if let endpoint = Bundle.main.object(forInfoDictionaryKey: "DEEPSEEK_FALLBACK_ENDPOINT") as? String {
-            return endpoint
-        }
-        return "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
-    }
-    
-    // 当前使用的端点索引 (0:主要端点, 1:备用端点)
-    private(set) var currentEndpointIndex = 0
-    
-    // 当前API端点
-    var deepSeekEndpoint: String {
-        return currentEndpointIndex == 0 ? primaryEndpoint : fallbackEndpoint
-    }
-    
-    // API模型名称
-    var modelName: String {
-        return currentEndpointIndex == 0 ? "deepseek-chat" : "deepseek-r1-250120"
-    }
-    
-    // 切换API端点
-    func switchEndpoint() {
-        currentEndpointIndex = (currentEndpointIndex + 1) % 2
-        print("⚙️ 切换到API端点: \(deepSeekEndpoint)")
-        print("⚙️ 使用模型: \(modelName)")
-    }
-    
-    // 服务标识符，用于钥匙串存储
-    private let serviceIdentifier = "com.虫遇.apikeys"
-    
-    // 默认API密钥 - 如果Info.plist中未设置，则使用此密钥
-    // ARK格式API密钥，已设置为有效密钥
-    private let defaultAPIKey = "PLACEHOLDER_API_KEY"
+    // 服务标识符，规范化命名
+    private let serviceIdentifier = "com.shilong111234.chongyu.config"
     
     // 用于存储异步操作的订阅
     var cancellables = Set<AnyCancellable>()
     
     private init() {
-        // 从钥匙串加载API密钥
-        loadAPIKey()
-        
-        // 确保API配置有效
-        validateAndSetupAPI()
+        print("🔧 APIConfigManager 初始化 - 安全模式")
+        print("ℹ️ 所有AI功能通过后端代理，无需客户端API密钥")
     }
     
-    // 验证并设置API配置
-    private func validateAndSetupAPI() {
-        // 如果API密钥为空或无效，使用默认密钥
-        if !hasValidAPIKey || !isValidAPIKeyFormat(apiKey) {
-            print("⚠️ API密钥无效或为空，使用默认密钥")
-            self.apiKey = defaultAPIKey
-            saveAPIKeyToKeychain(defaultAPIKey)
+    // MARK: - 配置信息 (只读)
+    
+    /**
+     * 获取后端代理地址
+     * 这是唯一需要的配置，用于连接后端服务
+     */
+    var backendBaseURL: String? {
+        // 优先级：环境变量 -> Info.plist -> UserDefaults
+        if let override = ProcessInfo.processInfo.environment["BACKEND_BASE_URL"] {
+            return override
         }
-        
-        // 确保使用ARK端点（更稳定的选择）
-        if currentEndpointIndex != 1 {
-            currentEndpointIndex = 1
-            print("⚙️ 强制使用ARK API端点: \(deepSeekEndpoint)")
+        if let plistURL = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String {
+            return plistURL
         }
-        
-        print("🔧 API配置已验证并设置：")
-        print("🔑 API密钥: \(apiKey?.prefix(8) ?? "nil")...")
-        print("🌐 端点: \(deepSeekEndpoint)")
-        print("🤖 模型: \(modelName)")
-    }
-
-    // 从钥匙串加载API密钥
-    private func loadAPIKey() {
-        print("🔑 尝试加载API密钥...")
-        
-        // 首先尝试从钥匙串加载
-        if let savedKey = retrieveAPIKeyFromKeychain() {
-            self.apiKey = savedKey
-            print("✅ 从钥匙串加载API密钥成功")
-            setupEndpointForAPIKey(savedKey)
-            return
+        if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL") {
+            return userDefault
         }
-        
-        // 如果钥匙串中没有，使用ARK API密钥（优先级最高）
-        let arkApiKey = defaultAPIKey
-        self.apiKey = arkApiKey
-        print("💯 使用默认ARK API密钥: \(String(arkApiKey.prefix(8)))...")
-        
-        // 设置为ARK端点
-        currentEndpointIndex = 1
-        print("⚙️ 设置为ARK API端点: \(deepSeekEndpoint)")
-        print("⚙️ 使用模型: \(modelName)")
-        
-        // 保存到钥匙串以便下次使用
-        saveAPIKeyToKeychain(arkApiKey)
-        print("💾 已保存API密钥到钥匙串")
+        return nil
     }
     
-    // 根据API密钥格式选择合适的端点
-    private func setupEndpointForAPIKey(_ key: String) {
-        if key.count == 36 && key.contains("-") {
-            // ARK格式的API密钥，使用ARK端点
-            currentEndpointIndex = 1
-            print("🔄 检测到ARK格式API密钥，切换到ARK API端点")
-        } else if key.hasPrefix("sk-") {
-            // DeepSeek格式的API密钥，使用DeepSeek端点
-            currentEndpointIndex = 0
-            print("🔄 检测到DeepSeek格式API密钥，切换到DeepSeek API端点")
-        }
-        
-        print("⚙️ 当前使用API端点: \(deepSeekEndpoint)")
-        print("⚙️ 当前使用模型: \(modelName)")
+    /**
+     * 获取应用Bundle ID
+     */
+    var appBundleID: String {
+        return Bundle.main.bundleIdentifier ?? "com.shilong111234.chongyu"
     }
     
-
+    // MARK: - 已弃用的方法 (保持兼容性)
     
-    // 检查是否有有效的API密钥
+    /**
+     * @deprecated 不再需要客户端API密钥，所有调用通过后端代理
+     */
+    @available(*, deprecated, message: "API调用已迁移到后端代理，无需客户端密钥")
     var hasValidAPIKey: Bool {
-        return apiKey != nil && !(apiKey?.isEmpty ?? true)
+        print("⚠️ hasValidAPIKey已弃用 - 使用后端代理，无需客户端验证")
+        return true // 返回true保持兼容性
     }
     
-    // 检查API密钥格式
-    func isValidAPIKeyFormat(_ key: String?) -> Bool {
-        guard let key = key, !key.isEmpty else {
+    /**
+     * @deprecated 端点切换已迁移到后端服务器
+     */
+    @available(*, deprecated, message: "端点切换已迁移到后端服务器")
+    func switchEndpoint() {
+        print("⚠️ switchEndpoint已弃用 - 端点管理已迁移到后端")
+    }
+    
+    /**
+     * @deprecated 不再需要客户端管理API端点
+     */
+    @available(*, deprecated, message: "API端点管理已迁移到后端")
+    var deepSeekEndpoint: String {
+        print("⚠️ deepSeekEndpoint已弃用 - 请使用后端代理")
+        return "DEPRECATED_USE_BACKEND_PROXY"
+    }
+    
+    /**
+     * @deprecated 不再需要客户端管理模型名称
+     */
+    @available(*, deprecated, message: "模型管理已迁移到后端")
+    var modelName: String {
+        print("⚠️ modelName已弃用 - 请使用后端代理")
+        return "DEPRECATED_USE_BACKEND_PROXY"
+    }
+    
+    /**
+     * @deprecated 不再存储客户端API密钥
+     */
+    @available(*, deprecated, message: "API密钥管理已迁移到后端")
+    var apiKey: String? {
+        print("⚠️ apiKey已弃用 - API密钥现在安全存储在后端")
+        return nil
+    }
+    
+    // MARK: - 配置验证
+    
+    /**
+     * 验证应用配置是否正确
+     */
+    func validateConfiguration() -> Bool {
+        guard let backendURL = backendBaseURL, !backendURL.isEmpty else {
+            print("❌ 后端服务地址未配置")
             return false
         }
         
-        // 支持两种API密钥格式:
-        // 1. DeepSeek格式: 以sk-开头的长字符串
-        // 2. ARK格式: UUID格式 (8-4-4-4-12格式)
-        let isDeepSeekFormat = key.hasPrefix("sk-") && key.count > 30
-        let isARKFormat = key.count == 36 && key.contains("-")
+        guard URL(string: backendURL) != nil else {
+            print("❌ 后端服务地址格式无效: \(backendURL)")
+            return false
+        }
         
-        return isDeepSeekFormat || isARKFormat
+        print("✅ 应用配置验证通过")
+        print("🌐 后端服务地址: \(backendURL)")
+        print("📱 应用Bundle ID: \(appBundleID)")
+        return true
     }
     
-    // 保存API密钥到钥匙串
-    private func saveAPIKeyToKeychain(_ key: String) {
-        // 删除旧的密钥
+    // MARK: - 清理方法
+    
+    /**
+     * 清理旧的钥匙串数据
+     */
+    func cleanupLegacyKeychain() {
         let deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceIdentifier,
+            kSecAttrService as String: "com.虫遇.apikeys", // 旧的服务标识符
             kSecAttrAccount as String: "deepseek_api_key"
         ]
-        SecItemDelete(deleteQuery as CFDictionary)
         
-        // 保存新密钥
-        let keyData = Data(key.utf8)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceIdentifier,
-            kSecAttrAccount as String: "deepseek_api_key",
-            kSecValueData as String: keyData,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
-        ]
-        
-        let status = SecItemAdd(query as CFDictionary, nil)
+        let status = SecItemDelete(deleteQuery as CFDictionary)
         if status == errSecSuccess {
-            print("API密钥成功保存到钥匙串")
-        } else {
-            print("保存API密钥到钥匙串失败: \(status)")
-        }
-    }
-    
-    // 从钥匙串检索API密钥
-    private func retrieveAPIKeyFromKeychain() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceIdentifier,
-            kSecAttrAccount as String: "deepseek_api_key",
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        
-        if status == errSecSuccess, let data = result as? Data {
-            return String(data: data, encoding: .utf8)
-        } else {
-            return nil
+            print("🧹 已清理旧的API密钥数据")
         }
     }
 } 

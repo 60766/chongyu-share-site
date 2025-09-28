@@ -639,6 +639,14 @@ struct CommentInputView: View {
     
     // 提交评论
     private func submitComment() {
+        // 检查评论内容是否为空
+        guard !commentManager.commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            print("⚠️ 评论内容为空，取消提交")
+            return
+        }
+        
+        print("📝 CommentInputView - 开始提交评论: \"\(commentManager.commentText.prefix(30))...\"")
+        
         // 发送通知，确保不会滚动页面
         NotificationCenter.default.post(
             name: NSNotification.Name("PreventScrollAfterSubmit"),
@@ -648,10 +656,25 @@ struct CommentInputView: View {
         // 提交评论
         commentManager.submitComment()
         
+        // 确保输入框文本被清空（双重保险）
+        DispatchQueue.main.async {
+            if !self.commentManager.commentText.isEmpty {
+                print("🔧 CommentInputView - 手动清空输入框文本")
+                self.commentManager.commentText = ""
+            }
+        }
+        
         // 重置输入框状态
         withAnimation(.easeInOut(duration: 0.2)) {
             textFieldFocused = false
             isExpanded = false
+            textViewHeight = 36 // 重置输入框高度
+            
+            // 强制重置键盘和位置状态，确保输入框回到底部
+            keyboardVisible = false
+            keyboardHeight = 0
+            viewOffset = 0
+            bottomPadding = 0
         }
         
         // 隐藏键盘
@@ -692,16 +715,16 @@ struct CommentInputView: View {
         withAnimation(.easeInOut(duration: 0.25)) {
             if keyboardVisible {
                 // 计算需要上移的距离，使输入框刚好在键盘上方
-                // 修改计算逻辑，避免随文本增加而过度偏移
-                let baseOffset = -keyboardHeight + 20 // 基础偏移量
+                // 修改计算逻辑，让输入框精确贴合键盘顶部
+                let baseOffset = -keyboardHeight // 基础偏移量，直接使用键盘高度
                 
-                // 如果文本内容较多，限制最大偏移量
+                // 根据文本高度调整偏移量，确保输入框始终在键盘上方
                 if textViewHeight > 100 {
-                    viewOffset = baseOffset + 20 // 增加固定的额外偏移
+                    viewOffset = baseOffset - 10 // 文本较多时稍微向上一点
                 } else {
-                    // 根据文本高度适当调整偏移量，但设置上限
-                    let textHeightFactor = min(textViewHeight - 36, 40) / 2 // 限制文本高度因子
-                    viewOffset = baseOffset + textHeightFactor
+                    // 根据文本高度适当调整偏移量
+                    let textHeightFactor = (textViewHeight - 36) / 2 // 文本高度因子
+                    viewOffset = baseOffset - max(0, textHeightFactor) // 确保不会向下偏移
                 }
             } else {
                 viewOffset = 0

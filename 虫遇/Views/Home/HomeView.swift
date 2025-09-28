@@ -854,6 +854,9 @@ struct HomeView: View {
     @State private var expandedPostID: UUID? = nil
     @State private var showCharacterSelector: Bool = false
     @State private var selectedPost: UserPostModel?
+    /// 分享相关状态
+    @State private var showingPostShareModal = false
+    @State private var postToShare: UserPostModel?
     /// 滚动位置
     @State private var scrollOffset: CGFloat = 0
     /// 是否显示顶部导航栏
@@ -1309,6 +1312,16 @@ struct HomeView: View {
                 }
             }
         }
+        // 添加帖子分享模态视图
+        .sheet(isPresented: $showingPostShareModal) {
+            if let post = postToShare {
+                PostShareModalView(
+                    isPresented: $showingPostShareModal,
+                    post: post,
+                    includeFirstComment: true
+                )
+            }
+        }
         // 添加删除确认对话框
         .alert("确认删除", isPresented: $showDeleteConfirmation) {
             Button("取消", role: .cancel) {
@@ -1482,9 +1495,8 @@ struct HomeView: View {
                 handlePostBookmark(post: post, isBookmarked: isBookmarked)
             },
             onShare: {
-                // 分享逻辑
-                let content = "\(post.username)的虫遇动态: \(post.content)"
-                shareContent(content)
+                // 使用精美分享卡片
+                sharePostWithCard(post)
                 HapticFeedbackManager.shared.selectionChanged()
             },
             onAddComment: { post, content, replyToId in
@@ -2565,6 +2577,15 @@ struct HomeView: View {
             rootViewController.present(activityVC, animated: true)
         }
     }
+    
+    // 使用精美分享卡片分享帖子
+    private func sharePostWithCard(_ post: UserPostModel) {
+        // 设置要分享的帖子并显示分享模态视图
+        postToShare = post
+        showingPostShareModal = true
+    }
+    
+
 }
 
 #Preview("首页") {
