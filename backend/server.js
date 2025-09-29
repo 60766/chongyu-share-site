@@ -427,6 +427,83 @@ app.post('/api/proxy', async (req, res) => {
   }
 })
 
+// 豆包视觉API代理端点
+app.post('/api/vision', async (req, res) => {
+  const appAccountToken = req.header('X-App-Account-Token') || req.body.appAccountToken
+  if (!appAccountToken) return res.status(400).json({ error: 'missing appAccountToken' })
+
+  const wallet = getWallet(appAccountToken)
+  if (wallet.balance <= 0) return res.status(402).json({ error: 'insufficient_credits', balance: wallet.balance })
+
+  const { model, messages, max_tokens, temperature, ...rest } = req.body || {}
+  
+  // 豆包视觉API配置
+  const DOUBAO_VISION_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
+  const DOUBAO_API_KEY = process.env.DOUBAO_API_KEY || '5ec25df2-f799-4fc0-8ee2-ac13d473131b'
+  const DOUBAO_MODEL = model || 'doubao-seed-1-6-vision-250815'
+
+  const payload = {
+    model: DOUBAO_MODEL,
+    messages,
+    max_tokens: max_tokens || 1000,
+    temperature: temperature || 0.3,
+    ...rest,
+  }
+
+  try {
+    console.log('[Vision API] 调用豆包视觉API')
+    
+    const visionResp = await axios.post(DOUBAO_VISION_ENDPOINT, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${DOUBAO_API_KEY}`,
+      },
+      timeout: 120_000, // 120秒超时
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    })
+
+    const data = visionResp.data
+
+    // 估算token使用量（视觉API通常消耗更多token）
+    let totalTokens = 0
+    if (data?.usage?.total_tokens != null) {
+      totalTokens = Number(data.usage.total_tokens)
+    } else if (data?.usage?.input_tokens != null || data?.usage?.output_tokens != null) {
+      totalTokens = Number(data.usage.input_tokens || 0) + Number(data.usage.output_tokens || 0)
+    } else {
+      // 视觉API的fallback估算（通常比文本API消耗更多）
+      totalTokens = 1500
+    }
+
+    // 视觉API成本更高，使用2倍费率
+    const costCredits = Math.ceil((totalTokens / 1000) * CREDITS_PER_1K_TOKENS * 2)
+
+    if (wallet.balance < costCredits) {
+      return res.status(402).json({ error: 'insufficient_credits', needed: costCredits, balance: wallet.balance })
+    }
+
+    const balanceAfter = debitWallet(appAccountToken, costCredits, generateId(), { 
+      totalTokens, 
+      providerModel: payload.model,
+      apiType: 'vision'
+    })
+
+    res.setHeader('X-Usage-Tokens', String(totalTokens))
+    res.setHeader('X-Cost-Credits', String(costCredits))
+    res.setHeader('X-Balance-After', String(balanceAfter))
+    
+    console.log(`[Vision API] 成功处理，消耗${costCredits}积分，剩余${balanceAfter}积分`)
+    res.json(data)
+    
+  } catch (err) {
+    console.error('[Vision API] 错误:', err.message)
+    const status = err.response?.status || 500
+    const body = err.response?.data || { error: 'vision_api_error', message: err.message }
+    res.status(status).json(body)
+  }
+})
+
 const port = process.env.PORT || 8787
 const server = app.listen(port, () => {
   console.log(`Backend listening on http://localhost:${port}`)

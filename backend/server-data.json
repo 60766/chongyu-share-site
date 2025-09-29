@@ -4,7 +4,7 @@
       "balance": 1800
     },
     "TEST_TOKEN": {
-      "balance": 308542
+      "balance": 307953
     },
     "D08B9230-99EE-43D4-88AE-4626E001776C": {
       "balance": 526531
@@ -20,6 +20,9 @@
     },
     "test-token-123": {
       "balance": 13438
+    },
+    "5ec25df2-f799-4fc0-8ee2-ac13d473131b": {
+      "balance": 12652
     }
   },
   "transactions": [
@@ -1186,6 +1189,237 @@
         "receipt": {}
       },
       "at": 1758568463078
+    },
+    {
+      "id": "pwzHCf3GHfOxv1OA3TpQM",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 43,
+      "ref": "RgVRbieH0LbortAlSKsGxkcuWkfx",
+      "meta": {
+        "totalTokens": 212,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759069387475
+    },
+    {
+      "id": "6A8h0hhLWBAXIW3J5txHq",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 225,
+      "ref": "rLlQ78RfOQ7j97eHRe8LjTzt6E7L",
+      "meta": {
+        "totalTokens": 1120,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759070754688
+    },
+    {
+      "id": "4Bpw36wo4Evkdrx9XBzxw",
+      "type": "topup",
+      "token": "5ec25df2-f799-4fc0-8ee2-ac13d473131b",
+      "amount": 13800,
+      "ref": "test_transaction_001",
+      "meta": {
+        "productId": "credits.large",
+        "receipt": "test_receipt"
+      },
+      "at": 1759071112948
+    },
+    {
+      "id": "wcACMFWGD9MyYv8qlrXHs",
+      "type": "debit",
+      "token": "5ec25df2-f799-4fc0-8ee2-ac13d473131b",
+      "amount": 304,
+      "ref": "94S44VgVse5i5X1GtAgbruhcO0NK",
+      "meta": {
+        "totalTokens": 1517,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759071165426
+    },
+    {
+      "id": "xQ1lPsMXzeK4o0ClIAvTL",
+      "type": "debit",
+      "token": "5ec25df2-f799-4fc0-8ee2-ac13d473131b",
+      "amount": 70,
+      "ref": "sBh68JXtqHpP3BieDsskAyoPpHMX",
+      "meta": {
+        "totalTokens": 349,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759071595217
+    },
+    {
+      "id": "3J5rF5YoeAEtLCG2x9ysG",
+      "type": "debit",
+      "token": "5ec25df2-f799-4fc0-8ee2-ac13d473131b",
+      "amount": 37,
+      "ref": "wLA9BDoiezGOWVnZ892wZyMmh7wD",
+      "meta": {
+        "totalTokens": 181,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759071989729
+    },
+    {
+      "id": "xtbXl25QIDuYvlDuzIUvk",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 30,
+      "ref": "t2jbGTtgN5oY3Pc03oN1xCAwhZBz",
+      "meta": {
+        "totalTokens": 148,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759072459590
+    },
+    {
+      "id": "r3TF1NQ6cGd8irMjUYX8k",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 34,
+      "ref": "xH5vKjDVofGApCEz1BJbcerU97cJ",
+      "meta": {
+        "totalTokens": 166,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759072554133
+    },
+    {
+      "id": "yiXnrUh5rtFksEPUBoujG",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 31,
+      "ref": "rcUhEWLoP61lORd3zzM3qDWZWMLP",
+      "meta": {
+        "totalTokens": 151,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759074423456
+    },
+    {
+      "id": "Ja5do1liVXwqwCeT8vyUO",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "hHGzBJduMtfOoayu0fyA3fW7qQCk",
+      "meta": {
+        "totalTokens": 199,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759074507685
+    },
+    {
+      "id": "7ESWUUG2dZM10FC5TaEeb",
+      "type": "debit",
+      "token": "5ec25df2-f799-4fc0-8ee2-ac13d473131b",
+      "amount": 160,
+      "ref": "sCVLeuFCT24TTkVANBEBiRI7fNow",
+      "meta": {
+        "totalTokens": 796,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759074907270
+    },
+    {
+      "id": "xONLdVD3O7u0JWH6JqM3P",
+      "type": "debit",
+      "token": "5ec25df2-f799-4fc0-8ee2-ac13d473131b",
+      "amount": 410,
+      "ref": "JEPJfX1203WGE6VKpu4yN6jGaLpe",
+      "meta": {
+        "totalTokens": 2046,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759075080119
+    },
+    {
+      "id": "JrUKfoNdDIFcoNcSRmvNW",
+      "type": "debit",
+      "token": "5ec25df2-f799-4fc0-8ee2-ac13d473131b",
+      "amount": 48,
+      "ref": "PRUZyQ0cAx1kpPUnzWR1xw0Alkqr",
+      "meta": {
+        "totalTokens": 237,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759075766003
+    },
+    {
+      "id": "UZufSbCzpT137mq8zV2d3",
+      "type": "debit",
+      "token": "5ec25df2-f799-4fc0-8ee2-ac13d473131b",
+      "amount": 68,
+      "ref": "W6Y94KbnBaXlcsXZKWJ9YmhintJl",
+      "meta": {
+        "totalTokens": 675,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1759108418522
+    },
+    {
+      "id": "ZPslz8S7VhQ5pM6Yg4159",
+      "type": "debit",
+      "token": "5ec25df2-f799-4fc0-8ee2-ac13d473131b",
+      "amount": 51,
+      "ref": "fjkWQ26gjbVFnXaLHTY2Dpb1Kv7x",
+      "meta": {
+        "totalTokens": 254,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759110954127
+    },
+    {
+      "id": "tBC7bC5HORCjJEZTzYNF8",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 28,
+      "ref": "blu8LCjUqOilSM6TECtAPZU1GAmm",
+      "meta": {
+        "totalTokens": 136,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759111949524
+    },
+    {
+      "id": "nRvF8wxmEUHYUruGUpHRI",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 48,
+      "ref": "XLoaRggcTBE2nNgi0TikiSSgFcP9",
+      "meta": {
+        "totalTokens": 480,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1759112917890
+    },
+    {
+      "id": "PFo60Z72dyrCCxwWnQ1mX",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 110,
+      "ref": "QiARcElQ5sHqrnPQM6vWm4w0kHE4",
+      "meta": {
+        "totalTokens": 546,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1759113225115
     }
   ],
   "processedIapTransactions": [
@@ -1242,11 +1476,12 @@
     "dev-46A01983-ACD6-467F-98C1-00C3C0C63825",
     "test_transaction_123",
     "test-txn-456",
-    "test-txn-789"
+    "test-txn-789",
+    "test_transaction_001"
   ],
   "appleIdAccounts": {},
   "backupCodeMap": {
     "343-738-180-780": "D08B9230-99EE-43D4-88AE-4626E001776C"
   },
-  "savedAt": 1758651294584
+  "savedAt": 1759117108069
 }

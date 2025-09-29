@@ -60,6 +60,9 @@ struct PublishPanelView: View {
     /// 文本编辑器焦点状态
     @FocusState private var isTextEditorFocused: Bool
     
+    // Combine相关
+    @State private var cancellables = Set<AnyCancellable>()
+    
     // 拖拽相关状态
     @State private var isDragging: Bool = false
     @State private var draggedIndex: Int? = nil
@@ -773,9 +776,8 @@ struct PublishPanelView: View {
                 publishMode: publishMode
         )
         
-        // 将PostData转换为UserPostModel并添加到PostViewModel
-            let userPost = self.createUserPostFromPostData(postData)
-        
+        // 将PostData转换为UserPostModel并添加到PostViewModel（支持图片分析）
+            self.createUserPostFromPostData(postData) { userPost in
             // 🔧 优化：调整延迟时间，平衡速度和流畅性，避免卡顿
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                 // 使用新的增量更新方法，避免全量刷新
@@ -787,9 +789,15 @@ struct PublishPanelView: View {
                 self.isPublishing = false // 重置发布状态
             }
             
-            // 异步生成AI评论，完全不影响UI
+                // 只有没有图片的帖子才需要异步生成AI评论
+                // 有图片的帖子已经通过豆包直接生成了评论
+                if userPost.images.isEmpty {
             DispatchQueue.global(qos: .utility).async {
                 self.generateAICommentsForUserPost(userPost)
+                    }
+                } else {
+                    print("🎭 图片帖子已通过豆包生成评论，跳过DeepSeek评论生成")
+                }
             }
         }
     }
@@ -856,8 +864,8 @@ struct PublishPanelView: View {
         return Array(shuffled.prefix(count))
     }
     
-    // 将PostData转换为UserPostModel
-    private func createUserPostFromPostData(_ postData: PostData) -> UserPostModel {
+    // 将PostData转换为UserPostModel（支持图片分析）
+    private func createUserPostFromPostData(_ postData: PostData, completion: @escaping (UserPostModel) -> Void) {
         // 创建用户帖子时不包含任何预设评论，等待AI生成
         let comments: [DetailedCommentModel] = []
         
@@ -877,12 +885,85 @@ struct PublishPanelView: View {
             }
         }
         
-        // 创建用户帖子（无预设评论）
+        // 如果有图片，直接调用豆包视觉API生成评论
+        if !postData.images.isEmpty {
+            print("📸 检测到\(postData.images.count)张图片，直接用豆包生成评论...")
+            
+            // 获取要评论的角色列表
+            let selectedCharacterIDs = selectCharactersForResponse()
+            
+            DoubaoVisionService.shared.analyzeImagesAndGenerateComments(
+                postData.images,
+                postContent: postData.content,
+                characters: selectedCharacterIDs
+            )
+            .sink(
+                receiveCompletion: { completionResult in
+                    if case .failure(let error) = completionResult {
+                        print("❌ 豆包视觉API调用失败: \(error.localizedDescription)")
+                        // 失败时创建帖子，但不生成评论
+                        self.createUserPostWithContent(postData, imageIdentifiers: imageIdentifiers, imageDescription: nil, comments: comments, completion: completion)
+                    }
+                },
+                receiveValue: { commentsMap in
+                    print("✅ 豆包直接生成了\(commentsMap.count)条评论")
+                    
+                    // 将豆包生成的评论转换为DetailedCommentModel
+                    var generatedComments: [DetailedCommentModel] = []
+                    
+                    for (characterID, commentContent) in commentsMap {
+                        let characterDataManager = CharacterDataManager.shared
+                        let characterName = characterDataManager.getName(for: characterID) ?? characterID.capitalized
+                        let characterAvatar = CharacterAvatarService.shared.getAvatarName(for: characterID)
+                        
+                        let comment = DetailedCommentModel(
+                            id: UUID(),
+                            username: characterName,
+                            userAvatar: characterAvatar,
+                            content: commentContent,
+                            datePosted: Date(),
+                            isVirtualCharacter: true,
+                            characterID: characterID,
+                            likes: 0,
+                            isLikedByCurrentUser: false
+                        )
+                        
+                        generatedComments.append(comment)
+                    }
+                    
+                    // 创建包含豆包生成评论的帖子
+                    self.createUserPostWithContent(postData, imageIdentifiers: imageIdentifiers, imageDescription: nil, comments: generatedComments, completion: completion)
+                }
+            )
+            .store(in: &cancellables)
+        } else {
+            // 没有图片，直接创建帖子
+            createUserPostWithContent(postData, imageIdentifiers: imageIdentifiers, imageDescription: nil, comments: comments, completion: completion)
+        }
+    }
+    
+    // 创建用户帖子的辅助方法
+    private func createUserPostWithContent(
+        _ postData: PostData,
+        imageIdentifiers: [String],
+        imageDescription: String?,
+        comments: [DetailedCommentModel],
+        completion: @escaping (UserPostModel) -> Void
+    ) {
+        // 构建增强的内容（原内容 + 图片描述）
+        var enhancedContent = postData.content
+        
+        if let imageDescription = imageDescription, !imageDescription.isEmpty {
+            enhancedContent += "\n\n[图片内容]: \(imageDescription)"
+            print("📝 帖子内容已增强，添加了图片描述")
+        }
+        
+        // 创建用户帖子
         let userPost = UserPostModel(
             id: UUID(uuidString: postData.id) ?? UUID(),
             username: UserProfileManager.shared.getCurrentUsername(), // 使用当前用户名
             userAvatar: UserProfileManager.shared.getCurrentAvatarURL(), // 使用当前用户头像
-            content: postData.content,
+            content: enhancedContent, // 使用增强后的内容
             images: imageIdentifiers, // 添加图片标识符
             datePosted: postData.timestamp,
             likes: 0,
@@ -893,7 +974,7 @@ struct PublishPanelView: View {
             source: "user" // 来源为用户
         )
         
-        return userPost
+        completion(userPost)
     }
     
     // 保存图片并返回标识符

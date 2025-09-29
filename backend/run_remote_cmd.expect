@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+set timeout -1
+set host [lindex $argv 0]
+set user [lindex $argv 1]
+set pass [lindex $argv 2]
+# 剩余所有参数拼成一条命令字符串
+set cmd  [join [lrange $argv 3 end] " "]
+spawn ssh -o StrictHostKeyChecking=no $user@$host /bin/bash -lc "$cmd"
+expect {
+  -re ".*assword:.*" {
+    send "$pass\r"
+    exp_continue
+  }
+  eof
+}
