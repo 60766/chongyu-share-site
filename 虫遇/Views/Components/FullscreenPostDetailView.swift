@@ -3281,19 +3281,20 @@ class FullscreenPostDetailViewModel: ObservableObject {
     func synchronizePost(id: UUID) {
         print("🔄 开始同步帖子: \(id.uuidString)")
         
-        // 获取所有帖子
-        let allPosts = ModelData.samplePosts
+        // 获取所有帖子 - 使用PostViewModel中的实际数据
+        let allPosts = PostViewModel.shared.posts
         
         // 查找匹配ID的帖子
         if let foundPost = allPosts.first(where: { $0.id.uuidString == id.uuidString }) {
-
+            print("✅ 在PostViewModel中找到匹配帖子: \(foundPost.content.prefix(30))...")
             
             // 更新当前帖子，使用 updatePost 方法确保一致性
             updatePost(foundPost)
             
-            
+            print("✅ 帖子同步完成")
         } else {
-            
+            print("❌ 在PostViewModel中未找到匹配的帖子ID: \(id.uuidString)")
+            print("   PostViewModel中的帖子总数: \(allPosts.count)")
         }
     }
 }

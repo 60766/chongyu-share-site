@@ -10,6 +10,9 @@ struct NotificationItemView: View {
     // 动画状态
     @State private var animateContent = false
     
+    // 导航到帖子详情的状态
+    @State private var selectedPostForReply: UserPostModel?
+    
     // 默认用户角色信息（用于用户自己的评论）
     private var defaultUserCharacter: NotificationModel.CharacterInfo {
         NotificationModel.CharacterInfo(
@@ -52,6 +55,52 @@ struct NotificationItemView: View {
         .shadow(color: .black.opacity(0.04), radius: 1, x: 0, y: 0.5)
         .padding(.horizontal, 14)
         .padding(.vertical, notification.type == .like ? 4 : 6) // 增大卡片间距
+        // 使用标准的全屏覆盖来显示帖子详情页
+        .fullScreenCover(item: $selectedPostForReply) { post in
+            FullscreenPostDetailView(
+                post: post,
+                onDismiss: {
+                    selectedPostForReply = nil
+                },
+                onLike: { comment in
+                    // 处理评论点赞
+                    print("点赞评论: \(comment.content)")
+                },
+                onNextPost: { currentPostId in
+                    // 查找下一个帖子
+                    let currentIndex = PostViewModel.shared.posts.firstIndex { $0.id.uuidString == currentPostId.uuidString }
+                    
+                    guard let safeIndex = currentIndex else {
+                        return nil
+                    }
+                    
+                    // 检查是否有下一篇帖子
+                    let nextIndex = safeIndex + 1
+                    if nextIndex < PostViewModel.shared.posts.count {
+                        return PostViewModel.shared.posts[nextIndex]
+                    }
+                    return nil
+                },
+                onPrevPost: { currentPostId in
+                    // 查找上一个帖子
+                    let currentIndex = PostViewModel.shared.posts.firstIndex { $0.id.uuidString == currentPostId.uuidString }
+                    
+                    guard let safeIndex = currentIndex else {
+                        return nil
+                    }
+                    
+                    // 检查是否有上一篇帖子
+                    if safeIndex > 0 {
+                        return PostViewModel.shared.posts[safeIndex - 1]
+                    }
+                    return nil
+                }
+            )
+            .ignoresSafeArea(.all) // 确保全屏显示，与正常帖子详情页面布局一致
+            .onAppear {
+                print("🚀 FullscreenPostDetailView onAppear，帖子ID: \(post.id.uuidString)")
+            }
+        }
     }
     
     // 分解复杂视图 - 通知头部
@@ -159,8 +208,43 @@ struct NotificationItemView: View {
     // 响应按钮
     private var responseButton: some View {
         Button(action: {
+            // 简单的触觉反馈
             let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
             impactFeedback.impactOccurred()
+            
+            // 根据通知类型处理
+            if notification.type == .comment {
+                // 导航到原帖
+                if let postId = notification.relatedPostId {
+                    print("🔍 开始查找帖子:")
+                    print("   目标帖子ID: \(postId)")
+                    print("   当前帖子总数: \(PostViewModel.shared.posts.count)")
+                    
+                    // 打印前几个帖子的ID用于调试
+                    for (index, post) in PostViewModel.shared.posts.prefix(3).enumerated() {
+                        print("   帖子[\(index)]: ID=\(post.id.uuidString), 内容=\(post.content.prefix(20))...")
+                    }
+                    
+                    if let post = PostViewModel.shared.posts.first(where: { $0.id.uuidString == postId }) {
+                        print("✅ 找到帖子，准备导航: \(post.content.prefix(30))...")
+                        
+                        // 使用 DispatchQueue 确保状态更新在下一个运行循环中执行
+                        DispatchQueue.main.async {
+                            print("🔄 在主线程中设置状态")
+                            selectedPostForReply = post
+                            print("🔄 状态设置完成 - selectedPostForReply: \(selectedPostForReply?.id.uuidString ?? "nil")")
+                        }
+                    } else {
+                        print("❌ 未找到匹配的帖子ID: \(postId)")
+                        print("   所有帖子ID列表:")
+                        for (index, post) in PostViewModel.shared.posts.enumerated() {
+                            print("     [\(index)]: \(post.id.uuidString)")
+                        }
+                    }
+                } else {
+                    print("❌ 通知中没有relatedPostId")
+                }
+            }
         }) {
             HStack(spacing: 5) {
                 if !buttonIcon.isEmpty {
@@ -1042,4 +1126,5 @@ struct HighlightedGuideText: View {
         
         return attributedString
     }
+
 } 
