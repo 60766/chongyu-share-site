@@ -39,6 +39,9 @@ struct ExploreView: View {
     // 当前选中的选项卡
     @State private var selectedTab: TabType = .all
     
+    // 标签动画命名空间
+    @Namespace private var tabAnimation
+    
     // 是否显示最近互动角色
     @State private var showingRecentInteractions: Bool = false
     
@@ -408,12 +411,15 @@ struct ExploreView: View {
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 2)
                             
-                            // 恢复底部标签栏的原有样式和效果
-                            // 底部标签栏 - 优化标签设计
+                            // 优化的底部标签栏 - 添加流畅动画
                             HStack(spacing: 0) {
                                 ForEach([TabType.all, .popular, .manage], id: \.self) { tab in
                                     Button(action: {
-                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                        // 防止重复点击同一标签
+                                        guard selectedTab != tab else { return }
+                                        
+                                        // 使用简单平滑的动画
+                                        withAnimation(.easeInOut(duration: 0.25)) {
                                             self.selectedTab = tab
                                             
                                             // 如果点击"管理"标签，则切换管理模式
@@ -427,26 +433,32 @@ struct ExploreView: View {
                                         }
                                     }) {
                                         ZStack {
+                                            // 简化的背景胶囊
                                             if selectedTab == tab {
                                                 Capsule()
                                                     .fill(Color(.systemGray6))
                                                     .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
-                                                    .frame(height: 28) // 减小高度
+                                                    .frame(height: 30)
+                                                    .matchedGeometryEffect(id: "selectedBackground", in: tabAnimation)
                                             }
                                             
+                                            // 文本标签 - 移除动画
                                             Text(tab.rawValue)
-                                                .font(.system(size: 13, weight: selectedTab == tab ? .semibold : .regular))
-                                                .foregroundColor(selectedTab == tab ? Color(.label) : Color(.systemGray2))
-                                                .padding(.horizontal, 8) // 减小水平内边距，原来是12
+                                                .font(.system(size: 14, weight: selectedTab == tab ? .semibold : .medium))
+                                                .foregroundColor(selectedTab == tab ? Color(.label) : Color(.systemGray))
+                                                .padding(.horizontal, 12)
                                         }
                                         .frame(maxWidth: .infinity)
+                                        .frame(height: 36)
+                                        .contentShape(Rectangle()) // 确保整个区域可点击
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 }
                             }
-                            .padding(.horizontal, 24) // 增加整体的水平内边距，使按钮向中间集中
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 6)
                             
-                            // 推荐角色 - 纵向网格布局
+                            // 稳定的内容区域 - 移除闪动效果
                             VStack(alignment: .leading, spacing: 0) {
                                 if showingRecentInteractions {
                                     // 显示最近互动的角色
@@ -488,7 +500,7 @@ struct ExploreView: View {
                                             }
                                         }
                                         .padding(.horizontal, 16)
-                                        .padding(.top, 0)
+                                        .padding(.top, 8)
                                     }
                                 } else if showingFavorites {
                                     // 显示我的关注角色
@@ -528,13 +540,9 @@ struct ExploreView: View {
                                             }
                                         }
                                         .padding(.horizontal, 16)
-                                        .padding(.top, 0)
+                                        .padding(.top, 8)
                                     }
                                 } else if selectedCategory == .all {
-                                    // 准备数据
-                                    // 注释掉未使用的变量
-                                    // let characters = displayCharacters.prefix(12).map { $0 }
-                                    
                                     // 角色卡片网格，不显示标题行
                                     LazyVGrid(
                                         columns: threeColumns,
@@ -545,29 +553,25 @@ struct ExploreView: View {
                                             improvedCharacterCard(for: character)
                                                 .frame(minWidth: 0, maxWidth: .infinity)
                                                 .id(character.id)
-                                                // 添加动画修饰符
-                                                .animation(.easeInOut, value: displayCharacters.map { $0.id })
                                         }
                                     }
                                     .padding(.horizontal, 16)
-                                    .padding(.top, 0) // 移除顶部间距
+                                    .padding(.top, 8)
                                 } else {
-                                    // 删除分类标题，不再显示
-                                    
                                     // 优化角色卡片网格
                                     LazyVGrid(
                                         columns: threeColumns,
                                         alignment: .center,
-                                        spacing: 8 // 进一步减小卡片垂直间距
+                                        spacing: 8
                                     ) {
                                         ForEach(Array(displayCharacters.enumerated()), id: \.element.id) { index, character in
                                             improvedCharacterCard(for: character)
                                                 .frame(minWidth: 0, maxWidth: .infinity)
-                                                .id(character.id) // 确保每个卡片有唯一ID
+                                                .id(character.id)
                                         }
                                     }
-                                    .padding(.horizontal, 16) // 与标题使用相同的水平内边距
-                                    .padding(.top, 0) // 移除顶部间距
+                                    .padding(.horizontal, 16)
+                                    .padding(.top, 8)
                                 }
                             }
                         }
@@ -1980,3 +1984,4 @@ struct ManagedCharacterCardView: View {
         }
     }
 } 
+

@@ -836,8 +836,6 @@ struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     
-    /// 当前选中的标签
-    @State private var selectedTab: HomeTab = .recommended
     /// 历史人物数据
     @State private var characters: [CharacterModel] = []
     /// 帖子数据
@@ -885,13 +883,6 @@ struct HomeView: View {
     
     // 添加一个新的状态来存储顶部角色
     @State private var topCharacters: [CharacterModel] = []
-    
-    /// 首页标签类型
-    enum HomeTab: String, CaseIterable {
-        case recommended = "推荐"
-        case following = "关注"
-        case trending = "热门"
-    }
     
     // TabBar管理器
     @ObservedObject private var tabBarManager = TabBarManager.shared
@@ -1006,10 +997,6 @@ struct HomeView: View {
                                 .padding(.bottom, 8)  // 稍微增加底部间距
                             }
                         }
-                        
-                        // 内容分类标签
-                        tabSection
-                        
                         // 内容区域
                         contentSection
                     }
@@ -1340,45 +1327,6 @@ struct HomeView: View {
     
     // MARK: - 导航栏
     // 移除navBar定义 - 采用更简洁的设计，让内容区域获得更多空间
-    
-    // MARK: - 标签区域
-    private var tabSection: some View {
-        HStack(spacing: 0) {
-            ForEach(HomeTab.allCases, id: \.self) { tab in
-                Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedTab = tab
-                    }
-                }) {
-                    VStack(spacing: 4) {
-                        Text(tab.rawValue)
-                            .font(.system(size: 14, weight: selectedTab == tab ? .medium : .regular))
-                            .foregroundColor(selectedTab == tab ? Color.primaryColor : Color.secondary)
-                        
-                        // 选中指示器 - 长度与文字匹配，更精致的设计
-                        RoundedRectangle(cornerRadius: 1)
-                            .fill(selectedTab == tab ? Color.primaryColor : Color.clear)
-                            .frame(width: selectedTab == tab ? textWidth(for: tab.rawValue) : 0, height: 2)
-                            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedTab)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 30)
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-        }
-        .padding(.top, 8)  // 调整与上方头像的间距
-        .padding(.bottom, 0)
-        // 直接暴露在渐变背景中
-    }
-    
-    // MARK: - 辅助函数
-    private func textWidth(for text: String) -> CGFloat {
-        let font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        let attributes = [NSAttributedString.Key.font: font]
-        let size = (text as NSString).size(withAttributes: attributes)
-        return size.width
-    }
     
     // MARK: - 内容区域
     private var contentSection: some View {
