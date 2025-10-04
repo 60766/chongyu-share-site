@@ -257,10 +257,21 @@ public struct CreationTypeButton: View {
  * 创建虫洞视觉效果
  */
 public struct BlackHoleView: View {
+    // 添加回调属性
+    var onCenterPositionChanged: ((CGPoint) -> Void)?
     @State private var outerRotation: Double = 0
     @State private var innerRotation: Double = 0
     @State private var pulseScale: CGFloat = 1.0
     @State private var centerButtonScale: CGFloat = 1.0
+    
+    // 添加中心位置偏好键
+    struct CenterIconPositionPreferenceKey: PreferenceKey {
+        static var defaultValue: CGPoint? = nil
+        
+        static func reduce(value: inout CGPoint?, nextValue: () -> CGPoint?) {
+            value = nextValue() ?? value
+        }
+    }
     
     @EnvironmentObject private var typeManager: CreationTypeManager
     
@@ -402,6 +413,19 @@ public struct BlackHoleView: View {
                                 .opacity(0.8) // 增加不透明度
                                 .blur(radius: 5) // 增加模糊以增强发光效果
                                 .offset(x: 0.5, y: 0.5)
+                        )
+                        // 添加背景来获取图标的精确位置
+                        .background(
+                            GeometryReader { iconGeometry in
+                                Color.clear
+                                    .preference(
+                                        key: CenterIconPositionPreferenceKey.self,
+                                        value: CGPoint(
+                                            x: iconGeometry.frame(in: .global).midX,
+                                            y: iconGeometry.frame(in: .global).midY
+                                        )
+                                    )
+                            }
                         )
                 }
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
@@ -583,9 +607,16 @@ public struct BlackHoleView: View {
                 pulseScale = 1.1
             }
         }
+        .onPreferenceChange(CenterIconPositionPreferenceKey.self) { position in
+            if let position = position, let onCenterPositionChanged = onCenterPositionChanged {
+                onCenterPositionChanged(position)
+            }
+        }
     }
     
-    public init() {}
+    public init(onCenterPositionChanged: ((CGPoint) -> Void)? = nil) {
+        self.onCenterPositionChanged = onCenterPositionChanged
+    }
 }
 
 /**

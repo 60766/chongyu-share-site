@@ -1,0 +1,42 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set password "3Qq123456."
+set server_ip "121.40.184.29"
+set local_file "/Users/lishilong/IOS开发/虫遇/虫遇/backend/server.js"
+set remote_path "/var/www/chongyu-backend/"
+
+puts "🚀 开始部署 server.js 到云服务器..."
+
+# 1. 上传文件
+puts "📤 正在上传文件..."
+spawn scp $local_file root@${server_ip}:${remote_path}
+expect {
+    "password:" {
+        send "$password\r"
+        expect eof
+    }
+    timeout {
+        puts "❌ SCP超时"
+        exit 1
+    }
+}
+
+# 等待一下
+sleep 2
+
+# 2. 重启PM2服务
+puts "🔄 正在重启PM2服务..."
+spawn ssh root@${server_ip} "cd ${remote_path} && pm2 restart chongyu-backend"
+expect {
+    "password:" {
+        send "$password\r"
+        expect eof
+    }
+    timeout {
+        puts "❌ SSH超时"
+        exit 1
+    }
+}
+
+puts "\n✅ 部署完成！服务已重启。"

@@ -3,6 +3,15 @@ import Foundation
 
 // TimeSpaceEffectView 已经在同一个模块中，不需要导入自己的模块
 
+// PreferenceKey用于获取黑洞中心位置
+struct BlackHoleCenterPreferenceKey: PreferenceKey {
+    static var defaultValue: CGPoint? = nil
+    
+    static func reduce(value: inout CGPoint?, nextValue: () -> CGPoint?) {
+        value = nextValue() ?? value
+    }
+}
+
 /**
  * 虫洞探索主视图
  * 包含黑洞视图和创作类型按钮
@@ -13,6 +22,12 @@ public struct WormholeExplorationView: View {
     @State private var isShowingButtons = false
     @State private var isTransitioning = false
     @State private var blackHoleCenterPosition: CGPoint? = nil // 保存黑洞中心位置
+    
+    // 添加环境变量用于关闭视图
+    @Environment(\.dismiss) private var dismiss
+    
+    // 内容生成状态管理器
+    @ObservedObject private var generationStateManager = ContentGenerationStateManager.shared
     
     // 添加搜索状态
     @State private var searchText = ""
@@ -89,21 +104,13 @@ public struct WormholeExplorationView: View {
                 Spacer()
             }
             
-            // 黑洞视图 - 使用GeometryReader获取其中心位置
-            GeometryReader { geometry in
-                BlackHoleView()
+            // 黑洞视图 - 直接使用回调获取黄色图标中心位置
+            BlackHoleView(onCenterPositionChanged: { position in
+                blackHoleCenterPosition = position
+            })
                     .opacity(isShowingButtons && !isShowingSpaceEffect ? 1 : 0)
                     .scaleEffect(isShowingButtons ? 1 : 0.5)
                     .animation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.1), value: isShowingButtons)
-                    .onAppear {
-                        // 计算黑洞中心位置
-                        let centerX = geometry.frame(in: .global).midX
-                        let centerY = geometry.frame(in: .global).midY + geometry.size.height * 0.15 - 290
-                        blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
-                        
-                        print("黑洞中心位置设置为: x=\(centerX), y=\(centerY)")
-                    }
-            }
             .padding(.top, -20) // 向上移动黑洞位置，使其更靠近顶部
             
             // 底部按钮视图
@@ -237,17 +244,30 @@ public struct WormholeExplorationView: View {
                     ) {
                         // 特效完成后的回调
                 
-                        withAnimation {
-                            isTransitioning = false
-                        }
+                        // 获取当前选择的内容类型
+                        let selectedType = typeManager.types[typeManager.selectedIndex]
                         
-                        // 使用Task在异步上下文中调用我们的生成方法
+                        // 触发内容生成状态
+                        generationStateManager.startGenerating(contentType: selectedType)
+                        
+                        // 关闭虫洞探索页面，返回主页
+                        dismiss()
+                        
+                        // 在后台异步生成内容
                         Task {
                             await generateAndAddPosts()
+                            // 生成完成后，更新状态
+                            await MainActor.run {
+                                generationStateManager.finishGenerating()
                         }
+                        }
+                    }
+                    .onAppear {
+                        print("🌀 显示时空效果，中心位置: \(centerPosition)")
                     }
                 } else {
                     // 如果黑洞中心位置不可用，则使用屏幕中心作为特效中心
+                    let _ = print("⚠️ WormholeExplorationView: blackHoleCenterPosition 为 nil，使用默认中心")
                     // 计算默认的屏幕中心位置
                     let screenSize = UIScreen.main.bounds.size
                     let defaultCenter = CGPoint(
@@ -255,20 +275,34 @@ public struct WormholeExplorationView: View {
                         y: screenSize.height / 2 + screenSize.height * 0.25 - 290
                     )
                     
+                    let _ = print("⚠️ 计算的默认中心: x=\(defaultCenter.x), y=\(defaultCenter.y)")
+                    
                     TimeSpaceEffectView(
                         isActive: $isShowingSpaceEffect,
                         centerPosition: defaultCenter
                     ) {
                         // 特效完成后的回调
                 
-                                withAnimation {
-                            isTransitioning = false
-                        }
+                        // 获取当前选择的内容类型
+                        let selectedType = typeManager.types[typeManager.selectedIndex]
                         
-                        // 使用Task在异步上下文中调用我们的生成方法
+                        // 触发内容生成状态
+                        generationStateManager.startGenerating(contentType: selectedType)
+                        
+                        // 关闭虫洞探索页面，返回主页
+                        dismiss()
+                        
+                        // 在后台异步生成内容
                         Task {
                             await generateAndAddPosts()
+                            // 生成完成后，更新状态
+                            await MainActor.run {
+                                generationStateManager.finishGenerating()
                         }
+                        }
+                    }
+                    .onAppear {
+                        print("🌀 显示时空效果，使用默认中心位置: \(defaultCenter)")
                     }
                 }
             }

@@ -30,7 +30,7 @@ struct AppleSignInOnboardingView: View {
             )
             .navigationBarHidden(true)
         }
-        .onChange(of: appleSignInManager.isSignedIn) { isSignedIn in
+        .onChange(of: appleSignInManager.isSignedIn) { _, isSignedIn in
             if isSignedIn {
                 dismiss()
             }

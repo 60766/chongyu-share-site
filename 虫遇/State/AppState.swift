@@ -142,3 +142,37 @@ struct UserStatsModel {
     let collectedHighlights: Int // 点赞收藏数
     let dimensionJumps: Int      // 我的动态数
 } 
+
+// MARK: - 内容生成状态管理器
+/**
+ * 内容生成状态管理器
+ * 管理AI内容生成的状态，用于在主页显示加载动画
+ */
+@MainActor
+class ContentGenerationStateManager: ObservableObject {
+    // 单例
+    static let shared = ContentGenerationStateManager()
+    
+    // 是否正在生成内容
+    @Published var isGenerating: Bool = false
+    
+    // 生成的内容类型名称（用于显示提示文字）
+    @Published var generatingContentType: String = ""
+    
+    private init() {}
+    
+    /// 开始生成内容
+    /// - Parameter contentType: 内容类型名称
+    func startGenerating(contentType: String) {
+        isGenerating = true
+        generatingContentType = contentType
+        print("🎬 开始生成内容: \(contentType)")
+    }
+    
+    /// 结束生成内容
+    func finishGenerating() {
+        isGenerating = false
+        generatingContentType = ""
+        print("✅ 内容生成完成")
+    }
+} 

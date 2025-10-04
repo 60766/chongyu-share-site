@@ -59,17 +59,21 @@ class WalletManager: ObservableObject {
         let activeNames: [Notification.Name] = [.userAccountRestored, .userAccountCreated, .userAccountTokenReplaced]
         activeNames.forEach { name in
             let token = center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in
                 self?.loadBalance()
+                }
             }
             notificationObservers.append(token)
         }
         
         // 退出账号：重置展示状态
         let logout = center.addObserver(forName: .userAccountLogout, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
             guard let self = self else { return }
             self.isLoading = false
             self.balance = 0
             self.showingPurchaseSheet = false
+            }
         }
         notificationObservers.append(logout)
     }

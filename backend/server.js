@@ -27,7 +27,7 @@ dotenv.config()
 
 const app = express()
 app.use(cors())
-app.use(express.json({ limit: '2mb' }))
+app.use(express.json({ limit: '50mb' }))  // 增大限制以支持多图片上传
 app.use(morgan('dev'))
 
 // In-memory store for demo. Replace with persistent DB in production.
@@ -437,6 +437,20 @@ app.post('/api/vision', async (req, res) => {
 
   const { model, messages, max_tokens, temperature, ...rest } = req.body || {}
   
+  // 计算请求中的图片数量（用于调试）
+  let imageCount = 0
+  if (Array.isArray(messages)) {
+    messages.forEach(msg => {
+      if (Array.isArray(msg.content)) {
+        imageCount += msg.content.filter(item => item.type === 'image_url').length
+      }
+    })
+  }
+  
+  // 计算请求体大小
+  const requestBodySize = JSON.stringify(req.body).length
+  console.log(`[Vision API] 📊 请求统计: ${imageCount}张图片, 请求体大小: ${(requestBodySize / 1024 / 1024).toFixed(2)}MB`)
+  
   // 豆包视觉API配置
   const DOUBAO_VISION_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
   const DOUBAO_API_KEY = process.env.DOUBAO_API_KEY || '5ec25df2-f799-4fc0-8ee2-ac13d473131b'
@@ -451,7 +465,8 @@ app.post('/api/vision', async (req, res) => {
   }
 
   try {
-    console.log('[Vision API] 调用豆包视觉API')
+    console.log('[Vision API] 🚀 调用豆包视觉API')
+    const startTime = Date.now()
     
     const visionResp = await axios.post(DOUBAO_VISION_ENDPOINT, payload, {
       headers: {
@@ -489,15 +504,29 @@ app.post('/api/vision', async (req, res) => {
       apiType: 'vision'
     })
 
+    const elapsedTime = Date.now() - startTime
+    
     res.setHeader('X-Usage-Tokens', String(totalTokens))
     res.setHeader('X-Cost-Credits', String(costCredits))
     res.setHeader('X-Balance-After', String(balanceAfter))
     
-    console.log(`[Vision API] 成功处理，消耗${costCredits}积分，剩余${balanceAfter}积分`)
+    console.log(`[Vision API] ✅ 成功处理 (${elapsedTime}ms)，消耗${costCredits}积分，剩余${balanceAfter}积分`)
     res.json(data)
     
   } catch (err) {
-    console.error('[Vision API] 错误:', err.message)
+    const elapsedTime = Date.now() - startTime
+    console.error(`[Vision API] ❌ 错误 (${elapsedTime}ms):`, err.message)
+    
+    // 详细错误日志
+    if (err.response) {
+      console.error(`[Vision API] 豆包API响应状态: ${err.response.status}`)
+      console.error(`[Vision API] 豆包API错误详情:`, JSON.stringify(err.response.data, null, 2))
+    } else if (err.request) {
+      console.error(`[Vision API] 请求发送但没有收到响应`)
+    } else {
+      console.error(`[Vision API] 请求配置错误:`, err.message)
+    }
+    
     const status = err.response?.status || 500
     const body = err.response?.data || { error: 'vision_api_error', message: err.message }
     res.status(status).json(body)

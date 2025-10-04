@@ -190,6 +190,9 @@ struct FullscreenPostDetailView: View {
     // TabBar管理
     @ObservedObject private var tabBarManager = TabBarManager.shared
     
+    // 内容生成状态管理器
+    @ObservedObject private var generationStateManager = ContentGenerationStateManager.shared
+    
     // 环境变量，用于返回导航
     @Environment(\.presentationMode) var presentationMode
     @Environment(\.dismiss) var dismiss
@@ -209,6 +212,9 @@ struct FullscreenPostDetailView: View {
     
     // 自定义时空特效状态
     @State private var showCustomTimeSpaceEffect: Bool = false
+    
+    // 黑洞中心位置状态
+    @State private var blackHoleCenterPosition: CGPoint? = nil
     
     // 添加虫洞共鸣的状态变量
     @State private var selectedSituation: String = "寻找答案"
@@ -1070,7 +1076,9 @@ struct FullscreenPostDetailView: View {
                             .frame(height: UIScreen.main.bounds.height * 0.05)
                         
                         // 黑洞主视觉 - 保持原有高度
-                        BlackHoleView()
+                        BlackHoleView(onCenterPositionChanged: { position in
+                            blackHoleCenterPosition = position
+                        })
                             .environmentObject(CreationTypeManager.shared)
                             .frame(height: UIScreen.main.bounds.height * 0.38)
                             .padding(.bottom, 16)
@@ -1252,46 +1260,6 @@ struct FullscreenPostDetailView: View {
                         // 底部空间，确保布局不贴底
                         Spacer()
                             .frame(minHeight: 0, idealHeight: UIScreen.main.bounds.height * 0.02)
-                    }
-                    
-                    // 右滑指示器 - 仅在开始拖动时显示或短暂提示时显示
-                    if (isDragging && dragOffset > 0 && swipeDirection == .right) || showWormholeSwipeIndicator {
-                        HStack {
-                            // 左侧箭头指示器
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 28, weight: .medium))
-                                .foregroundColor(.white.opacity(0.8))
-                                .padding(12)
-                                .background(Circle().fill(Color.black.opacity(0.3)))
-                                .offset(x: isDragging ? (20 + dragOffset * 0.1) : 20) // 拖动时跟随移动，提示时保持固定
-                                .opacity(isDragging ? min(1.0, dragOffset / 30) : 0.8) // 动态不透明度
-                            
-                            Spacer()
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.leading, 16)
-                        .opacity(showWormholeSwipeIndicator || (isDragging && dragOffset > 10) ? 0.8 : 0)
-                        .animation(.easeOut(duration: 0.2), value: showWormholeSwipeIndicator || isDragging)
-                    }
-                    
-                    // 左滑指示器 - 仅在开始拖动时显示或短暂提示时显示
-                    if (isDragging && dragOffset < 0 && swipeDirection == .left) || showWormholeSwipeIndicator {
-                        HStack {
-                            Spacer()
-                            
-                            // 右侧箭头指示器
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 28, weight: .medium))
-                                .foregroundColor(.white.opacity(0.8))
-                                .padding(12)
-                                .background(Circle().fill(Color.black.opacity(0.3)))
-                                .offset(x: isDragging ? (-20 + dragOffset * 0.1) : -20) // 拖动时跟随移动，提示时保持固定
-                                .opacity(isDragging ? min(1.0, abs(dragOffset) / 30) : 0.8) // 动态不透明度
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.trailing, 16)
-                        .opacity(showWormholeSwipeIndicator || (isDragging && dragOffset < -10) ? 0.8 : 0)
-                        .animation(.easeOut(duration: 0.2), value: showWormholeSwipeIndicator || isDragging)
                     }
                 }
                 .zIndex(300)
@@ -1550,26 +1518,34 @@ struct FullscreenPostDetailView: View {
             // 自定义时空特效覆盖层
             if showCustomTimeSpaceEffect {
                 GeometryReader { geometry in
-                    // 计算黑洞中心位置 - 位于屏幕中央偏上的位置
+                    let centerPosition = blackHoleCenterPosition ?? {
                     let centerX = geometry.size.width / 2
-                    // 向上调整Y轴位置，使特效从随机漫游按钮位置开始
-                    let centerY = geometry.size.height / 2 + geometry.size.height * 0.25 - 290 // 修改为与其他文件一致
-                    let blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
+                        let centerY = geometry.size.height / 2 + geometry.size.height * 0.25 - 290
+                        return CGPoint(x: centerX, y: centerY)
+                    }()
                     
                     // 使用自定义位置的TimeSpaceEffectView
                     TimeSpaceEffectView(
                         isActive: $showCustomTimeSpaceEffect, 
-                        centerPosition: blackHoleCenterPosition
+                        centerPosition: centerPosition
                     ) {
                         // 特效完成后的回调
                         print("⭐️ 时空特效完成，准备生成帖子并返回主页面")
                         
-                        // 获取PostViewModel的实例
-                        let postViewModel = PostViewModel.shared
-                        
                         // 获取选中的创作类型索引
                         let typeIndex = CreationTypeManager.shared.selectedIndex
-                        print("⭐️ 当前选中的创作类型索引: \(typeIndex)")
+                        let contentTypeName = CreationTypeManager.shared.types[typeIndex]
+                        print("⭐️ 当前选中的创作类型: \(contentTypeName)")
+                        
+                        // 触发内容生成状态
+                        generationStateManager.startGenerating(contentType: contentTypeName)
+                        
+                        // 关闭详情页面，返回主页
+                        showAddContentView = false
+                        onDismiss?()
+                        
+                        // 获取PostViewModel的实例
+                        let postViewModel = PostViewModel.shared
                         
                         // 使用Task在异步上下文中生成帖子
                         Task {
@@ -1638,23 +1614,14 @@ struct FullscreenPostDetailView: View {
                                 }
                             }
                             
-                            // 确保0.5秒后关闭虫洞探索页面
+                            // 生成完成后，更新状态
                             await MainActor.run {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                    // 关闭虫洞探索页面
-                                    showAddContentView = false
+                                generationStateManager.finishGenerating()
                                     
                                     // 重置状态
                                     dragOffset = 0
                                     swipeDirection = .none
                                     isTransitioning = false
-                                    
-                                    // 延迟一点调用onDismiss
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                        print("⭐️ 调用onDismiss回调")
-                                        onDismiss?()
-                                    }
-                                }
                             }
                         }
                     }
@@ -1742,38 +1709,6 @@ struct FullscreenPostDetailView: View {
                 tabBarManager.popHideState()
             }
         }
-        // 使用更稳定的滑动指示器实现
-        .overlay(
-            ZStack {
-                // 左侧指示器（向右滑）- 完全平滑过渡
-                HStack {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(12)
-                        .background(Circle().fill(Color.black.opacity(0.15)))
-                        .padding(.leading, 20)
-                    Spacer()
-                }
-                // 关键改进：使用平滑连续的不透明度函数
-                .opacity(max(0, min(dragOffset * 0.01, 0.7)))
-                
-                // 右侧指示器（向左滑）- 完全平滑过渡
-                HStack {
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(12)
-                        .background(Circle().fill(Color.black.opacity(0.15)))
-                        .padding(.trailing, 20)
-                }
-                // 关键改进：使用平滑连续的不透明度函数
-                .opacity(max(0, min(dragOffset * -0.01, 0.7)))
-            }
-            // 无需额外动画，跟随拖动实时更新
-            .opacity(isTransitioning ? 0 : 1)
-        )
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("HistoricalFiguresInvited"))) { notification in
             // 从通知中获取帖子ID
             if let postIdString = notification.userInfo?["postId"] as? String,
@@ -3403,46 +3338,6 @@ struct SituationExpectationView: View {
                 themeColor: Color(red: 0.6, green: 0.3, blue: 0.7), // 更柔和的紫色调
                 centerPosition: centerPosition // 传入黑洞中心点
             )
-            
-            // 使用提示 - 仅在初次显示时出现
-            if showHint {
-                VStack(spacing: 4) {
-                    Text("请从上下环绕的按钮中选择")
-                        .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundColor(.white.opacity(0.8))
-                    
-                    Text("点击按钮即可选择对应选项")
-                        .font(.system(size: 11, weight: .light, design: .rounded))
-                        .foregroundColor(.white.opacity(0.6))
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.black.opacity(0.5))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
-                        )
-                )
-                .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
-                .position(x: centerPosition.x, y: centerPosition.y)
-                .opacity(showHint ? 1 : 0)
-                .onAppear {
-                    // 3秒后自动隐藏提示
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                        withAnimation(.easeOut(duration: 0.5)) {
-                            showHint = false
-                        }
-                    }
-                }
-                // 点击任何地方隐藏提示
-                .onTapGesture {
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        showHint = false
-                    }
-                }
-            }
         }
         // 添加设备方向变化监听
         .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in

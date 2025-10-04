@@ -587,6 +587,9 @@ struct ProfileView: View {
         
         return mainContent
             .onAppear {
+                // 运行图片诊断（调试用）
+                ImageDebugHelper.shared.runFullDiagnostics()
+                
                 // 第一步：立即初始化默认值，确保界面能立即显示
                 initializeCache()
                 
@@ -1923,7 +1926,12 @@ struct ProfileView: View {
     
     // 计算用户帖子 - 简化版本，避免复杂的缓存逻辑
     private var userPosts: [UserPostModel] {
-        postViewModel.posts.filter { $0.source == "user" }
+        let filtered = postViewModel.posts.filter { $0.source == "user" }
+        print("📊 用户帖子数量: \(filtered.count)")
+        for post in filtered {
+            print("  - 帖子 \(post.id): 图片数量 = \(post.images.count), 图片IDs = \(post.images)")
+        }
+        return filtered
     }
     
     // 计算总点赞数 - 简化版本
@@ -3229,6 +3237,10 @@ struct TimeStatItem: View {
 struct UserPostRowView: View {
     let post: UserPostModel
     
+    // 图片查看器状态
+    @State private var showImageViewer = false
+    @State private var selectedImageIndex = 0
+    
     var body: some View {
         HStack(spacing: 12) {
             // 用户头像
@@ -3260,10 +3272,126 @@ struct UserPostRowView: View {
                     .lineLimit(2)
             }
             
-            Spacer()
+            // 显示图片缩略图（如果有图片）
+            if !post.images.isEmpty {
+                postThumbnailView
+                    .onAppear {
+                        print("🖼️ 显示图片缩略图: 数量 = \(post.images.count), IDs = \(post.images)")
+                    }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .fullScreenCover(isPresented: $showImageViewer) {
+            if !post.images.isEmpty {
+                WeChatStyleImageViewer(
+                    images: post.images,
+                    initialIndex: selectedImageIndex,
+                    isPresented: $showImageViewer
+                )
+            }
+        }
+    }
+    
+    // 图片缩略图视图 - 小缩略图
+    private var postThumbnailView: some View {
+        let imageCount = post.images.count
+        let thumbnailSize: CGFloat = 50  // 缩略图尺寸
+        let spacing: CGFloat = 3  // 间距
+        
+        return Group {
+            if imageCount == 1 {
+                // 单张图片：小缩略图
+                imageView(at: 0, size: thumbnailSize)
+            } else if imageCount == 2 {
+                // 两张图片：横向排列
+                HStack(spacing: spacing) {
+                    imageView(at: 0, size: thumbnailSize)
+                    imageView(at: 1, size: thumbnailSize)
+                }
+            } else if imageCount == 3 {
+                // 三张图片：横向排列
+                HStack(spacing: spacing) {
+                    imageView(at: 0, size: thumbnailSize)
+                    imageView(at: 1, size: thumbnailSize)
+                    imageView(at: 2, size: thumbnailSize)
+                }
+            } else {
+                // 四张及以上：2x2 网格
+                VStack(spacing: spacing) {
+                    HStack(spacing: spacing) {
+                        imageView(at: 0, size: thumbnailSize)
+                        imageView(at: 1, size: thumbnailSize)
+                    }
+                    HStack(spacing: spacing) {
+                        imageView(at: 2, size: thumbnailSize)
+                        if imageCount > 4 {
+                            // 显示 +N
+                            ZStack {
+                                imageView(at: 3, size: thumbnailSize)
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.black.opacity(0.65))
+                                Text("+\(imageCount - 4)")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                            .frame(width: thumbnailSize, height: thumbnailSize)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .onTapGesture {
+                                selectedImageIndex = 3
+                                showImageViewer = true
+                            }
+                        } else {
+                            imageView(at: 3, size: thumbnailSize)
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: thumbnailSize * 2 + spacing)  // 限制最大宽度
+    }
+    
+    // 单个图片视图 - 小缩略图
+    private func imageView(at index: Int, size: CGFloat) -> some View {
+        Group {
+            if index < post.images.count {
+                let imageId = post.images[index]
+                if imageId.contains("_image_") {
+                    // 用户上传的图片
+                    PostImageView(
+                        imageId: imageId,
+                        contentMode: .fill,
+                        width: size,
+                        height: size,
+                        cornerRadius: 4
+                    )
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                } else if let uiImage = UIImage(named: imageId) {
+                    // 内置图片资源
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: size, height: size)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                } else {
+                    // 占位图
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.gray.opacity(0.15))
+                        .frame(width: size, height: size)
+                        .overlay(
+                            Image(systemName: "photo")
+                                .font(.system(size: size * 0.3))
+                                .foregroundColor(.gray.opacity(0.5))
+                        )
+                }
+            }
+        }
+        .frame(width: size, height: size)  // 强制限制尺寸
+        .onTapGesture {
+            selectedImageIndex = index
+            showImageViewer = true
+        }
     }
     
     private func timeAgo(from date: Date) -> String {
@@ -3967,6 +4095,8 @@ struct CompactLikeRecordView: View {
 struct UserPostCard: View {
     let post: UserPostModel
     @State private var isExpanded = false
+    @State private var showImageViewer = false
+    @State private var selectedImageIndex = 0
     
     private let collapsedContentLength = 150
     
@@ -4000,6 +4130,12 @@ struct UserPostCard: View {
                     .multilineTextAlignment(.leading)
                     .animation(.easeInOut(duration: 0.25), value: isExpanded)
                 
+                // 图片网格显示
+                if !post.images.isEmpty {
+                    postImagesGrid
+                        .padding(.top, 4)
+                }
+                
                                  // 展开/收起按钮 - 苹果式
                  if shouldShowExpandButton {
                      Button(action: {
@@ -4018,14 +4154,54 @@ struct UserPostCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.ultraThinMaterial)  // 与点赞卡片完全一致的背景
-                .overlay(
+                .fill(.ultraThinMaterial)  // 保持磨砂玻璃底层
+                .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.gray.opacity(0.1), lineWidth: 0.5)
+                        .fill(Color(.systemBackground))
                 )
         )
-        .shadow(color: Color(red: 0.7, green: 0.65, blue: 0.6).opacity(0.15), radius: 6, x: 0, y: 2)
-        .shadow(color: Color(red: 0.8, green: 0.75, blue: 0.7).opacity(0.08), radius: 2, x: 0, y: 1)
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.blue.opacity(0.08),
+                            Color.purple.opacity(0.06),
+                            Color.pink.opacity(0.05),
+                            Color.orange.opacity(0.04)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .allowsHitTesting(false)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.blue.opacity(0.15),
+                            Color.purple.opacity(0.12),
+                            Color.pink.opacity(0.10),
+                            Color.orange.opacity(0.08)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.5
+                )
+                .allowsHitTesting(false)
+        )
+        .shadow(color: Color.blue.opacity(0.08), radius: 3, x: 0, y: 2)
+        .shadow(color: Color.purple.opacity(0.05), radius: 1, x: 0, y: 0.5)
+        .fullScreenCover(isPresented: $showImageViewer) {
+            WeChatStyleImageViewer(
+                images: post.images,
+                initialIndex: selectedImageIndex,
+                isPresented: $showImageViewer
+            )
+        }
     }
     
     // 显示内容
@@ -4046,6 +4222,138 @@ struct UserPostCard: View {
     // 是否显示展开按钮
     private var shouldShowExpandButton: Bool {
         post.content.count > collapsedContentLength
+    }
+    
+    // 图片网格视图 - 微信朋友圈风格
+    private var postImagesGrid: some View {
+        let imageCount = post.images.count
+        let spacing: CGFloat = 4
+        
+        return Group {
+            if imageCount == 1 {
+                // 单张图片 - 使用3列网格的尺寸
+                HStack(spacing: spacing) {
+                    squareImageView(imageId: post.images[0], index: 0, size: calculateGridImageSize(columns: 3, spacing: spacing))
+                    Spacer()
+                }
+            } else if imageCount == 2 {
+                // 两张图片 - 使用3列网格的尺寸
+                HStack(spacing: spacing) {
+                    ForEach(0..<2, id: \.self) { index in
+                        squareImageView(imageId: post.images[index], index: index, size: calculateGridImageSize(columns: 3, spacing: spacing))
+                    }
+                    Spacer()
+                }
+            } else if imageCount == 3 {
+                // 三张图片 - 横向排列，正方形
+                HStack(spacing: spacing) {
+                    ForEach(0..<3, id: \.self) { index in
+                        squareImageView(imageId: post.images[index], index: index, size: calculateGridImageSize(columns: 3, spacing: spacing))
+                    }
+                }
+            } else if imageCount == 4 {
+                // 四张图片 - 2x2网格
+                VStack(spacing: spacing) {
+                    HStack(spacing: spacing) {
+                        squareImageView(imageId: post.images[0], index: 0, size: calculateGridImageSize(columns: 2, spacing: spacing))
+                        squareImageView(imageId: post.images[1], index: 1, size: calculateGridImageSize(columns: 2, spacing: spacing))
+                    }
+                    HStack(spacing: spacing) {
+                        squareImageView(imageId: post.images[2], index: 2, size: calculateGridImageSize(columns: 2, spacing: spacing))
+                        squareImageView(imageId: post.images[3], index: 3, size: calculateGridImageSize(columns: 2, spacing: spacing))
+                    }
+                }
+            } else if imageCount >= 5 {
+                // 五张及以上 - 3列网格，最多显示9张
+                let rows = min(Int(ceil(Double(min(imageCount, 9)) / 3.0)), 3)
+                VStack(spacing: spacing) {
+                    ForEach(0..<rows, id: \.self) { row in
+                        HStack(spacing: spacing) {
+                            ForEach(0..<3, id: \.self) { col in
+                                let index = row * 3 + col
+                                if index < min(imageCount, 9) {
+                                    ZStack(alignment: .bottomTrailing) {
+                                        squareImageView(imageId: post.images[index], index: index, size: calculateGridImageSize(columns: 3, spacing: spacing))
+                                        
+                                        // 如果是第9张图片且还有更多图片，显示"+N"标记
+                                        if index == 8 && imageCount > 9 {
+                                            RoundedRectangle(cornerRadius: 3)
+                                                .fill(Color.black.opacity(0.6))
+                                                .overlay(
+                                                    Text("+\(imageCount - 9)")
+                                                        .font(.system(size: 14, weight: .semibold))
+                                                        .foregroundColor(.white)
+                                                )
+                                                .frame(width: calculateGridImageSize(columns: 3, spacing: spacing), height: calculateGridImageSize(columns: 3, spacing: spacing))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Color.clear
+            }
+        }
+    }
+    
+    // 计算网格图片尺寸
+    private func calculateGridImageSize(columns: Int, spacing: CGFloat) -> CGFloat {
+        // 可用宽度 = 屏幕宽度 - 卡片左右内边距(20*2) - 卡片外部左右边距(14*2)
+        let availableWidth = UIScreen.main.bounds.width - 40 - 28
+        let totalSpacing = spacing * CGFloat(columns - 1)
+        return (availableWidth - totalSpacing) / CGFloat(columns)
+    }
+    
+    // 正方形图片视图
+    private func squareImageView(imageId: String, index: Int, size: CGFloat) -> some View {
+        PostImageView(
+            imageId: imageId,
+            contentMode: .fill,
+            width: size,
+            height: size,
+            cornerRadius: 3
+        )
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: 3))
+        .overlay(
+            RoundedRectangle(cornerRadius: 3)
+                .stroke(Color(.systemGray6), lineWidth: 0.5)
+        )
+        .onTapGesture {
+            selectedImageIndex = index
+            showImageViewer = true
+        }
+    }
+    
+    // 单张图片视图
+    private func singleImageView(imageId: String, index: Int) -> some View {
+        GeometryReader { geometry in
+            PostImageView(
+                imageId: imageId,
+                contentMode: .fit,
+                width: geometry.size.width,
+                height: min(calculateSingleImageHeight(imageId: imageId, maxWidth: geometry.size.width), 400),
+                cornerRadius: 8
+            )
+        }
+        .frame(height: 240)
+        .clipped()
+        .onTapGesture {
+            selectedImageIndex = index
+            showImageViewer = true
+        }
+    }
+    
+    // 计算单张图片高度
+    private func calculateSingleImageHeight(imageId: String, maxWidth: CGFloat) -> CGFloat {
+        guard let image = ImageManager.shared.getImage(withId: imageId) else {
+            return 240
+        }
+        let aspectRatio = image.size.height / image.size.width
+        let calculatedHeight = maxWidth * aspectRatio
+        return min(max(calculatedHeight, 120), 400)
     }
     
     // 苹果式时间格式化函数
@@ -4069,6 +4377,13 @@ struct UserPostCard: View {
         } else {
             return "刚刚"
         }
+    }
+}
+
+// MARK: - Array Safe Subscript Extension
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        return indices.contains(index) ? self[index] : nil
     }
 }
 

@@ -111,8 +111,11 @@ struct TimeSpaceEffectView: View {
             // 计算中心位置 - 使用提供的中心点或默认为屏幕中心
             let center = centerPosition ?? CGPoint(
                 x: geometry.size.width / 2,
-                y: geometry.size.height / 2 + geometry.size.height * 0.25 - 290 // 将偏移量调整为-290
+                y: geometry.size.height / 2
             )
+            
+            // 强制使用传入的中心点位置，不要使用默认值
+            let actualCenter = centerPosition ?? center
             
             ZStack {
                 // 黑色背景层 - 改为半透明
@@ -127,11 +130,11 @@ struct TimeSpaceEffectView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     // 中心爆发光点 - 更精细的渐变
-                    centerExplosionLight(center: center)
+                    centerExplosionLight(center: actualCenter)
                     
                     // 扩散环 - 多层次同心圆扩散带有Z轴运动感
                     ForEach(0..<5, id: \.self) { index in
-                        diffusionRing(index: index, center: center, screenWidth: geometry.size.width)
+                        diffusionRing(index: index, center: actualCenter, screenWidth: geometry.size.width)
                     }
                     
                     // 初始星星 - 随机大小和亮度，增加深度感
@@ -142,8 +145,8 @@ struct TimeSpaceEffectView: View {
                         let y = CGFloat.random(in: 0...geometry.size.height)
                         
                         // 计算到中心的距离，影响视差效果
-                        let distanceX = x - center.x
-                        let distanceY = y - center.y
+                        let distanceX = x - actualCenter.x
+                        let distanceY = y - actualCenter.y
                         let distance = sqrt(distanceX * distanceX + distanceY * distanceY)
                         let parallaxFactor = max(0.4, min(1.0, distance / (geometry.size.width / 2))) * 0.15
                         
@@ -164,7 +167,7 @@ struct TimeSpaceEffectView: View {
                         let scaleFactor = max(0.05, tunnelScale - (tunnelDepth * Double(index) / 10))
                         let rotationFactor = tunnelRotation * (1.0 - Double(index) * 0.08) // 不同层的旋转速度不同
                         
-                        tunnelLayer(index: index, center: center, screenWidth: geometry.size.width, scaleFactor: scaleFactor, rotationFactor: rotationFactor)
+                        tunnelLayer(index: index, center: actualCenter, screenWidth: geometry.size.width, scaleFactor: scaleFactor, rotationFactor: rotationFactor)
                     }
                     
                     // 隧道星光粒子 - 动态移动创造穿越感
@@ -179,7 +182,7 @@ struct TimeSpaceEffectView: View {
                         let angle = Double.random(in: 0...2*Double.pi)
                         
                         tunnelStarParticle(
-                            center: center, 
+                            center: actualCenter, 
                             size: size, 
                             radialPosition: radialPosition, 
                             angle: angle, 
@@ -188,7 +191,7 @@ struct TimeSpaceEffectView: View {
                     }
                     
                     // 隧道中心光芒 - 动态脉动创造能量汇聚感
-                    tunnelCenterBeam(center: center)
+                    tunnelCenterBeam(center: actualCenter)
                 }
                 
                 // =============== 阶段3: 虫洞爆发动画 (1.7-2.2秒) ===============
@@ -206,7 +209,7 @@ struct TimeSpaceEffectView: View {
                     //     
                     //     radiatingRay(
                     //         index: index, 
-                    //         center: center, 
+                    //         center: actualCenter, 
                     //         angle: angle, 
                     //         length: length
                     //     )
@@ -228,8 +231,8 @@ struct TimeSpaceEffectView: View {
                         let y = CGFloat.random(in: 0...geometry.size.height)
                         
                         // 距离中心的距离，影响消失速度
-                        let distanceX = x - center.x
-                        let distanceY = y - center.y
+                        let distanceX = x - actualCenter.x
+                        let distanceY = y - actualCenter.y
                         let distance = sqrt(distanceX * distanceX + distanceY * distanceY)
                         let maxDistance = sqrt(geometry.size.width * geometry.size.width + 
                                               geometry.size.height * geometry.size.height) / 2
@@ -251,7 +254,7 @@ struct TimeSpaceEffectView: View {
                     ExplorationStatusView(stage: currentExplorationStage)
                         .opacity(explorationPromptOpacity)
                         .animation(.easeInOut(duration: 0.3), value: explorationPromptOpacity)
-                        .position(center)
+                        .position(actualCenter)
                 }
             }
             .onChange(of: isActive) { _, newValue in

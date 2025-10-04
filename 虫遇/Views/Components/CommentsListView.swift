@@ -1417,7 +1417,7 @@ struct CommentItemView: View {
                                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                                         .font(.system(size: 10))
                                 }
-                                .foregroundColor(isExpanded ? .gray.opacity(0.8) : .blue.opacity(0.9))
+                                .foregroundColor(isExpanded ? .gray.opacity(0.8) : Color(red: 0.65, green: 0.5, blue: 0.95).opacity(0.9))
                             }
                             .buttonStyle(PlainButtonStyle())
                             .padding(.vertical, 4) // 从6减小到4
@@ -1565,7 +1565,7 @@ struct WormholeWaveView: View {
         HStack(spacing: 6) { // 减小点点之间的间距
             ForEach(0..<3) { index in
                 Circle()
-                    .fill(Color(.systemGray3))
+                    .fill(Color(red: 0.65, green: 0.5, blue: 0.95))
                     .frame(width: 5, height: 5)
                     .scaleEffect(isAnimating ? 1.4 : 1.0)
                     .opacity(isAnimating ? 1.0 : 0.6)

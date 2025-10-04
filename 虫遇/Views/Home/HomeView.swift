@@ -887,6 +887,9 @@ struct HomeView: View {
     // TabBar管理器
     @ObservedObject private var tabBarManager = TabBarManager.shared
     
+    // 内容生成状态管理器
+    @ObservedObject private var generationStateManager = ContentGenerationStateManager.shared
+    
     // 通知管理器
     @StateObject private var notificationManager: HomeViewNotificationManager
     
@@ -1333,6 +1336,17 @@ struct HomeView: View {
         ScrollView {
             // 使用LazyVStack提高性能
             LazyVStack(spacing: 0) {
+                // AI内容生成加载状态 - 在帖子列表上方显示
+                if generationStateManager.isGenerating {
+                    HStack {
+                        ThreeDotsLoadingView()
+                            .padding(.vertical, 6)
+                            .padding(.leading, 16)
+                        Spacer()
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+                
                 // 帖子列表
                 ForEach(Array(postViewModel.posts.enumerated()), id: \.element.id) { index, post in
                     postCardView(for: post, at: index)

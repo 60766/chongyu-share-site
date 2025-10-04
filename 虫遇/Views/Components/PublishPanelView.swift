@@ -885,12 +885,20 @@ struct PublishPanelView: View {
             }
         }
         
-        // 如果有图片，直接调用豆包视觉API生成评论
+        // 🎯 关键优化：不管有没有图片，都先立即创建并显示帖子
+        // 这样用户就能立即看到自己发布的内容，不会感到卡顿
+        print("📝 立即创建帖子对象，图片数量: \(postData.images.count)")
+        createUserPostWithContent(postData, imageIdentifiers: imageIdentifiers, imageDescription: nil, comments: comments, completion: completion)
+        
+        // 如果有图片，异步调用豆包视觉API生成评论，完成后动态更新
         if !postData.images.isEmpty {
-            print("📸 检测到\(postData.images.count)张图片，直接用豆包生成评论...")
+            print("📸 检测到\(postData.images.count)张图片，异步调用豆包生成评论...")
             
             // 获取要评论的角色列表
             let selectedCharacterIDs = selectCharactersForResponse()
+            
+            // 保存帖子ID，用于后续更新
+            let postId = UUID(uuidString: postData.id) ?? UUID()
             
             DoubaoVisionService.shared.analyzeImagesAndGenerateComments(
                 postData.images,
@@ -901,12 +909,29 @@ struct PublishPanelView: View {
                 receiveCompletion: { completionResult in
                     if case .failure(let error) = completionResult {
                         print("❌ 豆包视觉API调用失败: \(error.localizedDescription)")
-                        // 失败时创建帖子，但不生成评论
-                        self.createUserPostWithContent(postData, imageIdentifiers: imageIdentifiers, imageDescription: nil, comments: comments, completion: completion)
+                        print("❌ 错误详情: \(error)")
+                        
+                        // 在主线程显示错误提示
+                        DispatchQueue.main.async {
+                            // 显示轻量级的通知，不打断用户体验
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ShowToast"),
+                                object: nil,
+                                userInfo: ["message": "AI评论生成失败，请检查网络连接"]
+                            )
+                        }
+                    } else {
+                        print("✅ 豆包视觉API调用完成")
                     }
                 },
                 receiveValue: { commentsMap in
-                    print("✅ 豆包直接生成了\(commentsMap.count)条评论")
+                    print("✅ 豆包生成了\(commentsMap.count)条评论，准备更新帖子...")
+                    
+                    // 🎯 处理角色点赞（基于AI的点赞判断）
+                    DoubaoVisionService.shared.processCharacterLikes(
+                        for: postId.uuidString,
+                        postContent: postData.content
+                    )
                     
                     // 将豆包生成的评论转换为DetailedCommentModel
                     var generatedComments: [DetailedCommentModel] = []
@@ -931,14 +956,37 @@ struct PublishPanelView: View {
                         generatedComments.append(comment)
                     }
                     
-                    // 创建包含豆包生成评论的帖子
-                    self.createUserPostWithContent(postData, imageIdentifiers: imageIdentifiers, imageDescription: nil, comments: generatedComments, completion: completion)
+                    // 🎯 异步更新帖子的评论
+                    DispatchQueue.main.async {
+                        // 找到这个帖子并更新评论
+                        if let index = PostViewModel.shared.posts.firstIndex(where: { $0.id == postId }) {
+                            PostViewModel.shared.posts[index].comments.append(contentsOf: generatedComments)
+                            print("🎨 已动态添加\(generatedComments.count)条评论到帖子")
+                            
+                            // 发送通知刷新UI
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("PostCommentsUpdated"),
+                                object: nil,
+                                userInfo: ["postID": postId.uuidString]
+                            )
+                            
+                            // 发送评论生成通知
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("CommentsGenerated"),
+                                object: nil,
+                                userInfo: [
+                                    "postID": postId.uuidString,
+                                    "commentsMap": commentsMap,
+                                    "isInvited": false
+                                ]
+                            )
+                        } else {
+                            print("⚠️ 找不到帖子ID: \(postId)，无法更新评论")
+                        }
+                    }
                 }
             )
             .store(in: &cancellables)
-        } else {
-            // 没有图片，直接创建帖子
-            createUserPostWithContent(postData, imageIdentifiers: imageIdentifiers, imageDescription: nil, comments: comments, completion: completion)
         }
     }
     

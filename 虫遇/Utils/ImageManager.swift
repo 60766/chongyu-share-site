@@ -58,13 +58,15 @@ class ImageManager {
         if let imageData = processedImage.jpegData(compressionQuality: 0.8) {
             do {
                 try imageData.write(to: imagePath)
+                print("✅ 图片保存成功: \(id), 路径: \(imagePath.path)")
                 return true
             } catch {
-                print("保存图片失败: \(error)")
+                print("❌ 保存图片失败: \(error), ID: \(id)")
                 return false
             }
         }
         
+        print("❌ 无法生成图片数据: \(id)")
         return false
     }
     
@@ -76,11 +78,13 @@ class ImageManager {
     func getImage(withId id: String) -> UIImage? {
         // 先从缓存中查找
         if let cachedImage = imageCache.object(forKey: id as NSString) {
+            print("✅ 从缓存加载图片: \(id)")
             return cachedImage
         }
         
         // 如果缓存中没有，从文件系统加载
         guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            print("❌ 无法访问文档目录")
             return nil
         }
         
@@ -88,12 +92,18 @@ class ImageManager {
         
         // 检查文件是否存在
         if FileManager.default.fileExists(atPath: imagePath.path) {
+            print("📁 找到图片文件: \(imagePath.path)")
             if let imageData = try? Data(contentsOf: imagePath),
                let image = UIImage(data: imageData) {
                 // 加载成功后缓存图片
                 imageCache.setObject(image, forKey: id as NSString)
+                print("✅ 成功加载图片: \(id)")
                 return image
+            } else {
+                print("❌ 无法解码图片数据: \(id)")
             }
+        } else {
+            print("❌ 图片文件不存在: \(imagePath.path)")
         }
         
         return nil
@@ -198,9 +208,8 @@ struct PostImageView: View {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
-                    .frame(width: width, height: height)
+                    .clipped()
                     .cornerRadius(cornerRadius)
-                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                     .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
                     .overlay(
                         RoundedRectangle(cornerRadius: cornerRadius)
@@ -211,7 +220,6 @@ struct PostImageView: View {
                 ZStack {
                     Rectangle()
                         .fill(Color.gray.opacity(0.1))
-                        .frame(width: width, height: height)
                         .cornerRadius(cornerRadius)
                         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                         .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
@@ -229,7 +237,6 @@ struct PostImageView: View {
                 ZStack {
                     Rectangle()
                         .fill(Color.gray.opacity(0.1))
-                        .frame(width: width, height: height)
                         .cornerRadius(cornerRadius)
                         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                         .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
@@ -250,12 +257,14 @@ struct PostImageView: View {
                 }
             }
         }
+        .frame(width: width, height: height)
         .onAppear {
             loadImage()
         }
     }
     
     private func loadImage() {
+        print("🔍 PostImageView 开始加载图片: \(imageId)")
         isLoading = true
         
         // 在后台线程加载图片
@@ -266,6 +275,12 @@ struct PostImageView: View {
             DispatchQueue.main.async {
                 self.image = loadedImage
                 self.isLoading = false
+                
+                if loadedImage != nil {
+                    print("✅ PostImageView 成功加载图片: \(imageId)")
+                } else {
+                    print("❌ PostImageView 加载图片失败: \(imageId)")
+                }
             }
         }
     }
