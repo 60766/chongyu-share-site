@@ -387,16 +387,19 @@ class DoubaoVisionService {
         // 根据图片数量动态调整压缩质量
         let compressionQuality: CGFloat = images.count > 6 ? 0.6 : 0.8
         
-        // 添加图片
+        // ⚡️ 关键优化：使用自动释放池，避免内存峰值
+        // 在处理多张图片时，每张图片的临时对象会立即释放
         for image in images {
-            if let base64String = convertImageToBase64(image, compressionQuality: compressionQuality) {
-                let imageContent: [String: Any] = [
-                    "type": "image_url",
-                    "image_url": [
-                        "url": "data:image/jpeg;base64,\(base64String)"
+            autoreleasepool {
+                if let base64String = convertImageToBase64(image, compressionQuality: compressionQuality) {
+                    let imageContent: [String: Any] = [
+                        "type": "image_url",
+                        "image_url": [
+                            "url": "data:image/jpeg;base64,\(base64String)"
+                        ]
                     ]
-                ]
-                contentArray.append(imageContent)
+                    contentArray.append(imageContent)
+                }
             }
         }
         
@@ -430,18 +433,32 @@ class DoubaoVisionService {
      * @return Base64字符串
      */
     private func convertImageToBase64(_ image: UIImage, compressionQuality: CGFloat = 0.8) -> String? {
-        // 压缩图片以减少数据大小
+        // ⚡️ 关键优化：直接使用原图，避免二次resize
+        // ImageManager已经将图片resize到1080px，这里不需要再次resize
+        // 只需要压缩成JPEG即可
+        
         let maxSize: CGFloat = 1024
-        let resizedImage = resizeImage(image, maxSize: maxSize)
+        let imageSize = max(image.size.width, image.size.height)
+        
+        // 只有当图片确实大于1024时才resize，否则直接使用
+        let processedImage: UIImage
+        if imageSize > maxSize {
+            processedImage = resizeImage(image, maxSize: maxSize)
+        } else {
+            processedImage = image
+        }
         
         // 转换为JPEG格式，使用指定的压缩质量
-        guard let imageData = resizedImage.jpegData(compressionQuality: compressionQuality) else {
+        guard let imageData = processedImage.jpegData(compressionQuality: compressionQuality) else {
             print("❌ 无法将图片转换为JPEG数据")
             return nil
         }
         
         print("📦 图片压缩质量: \(compressionQuality), 数据大小: \(imageData.count / 1024)KB")
-        return imageData.base64EncodedString()
+        
+        // ⚡️ 关键优化：base64编码后立即释放imageData引用
+        let base64String = imageData.base64EncodedString()
+        return base64String
     }
     
     /**
@@ -462,13 +479,14 @@ class DoubaoVisionService {
         let ratio = min(maxSize / size.width, maxSize / size.height)
         let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
         
-        // 创建新的图片
-        UIGraphicsBeginImageContextWithOptions(newSize, false, 0)
-        image.draw(in: CGRect(origin: .zero, size: newSize))
-        let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
+        // ⚡️ 关键优化：使用UIGraphicsImageRenderer替代UIGraphicsBeginImageContextWithOptions
+        // UIGraphicsImageRenderer在iOS 10+性能更好，内存管理更优
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resizedImage = renderer.image { context in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
         
-        return resizedImage ?? image
+        return resizedImage
     }
     
     /**

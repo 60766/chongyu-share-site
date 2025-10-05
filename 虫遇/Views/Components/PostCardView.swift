@@ -701,6 +701,11 @@ struct PostCardView: View {
     
     // 计算属性：判断是否为用户发布的动态
     private var isUserPost: Bool {
+        // 🔧 修复：如果帖子有characterID，说明是AI角色发布的，不是用户发布的
+        if let characterID = post.characterID, !characterID.isEmpty {
+            return false
+        }
+        
         // 获取所有虚拟角色名称
         let allCharacterNames = CharacterDataManager.shared.getAllCharactersInfo().map { $0.name }
         // 不是虚拟角色且不是AI助手或虫遇小助手的动态，认为是用户发布的

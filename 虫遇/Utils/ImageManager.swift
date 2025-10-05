@@ -26,48 +26,52 @@ class ImageManager {
      * @return 是否保存成功
      */
     func saveImage(_ image: UIImage, withId id: String) -> Bool {
-        // 处理图片 - 压缩大图片
-        let processedImage = processImage(image)
-        
-        // 缓存图片
-        imageCache.setObject(processedImage, forKey: id as NSString)
-        
-        // 获取文档目录路径
-        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            print("无法访问文档目录")
+        // ⚡️ 关键优化：使用自动释放池包裹整个图片处理过程
+        // 确保临时对象立即释放，避免内存累积
+        return autoreleasepool {
+            // 处理图片 - 压缩大图片
+            let processedImage = processImage(image)
+            
+            // 缓存图片
+            imageCache.setObject(processedImage, forKey: id as NSString)
+            
+            // 获取文档目录路径
+            guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                print("无法访问文档目录")
+                return false
+            }
+            
+            // 创建图片目录
+            let imageDirectory = documentsDirectory.appendingPathComponent("PostImages")
+            
+            // 如果目录不存在，创建目录
+            if !FileManager.default.fileExists(atPath: imageDirectory.path) {
+                do {
+                    try FileManager.default.createDirectory(at: imageDirectory, withIntermediateDirectories: true)
+                } catch {
+                    print("创建图片目录失败: \(error)")
+                    return false
+                }
+            }
+            
+            // 创建图片文件路径
+            let imagePath = imageDirectory.appendingPathComponent("\(id).jpg")
+            
+            // 将图片保存为JPEG格式
+            if let imageData = processedImage.jpegData(compressionQuality: 0.8) {
+                do {
+                    try imageData.write(to: imagePath)
+                    print("✅ 图片保存成功: \(id), 路径: \(imagePath.path)")
+                    return true
+                } catch {
+                    print("❌ 保存图片失败: \(error), ID: \(id)")
+                    return false
+                }
+            }
+            
+            print("❌ 无法生成图片数据: \(id)")
             return false
         }
-        
-        // 创建图片目录
-        let imageDirectory = documentsDirectory.appendingPathComponent("PostImages")
-        
-        // 如果目录不存在，创建目录
-        if !FileManager.default.fileExists(atPath: imageDirectory.path) {
-            do {
-                try FileManager.default.createDirectory(at: imageDirectory, withIntermediateDirectories: true)
-            } catch {
-                print("创建图片目录失败: \(error)")
-                return false
-            }
-        }
-        
-        // 创建图片文件路径
-        let imagePath = imageDirectory.appendingPathComponent("\(id).jpg")
-        
-        // 将图片保存为JPEG格式
-        if let imageData = processedImage.jpegData(compressionQuality: 0.8) {
-            do {
-                try imageData.write(to: imagePath)
-                print("✅ 图片保存成功: \(id), 路径: \(imagePath.path)")
-                return true
-            } catch {
-                print("❌ 保存图片失败: \(error), ID: \(id)")
-                return false
-            }
-        }
-        
-        print("❌ 无法生成图片数据: \(id)")
-        return false
     }
     
     /**
@@ -147,11 +151,12 @@ class ImageManager {
             newSize = CGSize(width: originalSize.width * ratio, height: targetSize)
         }
         
-        // 渲染新图片
-        UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
-        image.draw(in: CGRect(origin: .zero, size: newSize))
-        let newImage = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
+        // ⚡️ 关键优化：使用UIGraphicsImageRenderer替代UIGraphicsBeginImageContextWithOptions
+        // 更好的内存管理和性能
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let newImage = renderer.image { context in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
         
         return newImage
     }
@@ -200,6 +205,7 @@ struct PostImageView: View {
     
     @State private var image: UIImage? = nil
     @State private var isLoading = true
+    @State private var hasLoadedOnce = false  // ⚡️ 防止重复加载
     
     var body: some View {
         ZStack {
@@ -259,11 +265,18 @@ struct PostImageView: View {
         }
         .frame(width: width, height: height)
         .onAppear {
-            loadImage()
+            // ⚡️ 关键修复：防止onAppear重复触发时重新加载
+            if !hasLoadedOnce {
+                loadImage()
+            }
         }
     }
     
     private func loadImage() {
+        // ⚡️ 关键修复：双重检查，确保不会重复加载
+        guard !hasLoadedOnce else { return }
+        hasLoadedOnce = true
+        
         print("🔍 PostImageView 开始加载图片: \(imageId)")
         isLoading = true
         

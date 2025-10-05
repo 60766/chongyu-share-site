@@ -967,23 +967,23 @@ struct HomeView: View {
                                     // 查看全部按钮
                                     Button(action: {
                                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                            showCharacterPicker = true
+showCharacterPicker = true
                                         }
                                     }) {
                                         VStack(spacing: 4) {
                                             ZStack {
                                                 Circle()
-                                                    .fill(Color(red: 220/255, green: 230/255, blue: 250/255))
+                                                    .fill(Color.primaryColor.opacity(0.15))
                                                     .frame(width: 48, height: 48)
                                                 
                                                 Image(systemName: "ellipsis")
                                                     .font(.system(size: 18))
-                                                    .foregroundColor(Color(red: 80/255, green: 120/255, blue: 210/255))
+                                                    .foregroundColor(Color.primaryColor)
                                             }
                                             
                                             Text("查看全部")
                                                 .font(.system(size: 12))
-                                                .foregroundColor(Color(red: 80/255, green: 100/255, blue: 180/255))
+                                                .foregroundColor(Color.warmTextSecondary)
                                         }
                                         .frame(width: 50)
                                     }
@@ -1337,23 +1337,31 @@ struct HomeView: View {
             // 使用LazyVStack提高性能
             LazyVStack(spacing: 0) {
                 // AI内容生成加载状态 - 在帖子列表上方显示
-                if generationStateManager.isGenerating {
-                    HStack {
+                // 支持两种生成方式：虫洞探索和一键探索
+                if generationStateManager.isGenerating || isGeneratingPosts {
+                    HStack(spacing: 12) {
                         ThreeDotsLoadingView()
-                            .padding(.vertical, 6)
-                            .padding(.leading, 16)
+                        
+                        Text(generationStateManager.isGenerating 
+                             ? "探索\(generationStateManager.generatingContentType)中..."
+                             : "一键探索中...")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(Color(red: 0.65, green: 0.5, blue: 0.95).opacity(0.6))
+                        
                         Spacer()
                     }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
                 
                 // 帖子列表
                 ForEach(Array(postViewModel.posts.enumerated()), id: \.element.id) { index, post in
                     postCardView(for: post, at: index)
-                        // 移除强制刷新ID，让SwiftUI自然管理视图更新
-                        // .id("\(post.id)_\(forceRefreshID)")
+                        // ⚠️ 关键修复：不要给ForEach或单个卡片添加.id()修饰符
+                        // 让SwiftUI根据帖子的真实ID自然管理视图生命周期
+                        // 这样可以避免一键生成时重复加载所有老帖子的图片
                 }
-                .id("\(postViewModel.posts.count)") // 只依赖帖子数量变化
                 
                 // 如果列表为空，显示加载提示
                 if postViewModel.posts.isEmpty {

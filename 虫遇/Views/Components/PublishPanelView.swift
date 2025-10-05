@@ -602,6 +602,10 @@ struct PublishPanelView: View {
         let characterProbabilitiesToPublish = getProbabilityDict()
         let publishModeToPublish = publishMode
         
+        // ⚡️ 关键优化：立即清空图片数组，释放内存
+        // 图片已经被复制到imagesToPublish，可以安全清空
+        selectedImages = []
+        
         // 立即关闭发布面板并收起键盘，给用户即时反馈
         withAnimation(.easeOut(duration: 0.05)) {
             isVisible = false
@@ -869,19 +873,22 @@ struct PublishPanelView: View {
         // 创建用户帖子时不包含任何预设评论，等待AI生成
         let comments: [DetailedCommentModel] = []
         
+        // ⚡️ 关键优化：使用自动释放池处理图片数组
         // 处理图片 - 将UIImage转换为图片URL或标识符
         var imageIdentifiers: [String] = []
         for (index, image) in postData.images.enumerated() {
-            // 生成唯一图片标识符
-            let imageId = "\(postData.id)_image_\(index)"
-            
-            // 先添加占位符，异步保存图片
-            imageIdentifiers.append(imageId)
-            
-            // 异步保存图片，不阻塞UI
-            DispatchQueue.global(qos: .utility).async {
-                _ = self.saveImage(image, withId: imageId)
-                // 图片保存成功，静默处理
+            autoreleasepool {
+                // 生成唯一图片标识符
+                let imageId = "\(postData.id)_image_\(index)"
+                
+                // 先添加占位符，异步保存图片
+                imageIdentifiers.append(imageId)
+                
+                // 异步保存图片，不阻塞UI
+                DispatchQueue.global(qos: .utility).async {
+                    _ = self.saveImage(image, withId: imageId)
+                    // 图片保存成功，静默处理
+                }
             }
         }
         
