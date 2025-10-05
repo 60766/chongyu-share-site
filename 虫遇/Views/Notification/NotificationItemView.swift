@@ -51,8 +51,8 @@ struct NotificationItemView: View {
             }
         }
         .background(cardBackground)
-        .shadow(color: .black.opacity(0.08), radius: 3, x: 0, y: 2)
-        .shadow(color: .black.opacity(0.04), radius: 1, x: 0, y: 0.5)
+        .shadow(color: cardShadowColor1, radius: 3, x: 0, y: 2)
+        .shadow(color: cardShadowColor2, radius: 1, x: 0, y: 0.5)
         .padding(.horizontal, 14)
         .padding(.vertical, notification.type == .like ? 4 : 6) // 增大卡片间距
         // 使用标准的全屏覆盖来显示帖子详情页
@@ -392,14 +392,122 @@ struct NotificationItemView: View {
         )
     }
     
-    // 卡片背景 - 使用和今日互动卡片一样的白色背景
+    // 卡片背景 - 根据通知类型使用不同的渐变背景
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color(.systemBackground))
+            .fill(cardGradient)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color(.systemBackground))
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.gray.opacity(0.06), lineWidth: 0.5)
+                    .stroke(cardBorderGradient, lineWidth: 0.5)
             )
+    }
+    
+    // 卡片渐变背景
+    private var cardGradient: LinearGradient {
+        switch notification.type {
+        case .like:
+            // 点赞通知 - 更纯粹的玫瑰金渐变（左侧更浓）
+            return LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(hex: "FFD6E8").opacity(0.50),  // 淡玫瑰粉（左侧更纯）
+                    Color(hex: "FFE5EC").opacity(0.35),  // 非常淡的玫瑰粉
+                    Color(hex: "FFF0F5").opacity(0.22),  // 薰衣草腮红
+                    Color.white.opacity(0.12)            // 纯白（右侧更淡）
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .comment:
+            // 评论通知 - 清新蓝紫色系
+            return LinearGradient(
+                gradient: Gradient(colors: [
+                    Color.blue.opacity(0.08),
+                    Color.purple.opacity(0.06),
+                    Color(hex: "E0C3FC").opacity(0.05),  // 淡紫色
+                    Color(hex: "D4F1F4").opacity(0.04)   // 淡蓝色
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        default:
+            // 其他通知类型 - 保持简洁
+            return LinearGradient(
+                gradient: Gradient(colors: [
+                    Color.warmAccentSecondary.opacity(0.04),
+                    Color.warmAccentSecondary.opacity(0.04)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+    
+    // 卡片边框渐变
+    private var cardBorderGradient: LinearGradient {
+        switch notification.type {
+        case .like:
+            // 点赞通知 - 更明显的玫瑰金边框
+            return LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(hex: "FFB6D9").opacity(0.35),  // 玫瑰粉（增强）
+                    Color(hex: "FFD6E8").opacity(0.30),  // 淡玫瑰粉（增强）
+                    Color(hex: "FFE5EC").opacity(0.25),  // 更淡的玫瑰粉（增强）
+                    Color(hex: "FFF0F5").opacity(0.20)   // 薰衣草腮红（增强）
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .comment:
+            // 评论通知 - 蓝紫色边框
+            return LinearGradient(
+                gradient: Gradient(colors: [
+                    Color.blue.opacity(0.15),
+                    Color.purple.opacity(0.12),
+                    Color(hex: "E0C3FC").opacity(0.10),
+                    Color(hex: "D4F1F4").opacity(0.08)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        default:
+            // 其他通知类型
+            return LinearGradient(
+                gradient: Gradient(colors: [
+                    Color.gray.opacity(0.06),
+                    Color.gray.opacity(0.06)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+    
+    // 卡片阴影颜色1
+    private var cardShadowColor1: Color {
+        switch notification.type {
+        case .like:
+            return Color(hex: "FFB6D9").opacity(0.18)  // 玫瑰粉阴影（增强）
+        case .comment:
+            return Color.blue.opacity(0.12)
+        default:
+            return .black.opacity(0.08)
+        }
+    }
+    
+    // 卡片阴影颜色2
+    private var cardShadowColor2: Color {
+        switch notification.type {
+        case .like:
+            return Color(hex: "FFA3C7").opacity(0.12)  // 更深的玫瑰粉阴影（增强）
+        case .comment:
+            return Color.purple.opacity(0.08)
+        default:
+            return .black.opacity(0.04)
+        }
     }
     
 

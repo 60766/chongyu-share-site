@@ -919,15 +919,51 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                // 背景色 - 更加接近白色的淡色渐变
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(hex: "F5F7FA"),  // 浅灰蓝色
-                        Color(hex: "F5F7FA")   // 保持同一颜色，不使用渐变
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+                // 背景色 - 梦幻渐变效果（顶部左右有渐变）
+                ZStack {
+                    // 主渐变（从上到下）
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(hex: "FFF0F5"),  // 更亮的粉白色
+                            Color(hex: "FFE8F0"),  // 亮粉色
+                            Color(hex: "F0E8FF"),  // 亮紫色
+                            Color(hex: "E8F4FF"),  // 亮蓝色
+                            Color(hex: "FFE8D4")   // 淡橙色
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    
+                    // 顶部水平渐变层（从左到右的色彩变化）
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(hex: "FFE8F0").opacity(0.4),  // 左侧粉色
+                            Color(hex: "FFD4E5").opacity(0.3),  // 粉红色
+                            Color.clear,                         // 中间透明
+                            Color(hex: "E8F4FF").opacity(0.3),  // 淡蓝色
+                            Color(hex: "F0E8FF").opacity(0.4)   // 右侧紫色
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(height: 300)  // 只影响顶部区域
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    
+                    // 左上角明亮色彩点缀
+                    RadialGradient(
+                        gradient: Gradient(colors: [
+                            Color.white.opacity(0.8),           // 更亮的白色中心
+                            Color(hex: "FFFEF5").opacity(0.7),  // 极淡的奶白色
+                            Color(hex: "FFF9E6").opacity(0.5),  // 非常淡的奶白色
+                            Color(hex: "FFE8CC").opacity(0.3),  // 淡暖白色
+                            Color.clear
+                        ]),
+                        center: .topLeading,
+                        startRadius: 5,
+                        endRadius: 450
+                    )
+                    .frame(maxHeight: .infinity, alignment: .top)
+                }
                 .ignoresSafeArea(.all) // 忽略所有安全区域，包括顶部，避免白色背景遮盖
                 .allowsHitTesting(false) // 背景不阻止点击事件
                 
