@@ -3296,7 +3296,7 @@ struct UserPostRowView: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("次元指挥官")
+                    Text(UserProfileManager.shared.getCurrentUsername())
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.primary)
                     
@@ -3537,30 +3537,8 @@ struct AppleStyleLikeRecordCard: View {
                     }) {
                         Text(isExpanded ? "收起" : "展开")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Color(red: 0.3, green: 0.5, blue: 0.8))
+                            .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9))
                     }
-                }
-                
-                // 底部标签 - 更精致的设计
-                if let characterName = record.characterName {
-                    HStack(spacing: 5) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(Color(red: 0.6, green: 0.4, blue: 0.8).opacity(0.8))
-                        Text("与\(characterName)相关")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(Color(red: 0.6, green: 0.4, blue: 0.8).opacity(0.8))
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(.purple.opacity(0.06))
-                            .overlay(
-                                Capsule()
-                                    .stroke(.purple.opacity(0.15), lineWidth: 0.5)
-                            )
-                    )
                 }
             }
             .padding(.horizontal, 20)
@@ -3758,26 +3736,8 @@ struct ModernLikeRecordCard: View {
                     }) {
                         Text(isExpanded ? "收起" : "展开")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9))
                     }
-                }
-                
-                // 底部信息
-                if let characterName = record.characterName {
-                    HStack(spacing: 4) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.purple)
-                        Text("与\(characterName)相关")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.purple)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(
-                        Capsule()
-                            .fill(.purple.opacity(0.08))
-                    )
                 }
             }
             .padding(.horizontal, 14)
@@ -3965,31 +3925,13 @@ struct CompactLikeRecordView: View {
                         }) {
                             Text(isExpanded ? "收起" : "展开")
                                 .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.blue)
+                                .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9))
                         }
                     }
                 }
                 
                 // 底部信息行
                 HStack(alignment: .center, spacing: 12) {
-                    // 相关角色
-                    if let characterName = record.characterName {
-                        HStack(spacing: 4) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(.purple)
-                            Text("与\(characterName)相关")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.purple)
-                        }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(
-                            Capsule()
-                                .fill(.purple.opacity(0.08))
-                        )
-                    }
-                    
                     Spacer()
                     
                     // 取消点赞按钮 - 重新设计
@@ -4142,8 +4084,8 @@ struct UserPostCard: View {
         VStack(alignment: .leading, spacing: 0) {
             // 头部信息区域 - 苹果式极简布局
             HStack(alignment: .top, spacing: 0) {
-                // 左上角用户名 - 很小的字体
-                Text("次元指挥官")
+                // 左上角用户名 - 很小的字体，动态显示当前用户名
+                Text(UserProfileManager.shared.getCurrentUsername())
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundColor(.secondary.opacity(0.8))
                 

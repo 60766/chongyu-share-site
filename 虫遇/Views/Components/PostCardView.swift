@@ -977,15 +977,16 @@ struct PostCardView: View {
             
             // 用户信息 - 更紧凑的布局
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+                HStack(alignment: .center, spacing: 6) {
                     // 用户名 - 根据是否为用户发布的动态使用不同数据源
                     Text(isUserPost ? UserProfileManager.shared.getCurrentUsername() : post.username)
                         .font(.system(size: 16.0, weight: .semibold))
                         .foregroundColor(DesignSystem.Colors.primaryText)
                     
-                    // 用户标签 - 统一标签样式
-                    if post.username.contains("探索") {
-                        userTagView("历史爱好者")
+                    // 显示标签 - 仅虚拟角色显示标签
+                    if let characterID = post.characterID, !characterID.isEmpty {
+                        // 虚拟角色显示角色类别标签
+                        characterTagView(for: characterID)
                     }
                     
                     Spacer()
@@ -1023,40 +1024,27 @@ struct PostCardView: View {
                     )
                     }
                 }
+                .frame(height: 24)  // 固定用户名行高度，确保有无标签时高度一致
                 
                 // 发布时间与内容类型简化为一行，字体更小但确保可读性
-                HStack(spacing: 6) {
+                HStack(alignment: .center, spacing: 2) {
                     Text(post.getFormattedTimeAgo())
                         .font(.system(size: 13.0, weight: .regular))
                         .foregroundColor(DesignSystem.Colors.tertiaryText)
                     
-                    if !isDetailView {
-                        // 内容类型指示器
+                    if !isDetailView && postSource == .aiGenerated {
+                        // 内容类型指示器（仅AI生成帖子显示）
                         Text("•")
                             .font(.system(size: 13.0))
                             .foregroundColor(DesignSystem.Colors.tertiaryText)
                         
-                        // 显示帖子来源信息（AI生成的帖子只显示"AI生成"，不显示"文字"）
-                        if postSource == .userGenerated {
-                            Text("自己发布")
+                        // AI生成的帖子只显示"AI生成"，不显示内容类型
+                        Text("AI生成")
                             .font(.system(size: 13.0, weight: .regular))
                             .foregroundColor(DesignSystem.Colors.tertiaryText)
-                        
-                        Text("•")
-                            .font(.system(size: 13.0))
-                            .foregroundColor(DesignSystem.Colors.tertiaryText)
-                        
-                        Text(post.images.isEmpty ? "文字" : "图文")
-                            .font(.system(size: 13.0, weight: .regular))
-                            .foregroundColor(DesignSystem.Colors.tertiaryText)
-                        } else {
-                            // AI生成的帖子只显示"AI生成"，不显示内容类型
-                            Text("AI生成")
-                                .font(.system(size: 13.0, weight: .regular))
-                                .foregroundColor(DesignSystem.Colors.tertiaryText)
-                        }
                     }
                 }
+                .frame(height: 16)  // 固定时间行高度，确保用户帖子和虚拟角色帖子一致
             }
         }
         .padding(.bottom, 6.0) // 减少底部间距,原来是10.0
@@ -2801,16 +2789,6 @@ struct PostCardView: View {
             .cornerRadius(6.0)          // 统一圆角大小
     }
     
-    // 用户标签视图 - 与角色标签保持一致的风格
-    private func userTagView(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 12.0, weight: .regular))
-            .padding(.horizontal, 8.0)  // 统一水平内边距
-            .padding(.vertical, 4.0)    // 统一垂直内边距
-            .background(DesignSystem.Colors.primary.opacity(0.1))
-            .foregroundColor(DesignSystem.Colors.primary)
-            .cornerRadius(6.0)          // 统一圆角大小
-    }
     
     /**
      * 根据图片名称获取描述
