@@ -804,18 +804,59 @@ struct ProfileView: View {
         VStack(spacing: 0) {
             // Apple风格的分段控制器
             appleStyleSegmentedControl
+                .background(
+                    // 只给标签栏添加背景
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 16,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: 16
+                    )
+                    .fill(.regularMaterial)
+                )
             
             // 内容区域
             tabContentArea
-        }
-        .background(
-            // 统一容器背景
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.gray.opacity(0.1), lineWidth: 0.5)
+                .background(
+                    // 根据选中的tab显示不同的背景
+                    Group {
+                        if selectedTabIndex == 0 {
+                            // 次元回放tab - 带圆角的彩色渐变背景
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: 0,
+                                bottomLeadingRadius: 16,
+                                bottomTrailingRadius: 16,
+                                topTrailingRadius: 0
+                            )
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.white.opacity(0.3),           // 顶部：几乎透明的白色
+                                        Color.blue.opacity(0.05),           // 渐变到淡蓝色
+                                        Color.purple.opacity(0.08),         // 渐变到淡紫色
+                                        Color.pink.opacity(0.12),           // 渐变到粉色
+                                        Color.orange.opacity(0.15)          // 底部：较纯的橙色
+                                    ]),
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                        } else {
+                            // 其他tab - 保持毛玻璃效果
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: 0,
+                                bottomLeadingRadius: 16,
+                                bottomTrailingRadius: 16,
+                                topTrailingRadius: 0
+                            )
+                            .fill(.regularMaterial)
+                        }
+                    }
                 )
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.gray.opacity(0.1), lineWidth: 0.5)
         )
         .padding(.horizontal, 12)
     }
@@ -3527,14 +3568,41 @@ struct AppleStyleLikeRecordCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.ultraThinMaterial)  // 与次元足迹总览完全一致的背景
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(hex: "FFD6E8").opacity(0.50),  // 淡玫瑰粉（左侧更纯）
+                            Color(hex: "FFE5EC").opacity(0.35),  // 非常淡的玫瑰粉
+                            Color(hex: "FFF0F5").opacity(0.22),  // 薰衣草腮红
+                            Color.white.opacity(0.12)            // 纯白（右侧更淡）
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color(.systemBackground))
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.gray.opacity(0.1), lineWidth: 0.5)
+                        .stroke(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color(hex: "FFB6D9").opacity(0.35),  // 玫瑰粉（增强）
+                                    Color(hex: "FFD6E8").opacity(0.30),  // 淡玫瑰粉（增强）
+                                    Color(hex: "FFE5EC").opacity(0.25),  // 更淡的玫瑰粉（增强）
+                                    Color(hex: "FFF0F5").opacity(0.20)   // 薰衣草腮红（增强）
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.5
+                        )
                 )
         )
-        .shadow(color: Color(red: 0.7, green: 0.65, blue: 0.6).opacity(0.15), radius: 6, x: 0, y: 2)
-        .shadow(color: Color(red: 0.8, green: 0.75, blue: 0.7).opacity(0.08), radius: 2, x: 0, y: 1)
+        .shadow(color: Color(hex: "FFB6D9").opacity(0.18), radius: 6, x: 0, y: 2)
+        .shadow(color: Color(hex: "FFA3C7").opacity(0.12), radius: 2, x: 0, y: 1)
         .alert("取消点赞", isPresented: $showingCancelAlert) {
             Button("取消", role: .cancel) { }
             Button("确认", role: .destructive) {
@@ -3548,27 +3616,20 @@ struct AppleStyleLikeRecordCard: View {
     
     // 苹果式头像 - 更大更清晰
     private var authorAvatar: some View {
-        ZStack {
+        // 使用统一的Avatar组件来显示头像
+        // 判断是否是用户自己的帖子：如果authorName等于当前用户名，则使用UserProfileManager的头像
+        let isUserOwnPost = record.authorName == UserProfileManager.shared.getCurrentUsername()
+        
+        return Avatar(
+            url: isUserOwnPost ? UserProfileManager.shared.getCurrentAvatarURL() : record.authorAvatar,
+            name: record.authorName,
+            category: isUserOwnPost ? "" : (record.characterName ?? ""),
+            size: 44.0
+        )
+        .overlay(
             Circle()
-                .fill(.gray.opacity(0.08))
-                .frame(width: 44, height: 44)
-            
-            if let avatarImage = characterAvatarImage {
-                Image(uiImage: avatarImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 44, height: 44)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(.quaternary, lineWidth: 0.5)
-                    )
-            } else {
-                Text(String(record.authorName.prefix(1)))
-                    .font(.system(size: 18, weight: .medium, design: .rounded))
-                    .foregroundColor(.primary)
-            }
-        }
+                .stroke(.quaternary, lineWidth: 0.5)
+        )
     }
     
     // 苹果式类型标签
@@ -3613,14 +3674,6 @@ struct AppleStyleLikeRecordCard: View {
     // 是否显示展开按钮
     private var shouldShowExpandButton: Bool {
         record.content.count > collapsedContentLength
-    }
-    
-    // 角色头像图片
-    private var characterAvatarImage: UIImage? {
-        if !record.authorAvatar.isEmpty {
-            return UIImage(named: record.authorAvatar)
-        }
-        return nil
     }
     
     // 时间格式化函数
@@ -3754,34 +3807,19 @@ struct ModernLikeRecordCard: View {
     
     // 作者头像
     private var authorAvatar: some View {
-        Group {
-            if UIImage(named: record.authorAvatar) != nil {
-                Image(record.authorAvatar)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 36, height: 36)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(.quaternary, lineWidth: 1)
-                    )
-            } else {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.blue.opacity(0.7), .purple.opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 36, height: 36)
-                    .overlay(
-                        Text(String(record.authorName.prefix(1)))
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white)
-                    )
-            }
-        }
+        // 使用统一的Avatar组件来显示头像
+        let isUserOwnPost = record.authorName == UserProfileManager.shared.getCurrentUsername()
+        
+        return Avatar(
+            url: isUserOwnPost ? UserProfileManager.shared.getCurrentAvatarURL() : record.authorAvatar,
+            name: record.authorName,
+            category: isUserOwnPost ? "" : (record.characterName ?? ""),
+            size: 36.0
+        )
+        .overlay(
+            Circle()
+                .stroke(.quaternary, lineWidth: 1)
+        )
     }
     
     // 类型标签
@@ -4132,8 +4170,11 @@ struct UserPostCard: View {
                 
                 // 图片网格显示
                 if !post.images.isEmpty {
-                    postImagesGrid
-                        .padding(.top, 4)
+                    GeometryReader { geometry in
+                        postImagesGrid(availableWidth: geometry.size.width)
+                    }
+                    .frame(height: calculateGridHeight())
+                    .padding(.top, 4)
                 }
                 
                                  // 展开/收起按钮 - 苹果式
@@ -4225,7 +4266,7 @@ struct UserPostCard: View {
     }
     
     // 图片网格视图 - 微信朋友圈风格
-    private var postImagesGrid: some View {
+    private func postImagesGrid(availableWidth: CGFloat) -> some View {
         let imageCount = post.images.count
         let spacing: CGFloat = 4
         
@@ -4233,14 +4274,14 @@ struct UserPostCard: View {
             if imageCount == 1 {
                 // 单张图片 - 使用3列网格的尺寸
                 HStack(spacing: spacing) {
-                    squareImageView(imageId: post.images[0], index: 0, size: calculateGridImageSize(columns: 3, spacing: spacing))
+                    squareImageView(imageId: post.images[0], index: 0, size: calculateGridImageSize(availableWidth: availableWidth, columns: 3, spacing: spacing))
                     Spacer()
                 }
             } else if imageCount == 2 {
                 // 两张图片 - 使用3列网格的尺寸
                 HStack(spacing: spacing) {
                     ForEach(0..<2, id: \.self) { index in
-                        squareImageView(imageId: post.images[index], index: index, size: calculateGridImageSize(columns: 3, spacing: spacing))
+                        squareImageView(imageId: post.images[index], index: index, size: calculateGridImageSize(availableWidth: availableWidth, columns: 3, spacing: spacing))
                     }
                     Spacer()
                 }
@@ -4248,19 +4289,19 @@ struct UserPostCard: View {
                 // 三张图片 - 横向排列，正方形
                 HStack(spacing: spacing) {
                     ForEach(0..<3, id: \.self) { index in
-                        squareImageView(imageId: post.images[index], index: index, size: calculateGridImageSize(columns: 3, spacing: spacing))
+                        squareImageView(imageId: post.images[index], index: index, size: calculateGridImageSize(availableWidth: availableWidth, columns: 3, spacing: spacing))
                     }
                 }
             } else if imageCount == 4 {
                 // 四张图片 - 2x2网格
                 VStack(spacing: spacing) {
                     HStack(spacing: spacing) {
-                        squareImageView(imageId: post.images[0], index: 0, size: calculateGridImageSize(columns: 2, spacing: spacing))
-                        squareImageView(imageId: post.images[1], index: 1, size: calculateGridImageSize(columns: 2, spacing: spacing))
+                        squareImageView(imageId: post.images[0], index: 0, size: calculateGridImageSize(availableWidth: availableWidth, columns: 2, spacing: spacing))
+                        squareImageView(imageId: post.images[1], index: 1, size: calculateGridImageSize(availableWidth: availableWidth, columns: 2, spacing: spacing))
                     }
                     HStack(spacing: spacing) {
-                        squareImageView(imageId: post.images[2], index: 2, size: calculateGridImageSize(columns: 2, spacing: spacing))
-                        squareImageView(imageId: post.images[3], index: 3, size: calculateGridImageSize(columns: 2, spacing: spacing))
+                        squareImageView(imageId: post.images[2], index: 2, size: calculateGridImageSize(availableWidth: availableWidth, columns: 2, spacing: spacing))
+                        squareImageView(imageId: post.images[3], index: 3, size: calculateGridImageSize(availableWidth: availableWidth, columns: 2, spacing: spacing))
                     }
                 }
             } else if imageCount >= 5 {
@@ -4273,7 +4314,7 @@ struct UserPostCard: View {
                                 let index = row * 3 + col
                                 if index < min(imageCount, 9) {
                                     ZStack(alignment: .bottomTrailing) {
-                                        squareImageView(imageId: post.images[index], index: index, size: calculateGridImageSize(columns: 3, spacing: spacing))
+                                        squareImageView(imageId: post.images[index], index: index, size: calculateGridImageSize(availableWidth: availableWidth, columns: 3, spacing: spacing))
                                         
                                         // 如果是第9张图片且还有更多图片，显示"+N"标记
                                         if index == 8 && imageCount > 9 {
@@ -4284,11 +4325,13 @@ struct UserPostCard: View {
                                                         .font(.system(size: 14, weight: .semibold))
                                                         .foregroundColor(.white)
                                                 )
-                                                .frame(width: calculateGridImageSize(columns: 3, spacing: spacing), height: calculateGridImageSize(columns: 3, spacing: spacing))
+                                                .frame(width: calculateGridImageSize(availableWidth: availableWidth, columns: 3, spacing: spacing), height: calculateGridImageSize(availableWidth: availableWidth, columns: 3, spacing: spacing))
                                         }
                                     }
                                 }
                             }
+                            // 添加 Spacer 确保左对齐
+                            Spacer(minLength: 0)
                         }
                     }
                 }
@@ -4299,11 +4342,29 @@ struct UserPostCard: View {
     }
     
     // 计算网格图片尺寸
-    private func calculateGridImageSize(columns: Int, spacing: CGFloat) -> CGFloat {
-        // 可用宽度 = 屏幕宽度 - 卡片左右内边距(20*2) - 卡片外部左右边距(14*2)
-        let availableWidth = UIScreen.main.bounds.width - 40 - 28
+    private func calculateGridImageSize(availableWidth: CGFloat, columns: Int, spacing: CGFloat) -> CGFloat {
+        // 可用宽度已经通过 GeometryReader 获取，无需再计算
         let totalSpacing = spacing * CGFloat(columns - 1)
         return (availableWidth - totalSpacing) / CGFloat(columns)
+    }
+    
+    // 计算网格高度
+    private func calculateGridHeight() -> CGFloat {
+        let imageCount = post.images.count
+        let spacing: CGFloat = 4
+        // 使用屏幕宽度来估算（临时），实际尺寸由 GeometryReader 决定
+        let estimatedWidth = UIScreen.main.bounds.width - 24 - 40
+        
+        if imageCount == 1 || imageCount == 2 || imageCount == 3 {
+            return calculateGridImageSize(availableWidth: estimatedWidth, columns: 3, spacing: spacing)
+        } else if imageCount == 4 {
+            return calculateGridImageSize(availableWidth: estimatedWidth, columns: 2, spacing: spacing) * 2 + spacing
+        } else if imageCount >= 5 {
+            let rows = min(Int(ceil(Double(min(imageCount, 9)) / 3.0)), 3)
+            let imageSize = calculateGridImageSize(availableWidth: estimatedWidth, columns: 3, spacing: spacing)
+            return CGFloat(rows) * imageSize + CGFloat(rows - 1) * spacing
+        }
+        return 0
     }
     
     // 正方形图片视图

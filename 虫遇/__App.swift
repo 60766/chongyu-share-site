@@ -88,18 +88,18 @@ struct ChongYuApp: App {
         }
         #endif
         
-        // 复制历史人物图片到运行时目录和Documents目录（功能保留）
-        HistoricalFigureImageCopier.shared.copyAllImages()
+        // ⚡️ 优化：异步执行历史人物图片复制，不阻塞启动
+        DispatchQueue.global(qos: .utility).async {
+            HistoricalFigureImageCopier.shared.copyAllImages()
+            
+            // 手动注册图片到运行时（仅调试时执行）
+            #if DEBUG
+            HistoricalFigureImageCopier.shared.registerImagesManually()
+            #endif
+        }
         
-        // 手动注册图片到运行时（仅调试时执行）
         #if DEBUG
-        HistoricalFigureImageCopier.shared.registerImagesManually()
-        #endif
-        
-        // 验证图片是否成功复制（改到视图出现后异步执行）
-        
-        #if DEBUG
-        print("应用启动完成")
+        print("⚡️ 应用启动完成 (图片复制已在后台进行)")
         #endif
     }
     

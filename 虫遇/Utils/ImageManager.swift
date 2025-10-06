@@ -207,6 +207,11 @@ struct PostImageView: View {
     @State private var isLoading = true
     @State private var hasLoadedOnce = false  // ⚡️ 防止重复加载
     
+    // ⚡️ 优化：添加静态缓存，跨视图实例共享
+    private static var loadingImages = Set<String>() // 正在加载的图片ID
+    private static var loadQueue = DispatchQueue(label: "com.postimageview.load", qos: .userInitiated, attributes: .concurrent)
+    private static let cacheAccessQueue = DispatchQueue(label: "com.postimageview.cache")
+    
     var body: some View {
         ZStack {
             if let image = image {
@@ -277,23 +282,50 @@ struct PostImageView: View {
         guard !hasLoadedOnce else { return }
         hasLoadedOnce = true
         
-        print("🔍 PostImageView 开始加载图片: \(imageId)")
+        // ⚡️ 优化：先检查是否已在加载中，避免重复加载同一图片
+        let shouldLoad = Self.cacheAccessQueue.sync {
+            if Self.loadingImages.contains(imageId) {
+                return false
+            }
+            Self.loadingImages.insert(imageId)
+            return true
+        }
+        
+        guard shouldLoad else {
+            // 图片已在其他视图实例中加载，等待结果
+            #if DEBUG
+            // print("⏳ 图片已在加载中，复用结果: \(imageId)")
+            #endif
+            isLoading = true
+            return
+        }
+        
+        #if DEBUG
+        // print("🔍 PostImageView 开始加载图片: \(imageId)")
+        #endif
         isLoading = true
         
-        // 在后台线程加载图片
-        DispatchQueue.global(qos: .userInitiated).async {
+        // ⚡️ 优化：使用专用队列并发加载图片
+        Self.loadQueue.async {
             let loadedImage = ImageManager.shared.getImage(withId: imageId)
+            
+            // 加载完成，从加载集合中移除
+            Self.cacheAccessQueue.sync {
+                Self.loadingImages.remove(imageId)
+            }
             
             // 在主线程更新UI
             DispatchQueue.main.async {
                 self.image = loadedImage
                 self.isLoading = false
                 
+                #if DEBUG
                 if loadedImage != nil {
-                    print("✅ PostImageView 成功加载图片: \(imageId)")
+                    // print("✅ 成功加载图片: \(imageId)")
                 } else {
-                    print("❌ PostImageView 加载图片失败: \(imageId)")
+                    print("❌ 加载图片失败: \(imageId)")
                 }
+                #endif
             }
         }
     }

@@ -75,48 +75,61 @@ class PostViewModel: ObservableObject {
         // 初始化时先设置一个空数组，确保didSet不会在初始化过程中被触发
         _ = [UserPostModel]()
         
-        // 1. 恢复用户帖子
-        let userPosts = restoreUserPostsData()
-        
-        // 2. 恢复AI生成的帖子
-        let aiPosts = restoreAIPostsData()
-        
-        // 3. 加载示例帖子
+        // ⚡️ 优化：先加载少量关键帖子，快速显示UI
         let samplePosts = ModelData.samplePosts
         
-        // 4. 合并所有帖子并去重
-        var allPostsDict: [UUID: UserPostModel] = [:]
+        // 先显示示例帖子，让UI快速响应
+        self.posts = samplePosts
         
-        // 添加用户帖子（优先级最高）
-        for post in userPosts {
-            allPostsDict[post.id] = post
-        }
+        print("⚡️ PostViewModel快速初始化完成，先显示 \(samplePosts.count) 条示例帖子")
         
-        // 添加AI帖子（如果ID不冲突）
-        for post in aiPosts {
-            if allPostsDict[post.id] == nil {
+        // ⚡️ 异步加载完整数据，不阻塞UI
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            // 1. 恢复用户帖子
+            let userPosts = self.restoreUserPostsData()
+            
+            // 2. 恢复AI生成的帖子
+            let aiPosts = self.restoreAIPostsData()
+            
+            // 3. 合并所有帖子并去重
+            var allPostsDict: [UUID: UserPostModel] = [:]
+            
+            // 添加用户帖子（优先级最高）
+            for post in userPosts {
                 allPostsDict[post.id] = post
             }
-        }
-        
-        // 添加示例帖子（如果ID不冲突）
-        for post in samplePosts {
-            if allPostsDict[post.id] == nil {
-                allPostsDict[post.id] = post
+            
+            // 添加AI帖子（如果ID不冲突）
+            for post in aiPosts {
+                if allPostsDict[post.id] == nil {
+                    allPostsDict[post.id] = post
+                }
+            }
+            
+            // 添加示例帖子（如果ID不冲突）
+            for post in samplePosts {
+                if allPostsDict[post.id] == nil {
+                    allPostsDict[post.id] = post
+                }
+            }
+            
+            // 按时间倒序排列
+            let uniquePosts = Array(allPostsDict.values).sorted { $0.datePosted > $1.datePosted }
+            
+            print("🚀 PostViewModel后台加载完成:")
+            print("   - 用户帖子: \(userPosts.count) 条")
+            print("   - AI帖子: \(aiPosts.count) 条") 
+            print("   - 示例帖子: \(samplePosts.count) 条")
+            print("   - 总计: \(uniquePosts.count) 条")
+            
+            // 在主线程更新UI
+            DispatchQueue.main.async {
+                self.posts = uniquePosts
+                print("✅ UI已更新，显示全部 \(uniquePosts.count) 条帖子")
             }
         }
-        
-        // 按时间倒序排列
-        let uniquePosts = Array(allPostsDict.values).sorted { $0.datePosted > $1.datePosted }
-        
-        // 一次性设置，触发didSet保存
-        self.posts = uniquePosts
-        
-        print("🚀 PostViewModel初始化完成:")
-        print("   - 用户帖子: \(userPosts.count) 条")
-        print("   - AI帖子: \(aiPosts.count) 条") 
-        print("   - 示例帖子: \(samplePosts.count) 条")
-        print("   - 总计: \(uniquePosts.count) 条")
         
         // 监听 PostCommentsUpdated 通知，强制刷新 comments
         NotificationCenter.default.addObserver(forName: NSNotification.Name("PostCommentsUpdated"), object: nil, queue: .main) { [weak self] notification in

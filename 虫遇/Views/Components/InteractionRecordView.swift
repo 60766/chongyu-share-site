@@ -40,17 +40,12 @@ struct LikeRecordCardView: View {
                     interactionSection
                 }
                 .padding(20)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(.regularMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(.quaternary, lineWidth: 0.5)
-                        )
-                )
             }
         }
         .buttonStyle(PlainButtonStyle())
+        .background(likeCardBackground)
+        .shadow(color: likeCardShadowColor1, radius: 3, x: 0, y: 2)
+        .shadow(color: likeCardShadowColor2, radius: 1, x: 0, y: 0.5)
         .alert("取消点赞", isPresented: $showingCancelAlert) {
             Button("取消", role: .cancel) { }
             Button("确认", role: .destructive) {
@@ -253,6 +248,58 @@ struct LikeRecordCardView: View {
                 }
     }
     
+    // 卡片背景 - 完全照搬通知页面的实现
+    private var likeCardBackground: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(likeCardGradient)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(likeCardBorderGradient, lineWidth: 0.5)
+            )
+    }
+    
+    // 卡片渐变背景 - 完全照搬通知页面点赞通知的渐变
+    private var likeCardGradient: LinearGradient {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(hex: "FFD6E8").opacity(0.50),  // 淡玫瑰粉（左侧更纯）
+                Color(hex: "FFE5EC").opacity(0.35),  // 非常淡的玫瑰粉
+                Color(hex: "FFF0F5").opacity(0.22),  // 薰衣草腮红
+                Color.white.opacity(0.12)            // 纯白（右侧更淡）
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    
+    // 卡片边框渐变 - 完全照搬通知页面点赞通知的边框
+    private var likeCardBorderGradient: LinearGradient {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(hex: "FFB6D9").opacity(0.35),  // 玫瑰粉（增强）
+                Color(hex: "FFD6E8").opacity(0.30),  // 淡玫瑰粉（增强）
+                Color(hex: "FFE5EC").opacity(0.25),  // 更淡的玫瑰粉（增强）
+                Color(hex: "FFF0F5").opacity(0.20)   // 薰衣草腮红（增强）
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    
+    // 卡片阴影颜色1 - 完全照搬通知页面点赞通知的阴影
+    private var likeCardShadowColor1: Color {
+        Color(hex: "FFB6D9").opacity(0.18)  // 玫瑰粉阴影（增强）
+    }
+    
+    // 卡片阴影颜色2 - 完全照搬通知页面点赞通知的阴影
+    private var likeCardShadowColor2: Color {
+        Color(hex: "FFA3C7").opacity(0.12)  // 更深的玫瑰粉阴影（增强）
+    }
+    
     // 计算属性
     private var displayContent: String {
         if isExpanded || record.content.count <= collapsedContentLength {
@@ -303,7 +350,7 @@ struct MyLikesListView: View {
     var onRecordRemove: (LikeRecord) -> Void = { _ in }
     
     var body: some View {
-        LazyVStack(spacing: 16) {
+        LazyVStack(spacing: 10) {
             ForEach(records) { record in
                 LikeRecordCardView(
                     record: record,
@@ -314,9 +361,11 @@ struct MyLikesListView: View {
                         onRecordRemove(record)
                 }
                 )
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4) // 与通知页面点赞卡片保持一致
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 2)
     }
 }
 

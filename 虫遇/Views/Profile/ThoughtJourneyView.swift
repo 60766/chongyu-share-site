@@ -27,6 +27,7 @@ struct ThoughtJourneyView: View {
             
             Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
             
             // 控制按钮悬浮在右上角
             VStack {
@@ -165,7 +166,7 @@ struct ThoughtJourneyView: View {
     private func reportContentCard(_ content: String) -> some View {
         VStack(alignment: .leading, spacing: 24) {
             // 简洁的内容开始标识
-                HStack {
+                HStack(alignment: .center, spacing: 8) {
                 Rectangle()
                     .fill(DesignSystem.Colors.primary)
                     .frame(width: 3, height: 20)
@@ -177,11 +178,12 @@ struct ThoughtJourneyView: View {
                     
                     Spacer()
                 }
+                .padding(.top, 4)  // 微调垂直位置，让标题与刷新按钮在同一水平线上
                 
             ExpandableTextView(content: content)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 40) // 为悬浮按钮留出空间
+        .padding(.top, 8) // 减小顶部padding，配合HStack的padding.top来对齐
     }
     
     private func errorView(_ error: String) -> some View {
@@ -361,39 +363,41 @@ struct ExpandableTextView: View {
                 .lineLimit(isExpanded ? nil : lineLimit)
                 .animation(.easeInOut(duration: 0.3), value: isExpanded)
             
-            // 展开/收起按钮 - 与其他标签页保持一致的设计
+            // 展开/收起按钮 - 更大更明显的设计
             if shouldShowExpandButton {
                     Button(action: {
                     withAnimation(.easeInOut(duration: 0.35)) {
                             isExpanded.toggle()
                         }
                     }) {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 8) {
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9))  // 梦幻紫，与次元回放标签颜色一致
                         
                             Text(isExpanded ? "收起" : "展开全文")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 15, weight: .medium))
                             .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9))  // 梦幻紫，与次元回放标签颜色一致
-                            
-                        Spacer()
                         }
-                    .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 28)  // 更大的左右内边距，让按钮更拉长
+                    .padding(.vertical, 10)  // 更小的上下边距，让按钮更扁
                         .background(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color(red: 0.7, green: 0.5, blue: 0.9).opacity(0.04))  // 梦幻紫背景
+                            .fill(Color(red: 0.7, green: 0.5, blue: 0.9).opacity(0.1))  // 更明显的背景
                                 .overlay(
                                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(Color(red: 0.7, green: 0.5, blue: 0.9).opacity(0.12), lineWidth: 0.5)  // 梦幻紫边框
+                                    .stroke(Color(red: 0.7, green: 0.5, blue: 0.9).opacity(0.25), lineWidth: 1)  // 更明显的边框
                                 )
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
-                .padding(.top, 4)
+                .padding(.top, 16)  // 增加按钮上方间距，让按钮更靠下
+                .padding(.horizontal, 8)  // 减少按钮左右边距，让按钮更宽
             }
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 8)  // 减少底部边距，让按钮下方空白更少
     }
 } 

@@ -10,6 +10,14 @@ class HistoricalFigureImageCopier {
     // 单例实例
     static let shared = HistoricalFigureImageCopier()
     
+    // ⚡️ 优化：已知缺失图片的角色ID列表（跳过这些以避免无效加载）
+    private let knownMissingImages = [
+        "ahq", "anna_karenina", "ayuwang", "daenerys", "doctor", "don_quixote",
+        "gatsby", "gollum", "hamlet", "hermione", "jean_valjean", "jia_baoyu",
+        "joker", "liucixin", "macbeth", "raskolnikov", "scarlett", "yuefei",
+        "aristotle", "curie", "hawking", "newton", "spike", "spike_spiegel"
+    ]
+    
     // 已知历史人物列表 - 与CharacterAvatarService保持一致
     private let knownCharacters = [
         // 已有的历史人物和科学家
@@ -96,13 +104,29 @@ class HistoricalFigureImageCopier {
         createDirectoryIfNeeded(at: documentsTargetDir)
         
         // 复制每个历史人物的图片
+        var successCount = 0
+        var skippedCount = 0
         for characterID in knownCharacters {
+            // ⚡️ 优化：跳过已知缺失的图片
+            if knownMissingImages.contains(characterID) {
+                skippedCount += 1
+                continue
+            }
+            
             // 复制到运行时目录
-            copyImage(for: characterID, to: runtimeTargetDir)
+            let success1 = copyImage(for: characterID, to: runtimeTargetDir)
             
             // 复制到Documents目录
-            copyImage(for: characterID, to: documentsTargetDir)
+            let success2 = copyImage(for: characterID, to: documentsTargetDir)
+            
+            if success1 || success2 {
+                successCount += 1
+            }
         }
+        
+        #if DEBUG
+        print("📊 图片复制统计: 成功 \(successCount) 个，跳过 \(skippedCount) 个缺失图片")
+        #endif
         
         // 验证复制结果（仅调试模式）
         #if DEBUG
@@ -148,10 +172,11 @@ class HistoricalFigureImageCopier {
      * 复制单个历史人物图片到指定目录
      * @param characterID 角色ID
      * @param targetDir 目标目录
+     * @return 是否成功复制
      */
-    private func copyImage(for characterID: String, to targetDir: String) {
+    private func copyImage(for characterID: String, to targetDir: String) -> Bool {
         #if DEBUG
-        print("🔍 尝试复制 \(characterID) 的图片到 \(targetDir)...")
+        // print("🔍 尝试复制 \(characterID) 的图片到 \(targetDir)...")
         #endif
         
         // 尝试从多个可能的位置获取图片
@@ -235,33 +260,23 @@ class HistoricalFigureImageCopier {
                 do {
                     try imageData.write(to: URL(fileURLWithPath: targetPath))
                     #if DEBUG
-                    print("✅ 成功复制 \(characterID) 图片从 \(usedPath) 到 \(targetPath)")
-                    
-                    // 验证图片是否可以从新位置加载
-                    if let verifyImage = UIImage(contentsOfFile: targetPath) {
-                        print("✅ 验证成功: 可以从新位置加载 \(characterID) 图片，大小: \(verifyImage.size)")
-                        
-                        // 尝试使用UIImage(named:)加载这个图片
-                        if let _ = UIImage(named: characterID) {
-                            print("✅ 验证成功: 可以通过UIImage(named:)加载 \(characterID) 图片")
-                        } else {
-                            print("⚠️ 验证失败: 无法通过UIImage(named:)加载 \(characterID) 图片")
-                        }
-                    } else {
-                        print("⚠️ 验证失败: 无法从新位置加载 \(characterID) 图片")
-                    }
+                    // print("✅ 成功复制 \(characterID) 图片从 \(usedPath) 到 \(targetPath)")
                     #endif
+                    return true
                 } catch {
                     #if DEBUG
                     print("❌ 复制 \(characterID) 图片失败: \(error)")
                     #endif
+                    return false
                 }
             }
         } else {
             #if DEBUG
-            print("❌ 未能创建 \(characterID) 的图片，无法复制")
+            // print("❌ 未能创建 \(characterID) 的图片，无法复制")
             #endif
         }
+        
+        return false
     }
     
     /**
