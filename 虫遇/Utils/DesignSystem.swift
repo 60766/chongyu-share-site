@@ -8,7 +8,7 @@ struct DesignSystem {
     // MARK: - 颜色系统
     struct Colors {
         // 主题色
-        static let primary = Color.warmAccent
+        static let primary = Color.primaryColor
         static let secondary = Color.secondaryColor
         
         // 交互色
@@ -16,22 +16,32 @@ struct DesignSystem {
         static let bookmark = Color.bookmarkColor  // 使用温暖的金色
         static let comment = Color.commentColor  // 使用淡雅的蓝灰色
         
-        // 背景色
+        // 背景色 - 基于参考图片的舒适配色方案
         static let background = Color.warmBackground
-        static let cardBackground = Color.white.opacity(0.98)  // 卡片背景使用接近纯白的颜色
-        static let secondaryBackground = Color.white.opacity(0.97)  // 次级卡片背景色
+        static let cardBackground = Color.warmCardBackground  // 使用温暖的卡片背景色
+        static let secondaryBackground = Color.warmDarkBackground  // 次级卡片背景色
         static let warmNestedBackground = Color.warmNestedBackground  // 嵌套内容（如评论）背景色
+        
+        // 评论相关颜色 - 温暖和谐的评论配色方案
+        static let commentBackground = Color.commentBackground  // 温暖柔和的评论背景色
+        static let commentBorder = Color.commentBorder  // 温暖的浅棕灰色描边
+        static let commentHoverBackground = Color.commentHoverBackground  // 评论悬停背景色
+        static let commentText = Color.commentTextColor  // 评论文本颜色
+        static let commentSecondaryText = Color.commentSecondaryTextColor  // 评论次要文本颜色
         
         // 文本色
         static let primaryText = Color.warmTextPrimary
         static let secondaryText = Color.warmTextSecondary
         static let tertiaryText = Color.warmTextTertiary
         
+        // 评论专用文本颜色
+        static let commentPrimaryText = Color.commentPrimaryText
+        
         // 分割线
         static let divider = Color.warmBorder
         
-        // 边框色
-        static let border = Color.black.opacity(0.03)  // 统一的边框颜色
+        // 边框色 - 基于参考图片的柔和边框
+        static let border = Color.warmBorder  // 使用温暖的边框颜色，与舒适背景协调
     }
     
     // MARK: - 间距系统
@@ -136,19 +146,30 @@ struct DesignSystem {
         static let title2 = Font.title2
         static let title3 = Font.title3
         
-        // 主体文本
-        static let body = Font.body
-        static let bodyBold = Font.body.weight(.semibold)
-        static let callout = Font.callout
-        static let subheadline = Font.subheadline
-        static let footnote = Font.footnote
-        static let caption = Font.caption
-        static let caption2 = Font.caption2
+        // 主体文本 - 优雅衬线字体
+        static let body = Font.system(size: 16, weight: .regular, design: .serif)
+        static let bodyBold = Font.system(size: 16, weight: .semibold, design: .serif)
+        static let callout = Font.system(size: 15, weight: .regular, design: .serif)
+        static let subheadline = Font.system(size: 14, weight: .regular, design: .serif)
+        static let footnote = Font.system(size: 13, weight: .regular, design: .serif)
+        static let caption = Font.system(size: 12, weight: .regular, design: .serif)
+        static let caption2 = Font.system(size: 11, weight: .regular, design: .serif)
         
         // 自定义尺寸
-        static func custom(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-            return Font.system(size: size, weight: weight)
+        static func custom(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .serif) -> Font {
+            return Font.system(size: size, weight: weight, design: design)
         }
+        
+        // 帖子正文专用优雅字体
+        static let postContent = Font.system(size: 16, weight: .regular, design: .serif)
+        static let postContentBold = Font.system(size: 16, weight: .semibold, design: .serif)
+        
+        // 评论文字专用字体
+        static let commentText = Font.system(size: 15, weight: .regular, design: .serif)
+        static let commentTextBold = Font.system(size: 15, weight: .semibold, design: .serif)
+        
+        // 标题字体
+        static let headline = Font.system(size: 16, weight: .medium, design: .default)
     }
     
     // MARK: - 动画系统

@@ -37,7 +37,7 @@ struct PostShareModalView: View {
                     Spacer()
                     
                     Text("分享")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(DesignSystem.Typography.title3)
                         .foregroundColor(.white)
                     
                     Spacer()
@@ -107,7 +107,7 @@ struct PostShareModalView: View {
                                             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedColorScheme)
                                         
                                         Text(scheme.name)
-                                            .font(.system(size: 12, weight: .semibold))
+                                            .font(DesignSystem.Typography.caption.weight(.semibold))
                                             .foregroundColor(selectedColorScheme == scheme ? .white : .white.opacity(0.7))
                                             .animation(.easeInOut(duration: 0.2), value: selectedColorScheme)
                                     }
@@ -192,7 +192,7 @@ struct PostShareModalView: View {
             }
             
             Text(title)
-                .font(.system(size: 12, weight: .medium))
+                .font(DesignSystem.Typography.caption.weight(.medium))
                 .foregroundColor(.white)
         }
     }

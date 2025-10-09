@@ -1962,8 +1962,6 @@ showCharacterPicker = true
             )
             let conversations = try modelContext.fetch(fetchDescriptor)
             
-            print("🔍 [HomeView] 数据库中的对话记录总数: \(conversations.count)")
-            
             // 简化：直接提取唯一的角色ID，保持时间顺序
             var seenCharacterIds = Set<String>()
             let uniqueCharacterIds = conversations.compactMap { conversation -> String? in
@@ -1972,34 +1970,24 @@ showCharacterPicker = true
                 return conversation.characterId
             }
             
-            print("🎯 [HomeView] 唯一角色ID列表: \(uniqueCharacterIds)")
-            
-            // 🚀 关键修改：使用与探索页面相同的数据源
+            // 🚀 使用与探索页面相同的数据源（静默缓存）
             let allCharacters = CharacterModel.getAllCharacters()
-            print("📚 [HomeView] 使用getAllCharacters()获取角色总数: \(allCharacters.count)")
             
             let recentCharacters = uniqueCharacterIds.compactMap { characterId -> CharacterModel? in
                 // 第一性原理：尝试多种匹配方式，找到就返回
-                let matchedCharacter = allCharacters.first { character in
+                return allCharacters.first { character in
                     character.id == characterId || 
                     character.characterID == characterId ||
                     character.name == characterId
                 }
-                
-                if let matched = matchedCharacter {
-                    print("✅ [HomeView] 匹配成功: \(characterId) -> \(matched.name)")
-                } else {
-                    print("❌ [HomeView] 匹配失败: \(characterId)")
-                }
-                
-                return matchedCharacter
             }
             
-            print("🏆 [HomeView] 最终匹配的最近聊天角色: \(recentCharacters.map { $0.name })")
             return recentCharacters
             
         } catch {
+            #if DEBUG
             print("❌ [HomeView] 获取对话记录失败: \(error)")
+            #endif
             return []
         }
     }

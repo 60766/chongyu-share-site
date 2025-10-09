@@ -39,26 +39,12 @@ class CharacterDataManager {
                 for character in characters {
                     if let id = character["id"] as? String {
                         characterData[id.lowercased()] = character
-                        
-                        // 记录角色信息用于调试
-                        if let name = character["name"] as? String,
-                           let avatar = character["avatarName"] as? String {
-                            print("📋 加载角色: \(id) -> 名称: \(name), 头像: \(avatar)")
-                        }
                     }
                 }
                 
+                #if DEBUG
                 print("✅ 成功加载角色数据，共 \(characterData.count) 个角色")
-                
-                // 检查常用ID是否存在
-                let importantIds = ["einstein", "shakespeare", "sunwukong", "kongzi", "davinci"]
-                for id in importantIds {
-                    if characterData[id] != nil {
-                        print("✓ 角色存在: \(id)")
-                    } else {
-                        print("⚠️ 角色不存在: \(id)")
-                    }
-                }
+                #endif
             }
         } catch {
             print("⚠️ 解析characters.json出错: \(error.localizedDescription)")
@@ -210,18 +196,20 @@ class VirtualCharacterService {
     
     // MARK: - 私有属性
     private init() {
+        #if DEBUG
         print("✅ VirtualCharacterService: 初始化")
-        // 初始化时检查孔子角色
-        checkKongziCharacter()
+        #endif
+        // ⚡️ 优化：移除启动时的检查，避免阻塞
         // 在服务初始化时进行一些健康检查
         performInitialHealthChecks()
     }
     
     /**
-     * 检查孔子角色的配置
+     * 检查孔子角色的配置（仅在需要时手动调用）
      * 用于诊断孔子头像问题
      */
     private func checkKongziCharacter() {
+        #if DEBUG
         print("🔍 检查孔子角色配置:")
         
         // 检查角色ID映射
@@ -272,6 +260,7 @@ class VirtualCharacterService {
                 print("❌ HistoricalFigures目录不存在")
             }
         }
+        #endif
     }
     
     // 核心组件

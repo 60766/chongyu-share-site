@@ -41,6 +41,8 @@ struct ChongYuApp: App {
     }()
 
     init() {
+        let initStartTime = CFAbsoluteTimeGetCurrent()
+        
         // 设置应用外观
         setupAppearance()
         
@@ -58,108 +60,34 @@ struct ChongYuApp: App {
         // 初始化全局点赞状态管理器
         _ = LikeStateManager.shared
         
-        #if DEBUG
-        print("🖼️ 初始化历史人物图片资源...")
-        print("📱 应用路径: \(Bundle.main.bundlePath)")
-        if let resourcePath = Bundle.main.resourcePath {
-            print("📂 资源路径: \(resourcePath)")
-            
-            // 检查孔子头像是否存在于资源包中
-            let kongziPaths = [
-                resourcePath + "/kongzi.png",
-                resourcePath + "/HistoricalFigures/kongzi.png",
-                resourcePath + "/Assets.xcassets/HistoricalFigures/kongzi.imageset/kongzi.png"
-            ]
-            
-            print("🔍 检查孔子头像在资源包中的位置:")
-            for path in kongziPaths {
-                if FileManager.default.fileExists(atPath: path) {
-                    print("✅ 孔子头像存在于: \(path)")
-                    if let image = UIImage(contentsOfFile: path) {
-                        print("  - 图片尺寸: \(image.size)")
-                    }
-                } else {
-                    print("❌ 孔子头像不存在于: \(path)")
-                }
-            }
-        }
-        if let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.path {
-            print("📂 文档路径: \(documentsPath)")
-        }
-        #endif
-        
         // ⚡️ 优化：异步执行历史人物图片复制，不阻塞启动
         DispatchQueue.global(qos: .utility).async {
             HistoricalFigureImageCopier.shared.copyAllImages()
-            
-            // 手动注册图片到运行时（仅调试时执行）
-            #if DEBUG
-            HistoricalFigureImageCopier.shared.registerImagesManually()
-            #endif
         }
         
         #if DEBUG
-        print("⚡️ 应用启动完成 (图片复制已在后台进行)")
+        let initTime = (CFAbsoluteTimeGetCurrent() - initStartTime) * 1000
+        let totalTime = (CFAbsoluteTimeGetCurrent() - AppDelegate.appStartTime) * 1000
+        print("⚡️ 应用启动完成")
+        print("📊 性能统计:")
+        print("   - init()耗时: \(String(format: "%.0f", initTime))ms")
+        print("   - 总启动耗时: \(String(format: "%.0f", totalTime))ms")
         #endif
     }
-    
-    /// 验证历史人物图片是否成功复制到运行时目录
-    private func verifyHistoricalFigureImages() {
-        if let resourcePath = Bundle.main.resourcePath {
-            let historicalDir = resourcePath + "/HistoricalFigures"
-            let fileManager = FileManager.default
-            
-            if fileManager.fileExists(atPath: historicalDir) {
-                print("✅ HistoricalFigures目录存在")
-                
-                // 尝试列出目录内容
-                do {
-                    let files = try fileManager.contentsOfDirectory(atPath: historicalDir)
-                    print("📋 HistoricalFigures目录内容: \(files)")
-                    
-                    // 检查关键角色图片
-                    let keyCharacters = ["kongzi", "einstein", "shakespeare"]
-                    for character in keyCharacters {
-                        let imagePath = historicalDir + "/\(character).png"
-                        if fileManager.fileExists(atPath: imagePath) {
-                            print("✅ \(character)图片存在: \(imagePath)")
-                            
-                            // 尝试加载图片
-                            if let _ = UIImage(contentsOfFile: imagePath) {
-                                print("✅ 可以加载\(character)图片")
-                            } else {
-                                print("❌ 无法加载\(character)图片，虽然文件存在")
-                            }
-                        } else {
-                            print("❌ \(character)图片不存在: \(imagePath)")
-                        }
-                    }
-                } catch {
-                    print("❌ 无法列出HistoricalFigures目录内容: \(error)")
-                }
-            } else {
-                print("❌ HistoricalFigures目录不存在，图片复制可能失败")
-            }
-        }
-    }
-
     var body: some Scene {
         WindowGroup {
             AppTabView()
                 .environmentObject(CreationTypeManager.shared)
                 .environmentObject(storeKitManager)
                 .task {
-                    #if DEBUG
-                    // 在视图出现后异步验证，避免阻塞启动
-                    DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 1.0) {
-                        verifyHistoricalFigureImages()
-                    }
-                    #endif
-                    
                     // StoreKit 测试
-                    print("[APP] 应用启动，开始测试 StoreKit...")
+                    #if DEBUG
+                    print("[APP] 开始加载 StoreKit 产品...")
+                    #endif
                     await storeKitManager.loadProducts()
-                    print("[APP] StoreKit 测试完成，产品数量: \(storeKitManager.products.count)")
+                    #if DEBUG
+                    print("[APP] StoreKit 产品加载完成: \(storeKitManager.products.count) 个")
+                    #endif
                 }
         }
         .modelContainer(sharedModelContainer)

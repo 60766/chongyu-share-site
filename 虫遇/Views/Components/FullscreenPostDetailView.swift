@@ -265,7 +265,7 @@ struct FullscreenPostDetailView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             // 底层背景色 - 防止任何透明
-            Color(.systemBackground)
+            DesignSystem.Colors.background
                 .edgesIgnoringSafeArea(.all)
                 .zIndex(-3)
             
@@ -273,7 +273,7 @@ struct FullscreenPostDetailView: View {
             ZStack {
                 // 过渡期间的背景层 - 防止看到其他内容
                 if isTransitioning {
-                    Color(.systemBackground)
+                    DesignSystem.Colors.background
                         .edgesIgnoringSafeArea(.all)
                         .zIndex(-2)
                 }
@@ -519,11 +519,13 @@ struct FullscreenPostDetailView: View {
                                                     // 用户名
                                                     Text(comment.username)
                                                         .font(.system(size: 14, weight: .medium))
+                                                        .foregroundColor(DesignSystem.Colors.commentPrimaryText)
                                                     
-                                                    // 评论内容
-                                                    Text(comment.content)
-                                                        .font(.system(size: 15))
-                                                        .lineSpacing(4)
+                // 评论内容
+                Text(comment.content)
+                    .font(DesignSystem.Typography.commentText)
+                    .foregroundColor(DesignSystem.Colors.primaryText)
+                    .lineSpacing(6)
                                                 }
                                                 
                                                 Spacer()
@@ -590,18 +592,22 @@ struct FullscreenPostDetailView: View {
                                     Color.clear
                                         .frame(height: 44 + getSafeAreaTop())
                                     
-                                    // 帖子内容
-                                    makePostContent()
-                                    
-                                    // 帖子互动栏
-                                    makeInteractionBar()
-                                    
-                                    // 分隔线
-                                    makeContentDivider()
-                                    
-                                    // 评论区
-                                    makeCommentsSection()
-                                        .id("comments_\(viewModel.post.id.uuidString)")
+                                    // 整体内容区域使用相同背景色
+                                    VStack(spacing: 0) {
+                                        // 帖子内容
+                                        makePostContent()
+                                        
+                                        // 帖子互动栏
+                                        makeInteractionBar()
+                                        
+                                        // 分隔线
+                                        makeContentDivider()
+                                        
+                                        // 评论区
+                                        makeCommentsSection()
+                                            .id("comments_\(viewModel.post.id.uuidString)")
+                                    }
+                                    .background(DesignSystem.Colors.background) // 使用设计系统的统一背景色
                                 }
                                 // 添加底部安全区域内边距，确保内容不被输入框遮挡
                                 .safeAreaInset(edge: .bottom) {
@@ -644,9 +650,16 @@ struct FullscreenPostDetailView: View {
                     // 固定的顶部导航栏
                     makeTopBar()
                         .background(
-                            // 根据滚动位置调整标题栏背景透明度
-                            Color(.systemBackground)
-                                .opacity(titleBarBackgroundOpacity)
+                            // 根据滚动位置调整标题栏背景透明度 - 使用渐变背景增加层次感
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    DesignSystem.Colors.background,
+                                    DesignSystem.Colors.background.opacity(0.98)
+                                ]),
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .opacity(titleBarBackgroundOpacity)
                         )
                         .zIndex(1) // 确保标题栏始终在最上层
                 }
@@ -1632,7 +1645,7 @@ struct FullscreenPostDetailView: View {
         }
         // 禁用用户交互当正在过渡中
         .disabled(isTransitioning)
-        .background(Color(.systemBackground).edgesIgnoringSafeArea(.all))
+        .background(DesignSystem.Colors.background.edgesIgnoringSafeArea(.all)) // 使用设计系统的统一背景色
         .onAppear {
             // 为视图设置为活跃状态，用于任务循环
             isViewActive = true
@@ -1949,7 +1962,7 @@ struct FullscreenPostDetailView: View {
         .background(
             // 背景 - 根据滚动状态改变透明度
             Rectangle()
-                .fill(Color(.systemBackground))
+                .fill(DesignSystem.Colors.background)
                 .opacity(isScrolled ? 0.9 : 1.0)
                 .edgesIgnoringSafeArea(.top)
         )
@@ -2046,17 +2059,17 @@ struct FullscreenPostDetailView: View {
     
     // 帖子内容区域
     private func makePostContentSection() -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             // 帖子文字内容
             if !viewModel.post.content.isEmpty {
                 Text(viewModel.post.content)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(Color.primary.opacity(0.8))
-                    .lineSpacing(5.0)
+                    .font(DesignSystem.Typography.postContent)
+                    .foregroundColor(DesignSystem.Colors.primaryText)
+                    .lineSpacing(6.0)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.leading, calculateDynamicPadding(text: viewModel.post.content))
                     .padding(.trailing, 16)
-                    .padding(.bottom, viewModel.post.images.isEmpty ? 0 : 8) // 如果有图片，增加底部间距
+                    .padding(.bottom, viewModel.post.images.isEmpty ? 0 : 10) // 如果有图片，增加底部间距
                     .id("post_text_content_\(viewModel.post.id.uuidString)")
                     .frame(maxWidth: .infinity, alignment: .leading) // 确保文本始终左对齐
             }
@@ -2121,7 +2134,7 @@ struct FullscreenPostDetailView: View {
                         .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
                         .overlay(
                             RoundedRectangle(cornerRadius: 3)
-                                .stroke(Color(.systemGray5), lineWidth: 0.5)
+                                .stroke(DesignSystem.Colors.border, lineWidth: 0.5)
                         )
                     } else if let uiImage = UIImage(named: imageName) {
                         // 内置图片资源
@@ -2135,7 +2148,7 @@ struct FullscreenPostDetailView: View {
                             .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 3)
-                                    .stroke(Color(.systemGray5), lineWidth: 0.5)
+                                    .stroke(DesignSystem.Colors.border, lineWidth: 0.5)
                             )
                     } else {
                         // 占位图 - 精简版实现
@@ -2146,7 +2159,7 @@ struct FullscreenPostDetailView: View {
                                 .cornerRadius(3)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 3)
-                                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                                        .stroke(DesignSystem.Colors.border, lineWidth: 0.5)
                                 )
                             
                             VStack(spacing: 8) {
@@ -2226,7 +2239,7 @@ struct FullscreenPostDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 3))
                 .overlay(
                     RoundedRectangle(cornerRadius: 3)
-                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                        .stroke(DesignSystem.Colors.border, lineWidth: 0.5)
                 )
             } else if let uiImage = UIImage(named: imageName) {
                 // 内置图片
@@ -2238,7 +2251,7 @@ struct FullscreenPostDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 3))
                     .overlay(
                         RoundedRectangle(cornerRadius: 3)
-                            .stroke(Color(.systemGray5), lineWidth: 0.5)
+                            .stroke(DesignSystem.Colors.border, lineWidth: 0.5)
                     )
             } else {
                 // 占位图
@@ -2253,7 +2266,7 @@ struct FullscreenPostDetailView: View {
                 .frame(width: size, height: size)
                 .overlay(
                     RoundedRectangle(cornerRadius: 3)
-                        .stroke(Color(.systemGray5), lineWidth: 0.5)
+                        .stroke(DesignSystem.Colors.border, lineWidth: 0.5)
                 )
             }
         }
@@ -2366,51 +2379,25 @@ struct FullscreenPostDetailView: View {
                     .contentShape(Rectangle())
                     .frame(width: 22, height: 38)
 
-                    // 分享按钮
-                    Button(action: {
-                        // 添加触觉反馈
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred(intensity: 0.4)
-                        
-                        // 分享帖子
-                        let content = viewModel.post.content
-                        let shareContent = "来自虫遇的分享：\n\(content.prefix(50))...\n"
-                        
-                        // 创建分享项
-                        let activityVC = UIActivityViewController(
-                            activityItems: [shareContent],
-                            applicationActivities: nil
-                        )
-                        
-                        // 获取当前的UIWindow场景
-                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                           let rootViewController = windowScene.windows.first?.rootViewController {
-                            // 在iPad上设置弹出位置
-                            if let popoverController = activityVC.popoverPresentationController {
-                                popoverController.sourceView = rootViewController.view
-                                popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2, width: 0, height: 0)
-                                popoverController.permittedArrowDirections = []
-                            }
-                            rootViewController.present(activityVC, animated: true)
-                        }
-                    }) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 16, weight: .regular))
-                            .foregroundColor(.secondary)
-                            .frame(width: 22, height: 38)
-                    }
                 }
             }
             .padding(.horizontal, 22)
             .padding(.vertical, 8)
             
             // 添加分隔线
-            Rectangle()
-                .fill(Color.gray.opacity(0.08))
-                .frame(height: 1)
-                .padding(.horizontal, 22)
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    DesignSystem.Colors.divider.opacity(0.05),
+                    DesignSystem.Colors.divider.opacity(0.15),
+                    DesignSystem.Colors.divider.opacity(0.05)
+                ]),
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(height: 1)
+            .padding(.horizontal, 22)
         }
-        .background(Color(.systemBackground))
+        .background(Color.clear) // 使用透明背景，继承父视图背景色
         .id("interaction_bar_\(viewModel.post.id.uuidString)")
     }
     
@@ -2427,24 +2414,31 @@ struct FullscreenPostDetailView: View {
             HStack {
                 HStack(spacing: 6) {
                     Text("评论")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(DesignSystem.Typography.headline)
                     
                     // 显示评论总数
                     Text("(\(viewModel.post.getTotalCommentsCount()))")
-                        .font(.system(size: 15))
-                        .foregroundColor(.secondary)
+                        .font(DesignSystem.Typography.subheadline)
+                        .foregroundColor(DesignSystem.Colors.secondaryText)
                 }
                 
                 Spacer()
             }
             .padding(.horizontal, 22)
-            .padding(.vertical, 10)
+            .padding(.vertical, 12)
             
-            // 分隔线
-            Rectangle()
-                .fill(Color.gray.opacity(0.08))
-                .frame(height: 1)
-                .padding(.horizontal, 22)
+            // 分隔线 - 使用渐变效果增强视觉分隔感
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    DesignSystem.Colors.divider.opacity(0.05),
+                    DesignSystem.Colors.divider.opacity(0.15),
+                    DesignSystem.Colors.divider.opacity(0.05)
+                ]),
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(height: 1)
+            .padding(.horizontal, 22)
             
             // 评论列表
             CommentsListView(
@@ -2476,18 +2470,18 @@ struct FullscreenPostDetailView: View {
                 }
             )
             // .id("comments-list-\(viewModel.commentsRefreshTrigger)") // 已移除，使用SwiftUI的自然更新机制
-            .padding(.top, 4)
+            .padding(.top, 6)
             
-            // 底部提示文字
-            if !viewModel.post.getTopLevelComments().isEmpty {
-                Text("虫洞已开启 · 等你一起相遇～")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary.opacity(0.5))
-                    .padding(.top, 10)
-                    .padding(.bottom, 4)
+                    // 底部提示文字
+                    if !viewModel.post.getTopLevelComments().isEmpty {
+                        Text("虫洞已开启 · 等你一起相遇～")
+                            .font(DesignSystem.Typography.caption)
+                            .foregroundColor(DesignSystem.Colors.primary.opacity(0.7))
+                            .padding(.top, 12)
+                            .padding(.bottom, 6)
             }
         }
-        .background(Color(.systemBackground))
+        .background(Color.clear) // 使用透明背景，继承父视图背景色
         .padding(.bottom, 45)
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshCommentsList"))) { notification in
             print("📣 收到刷新评论列表通知，立即刷新")

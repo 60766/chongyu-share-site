@@ -6,6 +6,9 @@ import Foundation
 
 // 在主应用启动时设置自定义图标
 class AppDelegate: NSObject, UIApplicationDelegate {
+    // ⚡️ 启动性能监控 - 记录应用启动的真实时间
+    static let appStartTime = CFAbsoluteTimeGetCurrent()
+    
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         // 设置自定义Tab图标
         UITabBar.appearance().tintColor = UIColor(red: 0.45, green: 0.45, blue: 0.95, alpha: 1.0)

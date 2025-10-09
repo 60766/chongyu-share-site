@@ -82,13 +82,15 @@ class ImageManager {
     func getImage(withId id: String) -> UIImage? {
         // 先从缓存中查找
         if let cachedImage = imageCache.object(forKey: id as NSString) {
-            print("✅ 从缓存加载图片: \(id)")
+            // 缓存命中，静默返回（不打印日志，提升性能）
             return cachedImage
         }
         
         // 如果缓存中没有，从文件系统加载
         guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            #if DEBUG
             print("❌ 无法访问文档目录")
+            #endif
             return nil
         }
         
@@ -96,19 +98,18 @@ class ImageManager {
         
         // 检查文件是否存在
         if FileManager.default.fileExists(atPath: imagePath.path) {
-            print("📁 找到图片文件: \(imagePath.path)")
             if let imageData = try? Data(contentsOf: imagePath),
                let image = UIImage(data: imageData) {
-                // 加载成功后缓存图片
+                // 加载成功后缓存图片（静默，不打印日志）
                 imageCache.setObject(image, forKey: id as NSString)
-                print("✅ 成功加载图片: \(id)")
                 return image
             } else {
+                #if DEBUG
                 print("❌ 无法解码图片数据: \(id)")
+                #endif
             }
-        } else {
-            print("❌ 图片文件不存在: \(imagePath.path)")
         }
+        // 文件不存在时也不打印（避免大量日志）
         
         return nil
     }

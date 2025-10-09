@@ -859,6 +859,7 @@ struct PostCardView: View {
             // 用户信息部分
             if showUserInfo {
                 userInfoSection
+                    .padding(.bottom, 2) // 微调用户信息与内容之间的间距
             }
             
             // 内容部分
@@ -872,7 +873,7 @@ struct PostCardView: View {
             // 评论预览部分 - 调整上方间距，减少空白
             if !post.comments.isEmpty && (displayMode == .preview || displayMode == .compact) && !isDetailView {
                 virtualCommentPreviewSection
-                    .padding(.top, -6) // 进一步减少与图片区域之间的间距 (原为-4)
+                    .padding(.top, -5) // 适当调整与图片区域之间的间距
             }
             
             // 添加简单分割线
@@ -1066,9 +1067,9 @@ struct PostCardView: View {
                     }
                 }) {
                     Text("全文")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(DesignSystem.Typography.callout.weight(.medium))
                                 .foregroundColor(DesignSystem.Colors.primary)
-                        .padding(.top, 2) // 减少"全文"按钮的上方间距 (原为4)
+                        .padding(.top, 3) // 适当增加"全文"按钮的上方间距
                     }
                     .buttonStyle(PlainButtonStyle())
             }
@@ -1079,11 +1080,12 @@ struct PostCardView: View {
     // 帖子文本内容视图
     private var contentTextSection: some View {
         Text(post.content)
-            .font(.system(size: 16.0, weight: .regular))
+            .font(DesignSystem.Typography.postContent)
             .foregroundColor(DesignSystem.Colors.primaryText)
+            .kerning(0.3) // 添加字符间距，提升数字和字母的可读性
             // 修复lineLimit条件，确保短内容显示完整
             .lineLimit(isExpanded || isDetailView || !shouldShowExpandButton ? nil : maxPreviewLines)
-            .lineSpacing(5.0) // 减少行间距提高紧凑度（原为6.0）
+            .lineSpacing(6.0) // 增加行间距提高优雅感
             .fixedSize(horizontal: false, vertical: true) // 确保文本正确换行
     }
     
@@ -1338,7 +1340,7 @@ struct PostCardView: View {
                 if let description = getImageDescription(for: imageName) {
                     Text(description)
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.gray)
+                        .foregroundColor(DesignSystem.Colors.tertiaryText)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 12)
                         .lineLimit(2)
@@ -1756,26 +1758,6 @@ struct PostCardView: View {
                         // 移除评论数量显示，因为底部按钮区域已有显示
                         Spacer()
                 
-                        // 虚拟角色参与统计
-                        // 🔧 修复：使用getTopLevelComments()统计虚拟角色，只计算顶级评论
-                        let virtualCount = post.getTopLevelComments().filter { $0.isVirtualCharacter }.count
-                        if virtualCount > 0 {
-                            HStack(spacing: 4) {
-                                Image(systemName: "sparkles")
-                                    .font(.caption)
-                                    .foregroundColor(.orange)
-                    
-                                Text("\(virtualCount)位历史人物参与")
-                                    .font(.caption)
-                                    .foregroundColor(.orange)
-                            }
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule()
-                                    .fill(Color.orange.opacity(0.1))
-                            )
-                        }
                     }
                     .padding(.top, 4) // 添加顶部内边距使其更居中
                     .padding(.bottom, 0) // 将底部内边距从8减小到0
@@ -1800,7 +1782,7 @@ struct PostCardView: View {
                                 HStack {
                                     Text(featuredComment.username)
                                         .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(DesignSystem.Colors.primaryText)
+                                        .foregroundColor(DesignSystem.Colors.commentPrimaryText)
                                     
                                     if featuredComment.isVirtualCharacter {
                                         Text(CharacterAvatarService.shared.getCharacterCategoryTag(for: featuredComment.characterID ?? ""))
@@ -1817,57 +1799,12 @@ struct PostCardView: View {
                                 Text(featuredComment.content)
                                     .font(.system(size: featuredComment.isVirtualCharacter ? 14.0 : 14, weight: featuredComment.isVirtualCharacter ? .regular : .regular))
                                     .foregroundColor(DesignSystem.Colors.primaryText)
+                                    .kerning(0.3) // 添加字符间距，提升数字和字母的可读性
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
                                     .fixedSize(horizontal: false, vertical: true)
                                     .padding(.vertical, 4) // 增加垂直间距，使短评论看起来更美观
                                 
-                                // 添加点赞和回复信息
-                                HStack(spacing: 8) {
-                                    if featuredComment.likes > 0 {
-                                        HStack(spacing: 2) {
-                                            Image(systemName: "heart.fill")
-                                                .font(.system(size: 10))
-                                                .foregroundColor(.red.opacity(0.8))
-                                            
-                                            Text("\(featuredComment.likes)")
-                                                .font(.system(size: 11))
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                    
-                                    if featuredComment.replies.count > 0 {
-                                        HStack(spacing: 2) {
-                                            Image(systemName: "bubble.left.fill")
-                                                .font(.system(size: 10))
-                                                .foregroundColor(.blue.opacity(0.7))
-                                            
-                                            Text("\(featuredComment.replies.count)回复")
-                                                .font(.system(size: 11))
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    // 历史人物标识图标
-                                    if featuredComment.isVirtualCharacter {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "sparkles")
-                                                .font(.system(size: 9))
-                                                .foregroundColor(CharacterAvatarService.shared.getCharacterTagColor(for: featuredComment.characterID ?? ""))
-                                            
-                                            Text("历史人物")
-                                                .font(.system(size: 10))
-                                                .foregroundColor(CharacterAvatarService.shared.getCharacterTagColor(for: featuredComment.characterID ?? "").opacity(0.8))
-                                        }
-                                    } else {
-                                        Text("点击查看更多")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.secondary.opacity(0.7))
-                                    }
-                                }
-                                .padding(.top, 4)
                             }
                         }
                         .padding(10)
@@ -1885,7 +1822,7 @@ struct PostCardView: View {
                         VStack(spacing: 8) {
                             Text("\(post.comments.count)条评论")
                                 .font(.system(size: 14))
-                                .foregroundColor(.gray)
+                                .foregroundColor(DesignSystem.Colors.tertiaryText)
                             
                             HStack {
                                 Spacer()
@@ -1970,62 +1907,9 @@ struct PostCardView: View {
         return nil
     }
     
-    // 评论按钮区
+    // 评论按钮区 - 已删除
     private func commentButtonSection(for comment: DetailedCommentModel) -> some View {
-        HStack(spacing: 20) {
-            // 点赞按钮
-            Button(action: {
-                feedbackGenerator.impactOccurred(intensity: 0.3)
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "heart")
-                        .font(.system(size: 14.0))
-                        .foregroundColor(DesignSystem.Colors.tertiaryText)
-                    
-                    Text("\(comment.likes)")
-                        .font(.system(size: 13.0))
-                        .foregroundColor(DesignSystem.Colors.tertiaryText)
-                }
-            }
-            .buttonStyle(ScaleButtonStyle(scaleAmount: 0.95))
-            
-            // 回复按钮
-            Button(action: {
-                feedbackGenerator.impactOccurred(intensity: 0.3)
-                onPostTap() // 点击后跳转到详情页
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "bubble.left")
-                        .font(.system(size: 13.0))
-                        .foregroundColor(DesignSystem.Colors.tertiaryText)
-                    
-                    Text("回复")
-                        .font(.system(size: 13.0))
-                        .foregroundColor(DesignSystem.Colors.tertiaryText)
-                }
-            }
-            .buttonStyle(ScaleButtonStyle(scaleAmount: 0.95))
-            
-                        Spacer()
-            
-            // 精华标识
-            if comment.likes > 30 {
-                HStack(spacing: 2) {
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 12))
-                    
-                    Text("精华")
-                            .font(.system(size: 12))
-                }
-                .foregroundColor(Color.orange)
-                    .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(
-                    Capsule()
-                        .fill(Color.orange.opacity(0.1))
-                )
-            }
-        }
+        EmptyView()
     }
     
     /**
@@ -2065,62 +1949,9 @@ struct PostCardView: View {
     
     // MARK: - 评论行子组件
     
-    // 评论按钮区域
+    // 评论按钮区域 - 已删除
     private func buttonSection(for comment: DetailedCommentModel) -> some View {
-        HStack(spacing: 20) { // 增加按钮间距
-            // 点赞按钮
-            Button(action: {
-                // 触觉反馈
-                feedbackGenerator.impactOccurred(intensity: 0.4)
-                
-                // 这里可以添加点赞逻辑
-            }) {
-                HStack(spacing: 5) {
-                    Image(systemName: "heart")
-                        .font(.system(size: 14.0))
-                
-                    Text("\(comment.likes)")
-                        .font(.system(size: 14.0))
-            }
-                .foregroundColor(DesignSystem.Colors.tertiaryText)
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            // 回复按钮
-            Button(action: {
-                // 触觉反馈
-                feedbackGenerator.impactOccurred(intensity: 0.4)
-                
-                // 回复操作
-                if let onCommentToggle = onCommentToggle {
-                    onCommentToggle()
-                }
-            }) {
-                HStack(spacing: 5) {
-                    Image(systemName: "arrowshape.turn.up.left")
-                        .font(.system(size: 14.0))
-                    
-                Text("回复")
-                        .font(.system(size: 14.0))
-                }
-                .foregroundColor(DesignSystem.Colors.comment)
-                .padding(.horizontal, 6.0)
-                .padding(.vertical, 3.0)
-                .background(
-                    RoundedRectangle(cornerRadius: 6.0)
-                        .fill(DesignSystem.Colors.comment.opacity(0.08))
-                )
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            // 精华标识
-            if comment.likes > 30 {
-                featuredBadge
-            }
-            
-            Spacer()
-        }
-        .padding(.top, 8.0) // 增加顶部间距
+        EmptyView()
     }
     
     // 精华评论标识
@@ -2180,7 +2011,7 @@ struct PostCardView: View {
             if comment.isVirtualCharacter {
                 getCharacterColor(for: comment.characterID ?? "").opacity(0.03)
                     } else {
-                DesignSystem.Colors.secondaryBackground // 使用设计系统定义的嵌套背景色
+                DesignSystem.Colors.commentBackground // 使用精确匹配第二张图片的评论背景色
             }
         }
     }
@@ -2208,7 +2039,7 @@ struct PostCardView: View {
             .stroke(
                 comment.isVirtualCharacter ?
                 getCharacterColor(for: comment.characterID ?? "").opacity(0.1) :
-                Color.gray.opacity(0.1),
+                DesignSystem.Colors.commentBorder, // 使用精确匹配第二张图片的评论描边色
                 lineWidth: 0.5
             )
     }
@@ -2316,7 +2147,7 @@ struct PostCardView: View {
                     HStack(spacing: 6) {
                         Text(comment.username)
                             .font(.system(size: 15.0, weight: .semibold))
-                            .foregroundColor(DesignSystem.Colors.primaryText)
+                            .foregroundColor(DesignSystem.Colors.commentPrimaryText)
                         
                         if comment.characterID != nil {
                             Text(CharacterAvatarService.shared.getCharacterCategoryTag(for: comment.characterID ?? ""))
@@ -2341,7 +2172,8 @@ struct PostCardView: View {
             // 评论内容
             Text(comment.content)
                 .font(.system(size: 15.0))
-                .foregroundColor(.primary)
+                .foregroundColor(DesignSystem.Colors.primaryText)
+                .kerning(0.3) // 添加字符间距，提升数字和字母的可读性
                 .lineSpacing(4.0)
                 .fixedSize(horizontal: false, vertical: true)
             
@@ -2364,7 +2196,7 @@ struct PostCardView: View {
             if comment.isVirtualCharacter {
                 getCharacterColor(for: comment.characterID ?? "").opacity(0.03)
             } else {
-                DesignSystem.Colors.secondaryBackground // 使用设计系统定义的嵌套背景色
+                DesignSystem.Colors.commentBackground // 使用精确匹配第二张图片的评论背景色
             }
         }
     }
@@ -2392,7 +2224,7 @@ struct PostCardView: View {
             .stroke(
                 comment.isVirtualCharacter ?
                 getCharacterColor(for: comment.characterID ?? "").opacity(0.1) :
-                Color.gray.opacity(0.1),
+                DesignSystem.Colors.commentBorder, // 使用精确匹配第二张图片的评论描边色
                 lineWidth: 0.5
             )
     }
@@ -2483,11 +2315,11 @@ struct PostCardView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "bubble.left")
                         .font(.system(size: 16.0))  // 从18.0减小到16.0
-                        .foregroundColor(.gray)
+                        .foregroundColor(DesignSystem.Colors.comment)
                     
                     Text("\(post.comments.count)")
                         .font(.system(size: 13.0))  // 从14.0减小到13.0
-                        .foregroundColor(.gray)
+                        .foregroundColor(DesignSystem.Colors.tertiaryText)
                 }
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)  // 从3减小到2，使整体更紧凑
@@ -2509,7 +2341,7 @@ struct PostCardView: View {
             }) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 16.0))  // 从18.0减小到16.0
-                    .foregroundColor(.gray)
+                    .foregroundColor(DesignSystem.Colors.tertiaryText)
             }
             .buttonStyle(PlainButtonStyle())
         }
@@ -2564,7 +2396,7 @@ struct PostCardView: View {
                         
                         Text("暂无评论")
                             .font(.subheadline)
-                            .foregroundColor(.gray)
+                            .foregroundColor(DesignSystem.Colors.tertiaryText)
                         
                         Text("成为第一个评论的人")
                             .font(.caption)
@@ -2621,7 +2453,7 @@ struct PostCardView: View {
                 // 评论加载中状态
                 VStack {
                     Text("评论加载中...")
-                        .foregroundColor(.gray)
+                        .foregroundColor(DesignSystem.Colors.tertiaryText)
                 }
             }
         }
@@ -2669,7 +2501,7 @@ struct PostCardView: View {
                 // 用户头像
                 Image(systemName: "person.circle.fill")
                     .font(.system(size: 24.0))
-                    .foregroundColor(.gray)
+                    .foregroundColor(DesignSystem.Colors.tertiaryText)
                 
                 // 自动增高的文本输入框
                 ZStack(alignment: .leading) {
@@ -2677,7 +2509,7 @@ struct PostCardView: View {
                     if commentText.isEmpty {
                         Text(replyingTo == nil ? "跨越时空的对话..." : "回复 \(replyingTo?.username ?? "") 的对话...")
                             .font(.system(size: 14.0))
-                            .foregroundColor(.gray)
+                            .foregroundColor(DesignSystem.Colors.tertiaryText)
                             .padding(.leading, 8.0)
                             .padding(.top, 8.0)
                     }
@@ -2946,11 +2778,11 @@ struct ZoomableImageView: View {
                         VStack(spacing: 12) {
                             Image(systemName: "photo.fill")
                                 .font(.system(size: 30))
-                                .foregroundColor(.gray)
+                                .foregroundColor(DesignSystem.Colors.tertiaryText)
                             
                             Text("图片加载失败")
                                 .font(.caption)
-                                .foregroundColor(.gray)
+                                .foregroundColor(DesignSystem.Colors.tertiaryText)
                         }
                     }
                 }

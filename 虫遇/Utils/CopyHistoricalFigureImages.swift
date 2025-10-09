@@ -18,6 +18,12 @@ class HistoricalFigureImageCopier {
         "aristotle", "curie", "hawking", "newton", "spike", "spike_spiegel"
     ]
     
+    // ⚡️ 优化：使用UserDefaults记录是否已完成首次图片复制
+    private let hasCompletedInitialCopyKey = "HasCompletedInitialImageCopy_v2"
+    
+    // ⚡️ 优化：图片缓存，避免重复验证
+    private var imageCache: [String: Bool] = [:]
+    
     // 已知历史人物列表 - 与CharacterAvatarService保持一致
     private let knownCharacters = [
         // 已有的历史人物和科学家
@@ -75,33 +81,43 @@ class HistoricalFigureImageCopier {
     /**
      * 复制所有历史人物图片到运行时目录和Documents目录
      * 在应用启动时调用
+     * ⚡️ 优化：首次启动完整复制，后续启动快速检查
      */
     func copyAllImages() {
-        #if DEBUG
-        print("🚀 开始复制历史人物图片...")
-        #endif
+        let startTime = CFAbsoluteTimeGetCurrent()
+        
+        // ⚡️ 优化：检查是否已完成首次图片复制
+        let hasCompletedInitialCopy = UserDefaults.standard.bool(forKey: hasCompletedInitialCopyKey)
         
         // 确保目标目录存在
         guard let resourcePath = Bundle.main.resourcePath else {
-            #if DEBUG
-            print("❌ 无法获取资源路径")
-            #endif
             return
         }
         
         // 1. 复制到运行时目录
         let runtimeTargetDir = resourcePath + "/HistoricalFigures"
-        createDirectoryIfNeeded(at: runtimeTargetDir)
+        createDirectoryIfNeeded(at: runtimeTargetDir, silent: hasCompletedInitialCopy)
         
         // 2. 复制到Documents目录
         guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.path else {
-            #if DEBUG
-            print("❌ 无法获取Documents目录路径")
-            #endif
             return
         }
         let documentsTargetDir = documentsPath + "/HistoricalFigures"
-        createDirectoryIfNeeded(at: documentsTargetDir)
+        createDirectoryIfNeeded(at: documentsTargetDir, silent: hasCompletedInitialCopy)
+        
+        // ⚡️ 优化：如果已完成首次复制，只做快速验证
+        if hasCompletedInitialCopy {
+            #if DEBUG
+            let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
+            print("⚡️ 图片快速检查完成，耗时: \(String(format: "%.2f", timeElapsed * 1000))ms")
+            #endif
+            return
+        }
+        
+        // 首次启动：完整复制所有图片
+        #if DEBUG
+        print("🚀 首次启动，开始复制历史人物图片...")
+        #endif
         
         // 复制每个历史人物的图片
         var successCount = 0
@@ -113,58 +129,42 @@ class HistoricalFigureImageCopier {
                 continue
             }
             
-            // 复制到运行时目录
-            let success1 = copyImage(for: characterID, to: runtimeTargetDir)
+            // 只复制到Documents目录（运行时目录不需要）
+            let success = copyImage(for: characterID, to: documentsTargetDir, silent: true)
             
-            // 复制到Documents目录
-            let success2 = copyImage(for: characterID, to: documentsTargetDir)
-            
-            if success1 || success2 {
+            if success {
                 successCount += 1
             }
         }
         
-        #if DEBUG
-        print("📊 图片复制统计: 成功 \(successCount) 个，跳过 \(skippedCount) 个缺失图片")
-        #endif
+        // 标记已完成首次复制
+        UserDefaults.standard.set(true, forKey: hasCompletedInitialCopyKey)
         
-        // 验证复制结果（仅调试模式）
+        let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
         #if DEBUG
-        verifyImages(in: runtimeTargetDir, label: "运行时目录")
-        verifyImages(in: documentsTargetDir, label: "Documents目录")
-        
-        print("✅ 历史人物图片复制完成")
+        print("✅ 图片复制完成: 成功 \(successCount) 个，跳过 \(skippedCount) 个，耗时: \(String(format: "%.2f", timeElapsed * 1000))ms")
         #endif
     }
     
     /**
      * 创建目录（如果不存在）
+     * ⚡️ 优化：添加silent参数，减少日志输出
      */
-    private func createDirectoryIfNeeded(at path: String) {
+    private func createDirectoryIfNeeded(at path: String, silent: Bool = false) {
         let fileManager = FileManager.default
         if !fileManager.fileExists(atPath: path) {
             do {
                 try fileManager.createDirectory(atPath: path, withIntermediateDirectories: true)
                 #if DEBUG
-                print("✅ 创建目录: \(path)")
+                if !silent {
+                    print("✅ 创建目录: \(path)")
+                }
                 #endif
             } catch {
                 #if DEBUG
                 print("❌ 创建目录失败: \(error)")
                 #endif
             }
-        } else {
-            #if DEBUG
-            print("✅ 目标目录已存在: \(path)")
-            
-            // 检查目录内容
-            do {
-                let existingFiles = try fileManager.contentsOfDirectory(atPath: path)
-                print("📋 目录现有内容: \(existingFiles)")
-            } catch {
-                print("⚠️ 无法列出目录内容: \(error)")
-            }
-            #endif
         }
     }
     
@@ -172,13 +172,11 @@ class HistoricalFigureImageCopier {
      * 复制单个历史人物图片到指定目录
      * @param characterID 角色ID
      * @param targetDir 目标目录
+     * @param silent 是否静默模式（不输出日志）
      * @return 是否成功复制
+     * ⚡️ 优化：添加silent参数，减少日志输出
      */
-    private func copyImage(for characterID: String, to targetDir: String) -> Bool {
-        #if DEBUG
-        // print("🔍 尝试复制 \(characterID) 的图片到 \(targetDir)...")
-        #endif
-        
+    private func copyImage(for characterID: String, to targetDir: String, silent: Bool = false) -> Bool {
         // 尝试从多个可能的位置获取图片
         let possibleImageNames = [
             characterID,
@@ -187,21 +185,12 @@ class HistoricalFigureImageCopier {
         ]
         
         var sourceImage: UIImage? = nil
-        var usedPath = ""
         
         // 尝试所有可能的路径
         for imageName in possibleImageNames {
             if let image = UIImage(named: imageName) {
                 sourceImage = image
-                usedPath = imageName
-                #if DEBUG
-                print("✅ 找到图片: \(imageName)")
-                #endif
                 break
-            } else {
-                #if DEBUG
-                print("❌ 未找到图片: \(imageName)")
-                #endif
             }
         }
         
@@ -215,16 +204,9 @@ class HistoricalFigureImageCopier {
                 ]
                 
                 for path in filePaths {
-                    #if DEBUG
-                    print("🔍 尝试从文件系统加载: \(path)")
-                    #endif
                     if FileManager.default.fileExists(atPath: path) {
                         if let image = UIImage(contentsOfFile: path) {
                             sourceImage = image
-                            usedPath = path
-                            #if DEBUG
-                            print("✅ 从文件系统找到图片: \(path)")
-                            #endif
                             break
                         }
                     }
@@ -236,20 +218,12 @@ class HistoricalFigureImageCopier {
         if sourceImage == nil && characterID != "kongzi" {
             if let kongziImage = UIImage(named: "HistoricalFigures/kongzi") ?? UIImage(named: "kongzi") {
                 sourceImage = kongziImage
-                usedPath = "kongzi (替代)"
-                #if DEBUG
-                print("⚠️ 未找到 \(characterID) 的图片，使用孔子图片替代")
-                #endif
             }
         }
         
         // 如果找不到任何图片，创建一个占位图片
         if sourceImage == nil {
-            #if DEBUG
-            print("⚠️ 无法找到任何图片，创建占位图片")
-            #endif
             sourceImage = createPlaceholderImage(for: characterID)
-            usedPath = "占位图片"
         }
         
         // 如果找到图片，复制到目标目录
@@ -259,21 +233,16 @@ class HistoricalFigureImageCopier {
             if let imageData = image.pngData() {
                 do {
                     try imageData.write(to: URL(fileURLWithPath: targetPath))
-                    #if DEBUG
-                    // print("✅ 成功复制 \(characterID) 图片从 \(usedPath) 到 \(targetPath)")
-                    #endif
                     return true
                 } catch {
                     #if DEBUG
-                    print("❌ 复制 \(characterID) 图片失败: \(error)")
+                    if !silent {
+                        print("❌ 复制 \(characterID) 图片失败: \(error)")
+                    }
                     #endif
                     return false
                 }
             }
-        } else {
-            #if DEBUG
-            // print("❌ 未能创建 \(characterID) 的图片，无法复制")
-            #endif
         }
         
         return false
@@ -316,58 +285,14 @@ class HistoricalFigureImageCopier {
     }
     
     /**
-     * 验证所有图片是否已成功复制并可加载
-     * @param directory 目标目录
-     * @param label 目录标签，用于日志
+     * ⚡️ 已移除：验证所有图片（太慢，已优化为首次检查机制）
+     * 如需调试，可临时启用详细日志
      */
-    private func verifyImages(in directory: String, label: String) {
-        print("🔍 验证历史人物图片 (\(label))...")
-        
-        let fileManager = FileManager.default
-        
-        do {
-            let files = try fileManager.contentsOfDirectory(atPath: directory)
-            print("📋 \(label)内容: \(files)")
-            
-            // 检查每个已知角色的图片是否存在
-            for characterID in knownCharacters {
-                let imagePath = directory + "/\(characterID).png"
-                if files.contains("\(characterID).png") {
-                    print("✅ \(characterID) 图片存在于\(label)")
-                    
-                    // 尝试加载图片
-                    if let image = UIImage(contentsOfFile: imagePath) {
-                        print("✅ \(characterID) 图片可以从\(label)加载，大小: \(image.size)")
-                    } else {
-                        print("⚠️ \(characterID) 图片无法从\(label)加载，虽然文件存在")
-                    }
-                } else {
-                    print("❌ \(characterID) 图片不存在于\(label)")
-                }
-            }
-        } catch {
-            print("❌ 无法列出\(label)内容: \(error)")
-        }
-    }
     
     /**
-     * 手动注册图片到运行时
-     * 尝试解决UIImage(named:)无法加载图片的问题
+     * ⚡️ 已移除：手动注册图片（不再需要，已优化加载机制）
      */
     func registerImagesManually() {
-        guard let resourcePath = Bundle.main.resourcePath else { return }
-        
-        let targetDir = resourcePath + "/HistoricalFigures"
-        
-        for characterID in knownCharacters {
-            let imagePath = targetDir + "/\(characterID).png"
-            if FileManager.default.fileExists(atPath: imagePath) {
-                // 这里尝试将图片手动添加到运行时缓存中
-                // 注意：这是一个实验性方法，可能不适用于所有情况
-                #if DEBUG
-                print("🔄 手动注册图片: \(characterID)")
-                #endif
-            }
-        }
+        // 空实现，保持接口兼容性
     }
 } 

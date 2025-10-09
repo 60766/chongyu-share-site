@@ -250,14 +250,14 @@ struct PostShareCard: View {
                 HStack(spacing: 6) {
                     // 用户名 - 增加字体粗细区分
                     Text(post.username)
-                        .font(.system(size: 16.0, weight: .semibold))
+                        .font(DesignSystem.Typography.bodyBold)
                         .foregroundColor(DesignSystem.Colors.primaryText)
                         .lineLimit(1) // 防止用户名过长
                     
                     // 用户标签 - 根据角色动态显示
                     if let tag = getUserTag(for: post.username) {
                         Text(tag)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(DesignSystem.Typography.caption2.weight(.medium))
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
@@ -282,16 +282,16 @@ struct PostShareCard: View {
                 // 发布时间与内容类型简化为一行
                 HStack(spacing: 6) {
                     Text(post.getFormattedTimeAgo())
-                        .font(.system(size: 13.0, weight: .regular))
+                        .font(DesignSystem.Typography.footnote)
                         .foregroundColor(DesignSystem.Colors.secondaryText)
                     
                     Text("•")
-                        .font(.system(size: 13.0))
+                        .font(DesignSystem.Typography.footnote)
                         .foregroundColor(DesignSystem.Colors.secondaryText)
                     
                     // AI生成的帖子只显示"AI生成"
                     Text("AI生成")
-                        .font(.system(size: 13.0, weight: .regular))
+                        .font(DesignSystem.Typography.footnote)
                         .foregroundColor(DesignSystem.Colors.secondaryText)
                 }
             }
@@ -303,9 +303,9 @@ struct PostShareCard: View {
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.s) {
             Text(post.content)
-                .font(.system(size: 15.0))
+                .font(DesignSystem.Typography.postContent)
                 .foregroundColor(DesignSystem.Colors.primaryText)
-                .lineSpacing(4.0)
+                .lineSpacing(6.0)
                 .multilineTextAlignment(.leading)
                 .lineLimit(maxContentLines) // 限制最大行数，避免内容过长
                 .fixedSize(horizontal: false, vertical: true) // 确保文本正确换行
@@ -322,7 +322,7 @@ struct PostShareCard: View {
                     .foregroundColor(.orange)
                 
                 Text("\(post.comments.count)位历史人物参与")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(DesignSystem.Typography.caption.weight(.medium))
                     .foregroundColor(.orange)
             }
             .padding(.bottom, 4)
@@ -343,14 +343,14 @@ struct PostShareCard: View {
                             // 评论者信息
                             HStack(spacing: 6) {
                                 Text(firstComment.username)
-                                    .font(.system(size: 14.0, weight: .medium))
+                                    .font(DesignSystem.Typography.subheadline.weight(.medium))
                                     .foregroundColor(DesignSystem.Colors.primaryText)
                                     .lineLimit(1) // 防止用户名过长
                                 
                                 // 角色标签
                                 if let tag = getUserTag(for: firstComment.username) {
                                     Text(tag)
-                                        .font(.system(size: 10, weight: .medium))
+                                        .font(DesignSystem.Typography.caption2.weight(.medium))
                                         .foregroundColor(.white)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
@@ -363,9 +363,9 @@ struct PostShareCard: View {
                             
                             // 评论内容
                             Text(firstComment.content)
-                                .font(.system(size: 14.0))
+                                .font(DesignSystem.Typography.callout)
                                 .foregroundColor(DesignSystem.Colors.primaryText)
-                                .lineSpacing(3)
+                                .lineSpacing(5)
                                 .lineLimit(maxCommentLines) // 限制评论行数
                                 .fixedSize(horizontal: false, vertical: true)
                         }

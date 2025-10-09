@@ -176,11 +176,11 @@ struct NotificationModel: Identifiable, Codable {
     var typeColor: Color {
         switch self.type {
         case .comment:
-            return .warmAccentSecondary
+            return .primaryColor
         case .like:
             return .pink
         case .follow:
-            return .orange
+            return .primaryColor
         case .system:
             return .purple
         }

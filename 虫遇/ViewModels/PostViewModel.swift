@@ -33,9 +33,12 @@ class PostViewModel: ObservableObject {
                 self.comments = currentPost.getTopLevelComments()
             }
             
-            // 添加数据一致性检查（仅在debug模式下）
+            // ⚡️ 优化：只在非初始化阶段且有实际变化时检查数据一致性
+            // 避免启动时频繁检查影响性能
             #if DEBUG
-            validateDataConsistency()
+            if isInitialized && !oldValue.isEmpty {
+                validateDataConsistency()
+            }
             #endif
         }
     }
@@ -68,6 +71,9 @@ class PostViewModel: ObservableObject {
     private var lastSaveTimestamp: Date = Date()
     private var pendingSaveOperation: DispatchWorkItem?
     
+    // ⚡️ 初始化完成标志（用于避免启动时频繁的数据一致性检查）
+    private var isInitialized: Bool = false
+    
     /**
      * 初始化PostViewModel
      */
@@ -86,6 +92,8 @@ class PostViewModel: ObservableObject {
         // ⚡️ 异步加载完整数据，不阻塞UI
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
+            
+            let loadStartTime = CFAbsoluteTimeGetCurrent()
             
             // 1. 恢复用户帖子
             let userPosts = self.restoreUserPostsData()
@@ -118,16 +126,23 @@ class PostViewModel: ObservableObject {
             // 按时间倒序排列
             let uniquePosts = Array(allPostsDict.values).sorted { $0.datePosted > $1.datePosted }
             
+            let loadTime = (CFAbsoluteTimeGetCurrent() - loadStartTime) * 1000
             print("🚀 PostViewModel后台加载完成:")
             print("   - 用户帖子: \(userPosts.count) 条")
             print("   - AI帖子: \(aiPosts.count) 条") 
             print("   - 示例帖子: \(samplePosts.count) 条")
             print("   - 总计: \(uniquePosts.count) 条")
+            print("   - 加载耗时: \(String(format: "%.0f", loadTime))ms")
             
             // 在主线程更新UI
             DispatchQueue.main.async {
                 self.posts = uniquePosts
                 print("✅ UI已更新，显示全部 \(uniquePosts.count) 条帖子")
+                
+                // ⚡️ 标记初始化完成（延迟1秒后才启用数据一致性检查）
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.isInitialized = true
+                }
             }
         }
         

@@ -136,11 +136,6 @@ struct CommentsListView: View {
                             .id(comment.id)
                             .transition(.opacity.animation(.easeInOut(duration: 0.2)))
                             
-                            if comment.id != comments.last?.id {
-                                Divider()
-                                    .padding(.horizontal, 20) // 增加水平间距
-                                    .padding(.vertical, 4) // 增加分隔线周围的间距
-                            }
                         }
                         .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
                     }
@@ -215,7 +210,7 @@ struct CommentsListView: View {
                 }
             }
         }
-        .background(Color(.systemBackground).opacity(0.98)) // 添加轻微的背景色
+        .background(Color.clear) // 使用透明背景，继承父视图背景色
         .onAppear {
             // 添加通知监听
             setupNotifications()
@@ -1042,7 +1037,7 @@ struct CommentHeaderView: View {
         }
         .padding(.horizontal, 20) // 增加水平间距
         .padding(.vertical, 14) // 增加垂直间距
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.background)
         .overlay(
             Divider()
                 .padding(.horizontal, 20), // 增加分隔线水平间距
@@ -1111,10 +1106,11 @@ struct CommentThreadView: View {
                     // 因为CommentManager.updateCommentLists已经确保了正确的排序顺序
                     ForEach(allReplies) { reply in
                         if reply.id != allReplies.first?.id {
-                            Divider()
-                                .padding(.leading, 48) // 增加左侧间距
-                                .padding(.trailing, 16)
-                                .padding(.vertical, 2) // 添加垂直间距
+                            // 简单分隔线，没有额外空隙
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.15))
+                                .frame(height: 0.5)
+                                .padding(.vertical, 4) // 增加分隔线周围的间距
                         }
                         
                         // 回复内容 - 不再显示展开按钮，因为所有回复都在同一层
@@ -1150,11 +1146,11 @@ struct CommentThreadView: View {
                 .padding(.leading, 0)
                 .background(
                     RoundedRectangle(cornerRadius: 12) // 增加圆角
-                        .fill(Color(.systemGray6).opacity(0.5)) // 轻微调整背景色透明度
+                        .fill(DesignSystem.Colors.warmNestedBackground) // 使用设计系统中定义的嵌套背景色 #EFEEE8 rgb(239,238,232)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12) // 增加圆角
-                        .stroke(Color.gray.opacity(0.1), lineWidth: 1) // 调整边框颜色和宽度
+                        .stroke(DesignSystem.Colors.border.opacity(0.1), lineWidth: 1) // 调整边框颜色和宽度
                 )
                 .padding(.horizontal, 20) // 增加水平间距
                 .padding(.bottom, 6) // 增加底部间距
@@ -1396,7 +1392,8 @@ struct CommentItemView: View {
                     // 评论内容
                     Text(comment.content)
                         .font(.system(size: 15))
-                        .foregroundColor(Color.primary.opacity(0.8))
+                        .foregroundColor(DesignSystem.Colors.primaryText)
+                        .kerning(0.3) // 添加字符间距，提升数字和字母的可读性
                         .lineSpacing(5)
                         .padding(.top, 8)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1485,7 +1482,7 @@ struct CommentItemView: View {
             
             // 删除重复的动画，避免多个点点同时显示
         }
-        .background(Color(.systemBackground).opacity(0.5))
+        .background(Color.clear)
         .contentShape(Rectangle())
         .frame(maxWidth: .infinity) // 确保整个评论视图占满宽度
     }

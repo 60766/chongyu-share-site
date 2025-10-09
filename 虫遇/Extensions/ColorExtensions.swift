@@ -127,49 +127,67 @@ extension Color {
         }
     }
     
-    // 新增：温暖米色主题系列
+    // 新增：舒适温暖主题系列 - 基于参考图片的配色方案
     
-    /// 米色背景 - 页面主背景色
-    static let warmBackground = Color(hex: "F7F6F0")
+    /// 温暖米白色背景 - 页面主背景色，参考图片的优雅浅粉米色调
+    static let warmBackground = Color(hex: "F7F5F3")
     
-    /// 米色卡片背景 - 卡片/内容区域背景色
-    static let warmCardBackground = Color(hex: "F5F2EA")
+    /// 温暖卡片背景 - 参考图片的优雅浅粉米色，更加温暖舒适
+    static let warmCardBackground = Color(hex: "FBF9F7")
     
-    /// 米色嵌套背景 - 嵌套内容（如评论）背景色
-    static let warmNestedBackground = Color(hex: "F9F7F4")
+    /// 温暖嵌套背景 - 嵌套内容（如评论）背景色，淡米色
+    static let warmNestedBackground = Color(hex: "EFEEE8")
     
-    /// 米色深色背景 - 用于与卡片形成对比的背景
-    static let warmDarkBackground = Color(hex: "F0EDE4")
+    /// 温暖深色背景 - 用于与卡片形成对比的背景
+    static let warmDarkBackground = Color(hex: "F8F8F6")
     
-    /// 米色高亮背景 - 用于轻微强调的区域
-    static let warmHighlightBackground = Color(hex: "FBF8F1")
+    /// 评论背景色 - 温暖柔和的米色背景，与整体温暖色调和谐统一
+    static let commentBackground = Color(hex: "F5F4EE")
     
-    /// 主题强调色 - 优雅的紫色，与米色背景和谐搭配
-    static let warmAccent = Color(hex: "9A8BB0")
+    /// 评论描边色 - 温暖的浅棕灰色描边，与温暖背景完美融合
+    static let commentBorder = Color(hex: "E8E5E0")
     
-    /// 主题次要强调色 - 浅紫色
-    static let warmAccentSecondary = Color(hex: "A890B8")
+    /// 评论悬停背景色 - 轻微强调时的背景色
+    static let commentHoverBackground = Color(hex: "F6F4F1")
     
-    /// 点赞颜色 - 符合用户心理预期的红色
-    static let likeColor = Color(hex: "E05252")
+    /// 评论文本颜色 - 温暖的深灰色，确保良好的可读性
+    static let commentTextColor = Color(hex: "2A2A2A")
+    
+    /// 评论次要文本颜色 - 用于时间戳、作者等信息
+    static let commentSecondaryTextColor = Color(hex: "6B6B6B")
+    
+    /// 评论主要文本颜色 - 用于评论内容的主要文本
+    static let commentPrimaryText = Color(hex: "6f6e68")
+    
+    /// 温暖高亮背景 - 用于轻微强调的区域
+    static let warmHighlightBackground = Color(hex: "FEFEFC")
+    
+    /// 温暖强调色 - 橙金色，参考图片中的温暖橙金色
+    static let warmAccent = Color(hex: "E8A87C")
+    
+    /// 温暖次要强调色 - 浅橙金色
+    static let warmAccentSecondary = Color(hex: "F2B896")
+    
+    /// 点赞颜色 - 温暖的红色，参考图片中的红色
+    static let likeColor = Color(hex: "E53935")
     
     /// 收藏颜色 - 温暖的金色
     static let bookmarkColor = Color(hex: "D4AF37")
     
-    /// 评论颜色 - 淡雅的蓝灰色，保持与紫色主题的和谐
-    static let commentColor = Color(hex: "7D90AC")
+    /// 评论颜色 - 温暖的中性灰色，与整体色调协调
+    static let commentColor = Color(hex: "8A8A8A")
     
-    /// 柔和的深灰色 - 主要文本颜色
-    static let warmTextPrimary = Color(hex: "333333").opacity(0.9)
+    /// 深灰色主文本 - 主要文本颜色，参考图片中的深灰色
+    static let warmTextPrimary = Color(hex: "1A1A1A")
     
-    /// 柔和的中灰色 - 次要文本颜色
-    static let warmTextSecondary = Color(hex: "666666").opacity(0.85)
+    /// 中灰色次要文本 - 次要文本颜色
+    static let warmTextSecondary = Color(hex: "4A4A4A")
     
-    /// 柔和的浅灰色 - 辅助文本颜色
-    static let warmTextTertiary = Color(hex: "999999").opacity(0.8)
+    /// 浅灰色辅助文本 - 辅助文本颜色
+    static let warmTextTertiary = Color(hex: "8A8A8A")
     
-    /// 温暖的边框色 - 用于分割线和边框
-    static let warmBorder = Color(hex: "DDDDDD").opacity(0.6)
+    /// 温暖边框色 - 用于分割线和边框
+    static let warmBorder = Color(hex: "E0E0E0").opacity(0.6)
 
     func getCharacterColor(for characterID: String?) -> Color {
         guard let characterID = characterID?.lowercased() else {
@@ -261,19 +279,19 @@ extension UIColor {
     /// 信息色 - 蓝色
     static let infoColor = UIColor(red: 59/255, green: 130/255, blue: 246/255, alpha: 1.0)
     
-    // 新增：温暖米色主题系列对应的UIColor
+    // 新增：舒适温暖主题系列对应的UIColor - 基于参考图片的配色方案
     
-    /// 米色背景 - 页面主背景色
-    static let warmBackground = UIColor(red: 247/255, green: 246/255, blue: 240/255, alpha: 1.0)
+    /// 温暖米白色背景 - 页面主背景色，参考图片的优雅浅粉米色调
+    static let warmBackground = UIColor(red: 247/255, green: 245/255, blue: 243/255, alpha: 1.0)
     
-    /// 米色卡片背景 - 卡片/内容区域背景色
-    static let warmCardBackground = UIColor(red: 245/255, green: 242/255, blue: 234/255, alpha: 1.0)
+    /// 温暖卡片背景 - 参考图片的优雅浅粉米色，更加温暖舒适
+    static let warmCardBackground = UIColor(red: 250/255, green: 249/255, blue: 247/255, alpha: 1.0)
     
-    /// 温暖强调色 - 紫色
-    static let warmAccent = UIColor(red: 154/255, green: 139/255, blue: 176/255, alpha: 1.0)
+    /// 温暖强调色 - 橙金色
+    static let warmAccent = UIColor(red: 232/255, green: 168/255, blue: 124/255, alpha: 1.0)
     
-    /// 点赞颜色 - 红色
-    static let likeColor = UIColor(red: 224/255, green: 82/255, blue: 82/255, alpha: 1.0)
+    /// 点赞颜色 - 温暖的红色
+    static let likeColor = UIColor(red: 229/255, green: 57/255, blue: 53/255, alpha: 1.0)
     
     /// 收藏颜色 - 金色
     static let bookmarkColor = UIColor(red: 212/255, green: 175/255, blue: 55/255, alpha: 1.0)

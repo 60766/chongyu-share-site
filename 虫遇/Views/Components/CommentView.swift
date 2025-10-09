@@ -60,8 +60,8 @@ struct CommentView: View {
                     HStack(alignment: .top, spacing: 4) {
                         // 用户名 - 根据评论类型使用不同数据源
                         Text(comment.isCurrentUser ? UserProfileManager.shared.getCurrentUsername() : getUserDisplayName(comment: comment))
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.primary)
+                            .font(DesignSystem.Typography.subheadline.weight(.semibold))
+                            .foregroundColor(DesignSystem.Colors.commentPrimaryText)
                         
                         // 添加调试日志
                         .onAppear {
@@ -76,7 +76,7 @@ struct CommentView: View {
                         // 虚拟角色标签
                         if comment.isVirtualCharacter {
                             Text(getCategoryTag(for: comment.characterID ?? ""))
-                                .font(.system(size: 12))
+                                .font(DesignSystem.Typography.caption)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(getCategoryTagColor(for: comment.characterID ?? "").opacity(0.15))
@@ -88,7 +88,7 @@ struct CommentView: View {
                         
                         // 时间标签
                         Text(comment.getFormattedTimeAgo())
-                            .font(.system(size: 12))
+                            .font(DesignSystem.Typography.caption)
                             .foregroundColor(.secondary)
                     }
                     
@@ -112,31 +112,19 @@ struct CommentView: View {
                 
                 // 评论内容 - 增强排版和阅读体验
                 Text(comment.content)
-                    .font(.system(size: comment.isVirtualCharacter ? 14.0 : 14, weight: comment.isVirtualCharacter ? .regular : .regular))
-                    .foregroundColor(
-                        comment.isVirtualCharacter ? 
-                            DesignSystem.Colors.primaryText : 
-                            Color.primary.opacity(0.8)
-                    )
-                    .lineSpacing(comment.isVirtualCharacter ? 4.0 : 4) // 虚拟角色使用与普通评论相同的行间距
+                    .font(DesignSystem.Typography.commentText)
+                    .foregroundColor(DesignSystem.Colors.primaryText)
+                    .kerning(0.3) // 添加字符间距，提升数字和字母的可读性
+                    .lineSpacing(6) // 适当增加行间距提高优雅感
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 12)
                 
-                // 底部操作栏 - 极简风格
-                CommentActionsView(
-                    isLiked: $isLiked,
-                    likeCount: $likeCount,
-                    comment: comment,
-                    onReply: onReply,
-                    onLike: onLike,
-                    hapticFeedback: hapticFeedback
-                )
             }
             .background(
                 comment.isVirtualCharacter ? 
                     Color.orange.opacity(0.02) : // 极淡的背景色差异
-                    Color(.systemBackground)
+                    Color.clear // 使用透明背景，继承父视图背景色
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
@@ -471,104 +459,6 @@ struct CommentView: View {
         }
     }
     
-    /// 评论操作视图
-    struct CommentActionsView: View {
-        @Binding var isLiked: Bool
-        @Binding var likeCount: Int
-        let comment: DetailedCommentModel
-        let onReply: (DetailedCommentModel) -> Void
-        let onLike: (DetailedCommentModel) -> Void
-        let hapticFeedback: (UIImpactFeedbackGenerator.FeedbackStyle) -> Void
-        
-        var body: some View {
-            HStack(spacing: 20) {
-                // 点赞按钮
-                Button(action: {
-                    toggleLike()
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: isLiked ? "heart.fill" : "heart")
-                            .font(.system(size: 13)) // 更小的图标
-                            .foregroundColor(
-                                isLiked ? 
-                                    .red.opacity(0.9) : // 柔和的红色
-                                    Color(.systemGray3)
-                            )
-                            .scaleEffect(isLiked ? 1.05 : 1.0) // 减小动画幅度
-                        
-                        Text("\(likeCount)")
-                            .font(.system(size: 13))
-                            .foregroundColor(
-                                isLiked ? 
-                                    .red.opacity(0.8) : 
-                                    Color(.systemGray3)
-                            )
-                    }
-                }
-                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.97)) // 减小缩放幅度
-                
-                // 回复按钮
-                Button(action: {
-                    hapticFeedback(.light)
-                    onReply(comment)
-                    
-                    // 发送通知，让CommentInputView获取焦点并弹出键盘
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("FocusCommentInput"),
-                        object: nil
-                    )
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrowshape.turn.up.left")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color(.systemGray3))
-                        
-                        Text("回复")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color(.systemGray3))
-                    }
-                }
-                .buttonStyle(ScaleButtonStyle(scaleAmount: 0.97)) // 减小缩放幅度
-                
-                Spacer()
-                
-                // 精华标识 - 简化设计
-                if comment.likes > 30 {
-                    HStack(spacing: 2) {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 11)) // 更小的图标
-                        
-                        Text("精华")
-                            .font(.system(size: 11)) // 更小的文本
-                    }
-                    .foregroundColor(Color.orange.opacity(0.8)) // 柔和的橙色
-                    .padding(.horizontal, 7) // 减小内边距
-                    .padding(.vertical, 3)
-                    .background(
-                        Capsule()
-                            .fill(Color.orange.opacity(0.08)) // 更淡的背景色
-                    )
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
-        }
-        
-        /// 切换点赞状态
-        private func toggleLike() {
-            // 触感反馈
-            hapticFeedback(.light)
-            
-            // 更新状态 - 使用更快的动画
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
-                isLiked.toggle()
-                likeCount += isLiked ? 1 : -1
-            }
-            
-            // 调用回调
-            onLike(comment)
-        }
-    }
 }
 
 /**
@@ -680,7 +570,7 @@ struct CommentListContainer: View {
                 }
             }
         }
-        .background(DesignSystem.Colors.background)
+        .background(Color(hex: "#EFEEE8")) // rgb(239,238,232) 嵌套评论背景色
         .onAppear {
             // 准备触觉反馈
             feedbackGenerator.prepare()
