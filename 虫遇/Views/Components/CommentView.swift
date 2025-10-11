@@ -600,7 +600,7 @@ struct CommentView_Previews: PreviewProvider {
             )
             .previewLayout(.sizeThatFits)
             .padding()
-            .background(Color.white)
+            .background(DesignSystem.Colors.background)
             
             // 历史人物评论
             CommentView(
@@ -618,7 +618,7 @@ struct CommentView_Previews: PreviewProvider {
             )
             .previewLayout(.sizeThatFits)
             .padding()
-            .background(Color.white)
+            .background(DesignSystem.Colors.background)
         }
     }
 } 

@@ -166,7 +166,7 @@ struct CharacterDetailView: View {
     var body: some View {
         ZStack {
             // 背景色 - 简化为纯色背景
-            Color(.systemBackground)
+            DesignSystem.Colors.background
                 .edgesIgnoringSafeArea(.all)
                 
             // 完全重构的主内容布局 - 没有嵌套ScrollView
@@ -385,7 +385,7 @@ struct CharacterDetailView: View {
         .padding(.horizontal, 8)
         .padding(.top, 6)
         .padding(.bottom, 4)
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.background)
     }
     
     // 头像和个人信息区域
@@ -639,19 +639,19 @@ struct CharacterDetailView: View {
                             ZStack {
                                 // 主要气泡
                                 Circle()
-                                    .fill(Color.white)
+                                    .fill(DesignSystem.Colors.background)
                                     .frame(width: 10, height: 10)
                                     .offset(x: -4, y: -1)
                                 
                                 // 次要气泡
                                 Circle()
-                                    .fill(Color.white.opacity(0.9))
+                                    .fill(DesignSystem.Colors.background.opacity(0.9))
                                     .frame(width: 7, height: 7)
                                     .offset(x: 4, y: 4)
                                 
                                 // 第三气泡
                                 Circle()
-                                    .fill(Color.white.opacity(0.8))
+                                    .fill(DesignSystem.Colors.background.opacity(0.8))
                                     .frame(width: 5, height: 5)
                                     .offset(x: 4, y: -5)
                             }
@@ -758,8 +758,8 @@ struct CharacterDetailView: View {
             // 微妙的背景渐变，增加深度感
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color.white,
-                    Color.white.opacity(0.97)
+                    DesignSystem.Colors.background,
+                    DesignSystem.Colors.background.opacity(0.97)
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
@@ -1577,7 +1577,7 @@ private struct StatsView: View {
             Spacer()
         }
         .padding(.vertical, 16)
-        .background(Color.white)
+        .background(DesignSystem.Colors.background)
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         .padding(.horizontal, 16)
@@ -1792,7 +1792,7 @@ private struct DetailTabBarView: View {
             }
         }
             .padding(.vertical, 10) // 减少垂直内边距
-        .background(Color.white)
+        .background(DesignSystem.Colors.background)
             
             // 底部分隔线 - 简化设计
             Rectangle()
@@ -1829,7 +1829,7 @@ fileprivate struct IntroductionContentView: View {
                 .frame(minHeight: 100)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.systemBackground))
+                        .fill(DesignSystem.Colors.background)
                         .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                 )
             }
@@ -1850,7 +1850,7 @@ fileprivate struct IntroductionContentView: View {
             .frame(minHeight: 120)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(DesignSystem.Colors.background)
                     .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
             )
             
@@ -1870,7 +1870,7 @@ fileprivate struct IntroductionContentView: View {
             .frame(minHeight: 100)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(DesignSystem.Colors.background)
                     .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
             )
         }
@@ -1905,7 +1905,7 @@ fileprivate struct RelatedInfoContentView: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(DesignSystem.Colors.background)
                     .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
             )
             
@@ -1929,7 +1929,7 @@ fileprivate struct RelatedInfoContentView: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(DesignSystem.Colors.background)
                     .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
             )
             
@@ -1943,7 +1943,7 @@ fileprivate struct RelatedInfoContentView: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(DesignSystem.Colors.background)
                     .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
             )
             
@@ -1961,7 +1961,7 @@ fileprivate struct RelatedInfoContentView: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(DesignSystem.Colors.background)
                     .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
             )
             
@@ -2721,7 +2721,7 @@ private struct ShareCardView: View {
                     ZStack {
                         // 二维码背景
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.white)
+                            .fill(Color.warmBackground)
                             .frame(width: 84, height: 84)
                             .shadow(color: DesignSystem.vibrantYellow.opacity(0.2), radius: 8, x: 0, y: 4)
                         

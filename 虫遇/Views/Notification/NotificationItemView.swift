@@ -320,38 +320,27 @@ struct NotificationItemView: View {
         }
     }
     
-    // 内容背景
+    // 内容背景 - 与应用主色调一致的亮色版本
     private var contentBackground: some View {
-                            ZStack {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(effectiveCharacter.category.color.opacity(0.025))
-                                
-                                if UIImage(named: effectiveCharacter.backgroundPattern) != nil {
-                                    Image(effectiveCharacter.backgroundPattern)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                    .opacity(0.04)
-                                        .blendMode(.overlay)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                }
-                            }
-                        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(contentBorder, lineWidth: 0.5)
-                        )
-                }
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(Color.primaryColor.opacity(0.06))  // 使用主色调紫色，透明度6%，更亮更柔和
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(contentBorder, lineWidth: 0.8)
+            )
+    }
     
-    // 内容边框
+    // 内容边框 - 与应用主色调一致
     private var contentBorder: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [
-                effectiveCharacter.category.color.opacity(0.1),
-                effectiveCharacter.category.color.opacity(0.05)
+                Color.primaryColor.opacity(0.2),   // 主色调紫色，透明度20%
+                Color.primaryColor.opacity(0.12)   // 主色调紫色，透明度12%，渐变效果
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-            }
+    }
             
     // 通知预览
     private func notificationPreview(_ previewContent: String) -> some View {

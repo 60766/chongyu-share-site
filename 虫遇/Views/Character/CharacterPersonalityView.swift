@@ -68,13 +68,13 @@ struct CharacterPersonalityView: View {
                         .padding(.bottom, -8)
                     .background(
                         Rectangle()
-                            .fill(Color(.systemBackground))
+                            .fill(DesignSystem.Colors.background)
                             .shadow(color: Color.black.opacity(0.05), radius: 10, y: -5)
                     )
             }
         }
         }
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.background)
         .onAppear {
             viewModel.loadPersonality()
         }
@@ -126,7 +126,7 @@ struct CharacterPersonalityView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(
-            Color(.systemBackground)
+            DesignSystem.Colors.background
                 .shadow(color: Color.black.opacity(0.05), radius: 1, y: 1)
         )
     }
@@ -245,7 +245,7 @@ struct CharacterPersonalityView: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+                .fill(DesignSystem.Colors.background)
                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
         )
     }

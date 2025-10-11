@@ -76,6 +76,11 @@ struct CreateCharacterView: View {
     @ObservedObject private var storeKitManager = StoreKitManager.shared
     
     var body: some View {
+        ZStack {
+            // 背景色 - 使用与探索页面一致的温暖米白色背景
+            DesignSystem.Colors.background
+                .ignoresSafeArea()
+            
         Form {
             // 快速创建区域 - 优化布局和用户体验
             Section(header: Text("快速创建").font(.system(size: 15, weight: .medium)).foregroundColor(.gray)) {
@@ -294,6 +299,8 @@ struct CreateCharacterView: View {
                 }
                 .padding(.vertical, 4)
             }
+        }
+        .scrollContentBackground(.hidden) // 隐藏Form的默认背景
         }
         .navigationTitle("创建自定义角色")
         .navigationBarTitleDisplayMode(.inline)

@@ -197,6 +197,8 @@ struct SettingsView: View {
                 }
             }
             .listStyle(InsetGroupedListStyle())
+            .scrollContentBackground(.hidden)
+            .background(DesignSystem.Colors.background)
             .navigationBarTitle("设置", displayMode: .inline)
             .navigationBarTitleTextColor(.primary)
             .navigationBarItems(
@@ -393,6 +395,9 @@ struct DarkModeSettingView: View {
                 }
             }
         }
+        .listStyle(InsetGroupedListStyle())
+        .scrollContentBackground(.hidden)
+        .background(DesignSystem.Colors.background)
         .navigationTitle("暗黑模式")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -506,6 +511,9 @@ struct CharacterDistributionModeView: View {
                     .font(.caption)
             }
         }
+        .listStyle(InsetGroupedListStyle())
+        .scrollContentBackground(.hidden)
+        .background(DesignSystem.Colors.background)
         .navigationTitle("角色分配模式")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)

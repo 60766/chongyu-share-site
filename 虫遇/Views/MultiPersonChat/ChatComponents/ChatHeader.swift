@@ -45,10 +45,23 @@ struct ChatHeader: View {
             // 参与者指示器 - 更紧凑的布局
             participantsView
         }
-        .background(Color(.systemBackground).opacity(0.98))
+        .background(DesignSystem.Colors.background.opacity(0.98))
         .overlay(
-            Divider().opacity(0.7), alignment: .bottom
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.warmAccent.opacity(0.01),
+                            Color.warmAccent.opacity(0.005)
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 0.15),
+            alignment: .bottom
         )
+        .shadow(color: Color.black.opacity(0.01), radius: 1, x: 0, y: 1)
     }
     
     // 参与者视图
@@ -71,7 +84,7 @@ struct ChatHeader: View {
                     .padding(.horizontal, 8)
                     .background(
                         Capsule()
-                            .fill(Color(.systemGray6))
+                            .fill(Color.white)
                     )
                 }
             }

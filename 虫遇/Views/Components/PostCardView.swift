@@ -1810,11 +1810,11 @@ struct PostCardView: View {
                         .padding(10)
                         .frame(minHeight: 90) // 设置最小高度确保短评论也有足够的高度
                         .background(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: 16)
                                 .fill(DesignSystem.Colors.warmNestedBackground.opacity(0.6))
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: 16)
                                 .stroke(DesignSystem.Colors.border, lineWidth: 0.5)
                         )
                     } else {
@@ -1841,11 +1841,11 @@ struct PostCardView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 12)
                         .background(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: 16)
                                 .fill(DesignSystem.Colors.warmNestedBackground.opacity(0.4))
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: 16)
                                 .stroke(DesignSystem.Colors.border, lineWidth: 0.5)
                         )
                     }
@@ -2549,7 +2549,7 @@ struct PostCardView: View {
                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isCommentSubmitting)
             }
             .padding(.vertical, 8.0)
-            .background(Color(.systemBackground))
+            .background(DesignSystem.Colors.background)
         }
     }
     

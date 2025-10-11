@@ -99,7 +99,7 @@ struct MultiPersonChatSetupView: View {
                     .padding(.bottom, 100) // 为底部按钮留出空间
                 }
             }
-            .background(Color(.systemBackground))
+            .background(DesignSystem.Colors.background)
             .navigationBarHidden(true)
             .navigationDestination(for: [CharacterModel].self) { characters in
                 SetChatThemeView(
@@ -198,7 +198,7 @@ struct MultiPersonChatSetupView: View {
             }
         }
         .frame(height: 44)
-        .background(Color.white)
+        .background(DesignSystem.Colors.background)
         .shadow(color: Color.black.opacity(0.05), radius: 0.5, x: 0, y: 0.5)
     }
     
@@ -251,7 +251,7 @@ struct MultiPersonChatSetupView: View {
                 .padding(.vertical, 12)
             }
         }
-        .background(Color.white)
+        .background(DesignSystem.Colors.background)
         .transition(.move(edge: .top))
     }
     
@@ -681,7 +681,7 @@ struct LocalSearchBar: View {
         HStack {
             // 搜索图标 - 使用更现代的SF Symbols
             Image(systemName: "magnifyingglass")
-                .foregroundColor(Color.gray.opacity(0.6))
+                .foregroundColor(DesignSystem.Colors.primary.opacity(0.7))
                 .font(.system(size: 16, weight: .medium))
                 .padding(.leading, 12)
             
@@ -690,7 +690,8 @@ struct LocalSearchBar: View {
                 .font(.system(size: 15))
                 .foregroundColor(Color.warmTextPrimary)
                 .focused($isFocused)
-                .padding(10)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 8)
                 .onTapGesture {
                     isEditing = true
                 }
@@ -703,7 +704,7 @@ struct LocalSearchBar: View {
                     isFocused = true
                 }) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(Color.gray.opacity(0.6))
+                        .foregroundColor(DesignSystem.Colors.primary.opacity(0.6))
                         .padding(.trailing, 8)
                 }
                 .transition(.scale)
@@ -725,10 +726,15 @@ struct LocalSearchBar: View {
                 .transition(.move(edge: .trailing))
             }
         }
-        .padding(6)
+        .padding(.vertical, 4)
+        .padding(.horizontal, 6)
         .background(
             Capsule()
-                .fill(Color(.systemGray6))
+                .fill(Color(hex: "FAFAFA"))
+        )
+        .overlay(
+            Capsule()
+                .stroke(DesignSystem.Colors.primary.opacity(0.2), lineWidth: 1)
         )
         .animation(.easeInOut(duration: 0.2), value: isEditing)
         .animation(.easeInOut(duration: 0.2), value: text)
@@ -819,7 +825,7 @@ struct ChatHistoryItemView: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color(.systemBackground))
+                    .fill(DesignSystem.Colors.background)
                     .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
             )
             .overlay(

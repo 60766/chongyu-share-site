@@ -33,6 +33,8 @@ struct PrivacySettingsView: View {
             dataRightsSection
         }
         .listStyle(InsetGroupedListStyle())
+        .scrollContentBackground(.hidden)
+        .background(DesignSystem.Colors.background)
         .navigationTitle("隐私设置")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -326,6 +328,8 @@ struct DataOverviewView: View {
             technicalDataSection
         }
         .listStyle(InsetGroupedListStyle())
+        .scrollContentBackground(.hidden)
+        .background(DesignSystem.Colors.background)
         .navigationTitle("我的数据")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarItems(

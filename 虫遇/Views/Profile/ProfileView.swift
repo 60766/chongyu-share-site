@@ -786,16 +786,9 @@ struct ProfileView: View {
             .padding(.bottom, 20)
         }
         .background(
-            // 背景渐变层
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color.black.opacity(0.05),
-                    Color.clear
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            // 背景层 - 与探索界面一致的温暖米白色背景
+            DesignSystem.Colors.background
+                .ignoresSafeArea(.all)
         )
     }
     
@@ -831,7 +824,7 @@ struct ProfileView: View {
                             .fill(
                                 LinearGradient(
                                     gradient: Gradient(colors: [
-                                        Color.white.opacity(0.3),           // 顶部：几乎透明的白色
+                                        DesignSystem.Colors.background.opacity(0.3),           // 顶部：几乎透明的背景色
                                         Color.blue.opacity(0.05),           // 渐变到淡蓝色
                                         Color.purple.opacity(0.08),         // 渐变到淡紫色
                                         Color.pink.opacity(0.12),           // 渐变到粉色
@@ -894,14 +887,8 @@ struct ProfileView: View {
                     .background(
                             ZStack {
                             if selectedTabIndex == index {
-                                    // 扁平化选中状态 - 底部指示器
-                                    VStack {
-                                        Spacer()
-                                        Rectangle()
-                                            .fill(tabColor(for: index).opacity(0.6))
-                                            .frame(width: 48, height: 2)
-                                        .matchedGeometryEffect(id: "selectedProfileTab", in: namespace)
-                                    }
+                                    // 选中状态背景（移除底部指示器）
+                                    Color.clear
                             }
                         }
                     )
@@ -955,7 +942,7 @@ struct ProfileView: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 20)
+        .padding(.vertical, 8)
         .onChange(of: selectedTabIndex) { _, _ in
             // 切换标签时重置展开状态
             resetExpandedStates()

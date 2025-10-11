@@ -270,10 +270,14 @@ class DoubaoVisionService {
                        let content = message["content"] as? String {
                         
                         if totalBatches > 1 {
-                            print("✅ 第\(batchIndex + 1)/\(totalBatches)批分析成功: \(content.prefix(100))...")
+                            print("✅ 第\(batchIndex + 1)/\(totalBatches)批分析成功")
                         } else {
-                            print("✅ 豆包视觉分析成功: \(content.prefix(100))...")
+                            print("✅ 豆包视觉分析成功")
                         }
+                        print("📄 豆包AI原始响应（前500字符）:")
+                        print("---")
+                        print(String(content.prefix(500)))
+                        print("---")
                         
                         // 解析角色评论
                         let commentsMap = self.parseCharacterComments(from: content, characters: characters)
@@ -696,8 +700,10 @@ class DoubaoVisionService {
                 // 提取点赞判断
                 if lowerLine.contains("是") || lowerLine.contains("yes") || lowerLine.contains("true") {
                     currentShouldLike = true
+                    print("📝 [豆包] 解析点赞判断: 原文='\(trimmedLine)', 结果=✅是")
                 } else if lowerLine.contains("否") || lowerLine.contains("no") || lowerLine.contains("false") {
                     currentShouldLike = false
+                    print("📝 [豆包] 解析点赞判断: 原文='\(trimmedLine)', 结果=❌否")
                 }
                 continue
             }

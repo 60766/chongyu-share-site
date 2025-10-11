@@ -284,13 +284,20 @@ class MultiCharacterCommentService {
             3. 角色的性格特点是否适合回应此类评论
             4. 角色是否能对此评论提供有趣或有见地的回应
             
-            请按照以下格式生成选定角色的回复：
-
+            请按照以下格式生成选定角色的回复（每个角色的评论后必须包含点赞判断）：
+            
             [角色ID]
             这里是该角色的评论内容...
-
+            点赞：是
+            
             [下一个角色ID]
             这里是下一个角色的评论内容...
+            点赞：否
+            
+            点赞判断规则：
+            - 如果角色认为用户的内容有趣、有价值、值得鼓励，请写"点赞：是"
+            - 如果角色对内容不太感兴趣或不太认同，请写"点赞：否"
+            - 每个角色评论后必须明确写出"点赞：是"或"点赞：否"
             """
             
             // 如果有作者角色，强调必须首先生成作者的回复
@@ -298,12 +305,13 @@ class MultiCharacterCommentService {
                 let authorName = characterDataManager.getName(for: authorId) ?? authorId.capitalized
                 prompt += """
 
-                特别注意：
-                - 必须首先生成帖子作者"\(authorName)"的回复，格式为：
-                  [\(authorId)]
-                  这里是作者的回复内容...
-                - 然后再生成其他角色的回复
-                """
+                 特别注意：
+                 - 必须首先生成帖子作者"\(authorName)"的回复，格式为：
+                   [\(authorId)]
+                   这里是作者的回复内容...
+                   点赞：是
+                 - 然后再生成其他角色的回复（每个角色评论后都要加上"点赞：是"或"点赞：否"）
+                 """
             }
             
             prompt += """
@@ -554,6 +562,20 @@ class MultiCharacterCommentService {
             - 严格按照[角色ID]方括号格式，不添加额外标点
             - 🚨严禁@其他角色，只能直接对帖子作者说话
             - 🚨每个角色都要用"你"来称呼作者，表现出在和作者直接对话
+            
+            点赞判断：
+            在生成每个角色的回复后，请为每个角色判断：作为这个角色，你会给这条帖子点赞吗？
+            在每个角色的回复后添加：
+            点赞：是 或 点赞：否
+            
+            输出格式示例：
+            [einstein]
+            这个观点很有趣，值得深入思考。
+            点赞：是
+            
+            [libai]
+            好诗好诗，颇有意境！
+            点赞：是
             """
              }
         }
@@ -571,6 +593,11 @@ class MultiCharacterCommentService {
     private func parseAPIResponse(response: String, characterIDs: [String]) -> [String: CharacterResponse] {
         print("🔍 开始解析批量API响应（包括点赞判断）")
         print("📄 原始响应内容预览: \(response.prefix(100))...")
+        
+        print("📄 AI原始响应（前500字符）:")
+        print("---")
+        print(String(response.prefix(500)))
+        print("---")
         
         var result = [String: CharacterResponse]()
         var currentCharacterId: String? = nil
@@ -721,7 +748,7 @@ class MultiCharacterCommentService {
                                              .replacingOccurrences(of: "点赞:", with: "")
                                              .trimmingCharacters(in: .whitespacesAndNewlines)
                 shouldLike = (likeDecision == "是")
-                print("📝 解析点赞判断: \(likeDecision) -> \(shouldLike)")
+                print("📝 解析点赞判断: 原文='\(trimmedLine)', 提取='\(likeDecision)', 结果=\(shouldLike ? "✅是" : "❌否")")
             } else if !trimmedLine.isEmpty {
                 // 普通评论行
                 commentLines.append(trimmedLine)
@@ -1031,11 +1058,13 @@ class MultiCharacterCommentService {
             
             // 处理点赞逻辑 - 🔧 使用传入的目标评论ID，确保点赞精确性
             // 延迟点赞，模拟虚拟角色先回复再点赞的真实行为
-            print("🔧 DEBUG: 点赞逻辑检查")
-            print("  - response.shouldLike: \(response.shouldLike)")
-            print("  - targetUserCommentId: \(requestContext.userCommentId ?? "nil")")
-            print("  - characterID: \(characterID)")
-            print("  - characterName: \(characterName)")
+            print("=" + String(repeating: "=", count: 60))
+            print("🚨 【点赞诊断】角色: \(characterName) (\(characterID))")
+            print("   📝 评论内容: \(response.content)")
+            print("   ❤️ 点赞判断: \(response.shouldLike ? "✅ 是" : "❌ 否")")
+            print("   🎯 用户评论ID: \(requestContext.userCommentId ?? "无（这是对帖子的评论）")")
+            print("   📄 帖子ID: \(postId)")
+            print("=" + String(repeating: "=", count: 60))
             
             if response.shouldLike {
                 // 延迟2-8秒再进行点赞，模拟真实的点赞时机

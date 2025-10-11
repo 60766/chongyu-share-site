@@ -56,6 +56,8 @@ struct AccountManagementView: View {
             dangerZoneSection
         }
         .listStyle(InsetGroupedListStyle())
+        .scrollContentBackground(.hidden)
+        .background(DesignSystem.Colors.background)
         .navigationBarTitle("账号管理", displayMode: .inline)
         .navigationBarTitleTextColor(.primary)
         .navigationBarBackButtonHidden(true)

@@ -118,16 +118,9 @@ struct ExploreView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // 背景色 - 使用微妙的渐变增加空间感
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 248/255, green: 250/255, blue: 252/255),
-                    Color(red: 250/255, green: 252/255, blue: 254/255)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea(.all) // 忽略所有安全区域，包括顶部，避免白色背景遮盖
+            // 背景色 - 使用与主页面一致的温暖米白色背景
+            DesignSystem.Colors.background
+                .ignoresSafeArea(.all) // 忽略所有安全区域，包括顶部，避免白色背景遮盖
             
             // 主内容区
             VStack(spacing: 0) {
@@ -138,7 +131,7 @@ struct ExploreView: View {
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 16))
-                                .foregroundColor(Color(.systemGray2))
+                                .foregroundColor(DesignSystem.Colors.primary)
                                 .padding(.leading, 8)
                             
                             TextField("搜索时空旅行者...", text: $searchText)
@@ -147,11 +140,11 @@ struct ExploreView: View {
                                 .padding(.vertical, 8)
                         }
                         .padding(.horizontal, 8)
-                        .background(Color(.systemGray6).opacity(0.9))
+                        .background(Color(hex: "FAFAFA"))
                         .cornerRadius(14)
                         .overlay(
                             RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.gray.opacity(0.1), lineWidth: 0.5)
+                                .stroke(DesignSystem.Colors.primary.opacity(0.2), lineWidth: 1)
                         )
                         
                         // 扫码按钮 - 圆润极简设计
@@ -433,19 +426,31 @@ struct ExploreView: View {
                                         }
                                     }) {
                                         ZStack {
-                                            // 简化的背景胶囊
-                                            if selectedTab == tab {
-                                                Capsule()
-                                                    .fill(Color(.systemGray6))
-                                                    .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
-                                                    .frame(height: 30)
-                                                    .matchedGeometryEffect(id: "selectedBackground", in: tabAnimation)
-                                            }
-                                            
-                                            // 文本标签 - 移除动画
-                                            Text(tab.rawValue)
-                                                .font(.system(size: 14, weight: selectedTab == tab ? .semibold : .medium))
-                                                .foregroundColor(selectedTab == tab ? Color(.label) : Color(.systemGray))
+                                             // 温暖和谐的背景圆角矩形
+                                             if selectedTab == tab {
+                                                 RoundedRectangle(cornerRadius: 12)
+                                                     .fill(
+                                                         LinearGradient(
+                                                             gradient: Gradient(colors: [
+                                                                 DesignSystem.Colors.primary.opacity(0.12),
+                                                                 DesignSystem.Colors.primary.opacity(0.08)
+                                                             ]),
+                                                             startPoint: .topLeading,
+                                                             endPoint: .bottomTrailing
+                                                         )
+                                                     )
+                                                     .overlay(
+                                                         RoundedRectangle(cornerRadius: 12)
+                                                             .stroke(DesignSystem.Colors.primary.opacity(0.2), lineWidth: 0.5)
+                                                     )
+                                                     .frame(height: 30)
+                                                     .matchedGeometryEffect(id: "selectedBackground", in: tabAnimation)
+                                             }
+                                             
+                                             // 文本标签 - 温暖和谐的颜色搭配
+                                             Text(tab.rawValue)
+                                                 .font(.system(size: 14, weight: selectedTab == tab ? .semibold : .medium))
+                                                 .foregroundColor(selectedTab == tab ? DesignSystem.Colors.primary : DesignSystem.Colors.secondaryText)
                                                 .padding(.horizontal, 12)
                                         }
                                         .frame(maxWidth: .infinity)

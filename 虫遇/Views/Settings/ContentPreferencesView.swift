@@ -59,6 +59,8 @@ struct ContentPreferencesView: View {
             }
         }
         .listStyle(InsetGroupedListStyle())
+        .scrollContentBackground(.hidden)
+        .background(DesignSystem.Colors.background)
         .navigationBarTitle("内容偏好", displayMode: .inline)
         .navigationBarTitleTextColor(.primary)
         .navigationBarBackButtonHidden(true)

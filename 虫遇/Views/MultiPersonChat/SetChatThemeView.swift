@@ -145,7 +145,7 @@ struct SetChatThemeView: View {
                 .padding(.bottom, 120) // 为底部按钮留出空间
             }
         }
-        .background(Color(.systemBackground).edgesIgnoringSafeArea(.all))
+        .background(DesignSystem.Colors.background.edgesIgnoringSafeArea(.all))
         .navigationBarHidden(true)
         .navigationDestination(for: ChatSettings.self) { settings in
             MultiPersonChatView(
@@ -194,7 +194,7 @@ struct SetChatThemeView: View {
             }
         }
         .frame(height: 44)
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.background)
         .shadow(color: Color.black.opacity(0.05), radius: 0.5, x: 0, y: 0.5)
     }
     
@@ -244,7 +244,7 @@ struct SetChatThemeView: View {
                 TextField("你想让TA们聊点什么？(选填)", text: $chatTheme, axis: .vertical)
                     .font(.system(size: 16))
                     .padding(16)
-                    .background(Color(hex: "F5F5F7")) // 参考图片中搜索框的淡灰色背景
+                    .background(Color(hex: "FAFAFA")) // 更亮的背景色
                     .cornerRadius(16)
                 .overlay(
                         RoundedRectangle(cornerRadius: 16)

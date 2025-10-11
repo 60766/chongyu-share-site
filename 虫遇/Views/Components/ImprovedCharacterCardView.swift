@@ -174,7 +174,7 @@ struct ImprovedCharacterCardView: View {
                 )
             )
         }
-        .background(Color.white)
+        .background(DesignSystem.Colors.background)
         .cornerRadius(10)
         .overlay(
             RoundedRectangle(cornerRadius: 10)

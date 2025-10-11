@@ -11,6 +11,11 @@ struct ContactUsView: View {
     private let primaryColor = Color(hex: "9A8BB0")
     
     var body: some View {
+        ZStack {
+            // 背景色 - 使用与探索页面一致的温暖米白色背景
+            DesignSystem.Colors.background
+                .ignoresSafeArea()
+            
         ScrollView {
                 VStack(spacing: 24) {
                     // 顶部图标
@@ -81,6 +86,7 @@ struct ContactUsView: View {
                     .padding(.bottom, 40)
                 }
             }
+        }
             .navigationBarTitle("联系我们", displayMode: .inline)
             .navigationBarBackButtonHidden(true)
             .navigationBarItems(
@@ -146,7 +152,7 @@ struct ContactUsView: View {
                 Spacer()
             }
         }
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.cardBackground)
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
     }

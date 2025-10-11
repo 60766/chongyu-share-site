@@ -208,5 +208,5 @@ struct UserPostOptionsButton: View {
         onPin: { _ in }
     )
     .padding()
-    .background(Color.white)
+    .background(DesignSystem.Colors.background)
 } 

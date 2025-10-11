@@ -28,6 +28,15 @@ struct MultiPersonChatView: View {
     @Environment(\.presentationMode) var presentationMode
     @Environment(\.modelContext) private var modelContext
     
+    // 角色ID到颜色索引的映射，确保每个角色使用不同的颜色
+    private var characterColorMap: [String: Int] {
+        var map: [String: Int] = [:]
+        for (index, character) in selectedCharacters.enumerated() {
+            map[character.id] = index % 4 // 循环使用4种颜色
+        }
+        return map
+    }
+    
     // 获取角色主题色
     private var characterThemeColor: Color {
         return Color(hex: "9A8BB0") // 默认历史感紫色
@@ -43,8 +52,8 @@ struct MultiPersonChatView: View {
     
     var body: some View {
         ZStack {
-            // 背景 - 参考单人聊天的系统背景色
-            Color(.systemBackground)
+            // 背景 - 使用统一的温暖米白色背景
+            DesignSystem.Colors.background
                 .edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 0) {
@@ -80,9 +89,13 @@ struct MultiPersonChatView: View {
                                     UserRolePlayingBubble(message: message, character: selectedCharacters.first(where: { $0.id == message.characterId })!)
                                         .id(message.id)
                                 } else if let character = selectedCharacters.first(where: { $0.id == message.characterId }) {
-                                    // AI角色消息 - 左侧显示
-                                    ChatBubble(message: message, character: character)
-                                        .id(message.id)
+                                    // AI角色消息 - 左侧显示，传入颜色索引确保不同角色使用不同颜色
+                                    ChatBubble(
+                                        message: message,
+                                        character: character,
+                                        colorIndex: characterColorMap[character.id] ?? 0
+                                    )
+                                    .id(message.id)
                                 }
                             }
                             
@@ -283,7 +296,7 @@ struct MultiPersonChatView: View {
                 }
             }
         )
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.background)
         .edgesIgnoringSafeArea(.bottom) // 忽略底部安全区域，确保输入框贴合屏幕底部
         .onAppear {
             // 输入框出现时立即滚动到合适位置，为键盘弹出做准备
@@ -311,7 +324,7 @@ struct MultiPersonChatView: View {
                 sendMessage()
             }
         )
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.background)
         .edgesIgnoringSafeArea(.bottom) // 忽略底部安全区域，确保输入框贴合屏幕底部
     }
     

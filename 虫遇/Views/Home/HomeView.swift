@@ -206,7 +206,7 @@ struct CharacterPickerView: View {
                     }
                 }
             }
-            .background(Color(.systemBackground))
+            .background(DesignSystem.Colors.background)
             .cornerRadius(20)
             .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
             .frame(height: UIScreen.main.bounds.height * 0.8)
@@ -685,7 +685,7 @@ struct VirtualCharacterCard: View {
             .padding(.vertical, 6)
             .padding(.horizontal, 4)
             .frame(minWidth: 0, maxWidth: .infinity) // 确保卡片填满可用宽度
-            .background(Color(.systemBackground))
+            .background(DesignSystem.Colors.background)
             .cornerRadius(12)
             .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
         }

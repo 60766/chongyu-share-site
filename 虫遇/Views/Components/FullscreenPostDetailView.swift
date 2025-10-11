@@ -1031,7 +1031,7 @@ struct FullscreenPostDetailView: View {
                         // 微妙的星星
                         ForEach(0..<100) { _ in
                             Circle()
-                                .fill(Color.white.opacity(Double.random(in: 0.1...0.5)))
+                                .fill(DesignSystem.Colors.background.opacity(Double.random(in: 0.1...0.5)))
                                 .frame(width: CGFloat.random(in: 1...2.5), height: CGFloat.random(in: 1...2.5))
                                 .position(
                                     x: CGFloat.random(in: 0...UIScreen.main.bounds.width),
@@ -2358,14 +2358,20 @@ struct FullscreenPostDetailView: View {
                         // 显示历史人物选择视图
                         showHistoricalFigureSelection = true
                     }) {
-                        ZStack {
-                            // 使用固定大小的容器确保不同图标状态下大小一致
-                            Rectangle()
-                                .fill(Color.clear)
-                                .frame(width: 22, height: 22)
+                        HStack(spacing: 4) {
+                            ZStack {
+                                // 使用固定大小的容器确保不同图标状态下大小一致
+                                Rectangle()
+                                    .fill(Color.clear)
+                                    .frame(width: 22, height: 22)
+                                
+                                // 使用SparkleIconView替代静态图标，实现动画效果
+                                SparkleIconView(isAnimating: isGeneratingAIMedia)
+                            }
                             
-                            // 使用SparkleIconView替代静态图标，实现动画效果
-                            SparkleIconView(isAnimating: isGeneratingAIMedia)
+                            Text("邀请")
+                                .font(.system(size: 13))
+                                .foregroundColor(.gray.opacity(0.8))
                         }
                         .padding(.vertical, 8)
                     }
@@ -2377,7 +2383,6 @@ struct FullscreenPostDetailView: View {
                             .presentationCornerRadius(25)
                     }
                     .contentShape(Rectangle())
-                    .frame(width: 22, height: 38)
 
                 }
             }

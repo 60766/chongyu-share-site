@@ -154,7 +154,7 @@ struct MultiChatInputBar: View {
             .padding(.vertical, 6)
             .padding(.bottom, 8) // 增加底部内边距，确保在安全区域内有足够的间距
             .background(
-                Color(.systemBackground).opacity(0.9)
+                DesignSystem.Colors.background.opacity(0.9)
             )
             .overlay(
                 Rectangle()

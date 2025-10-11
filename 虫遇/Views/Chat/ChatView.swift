@@ -104,9 +104,9 @@ struct ChatView: View {
                 // 基础背景色 - 微妙渐变
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(.systemBackground),
-                        Color(.systemBackground).opacity(0.98),
-                        Color(UIColor.systemBackground).opacity(0.95)
+                        DesignSystem.Colors.background,
+                        DesignSystem.Colors.background.opacity(0.98),
+                        DesignSystem.Colors.background.opacity(0.95)
                     ]),
                     startPoint: .top,
                     endPoint: .bottom
@@ -181,8 +181,8 @@ struct ChatView: View {
                                     // 顶部下方渐变，防止内容被导航栏遮挡
                                     LinearGradient(
                                         gradient: Gradient(colors: [
-                                            Color(.systemBackground),
-                                            Color(.systemBackground).opacity(0)
+                                            DesignSystem.Colors.background,
+                                            DesignSystem.Colors.background.opacity(0)
                                         ]),
                                         startPoint: .top,
                                         endPoint: .bottom
@@ -212,7 +212,7 @@ struct ChatView: View {
                                             .foregroundColor(characterThemeColor.opacity(0.7))
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 3)
-                                            .background(Color(.systemBackground))
+                                            .background(DesignSystem.Colors.background)
                                     }
                                     .padding(.top, 10)
                                     .padding(.bottom, 16)
@@ -335,7 +335,7 @@ struct ChatView: View {
                         sendMessage()
                     }
                 )
-                .background(Color(.systemBackground))
+                .background(DesignSystem.Colors.background)
                 .edgesIgnoringSafeArea(.bottom)
             }
             
@@ -350,8 +350,8 @@ struct ChatView: View {
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    Color(.systemBackground).opacity(0.98),
-                                    Color(.systemBackground).opacity(0.95)
+                                    DesignSystem.Colors.background.opacity(0.98),
+                                    DesignSystem.Colors.background.opacity(0.95)
                                 ]),
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -366,19 +366,19 @@ struct ChatView: View {
                             .fill(
                                 LinearGradient(
                                     gradient: Gradient(colors: [
-                                        characterThemeColor.opacity(0.10),  // 减小不透明度从0.15到0.10
-                                        characterThemeColor.opacity(0.03)   // 减小不透明度从0.05到0.03
+                                        Color.warmAccent.opacity(0.01),
+                                        Color.warmAccent.opacity(0.005)
                                     ]),
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
-                            .frame(height: 0.3)  // 减小高度从0.5到0.3
+                            .frame(height: 0.15)
                     }
                     .frame(height: 44)
                 }
-                .background(Color(.systemBackground)) // 添加背景色，确保贴合键盘
-                .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
+                .background(DesignSystem.Colors.background) // 添加背景色，确保贴合键盘
+                .shadow(color: Color.black.opacity(0.01), radius: 1, x: 0, y: 1)
                 
                 Spacer()
             }
@@ -388,6 +388,7 @@ struct ChatView: View {
         .navigationTitle(character.name)
         // 自定义导航栏样式，但不显示返回按钮
         .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbarBackground(DesignSystem.Colors.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
         .edgesIgnoringSafeArea(.bottom) // 忽略底部安全区域，确保输入框贴合屏幕底部
@@ -1051,8 +1052,8 @@ struct ChatMessageBubbleView: View {
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    Color.white.opacity(0.98),
-                                    Color.white.opacity(0.90)
+                                    DesignSystem.Colors.background.opacity(0.98),
+                                    DesignSystem.Colors.background.opacity(0.90)
                                 ]),
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -1243,8 +1244,8 @@ struct ChatMessageBubbleView: View {
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    Color.white.opacity(0.98),
-                                    Color.white.opacity(0.90)
+                                    DesignSystem.Colors.background.opacity(0.98),
+                                    DesignSystem.Colors.background.opacity(0.90)
                                 ]),
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing

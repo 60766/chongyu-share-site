@@ -94,6 +94,8 @@ struct BlockedCharactersView: View {
             }
         }
         .listStyle(InsetGroupedListStyle())
+        .scrollContentBackground(.hidden)
+        .background(DesignSystem.Colors.background)
         .navigationTitle("已屏蔽角色")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)

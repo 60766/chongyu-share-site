@@ -4,20 +4,20 @@ import SwiftUI
 struct ChatBubble: View {
     let message: ChatMessage
     let character: CharacterModel
+    let colorIndex: Int // 新增：由外部指定颜色索引，确保每个角色使用不同颜色
     
 
     
     // 为不同虚拟角色设置不同的淡紫色背景，便于区分
     private var bubbleColor: Color {
-        // 根据角色名称哈希值选择颜色，确保同一角色颜色一致
-        let colorIndex = abs(character.name.hashValue) % 4
+        // 使用传入的颜色索引，确保每个角色使用不同颜色
         let colors = [
-            Color(hex: "F3F1FF"), // 淡紫色
-            Color(hex: "F0F4FF"), // 淡蓝紫色
-            Color(hex: "FFFBF0"), // 淡黄紫色（偏黄）
-            Color(hex: "FFF0F5")  // 淡粉色
+            Color(hex: "E8E3F8"), // 温暖淡紫色 - 提高纯度和对比度
+            Color(hex: "E3EBF9"), // 温暖淡蓝色 - 更明显的蓝调
+            Color(hex: "FFF4E0"), // 温暖淡黄色 - 更饱和的暖黄
+            Color(hex: "FFE8F0")  // 温暖淡粉色 - 更明显的粉调
         ]
-        return colors[colorIndex]
+        return colors[colorIndex % colors.count]
     }
     
     // 优雅的名称颜色 - 使用统一的深色调确保可读性
@@ -126,7 +126,8 @@ struct ChatBubble_Previews: PreviewProvider {
                     content: "这是一条测试消息，用于展示气泡的样式和布局。",
                     timestamp: Date()
                 ),
-                character: CharacterModel.sampleCharacters[0]
+                character: CharacterModel.sampleCharacters[0],
+                colorIndex: 0
             )
             
             // 思考中的消息
@@ -137,7 +138,8 @@ struct ChatBubble_Previews: PreviewProvider {
                     timestamp: Date(),
                     isThinking: true
                 ),
-                character: CharacterModel.sampleCharacters[4]
+                character: CharacterModel.sampleCharacters[4],
+                colorIndex: 1
             )
         }
         .previewLayout(.sizeThatFits)

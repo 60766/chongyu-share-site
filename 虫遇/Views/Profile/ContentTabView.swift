@@ -38,7 +38,7 @@ struct ContentTabView: View {
                 }
                 .padding(.horizontal, 16)
             }
-            .background(Color.white)
+            .background(DesignSystem.Colors.background)
             .overlay(
                 // 底部阴影
                 Rectangle()

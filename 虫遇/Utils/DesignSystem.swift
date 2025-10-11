@@ -73,7 +73,7 @@ struct DesignSystem {
         static let xxl: CGFloat = 24
         
         // 卡片圆角
-        static let card = l // 12pt圆角，符合图片中的设计风格
+        static let card = xl // 16pt圆角，更加圆润柔和的设计风格
         
         // 内嵌卡片圆角
         static let innerCard = 10 // 10pt圆角用于内嵌卡片

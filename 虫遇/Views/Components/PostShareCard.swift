@@ -163,7 +163,7 @@ struct PostShareCard: View {
                 // 叠加层 - 保持内容可读性
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color.white.opacity(0.9),
+                        DesignSystem.Colors.background.opacity(0.9),
                         Color.white.opacity(0.85),
                         Color.white.opacity(0.92)
                     ]),

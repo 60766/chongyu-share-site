@@ -53,7 +53,7 @@ struct VirtualCharacterView: View {
         NavigationStack {
             ZStack {
                 // 背景色 - 更柔和的背景色
-                Color(.systemBackground)
+                DesignSystem.Colors.background
                     .edgesIgnoringSafeArea(.all)
                 
                 VStack(spacing: 0) {
@@ -279,7 +279,7 @@ struct CategoryTabBarView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .background(Color.white)
+        .background(DesignSystem.Colors.background)
         .overlay(
             Divider()
                 .opacity(0.3),
@@ -467,7 +467,7 @@ struct CharacterCardView: View {
             }
             .padding(12)
         }
-        .background(Color.white)
+        .background(DesignSystem.Colors.background)
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
     }

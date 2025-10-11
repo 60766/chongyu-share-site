@@ -162,11 +162,11 @@ extension Color {
     /// 温暖高亮背景 - 用于轻微强调的区域
     static let warmHighlightBackground = Color(hex: "FEFEFC")
     
-    /// 温暖强调色 - 橙金色，参考图片中的温暖橙金色
-    static let warmAccent = Color(hex: "E8A87C")
+    /// 温暖强调色 - 紫色，与角色详情页面返回按钮完全一致
+    static let warmAccent = Color(red: 149/255, green: 138/255, blue: 177/255)
     
-    /// 温暖次要强调色 - 浅橙金色
-    static let warmAccentSecondary = Color(hex: "F2B896")
+    /// 温暖次要强调色 - 浅紫色
+    static let warmAccentSecondary = Color(red: 154/255, green: 139/255, blue: 176/255)
     
     /// 点赞颜色 - 温暖的红色，参考图片中的红色
     static let likeColor = Color(hex: "E53935")
@@ -287,8 +287,8 @@ extension UIColor {
     /// 温暖卡片背景 - 参考图片的优雅浅粉米色，更加温暖舒适
     static let warmCardBackground = UIColor(red: 250/255, green: 249/255, blue: 247/255, alpha: 1.0)
     
-    /// 温暖强调色 - 橙金色
-    static let warmAccent = UIColor(red: 232/255, green: 168/255, blue: 124/255, alpha: 1.0)
+    /// 温暖强调色 - 紫色，与角色详情页面返回按钮完全一致
+    static let warmAccent = UIColor(red: 149/255, green: 138/255, blue: 177/255, alpha: 1.0)
     
     /// 点赞颜色 - 温暖的红色
     static let likeColor = UIColor(red: 229/255, green: 57/255, blue: 53/255, alpha: 1.0)

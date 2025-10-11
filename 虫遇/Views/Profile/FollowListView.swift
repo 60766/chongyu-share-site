@@ -69,7 +69,7 @@ struct FollowListView: View {
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 40, height: 40)
                                 .foregroundColor(.primaryColor)
-                                .background(Color.white)
+                                .background(DesignSystem.Colors.background)
                                 .clipShape(Circle())
                                 .overlay(
                                     Circle()

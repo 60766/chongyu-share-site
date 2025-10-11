@@ -192,7 +192,7 @@ struct CommentInputView: View {
                             .padding(.horizontal, 16)
                             .padding(.top, 16)
                         }
-                        .background(Color(.systemBackground))
+                        .background(DesignSystem.Colors.background)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             if !textFieldFocused {
@@ -287,7 +287,7 @@ struct CommentInputView: View {
                                 .frame(height: min(CGFloat(filteredCharacters().count) * 48, 220))
                                 .padding(.top, 8)
                             }
-                            .background(Color(.systemBackground))
+                            .background(DesignSystem.Colors.background)
                             .cornerRadius(16)
                             .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
                             .padding(.horizontal, 12)
@@ -325,11 +325,11 @@ struct CommentInputView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
-                        .background(Color(.systemBackground))
+                        .background(DesignSystem.Colors.background)
                         
                         Spacer()
                     }
-                    .background(Color(.systemBackground))
+                    .background(DesignSystem.Colors.background)
                     .cornerRadius(10)
                     .offset(y: max(0, dragOffset)) // 添加拖动偏移
                     .gesture(
@@ -502,7 +502,7 @@ struct CommentInputView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color(.systemBackground)) // 只给HStack添加背景色
+                    .background(DesignSystem.Colors.background) // 只给HStack添加背景色
                     // 修改分隔线使其更加明显
                     .overlay(
                         Rectangle()

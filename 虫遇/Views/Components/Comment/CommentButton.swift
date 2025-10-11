@@ -121,11 +121,11 @@ struct CommentManagerView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(Color(.systemBackground))
+                .background(DesignSystem.Colors.background)
                 .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: -2)
             }
             .frame(maxWidth: .infinity)
-            .background(Color(.systemBackground))
+            .background(DesignSystem.Colors.background)
             .alignmentGuide(.bottom) { _ in 0 },
             alignment: .bottom
         )

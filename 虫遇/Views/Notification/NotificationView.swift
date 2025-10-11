@@ -297,16 +297,9 @@ struct NotificationView: View {
         NavigationView {
             GeometryReader { geometry in
                 ZStack(alignment: .top) {
-                    // 背景层 - 更加微妙的渐变
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color(.systemBackground),
-                            Color.gray.opacity(0.015)
-                        ]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .ignoresSafeArea(.all, edges: .bottom)
+                    // 背景层 - 与探索界面一致的温暖米白色背景
+                    DesignSystem.Colors.background
+                        .ignoresSafeArea(.all)
                     
                     VStack(spacing: 0) {
                         // 美化的顶部标题 - 参考探索页面风格
@@ -399,7 +392,7 @@ struct NotificationView: View {
                         }
                     }
                 }
-                .background(Color(.systemBackground))
+                .background(DesignSystem.Colors.background)
                 .onAppear {
                     // 🚀 轻量化onAppear，避免页面切换卡顿
                     
@@ -687,7 +680,7 @@ struct TabSwitcherView: View {
     private func tabColor(for tab: NotificationView.NotificationTab) -> Color {
         switch tab {
         case .all:
-            return Color(red: 75/255, green: 85/255, blue: 99/255) // 深蓝灰色
+            return Color(red: 255/255, green: 204/255, blue: 0/255) // 金黄色 - 铃铛通知色
         case .interactions:
             return Color(red: 160/255, green: 130/255, blue: 250/255) // 紫色（参考梦幻联动）
         case .system:
@@ -697,7 +690,7 @@ struct TabSwitcherView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
                 ForEach(NotificationView.NotificationTab.allCases, id: \.self) { tab in
                     Button(action: {
                         // 触觉反馈
@@ -719,7 +712,7 @@ struct TabSwitcherView: View {
                                 .foregroundColor(selectedTab == tab ? Color.primary : Color.secondary.opacity(0.7))
                             }
                         .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 10)
                             .frame(maxWidth: .infinity)
                             .background(
                             ZStack {
@@ -736,10 +729,6 @@ struct TabSwitcherView: View {
                                                 endPoint: .bottomTrailing
                                             )
                                         )
-                                        .overlay(
-                                            Capsule()
-                                                .stroke(tabColor(for: tab).opacity(0.15), lineWidth: 0.5)
-                                        )
                                         .shadow(color: tabColor(for: tab).opacity(0.1), radius: 3, x: 0, y: 1)
                                         .shadow(color: Color.black.opacity(0.02), radius: 1, x: 0, y: 0.5)
                                         .matchedGeometryEffect(id: "selectedTab", in: tabAnimation)
@@ -750,15 +739,25 @@ struct TabSwitcherView: View {
                                 }
                             }
                         )
+                        .overlay(
+                            // 只在选中时显示描边
+                            Group {
+                                if selectedTab == tab {
+                                    Capsule()
+                                        .stroke(Color.black.opacity(0.05), lineWidth: 1)
+                                }
+                            }
+                        )
                     }
                     .buttonStyle(PlainButtonStyle())
                     .scaleEffect(selectedTab == tab ? 1.0 : 0.98) // 微妙的缩放效果
                     .animation(.spring(response: 0.25, dampingFraction: 0.8), value: selectedTab)
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 6)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(.ultraThinMaterial)
                     .shadow(color: Color.black.opacity(0.02), radius: 1, x: 0, y: 0.5)
             )

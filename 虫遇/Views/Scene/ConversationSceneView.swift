@@ -114,7 +114,7 @@ struct ConversationSceneView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(Color(.systemBackground))
+                .background(DesignSystem.Colors.background)
                 .animation(.easeInOut(duration: 0.2), value: isKeyboardVisible)
             }
         }
@@ -536,7 +536,7 @@ struct ConversationSettingsView: View {
             .frame(maxHeight: .infinity)
         }
         .padding(.bottom, 32)
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.background)
         .cornerRadius(24, corners: [.topLeft, .topRight])
         .shadow(color: Color.black.opacity(0.2), radius: 10, y: -5)
     }
@@ -708,7 +708,7 @@ struct CharacterInfoView: View {
             .padding(.bottom, 16)
         }
         .padding(.bottom, 32)
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.background)
         .cornerRadius(24, corners: [.topLeft, .topRight])
         .shadow(color: Color.black.opacity(0.2), radius: 10, y: -5)
     }
