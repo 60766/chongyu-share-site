@@ -109,6 +109,111 @@ struct DisplayConversation: Identifiable {
 }
 
 /**
+ * 根据角色分类生成动态渐变背景的全局辅助函数
+ * 使用角色分类的基础颜色生成四层渐变效果
+ */
+fileprivate func generateCategoryGradientBackground(for category: CharacterCategory) -> some View {
+    let baseColor = category.color
+    
+    return RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .fill(
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    baseColor.opacity(0.25),     // 基础色（左上角最浓）- 从0.50降到0.25
+                    baseColor.opacity(0.18),     // 中等透明度 - 从0.35降到0.18
+                    baseColor.opacity(0.12),     // 较淡透明度 - 从0.22降到0.12
+                    Color.white.opacity(0.08)    // 纯白（右下角最淡）- 从0.12降到0.08
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            baseColor.opacity(0.20),    // 边框渐变起始色 - 从0.35降到0.20
+                            baseColor.opacity(0.16),    // 边框渐变中间色1 - 从0.30降到0.16
+                            baseColor.opacity(0.12),    // 边框渐变中间色2 - 从0.25降到0.12
+                            baseColor.opacity(0.08)     // 边框渐变结束色 - 从0.20降到0.08
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.5
+                )
+        )
+        .shadow(color: baseColor.opacity(0.10), radius: 6, x: 0, y: 2)  // 从0.18降到0.10
+        .shadow(color: baseColor.opacity(0.06), radius: 2, x: 0, y: 1)  // 从0.12降到0.06
+}
+
+/**
+ * 根据Character的field属性映射到CharacterCategory
+ * 用于兼容SwiftData Character模型，支持完整的分类体系
+ */
+fileprivate func mapFieldToCategory(field: String) -> CharacterCategory {
+    let lowercaseField = field.lowercased()
+    
+    // 虚构角色分类 - 优先匹配
+    if lowercaseField.contains("游戏") || lowercaseField.contains("game") || 
+       lowercaseField.contains("电子游戏") || lowercaseField.contains("网游") ||
+       lowercaseField.contains("手游") || lowercaseField.contains("主机游戏") {
+        return .gameCharacter
+    } else if lowercaseField.contains("动漫") || lowercaseField.contains("anime") ||
+              lowercaseField.contains("动画") || lowercaseField.contains("漫画") ||
+              lowercaseField.contains("二次元") || lowercaseField.contains("acg") {
+        return .animeCharacter
+    } else if lowercaseField.contains("电影") || lowercaseField.contains("movie") ||
+              lowercaseField.contains("影片") || lowercaseField.contains("电影角色") ||
+              lowercaseField.contains("film") || lowercaseField.contains("cinema") {
+        return .movieCharacter
+    } else if lowercaseField.contains("电视") || lowercaseField.contains("电视剧") ||
+              lowercaseField.contains("tv") || lowercaseField.contains("剧集") ||
+              lowercaseField.contains("连续剧") || lowercaseField.contains("series") {
+        return .tvCharacter
+    } else if lowercaseField.contains("神话") || lowercaseField.contains("mythology") ||
+              lowercaseField.contains("传说") || lowercaseField.contains("神明") ||
+              lowercaseField.contains("仙人") || lowercaseField.contains("神仙") ||
+              lowercaseField.contains("legend") || lowercaseField.contains("myth") {
+        return .mythCharacter
+    } else if lowercaseField.contains("虚拟主播") || lowercaseField.contains("vtuber") ||
+              lowercaseField.contains("vtb") || lowercaseField.contains("virtual youtuber") {
+        return .vtuber
+    } else if lowercaseField.contains("虚构") || lowercaseField.contains("fiction") ||
+              lowercaseField.contains("小说角色") || lowercaseField.contains("文学角色") {
+        return .fictionCharacter
+    }
+    
+    // 历史人物分类
+    else if lowercaseField.contains("科学") || lowercaseField.contains("物理") || 
+            lowercaseField.contains("化学") || lowercaseField.contains("数学") ||
+            lowercaseField.contains("生物") || lowercaseField.contains("医学") ||
+            lowercaseField.contains("scientist") || lowercaseField.contains("science") {
+        return .scientist
+    } else if lowercaseField.contains("哲学") || lowercaseField.contains("思想") ||
+              lowercaseField.contains("philosopher") || lowercaseField.contains("philosophy") {
+        return .philosopher
+    } else if lowercaseField.contains("文学") || lowercaseField.contains("作家") ||
+              lowercaseField.contains("诗人") || lowercaseField.contains("小说家") ||
+              lowercaseField.contains("writer") || lowercaseField.contains("author") ||
+              lowercaseField.contains("poet") || lowercaseField.contains("literature") {
+        return .writer
+    } else if lowercaseField.contains("艺术") || lowercaseField.contains("画家") ||
+              lowercaseField.contains("雕塑") || lowercaseField.contains("音乐") ||
+              lowercaseField.contains("artist") || lowercaseField.contains("painter") ||
+              lowercaseField.contains("musician") || lowercaseField.contains("art") {
+        return .artist
+    } else {
+        return .historical
+    }
+}
+
+/**
  * 角色详情页
  * 显示历史人物的详细信息
  */
@@ -120,7 +225,7 @@ struct CharacterDetailView: View {
     /// 当前选中的标签索引
     @State private var selectedTabIndex = 0
     /// 标签选项
-    private let tabOptions = ["介绍", "相关信息", "互动记录"]
+    private let tabOptions = ["人物档案", "成就作品", "互动画像"]
     /// 模拟对话数据
     @State private var conversations: [DisplayConversation] = []
     /// 内容动画状态
@@ -135,6 +240,7 @@ struct CharacterDetailView: View {
     // 环境值
     @Environment(\.presentationMode) var presentationMode
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.modelContext) private var modelContext
     
     // 用于UI显示的状态变量
     @State private var displayFollowerCount: Int = 0
@@ -201,10 +307,10 @@ struct CharacterDetailView: View {
                 // 标签页内容 - 采用GeometryReader确保正确的高度计算
                 GeometryReader { geometry in
                 TabView(selection: $selectedTabIndex) {
-                        // 第一个标签页：介绍
+                        // 第一个标签页：人物档案
                         ScrollView(.vertical, showsIndicators: false) {
                             VStack {
-                                IntroductionContentView(character: character)
+                                PersonalProfileContentView(character: character)
                                     .padding(.top, 20)  // 增加顶部间距
                                     .padding(.horizontal, 8)  // 减少左右内边距
                                     .padding(.bottom, 150) // 显著增加底部内边距确保内容完全可见
@@ -213,10 +319,10 @@ struct CharacterDetailView: View {
                         }
                         .tag(0)
                     
-                        // 第二个标签页：相关信息
+                        // 第二个标签页：成就作品
                         ScrollView(.vertical, showsIndicators: false) {
                             VStack {
-                                RelatedInfoContentView(character: character)
+                                AchievementsWorksContentView(character: character)
                                     .padding(.top, 20)  // 增加顶部间距
                                     .padding(.horizontal, 8)  // 减少左右内边距
                                     .padding(.bottom, 150) // 显著增加底部内边距确保内容完全可见
@@ -225,26 +331,13 @@ struct CharacterDetailView: View {
                         }
                         .tag(1)
                     
-                        // 第三个标签页：互动记录
-                        ScrollView(.vertical, showsIndicators: false) {
-                            VStack {
-                                InteractionContentView(
-                        character: character, 
-                        conversations: conversations,
-                                    onConversationTap: { conversation in
-                                        selectedConversationId = conversation.id
-                                        // 立即隐藏系统按钮窗口
-                                        hideSystemButtons()
-                                        navigateToChatView = true
-                        }
-                    )
-                                .padding(.top, 20)  // 增加顶部间距
-                                .padding(.horizontal, 8)  // 减少左右内边距
-                                .padding(.bottom, 150) // 显著增加底部内边距确保内容完全可见
-                            }
-                            .frame(minWidth: geometry.size.width, minHeight: geometry.size.height) // 确保内容宽度和高度充满屏幕
-                        }
-                    .tag(2)
+                        // 第三个标签页：互动画像
+                        CharacterChatInsightView(
+                            characterId: character.id,
+                            characterName: character.name
+                        )
+                        .environment(\.modelContext, modelContext)
+                        .tag(2)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
                     .frame(height: geometry.size.height)
@@ -463,88 +556,50 @@ struct CharacterDetailView: View {
             
             // 数据统计区域
             statsSection
-            
-            // 标签区域 - 放在数据统计后面
-            HStack {
-                Text("暂无标签")
-                    .font(.system(size: 12))
-                    .foregroundColor(.gray.opacity(0.7))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 3)
-                    .background(
-                        Capsule()
-                            .fill(Color(.systemGray6).opacity(0.8))
-                    )
-                
-                Spacer()
-            }
-            .padding(.top, 14)  // 增加与统计区域的间距
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)  // 增加与分隔线的间距
-            
-            // 分隔线
+             
+             // 角色标签区域 - 显示分类和时代标签
+             tagsSection
+             
+             // 分隔线
             Divider()
                 .padding(.horizontal, 12)
                 .padding(.bottom, 6)  // 增加底部间距
         }
     }
     
-    // 数据统计区域
+    // 数据统计区域 - 简化版，只显示评分
     private var statsSection: some View {
-        HStack(spacing: 0) {
-            // 粉丝数
-            VStack(spacing: 2) {
-                Text(formatNumber(displayFollowerCount))
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(Color.black.opacity(0.85))
+        HStack {
+            // 推荐指数（原评分）
+            HStack(spacing: 6) {
+                // 星级显示
+                HStack(spacing: 2) {
+                    ForEach(0..<5) { index in
+                        Image(systemName: index < Int(character.rating) ? "star.fill" : "star")
+                            .font(.system(size: 12))
+                            .foregroundColor(.orange)
+                    }
+                }
                 
-                Text("粉丝")
-                    .font(.system(size: 11))
-                    .foregroundColor(.gray.opacity(0.8))
-            }
-            .frame(maxWidth: .infinity)
-            
-            // 分隔线
-            Rectangle()
-                .fill(Color.gray.opacity(0.12))
-                .frame(width: 0.5, height: 18)
-            
-            // 互动量
-            VStack(spacing: 2) {
-                Text(formatNumber(displayInteractionCount))
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(Color.black.opacity(0.85))
-                
-                Text("互动量")
-                    .font(.system(size: 11))
-                    .foregroundColor(.gray.opacity(0.8))
-            }
-            .frame(maxWidth: .infinity)
-            
-            // 分隔线
-            Rectangle()
-                .fill(Color.gray.opacity(0.12))
-                .frame(width: 0.5, height: 18)
-            
-            // 评分
-            VStack(spacing: 2) {
                 Text(String(format: "%.1f", character.rating))
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(Color.black.opacity(0.85))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
                 
-                Text("评分")
-                    .font(.system(size: 11))
-                    .foregroundColor(.gray.opacity(0.8))
+                Text("推荐指数")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
             }
-            .frame(maxWidth: .infinity)
+            
+            Spacer()
         }
-        .padding(.vertical, 12)
         .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
     }
     
     // 操作按钮区域
     private var actionButtonsSection: some View {
-        HStack(spacing: 24) { // 增加按钮间距从18到24，让布局更加宽松
+        HStack(spacing: 12) { // 优化按钮间距，提高屏幕利用率
             // 关注按钮 - 使用微妙的渐变效果
             Button {
                 // 关注操作
@@ -751,7 +806,7 @@ struct CharacterDetailView: View {
             }
             .buttonStyle(ScaleFeedbackButtonStyle(scaleAmount: 0.92))
         }
-        .padding(.horizontal, 32) // 保持水平内边距
+        .padding(.horizontal, 20) // 减少水平内边距，提高屏幕利用率
         .padding(.vertical, 16) // 增加垂直内边距从14到16
         .padding(.top, 8)  // 增加顶部额外间距从6到8
         .background(
@@ -782,16 +837,17 @@ struct CharacterDetailView: View {
                             generator.impactOccurred(intensity: 0.4)
                         }
                     } label: {
-                        VStack(spacing: 6) {
+                        VStack(spacing: 8) {
                             Text(tabOptions[index])
                                 .font(.system(size: 15, weight: selectedTabIndex == index ? .semibold : .regular))
-                                .foregroundColor(selectedTabIndex == index ? .black : .gray.opacity(0.7))
+                                .foregroundColor(selectedTabIndex == index ? .primary : .secondary)
                             
-                            // 下方的选中指示条 - 与图一保持一致，使用较细的紫色线条
-                            Rectangle()
-                                .fill(selectedTabIndex == index ? Color(red: 0.62, green: 0.43, blue: 0.83) : Color.clear)
-                                .frame(width: 40, height: 2.5)
-                                .cornerRadius(1.5)
+                            // 苹果风格的微妙选中指示器
+                            Circle()
+                                .fill(selectedTabIndex == index ? Color.accentColor : Color.clear)
+                                .frame(width: 4, height: 4)
+                                .scaleEffect(selectedTabIndex == index ? 1.0 : 0.1)
+                                .opacity(selectedTabIndex == index ? 1.0 : 0.0)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -1803,86 +1859,68 @@ private struct DetailTabBarView: View {
 }
 
 /**
- * 介绍视图
- * 显示角色的详细介绍
+ * 人物档案视图
+ * 显示角色的基本信息、核心思想和历史背景
  */
-fileprivate struct IntroductionContentView: View {
+fileprivate struct PersonalProfileContentView: View {
     let character: Character
     
     var body: some View {
-        // 使用LazyVStack避免提前布局计算
-        LazyVStack(alignment: .leading, spacing: 16) {
-            // 核心思想部分 - 使用固定布局约束
-            if !character.keyThoughts.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                    Text("核心思想")
-                        .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.primary)
-                
-                    Text(character.keyThoughts.first ?? "暂无核心思想记录")
-                        .font(.system(size: 15, weight: .regular))
-                    .foregroundColor(.secondary)
-                        .lineSpacing(5)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(16)
-                .frame(minHeight: 100)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(DesignSystem.Colors.background)
-                        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-                )
-            }
-            
-            // 人物简介部分 - 使用固定布局约束
-            VStack(alignment: .leading, spacing: 8) {
-                Text("人物简介")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.primary)
+        let theme = CharacterTheme.forField(character.field)
+        
+        VStack(alignment: .leading, spacing: 20) {
+            // 人物简介部分 - 使用统一的卡片结构
+            VStack(alignment: .leading, spacing: 10) {
+                DetailSectionHeader(title: "人物简介", iconName: "person.fill", color: theme.primary)
                 
                 Text(character.introduction)
-                    .font(.system(size: 15, weight: .regular))
-                            .foregroundColor(.secondary)
+                    .font(.system(size: 15))
+                    .foregroundColor(.primary.opacity(0.85))
                     .lineSpacing(5)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 2)
             }
-            .padding(16)
-            .frame(minHeight: 120)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(DesignSystem.Colors.background)
-                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(generateCategoryGradientBackground(for: mapFieldToCategory(field: character.field)))
             
-            // 历史背景部分 - 使用固定布局约束
-            VStack(alignment: .leading, spacing: 8) {
-                Text("历史背景")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.primary)
+            // 核心思想部分 - 使用统一的卡片结构
+            if !character.keyThoughts.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    DetailSectionHeader(title: "核心思想", iconName: "lightbulb.fill", color: theme.primary)
+                    
+                    Text(character.keyThoughts.first ?? "暂无核心思想记录")
+                        .font(.system(size: 15))
+                        .foregroundColor(.primary.opacity(0.85))
+                        .lineSpacing(5)
+                        .padding(.horizontal, 2)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(generateCategoryGradientBackground(for: mapFieldToCategory(field: character.field)))
+            }
+            
+            // 历史背景部分 - 保持统一的卡片结构
+            VStack(alignment: .leading, spacing: 10) {
+                DetailSectionHeader(title: "历史背景", iconName: "clock.fill", color: theme.primary)
                 
-                Text("生活在\(character.birthYear)-\(character.deathYear ?? "现在")期间，\(character.name)的思想深受当时社会环境的影响。")
-                    .font(.system(size: 15, weight: .regular))
-                            .foregroundColor(.secondary)
-                    .lineSpacing(5)
-                    .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(16)
-            .frame(minHeight: 100)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(DesignSystem.Colors.background)
-                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-            )
+                HistoricalContextView(character: character, theme: theme)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(generateCategoryGradientBackground(for: mapFieldToCategory(field: character.field)))
         }
         .padding(.horizontal, 16)
     }
 }
 
 /**
- * 相关信息视图
- * 显示与角色相关的历史背景、影响等信息
+ * 成就作品视图
+ * 显示角色的主要成就、代表作品和相关人物
  */
-fileprivate struct RelatedInfoContentView: View {
+fileprivate struct AchievementsWorksContentView: View {
     let character: Character
     
     var body: some View {
@@ -1903,11 +1941,8 @@ fileprivate struct RelatedInfoContentView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(DesignSystem.Colors.background)
-                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(generateCategoryGradientBackground(for: mapFieldToCategory(field: character.field)))
             
             // 代表作品 - 根据角色类型自定义标题和图标
             VStack(alignment: .leading, spacing: 10) {
@@ -1927,11 +1962,8 @@ fileprivate struct RelatedInfoContentView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(DesignSystem.Colors.background)
-                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(generateCategoryGradientBackground(for: mapFieldToCategory(field: character.field)))
             
             // 相关人物 - 展示与该历史人物相关的其他人物
             VStack(alignment: .leading, spacing: 10) {
@@ -1941,32 +1973,8 @@ fileprivate struct RelatedInfoContentView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(DesignSystem.Colors.background)
-                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-            )
-            
-            // 历史背景 - 根据时代和角色类型定制内容
-            VStack(alignment: .leading, spacing: 10) {
-                DetailSectionHeader(title: "历史背景", iconName: "clock.fill", color: theme.primary)
-                
-                Text(getHistoricalBackground(character: character))
-                    .font(.system(size: 15))
-                    .foregroundColor(.primary.opacity(0.85))
-                    .lineSpacing(5)
-                    .padding(.horizontal, 2)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(DesignSystem.Colors.background)
-                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-            )
-            
-            // 底部间距
-            Spacer(minLength: 60)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(generateCategoryGradientBackground(for: mapFieldToCategory(field: character.field)))
         }
         .padding(.horizontal, 16)
     }
@@ -1977,83 +1985,98 @@ fileprivate struct RelatedInfoContentView: View {
         case "achievements":
             if field.contains("科学") || field.contains("物理") || field.contains("数学") {
                 return "atom"
-            } else if field.contains("哲学") || field.contains("思想家") {
-                return "brain"
-            } else if field.contains("文学") || field.contains("作家") || field.contains("诗人") {
-                return "book.fill"
-            } else if field.contains("艺术") || field.contains("画家") || field.contains("音乐") {
-                return "paintbrush.fill"
-            } else if field.contains("军事") || field.contains("将军") {
-                return "shield.fill"
-            } else {
-                return "medal.fill"
-            }
-        case "works":
-            if field.contains("科学") || field.contains("物理") || field.contains("数学") {
-                return "doc.text.magnifyingglass"
-            } else if field.contains("哲学") || field.contains("思想家") {
-                return "text.book.closed.fill"
-            } else if field.contains("文学") || field.contains("作家") || field.contains("诗人") {
-                return "book.fill"
+            } else if field.contains("文学") || field.contains("诗人") {
+                return "quote.bubble.fill"
+            } else if field.contains("政治") || field.contains("军事") {
+                return "crown.fill"
             } else if field.contains("艺术") || field.contains("画家") {
-                return "paintpalette.fill"
+                return "paintbrush.fill"
             } else if field.contains("音乐") {
                 return "music.note"
             } else {
+                return "star.fill"
+            }
+        case "works":
+            if field.contains("科学") || field.contains("物理") || field.contains("数学") {
                 return "doc.text.fill"
+            } else if field.contains("文学") || field.contains("诗人") {
+                return "book.fill"
+            } else if field.contains("艺术") || field.contains("画家") {
+                return "photo.artframe"
+            } else if field.contains("音乐") {
+                return "music.note.list"
+            } else {
+                return "folder.fill"
             }
         default:
             return "info.circle.fill"
         }
     }
     
-    // 根据字段和角色类型获取自定义标题
+    // 根据角色类型获取自定义标题
     private func getCustomTitle(for section: String, field: String) -> String {
-        switch section {
-        case "works":
+        if section == "works" {
             if field.contains("科学") || field.contains("物理") || field.contains("数学") {
-                return "重要论文"
-            } else if field.contains("哲学") || field.contains("思想家") {
-                return "重要著作"
-            } else if field.contains("文学") || field.contains("作家") || field.contains("诗人") {
+                return "重要理论"
+            } else if field.contains("文学") || field.contains("诗人") {
                 return "代表作品"
             } else if field.contains("艺术") || field.contains("画家") {
                 return "代表画作"
             } else if field.contains("音乐") {
-                return "代表曲目"
+                return "代表乐曲"
             } else {
                 return "主要作品"
             }
+        }
+        return "主要成就"
+    }
+}
+
+// 历史背景组件
+fileprivate struct HistoricalContextView: View {
+    let character: Character
+    let theme: CharacterTheme
+    
+    var body: some View {
+        Text(getHistoricalBackground(character: character))
+            .font(.system(size: 15))
+            .foregroundColor(.primary.opacity(0.85))
+            .lineSpacing(5)
+            .padding(.horizontal, 2)
+    }
+    
+    // 根据角色生成具体的历史背景描述
+    private func getHistoricalBackground(character: Character) -> String {
+        let birthYear = character.birthYear
+        let deathYear = character.deathYear ?? "现在"
+        let name = character.name
+        
+        // 返回具体的时代背景信息，避免套话
+        return "\(name)（\(birthYear)-\(deathYear)）\n\n" +
+               "时代背景：" + getSpecificEraContext(character: character) +
+               "\n\n核心贡献：" + getCoreContributions(character: character)
+    }
+    
+    // 获取具体的时代背景
+    private func getSpecificEraContext(character: Character) -> String {
+        switch character.name {
+        case "小黄人":
+            return "出现在现代动画电影中，代表了当代流行文化的重要符号。"
+        case "爱因斯坦":
+            return "20世纪初物理学革命时期，科学界正经历从经典物理向现代物理的转变。"
+        case "孔子":
+            return "春秋战国时期，社会动荡，各种思想流派竞相涌现。"
         default:
-            return "相关信息"
+            return "\(character.eraTag ?? "相关时代")的重要历史时期。"
         }
     }
     
-    // 根据角色生成历史背景描述
-    private func getHistoricalBackground(character: Character) -> String {
-        let birthYear = character.birthYear
-        let deathYear = character.deathYear ?? "未知"
-        let field = character.field
-        let name = character.name
-        
-        var description = "生活在\(birthYear)-\(deathYear)期间，\(name)"
-        
-        // 根据角色类型添加不同的描述
-        if field.contains("哲学") || field.contains("思想家") {
-            description += "的思想深受当时社会环境和历史背景的影响。作为一位重要的思想家，他的哲学体系引导了人们对世界的认知方式。"
-        } else if field.contains("物理") || field.contains("数学") || field.contains("科学") {
-            description += "的科学成就引领了当时的学术前沿，开创了新的研究领域，并为后世的科学发展奠定了基础。"
-        } else if field.contains("文学") || field.contains("作家") || field.contains("诗人") {
-            description += "的文学作品反映了那个时代的社会风貌和人文精神，通过文字塑造了丰富的思想世界和艺术形象。"
-        } else if field.contains("艺术") || field.contains("画家") || field.contains("音乐") {
-            description += "的艺术创作融合了时代特色和个人风格，展现了独特的美学观念和艺术表达方式。"
-        } else if field.contains("教育") || name.contains("孔子") {
-            description += "创立了影响深远的教育思想，其理念和方法对后世的教育实践产生了深远的影响。"
-        } else {
-            description += "的贡献对当时社会产生了深远影响，其思想和成就至今仍被广泛研究和传颂。"
+    // 获取核心贡献
+    private func getCoreContributions(character: Character) -> String {
+        if !character.achievements.isEmpty {
+            return character.achievements.first ?? "在相关领域做出重要贡献"
         }
-        
-        return description
+        return "在\(character.field)领域具有重要地位"
     }
 }
 
@@ -2086,41 +2109,43 @@ fileprivate struct RelatedPersonView: View {
                 ("拉斐尔", "文艺复兴时期著名画家")
             ]
         default:
-            return [
-                ("相关历史人物", "与\(character.name)有关联的历史人物"),
-                ("同时代人物", "与\(character.name)生活在同一时期的重要人物")
-            ]
+            // 对于没有具体数据的角色，返回空数组而不是通用描述
+            return []
         }
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ForEach(relatedPersons, id: \.name) { person in
-                HStack(alignment: .top, spacing: 10) {
-                    // 人物图标
-                    Image(systemName: "person.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(theme.primary)
-                        .frame(width: 22)
+        if relatedPersons.isEmpty {
+            NoContentView(text: "暂无相关人物信息")
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(relatedPersons, id: \.name) { person in
+                    HStack(alignment: .top, spacing: 10) {
+                        // 人物图标
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(theme.primary)
+                            .frame(width: 22)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            // 人物名称
+                            Text(person.name)
+                                .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.primary)
                     
-                    VStack(alignment: .leading, spacing: 4) {
-                        // 人物名称
-                        Text(person.name)
-                            .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.primary)
+                            // 人物关系描述
+                            Text(person.relation)
+                                .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                                .lineSpacing(3)
+                        }
+                }
                 
-                        // 人物关系描述
-                        Text(person.relation)
-                            .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                            .lineSpacing(3)
+                    if person.name != relatedPersons.last?.name {
+                Divider()
+                            .padding(.vertical, 2)
+                            .padding(.leading, 32)
                     }
-            }
-            
-                if person.name != relatedPersons.last?.name {
-            Divider()
-                        .padding(.vertical, 2)
-                        .padding(.leading, 32)
                 }
             }
         }
@@ -2974,6 +2999,130 @@ fileprivate struct FullScreenShareView: View {
         .buttonStyle(ScaleFeedbackButtonStyle())
     }
 } 
+
+// MARK: - 角色标签区域
+
+extension CharacterDetailView {
+    
+    /// 角色标签区域 - 显示分类和时代标签
+    private var tagsSection: some View {
+        let tags = getCharacterTags()
+        
+        return Group {
+            if !tags.isEmpty {
+                HStack {
+                    HStack(spacing: 6) {
+                        ForEach(tags, id: \.self) { tag in
+                            Text(tag)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(getTagColor(for: tag))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(getTagColor(for: tag).opacity(0.12))
+                                )
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+            } else {
+                EmptyView()
+            }
+        }
+    }
+    
+    /// 获取角色标签 - 基于Character模型中的数据
+    private func getCharacterTags() -> [String] {
+        var tags: [String] = []
+        
+        // 1. 添加主要分类标签（基于field字段）
+        let field = character.field.lowercased()
+        if field.contains("科学") || field.contains("物理") || field.contains("化学") || field.contains("数学") {
+            tags.append("科学家")
+        } else if field.contains("哲学") || field.contains("思想") {
+            tags.append("哲学家")
+        } else if field.contains("文学") || field.contains("作家") || field.contains("诗人") || field.contains("戏剧") {
+            tags.append("文学家")
+        } else if field.contains("艺术") || field.contains("画家") || field.contains("音乐") {
+            tags.append("艺术家")
+        } else if field.contains("政治") || field.contains("皇帝") || field.contains("国王") || field.contains("总统") {
+            tags.append("政治家")
+        } else if field.contains("军事") || field.contains("将军") {
+            tags.append("军事家")
+        } else if field.contains("宗教") || field.contains("佛") || field.contains("基督") {
+            tags.append("宗教家")
+        } else {
+            // 如果没有匹配到具体分类，使用原始field作为标签
+            tags.append(character.field)
+        }
+        
+        // 2. 添加时代标签（基于eraTag或birthYear）
+        if let eraTag = character.eraTag, !eraTag.isEmpty {
+            tags.append(eraTag)
+        } else {
+            // 根据出生年份推断时代
+            if let birthYear = Int(character.birthYear.replacingOccurrences(of: "[^0-9-]", with: "", options: .regularExpression)) {
+                if birthYear < 0 {
+                    tags.append("古代")
+                } else if birthYear < 500 {
+                    tags.append("古典时期")
+                } else if birthYear < 1000 {
+                    tags.append("中世纪")
+                } else if birthYear < 1500 {
+                    tags.append("文艺复兴")
+                } else if birthYear < 1800 {
+                    tags.append("近世")
+                } else if birthYear < 1900 {
+                    tags.append("近代")
+                } else {
+                    tags.append("现代")
+                }
+            }
+        }
+        
+        // 3. 添加特殊成就标签
+        if character.achievements.contains(where: { $0.contains("诺贝尔") }) {
+            tags.append("诺贝尔奖")
+        }
+        
+        // 限制标签数量为2-3个，保持界面简洁
+        return Array(tags.prefix(3))
+    }
+    
+    /// 获取标签颜色 - 为不同类型的标签分配颜色
+    private func getTagColor(for tag: String) -> Color {
+        switch tag {
+        case "科学家":
+            return Color(red: 52/255, green: 152/255, blue: 219/255)  // 蓝色
+        case "哲学家":
+            return Color(red: 155/255, green: 89/255, blue: 182/255)  // 紫色
+        case "文学家":
+            return Color(red: 46/255, green: 204/255, blue: 113/255)  // 绿色
+        case "艺术家":
+            return Color(red: 230/255, green: 126/255, blue: 34/255)  // 橙色
+        case "政治家":
+            return Color(red: 231/255, green: 76/255, blue: 60/255)   // 红色
+        case "军事家":
+            return Color(red: 149/255, green: 165/255, blue: 166/255) // 灰色
+        case "宗教家":
+            return Color(red: 241/255, green: 196/255, blue: 15/255)  // 金色
+        case "诺贝尔奖":
+            return Color(red: 241/255, green: 196/255, blue: 15/255)  // 金色
+        case "古代", "古典时期", "中世纪":
+            return Color(red: 139/255, green: 115/255, blue: 85/255)  // 古铜色
+        case "文艺复兴", "近世":
+            return Color(red: 160/255, green: 82/255, blue: 45/255)   // 棕色
+        case "近代", "现代":
+            return Color(red: 52/255, green: 152/255, blue: 219/255)  // 蓝色
+        default:
+            return Color(red: 149/255, green: 165/255, blue: 166/255) // 默认灰色
+        }
+    }
+}
 
 // MARK: - 自定义UI组件
 

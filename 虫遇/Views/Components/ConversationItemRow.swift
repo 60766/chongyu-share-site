@@ -68,9 +68,9 @@ struct ConversationItemRow: View {
             }
         }
         .padding(12)
-        .background(DesignSystem.Colors.background)
+        .background(Color(red: 245/255, green: 244/255, blue: 238/255))
         .cornerRadius(8)
-        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
     }
     
     /**

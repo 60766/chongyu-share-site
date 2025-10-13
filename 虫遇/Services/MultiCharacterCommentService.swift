@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import UIKit
+import SwiftData
 
 /**
  * 角色回复数据结构
@@ -22,6 +23,7 @@ class MultiCharacterCommentService {
     // 依赖的服务
     private let characterDataManager = CharacterDataManager.shared
     private let personalityManager = CharacterPersonalityManager.shared
+    private let insightService = CharacterChatInsightService.shared
     private var cancellables = Set<AnyCancellable>()
     
     // 存储当前请求的上下文信息
@@ -59,6 +61,7 @@ class MultiCharacterCommentService {
         targetUsername: String? = nil,
         authorCharacterId: String? = nil,
         isInvited: Bool = false,
+        modelContext: ModelContext? = nil,
         completion: @escaping (Result<[String: String], Error>) -> Void
     ) {
         // 🔧 修复：创建独立的请求上下文，不覆盖全局变量
@@ -88,7 +91,8 @@ class MultiCharacterCommentService {
             userComment: userComment,
             targetUsername: targetUsername,
             authorCharacterId: authorCharacterId,
-            isInvited: isInvited
+            isInvited: isInvited,
+            modelContext: modelContext
         )
         
         // 移除60秒超时保护，允许长时间生成
@@ -195,7 +199,8 @@ class MultiCharacterCommentService {
         userComment: String? = nil,
         targetUsername: String? = nil,
         authorCharacterId: String? = nil,
-        isInvited: Bool = false
+        isInvited: Bool = false,
+        modelContext: ModelContext? = nil
     ) -> String {
         // 收集角色信息，包括名称、性格特点和专业领域
         let characterInfo = characterIDs.map { id -> String in
@@ -212,7 +217,15 @@ class MultiCharacterCommentService {
                 traits = "（类型：\(character.type.displayName)，专业领域：\(character.primaryField)）"
             }
             
-            return "- \(name) (ID: \(id)) （@时使用：@\(name)） \(authorMark) \(traits)"
+            // 尝试加载缓存的画像信息
+            var insightInfo = ""
+            if let context = modelContext,
+               let insight = insightService.loadCachedInsight(characterId: id, modelContext: context) {
+                print("✅ 为角色 \(name) 加载了缓存画像")
+                insightInfo = "\n  画像摘要：\(insight.summary)"
+            }
+            
+            return "- \(name) (ID: \(id)) （@时使用：@\(name)） \(authorMark) \(traits)\(insightInfo)"
         }.joined(separator: "\n")
         
         // 获取帖子作者信息 - 如果提供了作者名称则使用，否则使用默认值
