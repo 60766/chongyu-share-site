@@ -246,13 +246,7 @@ struct CosmicTabView: View {
             .zIndex(1) // 确保发布按钮和菜单始终在顶层
         }
         .sheet(isPresented: $showPublishView) {
-            if let publishType = selectedPublishType {
-                // 这里需要在PublishView中添加一个构造函数来接收PublishOption类型参数
-                // 并将其转换为PublishView需要的类型
-                PublishView(publishType: convertToViewPublishType(publishType))
-            } else {
-                PublishView()
-            }
+            PublishPanelView(isVisible: $showPublishView)
         }
         .onChange(of: showPublishView) { oldValue, newValue in
             if !newValue {
@@ -423,14 +417,6 @@ struct CosmicTabView: View {
         .transition(.opacity)
     }
     
-    // 将PublishOption转换为PublishView所需的PublishType
-    private func convertToViewPublishType(_ option: PublishOption) -> PublishType {
-        return PublishType(
-            title: option.title,
-            iconName: option.iconName,
-            color: option.color
-        )
-    }
     
     // 完整版虫洞按钮 - 参考图片的设计风格
     private var fullWormholeButton: some View {
@@ -818,6 +804,16 @@ struct PublishOption: Identifiable {
     static let image = PublishOption(title: "图片", iconName: "photo.fill", color: .green)
     static let voice = PublishOption(title: "语音", iconName: "mic.fill", color: .purple)
     static let story = PublishOption(title: "故事", iconName: "book.fill", color: .orange)
+}
+
+/**
+ * 发布类型
+ * 用于传递给PublishPanelView的发布类型信息
+ */
+struct PublishType {
+    var title: String
+    var iconName: String
+    var color: Color
 }
 
 /**

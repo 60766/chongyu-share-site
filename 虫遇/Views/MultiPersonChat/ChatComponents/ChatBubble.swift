@@ -27,17 +27,15 @@ struct ChatBubble: View {
     
     var body: some View {
         HStack(alignment: .top, spacing: 10) { // 恢复适当的头像和消息间距
-            // 头像
-            Image(character.avatar)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 36, height: 36)
-                .clipShape(Circle())
-                .overlay(
-                    Circle()
-                        .stroke(Color.white, lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+            // 头像 - 使用CharacterAvatarService支持首字母显示
+            CharacterAvatarService.shared.getAvatarView(
+                for: character.id,
+                name: character.name,
+                category: character.category.rawValue,
+                size: 36,
+                useCaching: true
+            )
+            .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
             
             VStack(alignment: .leading, spacing: 3) {
                 // 角色名称
@@ -246,17 +244,15 @@ struct UserRolePlayingBubble: View {
             }
             .frame(maxWidth: UIScreen.main.bounds.width * 0.7, alignment: .trailing)
             
-            // 角色头像
-            Image(character.avatar)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 36, height: 36)
-                .clipShape(Circle())
-                .overlay(
-                    Circle()
-                        .stroke(Color.white, lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+            // 角色头像 - 使用CharacterAvatarService支持首字母显示
+            CharacterAvatarService.shared.getAvatarView(
+                for: character.id,
+                name: character.name,
+                category: character.category.rawValue,
+                size: 36,
+                useCaching: true
+            )
+            .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
         }
         .padding(.horizontal, 4) // 测试：更明显的紧凑间距，让头像几乎贴边
         .padding(.vertical, 4)

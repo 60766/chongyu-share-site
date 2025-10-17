@@ -58,6 +58,11 @@ struct ChatView: View {
     // TabBar管理器
     @ObservedObject private var tabBarManager = TabBarManager.shared
     
+    // 分享相关状态
+    @State private var isShareMode = false
+    @State private var selectedMessages: Set<String> = []
+    @State private var showShareModal = false
+    
     // 获取SwiftData的ModelContext
     @Environment(\.modelContext) private var modelContext
     
@@ -222,8 +227,16 @@ struct ChatView: View {
                                 LazyVStack(spacing: 12) {  // 减小消息间距从16到12，让对话更紧凑
                                     // 消息气泡
                                     ForEach(messages, id: \.id) { message in
-                                        ChatMessageBubbleView(message: message, characterThemeColor: characterThemeColor)
-                                            .id(message.id)
+                                        ShareableMessageBubbleView(
+                                            message: message, 
+                                            characterThemeColor: characterThemeColor,
+                                            isShareMode: isShareMode,
+                                            isSelected: selectedMessages.contains(message.id),
+                                            onSelectionToggle: {
+                                                toggleMessageSelection(message.id)
+                                            }
+                                        )
+                                        .id(message.id)
                                     }
                                     
                                     // 底部占位区域 - 增加高度确保内容能滚动到底部安全区以上
@@ -326,17 +339,32 @@ struct ChatView: View {
                     )
                 }
                 
-                // 底部输入区域 - 使用和多人聊天完全相同的组件
-                ChatInputBar(
-                    messageText: $messageText,
-                    isSending: $isSending,
-                    characterThemeColor: characterThemeColor,
-                    onSend: {
-                        sendMessage()
-                    }
-                )
-                .background(DesignSystem.Colors.background)
-                .edgesIgnoringSafeArea(.bottom)
+                // 分享模式底部操作栏
+                if isShareMode {
+                    ShareModeBottomBar(
+                        selectedCount: selectedMessages.count,
+                        onCancel: {
+                            exitShareMode()
+                        },
+                        onShare: {
+                            generateAndShareCards()
+                        }
+                    )
+                    .background(DesignSystem.Colors.background)
+                    .edgesIgnoringSafeArea(.bottom)
+                } else {
+                    // 底部输入区域 - 使用和多人聊天完全相同的组件
+                    ChatInputBar(
+                        messageText: $messageText,
+                        isSending: $isSending,
+                        characterThemeColor: characterThemeColor,
+                        onSend: {
+                            sendMessage()
+                        }
+                    )
+                    .background(DesignSystem.Colors.background)
+                    .edgesIgnoringSafeArea(.bottom)
+                }
             }
             
             // 录音界面已移除
@@ -391,6 +419,17 @@ struct ChatView: View {
         .toolbarBackground(DesignSystem.Colors.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    enterShareMode()
+                }) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 16))
+                        .foregroundColor(Color.warmAccent)
+                }
+            }
+        }
         .edgesIgnoringSafeArea(.bottom) // 忽略底部安全区域，确保输入框贴合屏幕底部
         .dismissKeyboardOnTap() // 添加点击空白区域收起键盘的功能
         .onAppear {
@@ -814,9 +853,11 @@ struct ChatView: View {
                 // 更新UI，使用主线程同步执行以提高响应速度
                 await MainActor.run {
                     if historicalMessages.isEmpty {
-                        // print("📱 没有找到历史消息记录")
+                        // 🔧 修复：当没有历史消息时，清空消息数组，避免显示错误的消息
+                        self.messages = []
+                        print("📱 没有找到历史消息记录，已清空消息数组")
                     } else {
-                        // print("📱 成功加载 \(historicalMessages.count) 条历史消息")
+                        print("📱 成功加载 \(historicalMessages.count) 条历史消息")
                         
                         // 一次性更新消息数组，避免多次重绘
                         self.messages = historicalMessages
@@ -1021,6 +1062,69 @@ struct ChatView: View {
     private func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
+    
+    // MARK: - 分享功能
+    
+    /// 进入分享模式
+    private func enterShareMode() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            isShareMode = true
+        }
+        // 隐藏键盘
+        hideKeyboard()
+    }
+    
+    /// 退出分享模式
+    private func exitShareMode() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            isShareMode = false
+            selectedMessages.removeAll()
+        }
+    }
+    
+    /// 切换消息选择状态
+    private func toggleMessageSelection(_ messageId: String) {
+        withAnimation(.spring(response: 0.3)) {
+            if selectedMessages.contains(messageId) {
+                selectedMessages.remove(messageId)
+            } else {
+                selectedMessages.insert(messageId)
+            }
+        }
+    }
+    
+    /// 生成并分享卡片
+    private func generateAndShareCards() {
+        let selectedMessagesList = messages.filter { selectedMessages.contains($0.id) }
+        
+        if selectedMessagesList.isEmpty {
+            return
+        }
+        
+        // 生成分享卡片
+        let shareCards = selectedMessagesList.map { message in
+            ChatShareCardGenerator.generateCard(
+                message: message,
+                character: character,
+                characterThemeColor: characterThemeColor
+            )
+        }
+        
+        // 调用系统分享
+        let activityVC = UIActivityViewController(
+            activityItems: shareCards,
+            applicationActivities: nil
+        )
+        
+        // 获取当前视图控制器并展示分享面板
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+            rootViewController.present(activityVC, animated: true)
+        }
+        
+        // 分享完成后退出分享模式
+        exitShareMode()
+    }
 
 /**
  * 消息气泡视图
@@ -1043,232 +1147,187 @@ struct ChatMessageBubbleView: View {
         // 检查是否为等待消息
         let isWaitingMessage = !message.isFromUser && message.content == "..."
         
-        HStack(alignment: isWaitingMessage ? .center : .top, spacing: 8) {
-            // 角色头像（仅在角色消息时显示）
-            if !message.isFromUser {
-                ZStack {
-                    // 背景装饰
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    DesignSystem.Colors.background.opacity(0.98),
-                                    DesignSystem.Colors.background.opacity(0.90)
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 36, height: 36)  // 减小头像尺寸从38到36，更符合iOS标准
-                        .shadow(color: Color.black.opacity(0.06), radius: 2, x: 0, y: 1)  // 减弱阴影不透明度从0.08到0.06
-                    
-                    // 角色头像 - 使用Avatar组件
-                    Avatar(url: message.senderId, name: "历史人物", size: 32)  // 减小头像尺寸从34到32
-                        .clipShape(Circle())
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.8), lineWidth: 1)
-                        )
-                }
-                .padding(.top, isWaitingMessage ? 0 : 4) // 等待消息时不需要顶部间距
-            } else {
-                Spacer()
-            }
-            
-            // 消息气泡
-            VStack(alignment: message.isFromUser ? .trailing : .leading, spacing: 2) {
-                // 消息内容
-                Group {
-                    if isWaitingMessage {
-                        // 简化的等待动画
-                        HStack(spacing: 5) {
-                            ForEach(0..<3) { index in
-                                Circle()
-                                    .fill(characterThemeColor)
-                                    .frame(width: 5, height: 5)
-                                    .scaleEffect(getAnimationScale(for: index))
-                                    .animation(
-                                        Animation.easeInOut(duration: 0.5)
-                                            .repeatForever()
-                                            .delay(0.15 * Double(index)),
-                                        value: animationDots
-                                    )
-                            }
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 8)
-                    } else {
-                Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
-                    .font(.system(size: 15))
-                    .lineSpacing(5) // 增加行间距改善阅读体验
-                    .padding(.horizontal, 15)
-                    .padding(.vertical, 8)  // 减小垂直内边距从10到8，让气泡更紧凑
-                    }
-                }
-                    .background(
-                        message.isFromUser
-                            ? LinearGradient(
-                                gradient: Gradient(colors: [
-                                    Color.blue.opacity(0.95),
-                                    Color.blue.opacity(0.85)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                          )
-                        : isWaitingMessage
-                            ? LinearGradient(
-                                gradient: Gradient(colors: [
-                                    characterThemeColor.opacity(0.12),
-                                    characterThemeColor.opacity(0.08)
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                              )
-                            : LinearGradient(
-                                gradient: Gradient(colors: [
-                                    characterThemeColor.opacity(0.16),
-                                    characterThemeColor.opacity(0.12)
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                              )
-                    )
-                    .foregroundColor(message.isFromUser ? .white : .primary)
-                    .clipShape(
-                        RoundedRectangle(
-                        cornerRadius: message.isFromUser ? 18 : (isWaitingMessage ? 14 : 16),
-                            style: .continuous
-                        )
-                    )
-                    // 用户消息添加微妙的高光，历史角色消息添加纹理效果
-                    .overlay(
-                        ZStack {
-                            if message.isFromUser {
-                                // 用户消息上部高光，增强视觉层次感
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 0.8)
-                                    .blendMode(.overlay)
-                                    .mask(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [.white, .clear]),
-                                            startPoint: .top,
-                                            endPoint: .center
-                                        )
-                                    )
-                            } else {
-                                // 历史角色消息添加精致边框
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [
-                                                characterThemeColor.opacity(0.25),  // 增加不透明度从0.2到0.25，提高边框可见度
-                                                characterThemeColor.opacity(0.08)   // 增加不透明度从0.05到0.08
-                                            ]),
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        ),
-                                        lineWidth: 0.8
-                                    )
-                                
-                                // 角色消息添加微妙的纸张纹理 - 代表历史感
-                                if !message.isFromUser {
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .fill(Color(.displayP3, white: 0.5, opacity: 0.03))
-                                        .mask(
-                                            ZStack {
-                                                // 创建随机点状纹理
-                                                ForEach(0..<20) { _ in
-                                                    Circle()
-                                                        .fill(Color.white.opacity(Double.random(in: 0.1...0.3)))
-                                                        .frame(width: Double.random(in: 1...2), height: Double.random(in: 1...2))
-                                                        .offset(
-                                                            x: Double.random(in: -50...50),
-                                                            y: Double.random(in: -20...20)
-                                                        )
-                                                }
-                                            }
-                                        )
-                                        .allowsHitTesting(false)
-                                }
-                            }
-                        }
-                    )
-                    // 增强阴影效果
-                    .shadow(color: message.isFromUser 
-                            ? Color.blue.opacity(0.15)
-                            : characterThemeColor.opacity(0.08), 
-                           radius: message.isFromUser ? 2 : 1.5, x: 0, y: 1)
-                
-                // 消息时间和状态 - 减小与消息气泡的间距
-                if !isWaitingMessage {
-                HStack(spacing: 4) {
-                    if message.isFromUser {
-                        // 消息状态指示器
-                        if status == .sending {
-                            Image(systemName: "clock")
-                                .font(.system(size: 9))
-                                .foregroundColor(.secondary.opacity(0.7))
-                        } else if status == .sent {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 9))
-                                .foregroundColor(.secondary.opacity(0.7))
-                        } else if status == .delivered {
-                            Image(systemName: "checkmark.circle")
-                                .font(.system(size: 9))
-                                .foregroundColor(.secondary.opacity(0.7))
-                        } else if status == .read {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 9))
-                                .foregroundColor(.blue.opacity(0.7))
-                        }
-                    }
-                    
-                    // 时间 - 更优雅的样式
-                    Text(formatMessageTime(message.timestamp))
-                        .font(.system(size: 10, weight: .light))  // 增加字体大小从9到10，提高可读性
-                        .kerning(0.3)
-                        .foregroundColor(.secondary.opacity(0.8))  // 增加不透明度从0.7到0.8，提高对比度
-                }
-                .padding(.horizontal, 4) // 减小水平内边距
-                .padding(.vertical, 1) // 减小垂直内边距
-                }
-            }
-            .padding(.trailing, message.isFromUser ? 0 : 4)
-            .padding(.leading, message.isFromUser ? 4 : 0)
-            
-            // 用户头像（仅在用户消息时显示）
+        Group {
             if message.isFromUser {
-                ZStack {
-                    // 背景装饰
-                    Circle()
-                        .fill(
+                // 用户消息：水平布局（消息气泡在左，头像在右）
+                HStack(alignment: .top, spacing: 8) {
+                    Spacer()
+                    
+                    // 用户消息气泡
+                    Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
+                        .font(.system(size: 15))
+                        .lineSpacing(5)
+                        .padding(.horizontal, 15)
+                        .padding(.vertical, 8)
+                        .background(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    DesignSystem.Colors.background.opacity(0.98),
-                                    DesignSystem.Colors.background.opacity(0.90)
+                                    Color(hex: "B8B5FF"),
+                                    Color(hex: "C7C4FF")
                                 ]),
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 36, height: 36)  // 减小头像尺寸从38到36，更符合iOS标准
-                        .shadow(color: Color.black.opacity(0.06), radius: 2, x: 0, y: 1)  // 减弱阴影不透明度从0.08到0.06
-                    
-                    // 用户头像 - 使用统一的Avatar组件和UserProfileManager数据
-                    Avatar(
-                        url: UserProfileManager.shared.getCurrentAvatarURL(),
-                        name: UserProfileManager.shared.getCurrentUsername(),
-                        size: 32
-                    )
-                        .clipShape(Circle())
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.8), lineWidth: 1)
+                        .foregroundColor(.white)
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                         )
+                        .overlay(
+                            // 用户消息上部高光，增强视觉层次感
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 0.8)
+                                .blendMode(.overlay)
+                                .mask(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.white, .clear]),
+                                        startPoint: .top,
+                                        endPoint: .center
+                                    )
+                                )
+                        )
+                        .shadow(color: Color(hex: "C7C4FF").opacity(0.25), radius: 4, x: 0, y: 2)
+                        .padding(.top, 8)
+                    
+                    // 用户头像
+                    ZStack {
+                        // 背景装饰
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        DesignSystem.Colors.background.opacity(0.98),
+                                        DesignSystem.Colors.background.opacity(0.90)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 36, height: 36)
+                            .shadow(color: Color.black.opacity(0.06), radius: 2, x: 0, y: 1)
+                        
+                        // 用户头像 - 使用统一的Avatar组件和UserProfileManager数据
+                        Avatar(
+                            url: UserProfileManager.shared.getCurrentAvatarURL(),
+                            name: UserProfileManager.shared.getCurrentUsername(),
+                            size: 32
+                        )
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.8), lineWidth: 1)
+                            )
+                    }
+                    .padding(.top, 4)
                 }
-                .padding(.top, 4) // 微调头像顶部间距以更好对齐
             } else {
-                Spacer()
+                // 角色消息：保持原有水平布局
+                HStack(alignment: isWaitingMessage ? .center : .top, spacing: 8) {
+                    // 角色头像
+                    ZStack {
+                        // 背景装饰
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        DesignSystem.Colors.background.opacity(0.98),
+                                        DesignSystem.Colors.background.opacity(0.90)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 36, height: 36)
+                            .shadow(color: Color.black.opacity(0.06), radius: 2, x: 0, y: 1)
+                        
+                        // 角色头像 - 使用Avatar组件
+                        Avatar(url: message.senderId, name: "历史人物", size: 32)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.8), lineWidth: 1)
+                            )
+                    }
+                    .padding(.top, isWaitingMessage ? 0 : 4)
+                    
+                    // 角色消息气泡
+                    VStack(alignment: .leading, spacing: 2) {
+                        // 消息内容
+                        Group {
+                            if isWaitingMessage {
+                                // 简化的等待动画
+                                HStack(spacing: 5) {
+                                    ForEach(0..<3) { index in
+                                        Circle()
+                                            .fill(characterThemeColor)
+                                            .frame(width: 5, height: 5)
+                                            .scaleEffect(getAnimationScale(for: index))
+                                            .animation(
+                                                Animation.easeInOut(duration: 0.5)
+                                                    .repeatForever()
+                                                    .delay(0.15 * Double(index)),
+                                                value: animationDots
+                                            )
+                                    }
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 8)
+                            } else {
+                                Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
+                                    .font(.system(size: 15))
+                                    .lineSpacing(5)
+                                    .padding(.horizontal, 15)
+                                    .padding(.vertical, 8)
+                            }
+                        }
+                        .background(
+                            isWaitingMessage
+                                ? LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        characterThemeColor.opacity(0.12),
+                                        characterThemeColor.opacity(0.08)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                                : LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        characterThemeColor.opacity(0.16),
+                                        characterThemeColor.opacity(0.12)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                        )
+                        .foregroundColor(.primary)
+                        .clipShape(
+                            RoundedRectangle(
+                                cornerRadius: isWaitingMessage ? 14 : 16,
+                                style: .continuous
+                            )
+                        )
+                        .overlay(
+                            // 历史角色消息添加精致边框
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            characterThemeColor.opacity(0.25),
+                                            characterThemeColor.opacity(0.08)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 0.8
+                                )
+                        )
+                        .shadow(color: characterThemeColor.opacity(0.08), radius: 1.5, x: 0, y: 1)
+                    }
+                    .padding(.leading, 4)
+                    .padding(.top, 8)
+                    
+                    Spacer()
+                }
             }
         }
         .padding(.vertical, 4)

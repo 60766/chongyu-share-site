@@ -284,13 +284,18 @@ struct PostImageView: View {
         hasLoadedOnce = true
         
         // ⚡️ 优化：先检查是否已在加载中，避免重复加载同一图片
-        let shouldLoad = Self.cacheAccessQueue.sync {
-            if Self.loadingImages.contains(imageId) {
-                return false
+        let shouldLoad: Bool = {
+            var value = false
+            Self.cacheAccessQueue.sync {
+                if Self.loadingImages.contains(imageId) {
+                    value = false
+                } else {
+                    Self.loadingImages.insert(imageId)
+                    value = true
+                }
             }
-            Self.loadingImages.insert(imageId)
-            return true
-        }
+            return value
+        }()
         
         guard shouldLoad else {
             // 图片已在其他视图实例中加载，等待结果

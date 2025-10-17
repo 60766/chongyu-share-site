@@ -89,18 +89,27 @@ struct PublishPanelView: View {
     
     var body: some View {
         ZStack {
-            // 背景蒙版
+            // 背景蒙版 - 现代化渐变设计
             if isVisible {
-                Color.black.opacity(0.3)
-                    .edgesIgnoringSafeArea(.all)
-                    .onTapGesture {
-                        // 点击背景区域时隐藏键盘并关闭发布面板，但不重置状态
-                        hideKeyboard()
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) { // 从0.25秒减少到0.2秒
-                            isVisible = false
-                        }
-                        // 移除重置面板状态的代码，保留用户输入的内容
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.black.opacity(0.4),
+                        Color.black.opacity(0.25),
+                        Color.purple.opacity(0.15)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .edgesIgnoringSafeArea(.all)
+                .onTapGesture {
+                    // 点击背景区域时隐藏键盘并关闭发布面板，但不重置状态
+                    hideKeyboard()
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+                        isVisible = false
                     }
+                    // 移除重置面板状态的代码，保留用户输入的内容
+                }
+                .transition(.opacity)
             }
             
             // 主面板
@@ -109,11 +118,22 @@ struct PublishPanelView: View {
                 
                 // 面板内容 - 应用键盘适配
                 VStack(spacing: 0) {
-                    // 顶部拖拽条
-                    Rectangle()
-                        .frame(width: 40, height: 4)
-                        .foregroundColor(Color.gray.opacity(0.3))
-                        .padding(.vertical, 12)
+                    // 顶部拖拽条 - 现代化设计
+                    Capsule()
+                        .frame(width: 36, height: 5)
+                        .foregroundStyle(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.gray.opacity(0.3),
+                                    Color.gray.opacity(0.2)
+                                ]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .shadow(color: Color.black.opacity(0.1), radius: 1, y: 0.5)
+                        .padding(.top, 8)
+                        .padding(.bottom, 16)
                     
                     // 内容输入区域
                     contentInputArea
@@ -130,13 +150,50 @@ struct PublishPanelView: View {
                 }
                 .padding(.horizontal, 12)
                 .background(
-                    DesignSystem.Colors.background
-                        .appCornerRadius(24, corners: [.topLeft, .topRight])
-                        .shadow(color: Color.black.opacity(0.1), radius: 10, y: -5)
+                    ZStack {
+                        // 主背景渐变
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.white,
+                                Color(red: 0.98, green: 0.98, blue: 1.0),
+                                Color(red: 0.95, green: 0.97, blue: 1.0)
+                            ]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        
+                        // 顶部光晕效果
+                        RadialGradient(
+                            gradient: Gradient(colors: [
+                                Color.blue.opacity(0.08),
+                                Color.purple.opacity(0.06),
+                                Color.clear
+                            ]),
+                            center: .topTrailing,
+                            startRadius: 0,
+                            endRadius: 200
+                        )
+                        
+                        // 底部微妙光晕
+                        RadialGradient(
+                            gradient: Gradient(colors: [
+                                Color.indigo.opacity(0.04),
+                                Color.clear
+                            ]),
+                            center: .bottomLeading,
+                            startRadius: 0,
+                            endRadius: 150
+                        )
+                    }
+                    .appCornerRadius(28, corners: [.topLeft, .topRight])
+                    .shadow(color: Color.black.opacity(0.08), radius: 20, y: -8)
+                    .shadow(color: Color.blue.opacity(0.1), radius: 5, y: -2)
                 )
                 .keyboardAdaptive(dismissOnTap: false) // 将键盘适配应用到面板内容上
                 .offset(y: isVisible ? 0 : UIScreen.main.bounds.height)
-                .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isVisible) // 从0.25秒减少到0.2秒
+                .scaleEffect(isVisible ? 1.0 : 0.95)
+                .opacity(isVisible ? 1.0 : 0.0)
+                .animation(.spring(response: 0.25, dampingFraction: 0.75, blendDuration: 0), value: isVisible)
                 // 简化键盘适配，只观察键盘高度变化，不自动调整视图
                 .onReceive(Publishers.keyboardHeight) { height in
                     // 不使用动画改变状态值，避免引起整个视图的动画
@@ -215,20 +272,39 @@ struct PublishPanelView: View {
     // 内容输入区域
     private var contentInputArea: some View {
         VStack(spacing: 12) {
-            // 输入区域
+            // 输入区域 - 现代化设计
             VStack {
                 contentEditorView
-                .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.primaryColor.opacity(0.2),
+                                        Color.blue.opacity(0.1)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
+                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
+                    .shadow(color: Color.primaryColor.opacity(0.1), radius: 3, x: 0, y: 1)
             }
             .frame(height: UIScreen.main.bounds.height * 0.2)
             
             // 功能按钮区 - 极简布局
             HStack(spacing: 10) {
-                // 图片选择按钮 - 极简化
-                Button(action: { showingImagePicker = true }) {
-                    HStack(spacing: 4) {
+                // 图片选择按钮 - 现代化设计
+                Button(action: { 
+                    showingImagePicker = true 
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                    impactFeedback.impactOccurred()
+                }) {
+                    HStack(spacing: 5) {
                         Image(systemName: selectedImages.isEmpty ? "photo" : "photo.fill")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                         
                         if !selectedImages.isEmpty {
                             Text("\(selectedImages.count)")
@@ -238,40 +314,53 @@ struct PublishPanelView: View {
                                 .font(.system(size: 13, weight: .medium))
                         }
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                     .background(
-                        Capsule()
-                            .fill(Color.blue.opacity(selectedImages.isEmpty ? 0.08 : 0.12))
+                        ZStack {
+                            Capsule()
+                                .fill(Color.blue.opacity(selectedImages.isEmpty ? 0.06 : 0.1))
+                            
+                            Capsule()
+                                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                        }
                     )
-                    .foregroundColor(Color.blue.opacity(0.9))
+                    .foregroundColor(Color.blue.opacity(0.85))
+                    .shadow(color: Color.blue.opacity(0.1), radius: 2, x: 0, y: 1)
                 }
+                .buttonStyle(EnhancedBouncyButtonStyle())
                 
                 Spacer()
                 
-                // 时代选择按钮 - 极简化
+                // 时代选择按钮 - 现代化设计
                 Menu {
                     ForEach(eras, id: \.self) { era in
                         Button(era) {
                             selectedEra = era
-                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            let generator = UIImpactFeedbackGenerator(style: .medium)
                             generator.impactOccurred()
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Image(systemName: "clock.fill")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                         Text(selectedEra)
                             .font(.system(size: 13, weight: .medium))
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                     .background(
-                        Capsule()
-                            .fill(Color.primaryColor.opacity(0.08))
+                        ZStack {
+                            Capsule()
+                                .fill(Color.primaryColor.opacity(0.06))
+                            
+                            Capsule()
+                                .stroke(Color.primaryColor.opacity(0.2), lineWidth: 1)
+                        }
                     )
-                    .foregroundColor(Color.primaryColor.opacity(0.9))
+                    .foregroundColor(Color.primaryColor.opacity(0.85))
+                    .shadow(color: Color.primaryColor.opacity(0.1), radius: 2, x: 0, y: 1)
                 }
             }
             
@@ -505,29 +594,54 @@ struct PublishPanelView: View {
     // 底部工具栏 - 优化设计
     private var bottomToolbar: some View {
         HStack {
-            // 角色选择按钮 - 增大尺寸
+            // 角色选择按钮 - 现代化设计
             Button(action: {
                 showingCharacterSelector = true
-                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                 impactFeedback.impactOccurred()
             }) {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Image(systemName: selectedCharacters.isEmpty ? "person.fill" : "person.2.fill")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 16, weight: .semibold))
                     
                     Text(selectedCharacters.isEmpty ? "角色" : "角色")
                         .font(.system(size: 15, weight: .medium))
                 }
-                .foregroundColor(Color.primaryColor)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8) 
-                .background(
-                    Capsule()
-                        .fill(Color.primaryColor.opacity(0.1))
+                .foregroundStyle(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.primaryColor,
+                            Color.primaryColor.opacity(0.8)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(
+                    ZStack {
+                        Capsule()
+                            .fill(Color.primaryColor.opacity(0.08))
+                        
+                        Capsule()
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.primaryColor.opacity(0.3),
+                                        Color.primaryColor.opacity(0.1)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                    }
+                )
+                .shadow(color: Color.primaryColor.opacity(0.15), radius: 3, x: 0, y: 1)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(BouncyButtonStyle())
+            .buttonStyle(EnhancedBouncyButtonStyle())
             
             // 选中角色数量
             if !selectedCharacters.isEmpty {
@@ -542,34 +656,66 @@ struct PublishPanelView: View {
             
             Spacer()
             
-            // 发布按钮 - 增大尺寸
+            // 发布按钮 - 现代化设计
             Button(action: handlePublishButtonTapped) {
                 HStack(spacing: 8) {
                     Text(isPublishing ? "发布中..." : "发布")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: 17, weight: .semibold))
                     
                     if isPublishing {
                         ProgressView()
-                            .scaleEffect(0.7)
+                            .scaleEffect(0.8)
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     } else if hasValidContent {
                         Image(systemName: "paperplane.fill")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 15, weight: .semibold))
                             .offset(x: -1, y: -1)
                             .rotationEffect(.degrees(15))
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
                 .background(
-                    Capsule()
-                        .fill(isPublishing ? Color.primaryColor.opacity(0.8) : (hasValidContent ? Color.primaryColor : Color.gray.opacity(0.3)))
+                    ZStack {
+                        // 主背景渐变
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: hasValidContent ? [
+                                        Color.primaryColor,
+                                        Color.primaryColor.opacity(0.8)
+                                    ] : [
+                                        Color.gray.opacity(0.3),
+                                        Color.gray.opacity(0.2)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        
+                        // 光晕效果（仅在可用时显示）
+                        if hasValidContent {
+                            Capsule()
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0.3),
+                                            Color.clear
+                                        ]),
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 1
+                                )
+                        }
+                    }
                 )
                 .foregroundColor(.white)
-                .shadow(color: hasValidContent ? Color.primaryColor.opacity(0.2) : Color.clear, radius: 3, x: 0, y: 1)
+                .shadow(color: hasValidContent ? Color.primaryColor.opacity(0.4) : Color.clear, radius: 8, x: 0, y: 2)
+                .shadow(color: hasValidContent ? Color.primaryColor.opacity(0.2) : Color.clear, radius: 2, x: 0, y: 1)
             }
             .disabled(!hasValidContent || isPublishing)
-            .buttonStyle(SpringyButtonStyle())
+            .buttonStyle(EnhancedSpringyButtonStyle())
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -1952,7 +2098,7 @@ struct CharacterSelectorView: View {
                 }
             }
         }
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.cardBackground)
     }
     
     // 已选角色预览条 - 紧凑版
@@ -3015,6 +3161,26 @@ struct SpringyButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.92 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+
+// 增强型弹性按钮样式 - 更现代的交互效果
+struct EnhancedBouncyButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+// 增强型发布按钮样式 - 更丰富的动画效果
+struct EnhancedSpringyButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .brightness(configuration.isPressed ? -0.1 : 0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.8), value: configuration.isPressed)
     }
 }
 

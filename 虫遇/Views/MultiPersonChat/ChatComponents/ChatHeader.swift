@@ -70,11 +70,14 @@ struct ChatHeader: View {
             HStack(spacing: 8) {
                 ForEach(participants) { character in
                     HStack(spacing: 6) {
-                        Image(character.avatar)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 24, height: 24)
-                            .clipShape(Circle())
+                        // 使用CharacterAvatarService支持首字母显示
+                        CharacterAvatarService.shared.getAvatarView(
+                            for: character.id,
+                            name: character.name,
+                            category: character.category.rawValue,
+                            size: 24,
+                            useCaching: true
+                        )
                         
                         Text(character.name)
                             .font(.system(size: 13))

@@ -718,7 +718,7 @@ struct TabSwitcherView: View {
                             ZStack {
                             if selectedTab == tab {
                                     // 添加彩色背景渐变
-                                    Capsule()
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                                         .fill(
                                             LinearGradient(
                                                 gradient: Gradient(colors: [
@@ -734,7 +734,7 @@ struct TabSwitcherView: View {
                                         .matchedGeometryEffect(id: "selectedTab", in: tabAnimation)
                             } else {
                                     // 未选中状态的微妙背景
-                                    Capsule()
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                                     .fill(Color.clear)
                                 }
                             }
@@ -743,7 +743,7 @@ struct TabSwitcherView: View {
                             // 只在选中时显示描边
                             Group {
                                 if selectedTab == tab {
-                                    Capsule()
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                                         .stroke(Color.black.opacity(0.05), lineWidth: 1)
                                 }
                             }
@@ -757,7 +757,7 @@ struct TabSwitcherView: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 6)
             .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(.ultraThinMaterial)
                     .shadow(color: Color.black.opacity(0.02), radius: 1, x: 0, y: 0.5)
             )

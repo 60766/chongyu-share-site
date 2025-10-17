@@ -121,10 +121,70 @@ struct ImprovedCharacterCardView: View {
                                 }
                             )
                     } else {
-                        // 找不到图片时显示占位符和文字
-                        Text(String(character.name.prefix(1)))
-                            .font(.system(size: 40, weight: .bold))
-                            .foregroundColor(.white)
+                        // 使用与详情页面完全相同的渐变效果
+                        let avatarColor = CharacterAvatarService.shared.generateConsistentColor(for: character.id)
+                        let size: CGFloat = 100
+                        
+                        ZStack {
+                            // 使用与CharacterAvatarService相同的渐变背景
+                            Rectangle()
+                                .fill(
+                                    RadialGradient(
+                                        gradient: Gradient(colors: [
+                                            avatarColor.opacity(0.45),
+                                            avatarColor.opacity(0.25),
+                                            avatarColor.opacity(0.08)
+                                        ]),
+                                        center: UnitPoint(x: 0.3, y: 0.3),
+                                        startRadius: size * 0.05,
+                                        endRadius: size * 0.85
+                                    )
+                                )
+                                .overlay(
+                                    // 增强的边框效果
+                                    Rectangle()
+                                        .stroke(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [
+                                                    Color.white.opacity(0.5),
+                                                    avatarColor.opacity(0.2),
+                                                    Color.black.opacity(0.08)
+                                                ]),
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 2
+                                        )
+                                )
+                            
+                            // 文字放在右下角
+                            VStack {
+                                Spacer()
+                                HStack {
+                                    Spacer()
+                                    Text(String(character.name.prefix(1)))
+                                        .font(.system(size: size * 0.44, weight: .bold, design: .rounded))
+                                        .foregroundStyle(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [
+                                                    Color.white.opacity(0.95),
+                                                    Color.white.opacity(0.85)
+                                                ]),
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                        )
+                                        .shadow(color: avatarColor.opacity(0.8), radius: 1, x: 0, y: 1)
+                                        .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
+                                        .padding(.trailing, 8)
+                                        .padding(.bottom, 8)
+                                }
+                            }
+                        }
+                        .shadow(color: avatarColor.opacity(0.25), radius: 6, x: 0, y: 3)
+                        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                        .frame(minWidth: 0, maxWidth: .infinity)
+                        .aspectRatio(1.0, contentMode: .fill)
                     }
                 }
             }

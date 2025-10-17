@@ -28,10 +28,10 @@ struct HistoricalFigureSelectionView: View {
         GridItem(.flexible(), spacing: 12)
     ]
     
-    // 颜色系统
-    private var primaryColor: Color { Color.warmAccent }
+    // 颜色系统 - 与选择参与者页面保持一致的紫色主题
+    private var primaryColor: Color { Color(hex: "A78DC7") }
     private var secondaryColor: Color { Color.secondary }
-    private var accentColor: Color { Color.orange }
+    private var accentColor: Color { Color(hex: "9680B7") }
     private var backgroundColor: Color { Color(.systemBackground) }
     private var surfaceColor: Color { colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6) }
     private var textColor: Color { Color.primary.opacity(0.8) }
@@ -241,38 +241,54 @@ struct HistoricalFigureSelectionView: View {
         
         return VStack(spacing: spacing) {
             ZStack(alignment: .topTrailing) {
-                // 头像
-                Group {
-                    // 尝试加载角色专属头像
-                    if let avatarImage = viewModel.getCharacterAvatar(for: figure.name) {
-                        Image(avatarImage)
-                            .resizable()
-                            .scaledToFill()
-                            .clipShape(Circle())
-                    } else {
-                        // 使用系统图标作为备用
-                        Image(systemName: viewModel.getAvatarSymbol(for: figure.name))
-                            .resizable()
-                            .scaledToFit()
-                    }
-                }
-                .frame(width: 48, height: 48)
+                 // 头像 - 使用CharacterAvatarService确保显示首字母头像
+                 CharacterAvatarService.shared.getAvatarView(
+                     for: figure.avatarUrl,
+                     name: figure.name,
+                     category: "历史人物",
+                     size: 48
+                 )
                 .clipShape(Circle())
                 .overlay(
                     Circle()
-                        .stroke(isSelected ? primaryColor : Color.clear, lineWidth: 2)
+                        .stroke(
+                            isSelected ? 
+                            LinearGradient(
+                                gradient: Gradient(colors: [primaryColor, accentColor]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ) : 
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.clear, Color.clear]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ), 
+                            lineWidth: 3
+                        )
                 )
-                
-                // 选中标记
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(primaryColor)
-                        .background(backgroundColor)
-                        .clipShape(Circle())
-                        .offset(x: 2, y: -2)
-                }
-                
+                .overlay(
+                    // 选中状态的勾选标记
+                    Group {
+                        if isSelected {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white)
+                                    .frame(width: 24, height: 24)
+                                    .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+                                
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 22, weight: .semibold))
+                                    .foregroundColor(primaryColor)
+                            }
+                            .offset(x: 18, y: -18)
+                            .scaleEffect(1.0)
+                            .animation(.spring(response: 0.4, dampingFraction: 0.6), value: isSelected)
+                        }
+                    }
+                )
+                .scaleEffect(isSelected ? 1.05 : 1.0)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+
                 // 相关性标记
                 if viewModel.isRelevant(figure) {
                     Text("相关")
@@ -316,21 +332,13 @@ struct HistoricalFigureSelectionView: View {
                         HStack(spacing: spacing * 1.5) {
                             ForEach(viewModel.selectedFigures) { figure in
                                 ZStack(alignment: .topTrailing) {
-                                    // 尝试加载角色专属头像
-                                    if let avatarImage = viewModel.getCharacterAvatar(for: figure.name) {
-                                        Image(avatarImage)
-                                            .resizable()
-                                            .scaledToFill()
-                                            .frame(width: 22, height: 22)
-                                            .clipShape(Circle())
-                                    } else {
-                                        // 使用系统图标作为备用
-                                        Image(systemName: viewModel.getAvatarSymbol(for: figure.name))
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: 22, height: 22)
-                                            .clipShape(Circle())
-                                    }
+                                     // 头像 - 使用CharacterAvatarService确保显示首字母头像
+                                     CharacterAvatarService.shared.getAvatarView(
+                                         for: figure.avatarUrl,
+                                         name: figure.name,
+                                         category: "历史人物",
+                                         size: 22
+                                     )
                                     
                                     Button(action: {
                                         viewModel.toggleSelection(figure)
@@ -377,19 +385,19 @@ struct HistoricalFigureSelectionView: View {
                         viewModel.selectedFigures.isEmpty
                         ? AnyView(Color.gray.opacity(0.5))
                         : AnyView(LinearGradient(
-                            gradient: Gradient(colors: [primaryColor, primaryColor.opacity(0.9)]),
-                            startPoint: .leading,
-                            endPoint: .trailing
+                            gradient: Gradient(colors: [primaryColor, accentColor]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                           ))
                     )
                     .cornerRadius(21) // 更圆润的按钮，半径为高度的一半
-                    .shadow(color: viewModel.selectedFigures.isEmpty ? Color.clear : primaryColor.opacity(0.3), radius: 3, x: 0, y: 1)
+                    .shadow(color: viewModel.selectedFigures.isEmpty ? Color.clear : primaryColor.opacity(0.4), radius: 6, x: 0, y: 3)
             }
             .disabled(viewModel.selectedFigures.isEmpty)
             .padding(.horizontal, spacing * 2)
             .padding(.vertical, spacing / 4)
         }
-        .padding(.bottom, 0) // 移除所有底部间距，让按钮直接贴底
+        .padding(.bottom, 16) // 增加底部间距，让按钮位置稍微高一些
     }
 
     // 获取底部安全区域高度

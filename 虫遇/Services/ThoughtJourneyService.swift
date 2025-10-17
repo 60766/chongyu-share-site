@@ -683,34 +683,123 @@ class ThoughtJourneyService: ObservableObject {
     }
     
     /**
-     * 缓存报告
+     * 缓存报告 - 增强可靠性，确保内容持久保存
      */
     private func saveReportToCache(_ report: ThoughtJourneyReport) {
         do {
             let data = try JSONEncoder().encode(report)
             let key = "thought_journey_\(report.timeRange.key)"
+            
+            // 🔧 主存储
             UserDefaults.standard.set(data, forKey: key)
+            
+            // 🔧 备份存储 - 防止意外丢失
+            let backupKey = "\(key)_backup"
+            UserDefaults.standard.set(data, forKey: backupKey)
+            
+            // 🔧 元数据存储 - 记录保存时间和版本信息
+            let metadata = [
+                "savedAt": Date().timeIntervalSince1970,
+                "contentLength": report.content.count,
+                "version": "1.0"
+            ] as [String : Any]
+            UserDefaults.standard.set(metadata, forKey: "\(key)_meta")
+            
+            // 🔧 同步保存到磁盘
+            UserDefaults.standard.synchronize()
+            
+            print("✅ 次元回放报告已保存并备份:")
+            print("  - 时间范围: \(report.timeRange.description)")
+            print("  - 内容长度: \(report.content.count) 字符") 
+            print("  - 生成时间: \(formatDate(report.generatedAt))")
+            print("  - 存储键: \(key)")
+            print("  - 备份键: \(backupKey)")
+            
         } catch {
             print("❌ 保存报告失败: \(error)")
+            // 尝试直接保存简化版本
+            let fallbackData = report.content.data(using: .utf8) ?? Data()
+            let fallbackKey = "thought_journey_fallback_\(report.timeRange.key)"
+            UserDefaults.standard.set(fallbackData, forKey: fallbackKey)
+            print("⚠️ 已保存报告内容的备用版本到: \(fallbackKey)")
         }
     }
     
     /**
      * 获取缓存的报告
+     * 移除过期检查，确保内容持久保存直到用户主动生成新内容
+     * 增强容错机制，支持备份恢复
      */
     func getCachedReport(for timeRange: TimeRange) -> ThoughtJourneyReport? {
         let key = "thought_journey_\(timeRange.key)"
-        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        let backupKey = "\(key)_backup"
+        let metaKey = "\(key)_meta"
         
-        do {
-            let report = try JSONDecoder().decode(ThoughtJourneyReport.self, from: data)
-            // 检查是否过期（24小时）
-            if Date().timeIntervalSince(report.generatedAt) < 24 * 60 * 60 {
+        // 🔧 尝试从主存储加载
+        if let data = UserDefaults.standard.data(forKey: key) {
+            do {
+                let report = try JSONDecoder().decode(ThoughtJourneyReport.self, from: data)
+                print("✅ 从主存储成功加载次元回放报告: \(timeRange.description)")
+                print("  - 生成时间: \(formatDate(report.generatedAt))")
+                print("  - 内容长度: \(report.content.count) 字符")
                 return report
+            } catch {
+                print("❌ 主存储解析失败: \(error)")
             }
-        } catch {
-            print("❌ 解析缓存报告失败: \(error)")
         }
+        
+        // 🔧 尝试从备份存储加载
+        if let backupData = UserDefaults.standard.data(forKey: backupKey) {
+            do {
+                let report = try JSONDecoder().decode(ThoughtJourneyReport.self, from: backupData)
+                print("✅ 从备份存储成功恢复次元回放报告: \(timeRange.description)")
+                print("  - 生成时间: \(formatDate(report.generatedAt))")
+                print("  - 内容长度: \(report.content.count) 字符")
+                
+                // 🔧 恢复主存储
+                UserDefaults.standard.set(backupData, forKey: key)
+                UserDefaults.standard.synchronize()
+                print("🔄 已从备份恢复主存储")
+                
+                return report
+            } catch {
+                print("❌ 备份存储解析失败: \(error)")
+            }
+        }
+        
+        // 🔧 尝试从备用存储加载（仅文本内容）
+        let fallbackKey = "thought_journey_fallback_\(timeRange.key)"
+        if let fallbackData = UserDefaults.standard.data(forKey: fallbackKey),
+           let content = String(data: fallbackData, encoding: .utf8) {
+            print("⚠️ 从备用存储恢复次元回放内容: \(timeRange.description)")
+            
+            // 创建最小化报告对象
+            let fallbackReport = ThoughtJourneyReport(
+                id: UUID(),
+                timeRange: timeRange,
+                generatedAt: Date(), // 使用当前时间作为生成时间
+                content: content,
+                stats: ThoughtJourneyReport.Stats(
+                    postsCount: 0,
+                    commentsCount: 0,
+                    chatsCount: 0,
+                    charactersCount: 0
+                )
+            )
+            
+            print("🔄 已从备用存储创建报告对象，内容长度: \(content.count) 字符")
+            return fallbackReport
+        }
+        
+        // 🔧 检查元数据，用于调试
+        if let metadata = UserDefaults.standard.dictionary(forKey: metaKey) {
+            print("📊 发现次元回放元数据:")
+            print("  - 保存时间: \(Date(timeIntervalSince1970: metadata["savedAt"] as? Double ?? 0))")
+            print("  - 内容长度: \(metadata["contentLength"] as? Int ?? 0)")
+            print("  - 版本: \(metadata["version"] as? String ?? "未知")")
+        }
+        
+        print("📂 未找到任何缓存的次元回放报告: \(timeRange.description)")
         return nil
     }
     

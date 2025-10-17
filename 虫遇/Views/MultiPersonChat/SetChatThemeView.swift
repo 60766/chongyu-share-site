@@ -209,12 +209,14 @@ struct SetChatThemeView: View {
             HStack(spacing: 12) {
                     ForEach(selectedCharacters) { character in
                         VStack(spacing: 8) {
-                        // 简化的头像 - 纯净苹果风格
-                            Image(character.avatar)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 56, height: 56)
-                                .clipShape(Circle())
+                        // 简化的头像 - 纯净苹果风格，使用CharacterAvatarService支持首字母显示
+                            CharacterAvatarService.shared.getAvatarView(
+                                for: character.id,
+                                name: character.name,
+                                category: character.category.rawValue,
+                                size: 56,
+                                useCaching: true
+                            )
                             .shadow(color: Color.black.opacity(0.08), radius: 2, x: 0, y: 1)
                             
                         // 简化的名称标签 - 无背景

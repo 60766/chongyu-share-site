@@ -93,6 +93,10 @@ struct MultiPersonChatSetupView: View {
                         // 最近对话
                         chatHistorySection
                         
+                        // 间距
+                        Spacer()
+                            .frame(height: 20)
+                        
                         // 所有角色
                         allCharactersSection
                     }
@@ -248,7 +252,7 @@ struct MultiPersonChatSetupView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.vertical, 8)
             }
         }
         .background(DesignSystem.Colors.background)
@@ -286,7 +290,7 @@ struct MultiPersonChatSetupView: View {
                 .padding(.bottom, 8)
             }
         }
-        .padding(.top, 8)
+        .padding(.top, 4)
     }
     
     /// 历史对话区域
@@ -295,29 +299,43 @@ struct MultiPersonChatSetupView: View {
             // 折叠状态的简洁入口
             Button(action: {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    // 如果要展开历史对话区域，重置为默认状态（只显示3条）
+                    if !isChatHistoryExpanded {
+                        showAllHistory = false
+                    }
                     isChatHistoryExpanded.toggle()
             }
             }) {
                 HStack {
                     Text("最近对话")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.primary.opacity(0.7))
+                        .foregroundColor(Color.warmAccent)
                     
                     Text("(\(chatHistory.count))")
                         .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Color.warmAccent.opacity(0.7))
                     
                     Spacer()
                     
-                    Image(systemName: isChatHistoryExpanded ? "chevron.up" : "chevron.right")
+                    Image(systemName: isChatHistoryExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Color.warmAccent)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.warmAccent.opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.warmAccent.opacity(0.2), lineWidth: 1)
+                        )
+                )
+                .shadow(color: Color.warmAccent.opacity(0.1), radius: 2, x: 0, y: 1)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(ScaleButtonStyle())
+            .padding(.horizontal, 16) // 添加外部padding与搜索框对齐
             
             if isChatHistoryExpanded {
                 // 历史对话列表
@@ -358,23 +376,28 @@ struct MultiPersonChatSetupView: View {
                             }) {
                                 HStack {
                                     Text("查看全部历史")
-                                        .font(.system(size: 14, weight: .medium))
+                                        .font(.system(size: 15, weight: .semibold))
                                         .foregroundColor(Color.warmAccent)
+                                    
+                                    Spacer()
                                     
                                     Image(systemName: "chevron.down")
                                         .font(.system(size: 12, weight: .medium))
                                         .foregroundColor(Color.warmAccent)
-                                    
-                                    Spacer()
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .stroke(Color.warmAccent.opacity(0.3), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .fill(Color.warmAccent.opacity(0.08))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                .stroke(Color.warmAccent.opacity(0.2), lineWidth: 1)
+                                        )
                                 )
+                                .shadow(color: Color.warmAccent.opacity(0.1), radius: 2, x: 0, y: 1)
                             }
-                            .buttonStyle(PlainButtonStyle())
+                            .buttonStyle(ScaleButtonStyle())
                         }
                         
                         // 如果已显示全部且有超过3条记录，显示收起按钮
@@ -416,22 +439,17 @@ struct MultiPersonChatSetupView: View {
     /// 所有角色区域
     private var allCharactersSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // 标题
-            HStack {
-                Text("所有角色")
-                    .font(.system(size: 15, weight: .semibold)) // 从18变为15
-                    .foregroundColor(.primary.opacity(0.7)) // 稍微黑一点点
-                
-                Spacer()
-                
-                // 显示筛选结果数量
-                if !searchText.isEmpty {
+            // 显示筛选结果数量
+            if !searchText.isEmpty {
+                HStack {
                     Text("找到\(filteredCharacters.count)个角色")
                         .font(.system(size: 14))
                         .foregroundColor(Color.warmTextSecondary)
+                    
+                    Spacer()
                 }
+                .padding(.horizontal)
             }
-            .padding(.horizontal)
             
             // 搜索框
             LocalSearchBar(text: $searchText)
@@ -466,17 +484,19 @@ struct MultiPersonChatSetupView: View {
     private func selectedCharacterAvatar(for character: CharacterModel) -> some View {
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 6) {
-                // 角色头像
-                Image(character.avatar)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 48, height: 48)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color.warmAccentSecondary.opacity(0.3), lineWidth: 1.5)
-                    )
-                    .shadow(color: Color.black.opacity(0.08), radius: 3, x: 0, y: 1)
+                // 角色头像 - 使用圆形头像服务支持首字母显示
+                CharacterAvatarService.shared.getAvatarView(
+                    for: character.id,
+                    name: character.name,
+                    category: character.category.rawValue,
+                    size: 48,
+                    useCaching: true
+                )
+                .overlay(
+                    Circle()
+                        .stroke(Color.warmAccentSecondary.opacity(0.3), lineWidth: 1.5)
+                )
+                .shadow(color: Color.black.opacity(0.08), radius: 3, x: 0, y: 1)
                 
                 // 角色名称
                 Text(character.name)
@@ -556,12 +576,15 @@ struct MultiPersonChatSetupView: View {
             VStack(spacing: 8) {
                 // 角色头像
                 ZStack {
-                    // 头像图片
-                    Image(character.avatar)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 72, height: 72)
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                    // 头像图片 - 使用方形头像服务支持首字母显示
+                    CharacterAvatarService.shared.getSquareAvatarView(
+                        for: character.id,
+                        name: character.name,
+                        category: character.category.rawValue,
+                        size: 72,
+                        cornerRadius: 18,
+                        useCaching: true
+                    )
                     
                     // 选中状态指示器
                     if selectedCharacterIDs.contains(character.id) {
@@ -729,11 +752,11 @@ struct LocalSearchBar: View {
         .padding(.vertical, 4)
         .padding(.horizontal, 6)
         .background(
-            Capsule()
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(hex: "FAFAFA"))
         )
         .overlay(
-            Capsule()
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(DesignSystem.Colors.primary.opacity(0.2), lineWidth: 1)
         )
         .animation(.easeInOut(duration: 0.2), value: isEditing)
@@ -825,12 +848,40 @@ struct ChatHistoryItemView: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(DesignSystem.Colors.background)
-                    .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.blue.opacity(0.08),
+                                Color.purple.opacity(0.06),
+                                Color(hex: "E0C3FC").opacity(0.05),  // 淡紫色
+                                Color(hex: "D4F1F4").opacity(0.04)   // 淡蓝色
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(.systemBackground))
+                    )
+                    .shadow(color: Color.blue.opacity(0.08), radius: 4, x: 0, y: 2)
+                    .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 0.5)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color(.systemGray5), lineWidth: 0.5)
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.blue.opacity(0.15),
+                                Color.purple.opacity(0.12),
+                                Color(hex: "E0C3FC").opacity(0.10),
+                                Color(hex: "D4F1F4").opacity(0.08)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.5
+                    )
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -926,7 +977,7 @@ struct HistoricalChatView: View {
         loadSessionInfo()
         
         // 再加载历史消息
-        chatManager.loadChatHistory(sessionId: chatId, modelContext: modelContext)
+        chatManager.loadChatHistory(sessionId: chatId, modelContext: modelContext, characters: sessionCharacters)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             isLoading = false

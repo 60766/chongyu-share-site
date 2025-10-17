@@ -21,7 +21,7 @@ struct ExploreCharacterCardView: View {
                             .scaledToFill()
                             .frame(height: 180)
                             .clipped()
-                    } else if UIImage(named: character.avatar) != nil {
+                    } else if let avatarImage = UIImage(named: character.avatar), avatarImage.size.width > 0 {
                         // 如果有图像，显示图像
                         Image(character.avatar)
                             .resizable()
@@ -29,10 +29,13 @@ struct ExploreCharacterCardView: View {
                             .frame(height: 180)
                             .clipped()
                     } else {
-                        // 否则显示占位符
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(height: 180)
+                        // 使用统一的CharacterAvatarService显示字母头像
+                        CharacterAvatarService.shared.getAvatarView(
+                            for: character.id,
+                            name: character.name,
+                            size: 180
+                        )
+                        .frame(height: 180)
                     }
                     
                     // 角色分类标签

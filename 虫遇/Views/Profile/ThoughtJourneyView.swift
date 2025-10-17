@@ -10,6 +10,7 @@ struct ThoughtJourneyView: View {
     @StateObject private var service = ThoughtJourneyService.shared
     @State private var selectedTimeRange: TimeRange = .lastWeek
     @State private var animationRotation: Double = 0
+    @State private var showingRegenerateConfirmation = false
     
     var body: some View {
         ZStack {
@@ -43,6 +44,14 @@ struct ThoughtJourneyView: View {
         .onAppear {
             loadCachedReport()
         }
+        .alert("重新生成回顾报告", isPresented: $showingRegenerateConfirmation) {
+            Button("取消", role: .cancel) { }
+            Button("确认生成", role: .destructive) {
+                regenerateReport()
+            }
+        } message: {
+            Text("这将替换当前保存的回顾内容。\n确定要重新生成吗？")
+        }
     }
     
     // 控制按钮组
@@ -50,8 +59,7 @@ struct ThoughtJourneyView: View {
         HStack(spacing: 12) {
             // 重新生成按钮
             Button(action: { 
-                service.currentReport = nil
-                generateReport() 
+                showingRegenerateConfirmation = true
             }) {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 14, weight: .medium))
@@ -257,11 +265,18 @@ struct ThoughtJourneyView: View {
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.primary)
                 
-                Text("为这段时光生成专属回顾")
-                    .font(.system(size: 15))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(2)
+                VStack(spacing: 8) {
+                    Text("为这段时光生成专属回顾")
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(2)
+                    
+                    Text("生成后将永久保存，可随时查看")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                }
             }
             
             Button("开始生成") {
@@ -321,6 +336,13 @@ struct ThoughtJourneyView: View {
     
     private func generateReport() {
         service.generateReport(timeRange: selectedTimeRange, modelContext: modelContext)
+    }
+    
+    /// 重新生成报告 - 清除现有内容并生成新内容
+    private func regenerateReport() {
+        print("🔄 用户确认重新生成次元回放报告")
+        service.currentReport = nil
+        generateReport()
     }
     
     /// 启动加载动画

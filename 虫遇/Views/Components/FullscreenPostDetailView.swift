@@ -680,10 +680,10 @@ struct FullscreenPostDetailView: View {
                 initialIndex: selectedImageIndex
             )
             
-            // 添加水平滑动手势
-            .simultaneousGesture(
-                // 增加最小滑动距离要求，避免微小移动触发手势
-                DragGesture(minimumDistance: 5)
+            // 添加水平滑动手势 - 使用高优先级手势以减少冲突
+            .gesture(
+                // 优化最小滑动距离，提高水平滑动识别精度
+                DragGesture(minimumDistance: 8)
                     .onChanged { value in
                         // 如果正在过渡动画中，忽略所有手势
                         guard !isTransitioning else { return }
@@ -691,8 +691,12 @@ struct FullscreenPostDetailView: View {
                         // 检查是否有输入框正在获取焦点，如果有则忽略滑动手势
                         guard !isAnyTextInputActive() else { return }
                         
-                        // 只处理主要是水平方向的滑动，减少与垂直滚动冲突
-                        if abs(value.translation.height) < abs(value.translation.width) * 0.8 {
+                        // 增强水平滑动识别条件，减少与垂直滚动和图片点击的冲突
+                        let horizontalDistance = abs(value.translation.width)
+                        let verticalDistance = abs(value.translation.height)
+                        let isHorizontalSwipe = horizontalDistance > verticalDistance * 1.2 && horizontalDistance > 12
+                        
+                        if isHorizontalSwipe {
                             // 使用平滑函数计算拖动偏移量，边缘阻尼效应
                             let rawOffset = value.translation.width
                             let screenWidth = UIScreen.main.bounds.width
@@ -1285,7 +1289,7 @@ struct FullscreenPostDetailView: View {
                 // 不再单独处理虫洞探索页面的wormholePageDragOffset
                 .gesture(
                     // 对齐主视图的DragGesture设置，使用同一套手势处理逻辑
-                    DragGesture(minimumDistance: 5)
+                    DragGesture(minimumDistance: 8)
                         .onChanged { value in
                             // 如果正在过渡动画中，忽略所有手势
                             guard !isTransitioning else { return }
@@ -1293,8 +1297,12 @@ struct FullscreenPostDetailView: View {
                             // 检查是否有输入框正在获取焦点，如果有则忽略滑动手势
                             guard !isAnyTextInputActive() else { return }
                             
-                            // 只处理水平方向的滑动，并添加水平性检查
-                            if abs(value.translation.height) < abs(value.translation.width) * 0.8 {
+                            // 增强水平滑动识别条件，与主视图保持一致
+                            let horizontalDistance = abs(value.translation.width)
+                            let verticalDistance = abs(value.translation.height)
+                            let isHorizontalSwipe = horizontalDistance > verticalDistance * 1.2 && horizontalDistance > 12
+                            
+                            if isHorizontalSwipe {
                                 // 对于右滑和左滑，确保水平滑动为主
                                 if value.translation.width > 0 || value.translation.width < 0 {
                                     // 使用与主视图完全相同的拖动偏移量计算方式
@@ -2116,12 +2124,8 @@ struct FullscreenPostDetailView: View {
         GeometryReader { geometry in
             // 修改为靠左对齐但有适当的左边距
             HStack {
-                Button(action: {
-                    selectedImageIndex = 0
-                    showingExpandedImage = true
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred(intensity: 0.5)
-                }) {
+                // 使用手势代替Button，优化触摸响应
+                ZStack {
                     if imageName.contains("_image_") {
                         // 用户上传的图片
                         PostImageView(
@@ -2175,7 +2179,16 @@ struct FullscreenPostDetailView: View {
                         .frame(height: 180) // 设置默认高度
                     }
                 }
-                .buttonStyle(PlainButtonStyle())
+                .contentShape(Rectangle()) // 确保整个区域可以接收手势
+                .onTapGesture {
+                    // 只有在非滑动状态下才响应点击
+                    guard !isDragging else { return }
+                    
+                    selectedImageIndex = 0
+                    showingExpandedImage = true
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred(intensity: 0.5)
+                }
                 
                 Spacer(minLength: 0)
             }
@@ -2203,15 +2216,17 @@ struct FullscreenPostDetailView: View {
                         ForEach(0..<columns, id: \.self) { column in
                             let index = row * columns + column
                             if index < images.count {
-                                Button(action: {
-                                    selectedImageIndex = index
-                                    showingExpandedImage = true
-                                    let generator = UIImpactFeedbackGenerator(style: .light)
-                                    generator.impactOccurred(intensity: 0.5)
-                                }) {
-                                    wechatStyleImageItem(images[index], size: itemWidth)
-                                }
-                                .buttonStyle(PlainButtonStyle())
+                                wechatStyleImageItem(images[index], size: itemWidth)
+                                    .contentShape(Rectangle()) // 确保整个区域可以接收手势
+                                    .onTapGesture {
+                                        // 只有在非滑动状态下才响应点击
+                                        guard !isDragging else { return }
+                                        
+                                        selectedImageIndex = index
+                                        showingExpandedImage = true
+                                        let generator = UIImpactFeedbackGenerator(style: .light)
+                                        generator.impactOccurred(intensity: 0.5)
+                                    }
                             } else {
                                 // 占位，保持网格结构完整
                                 Color.clear
@@ -2377,7 +2392,7 @@ struct FullscreenPostDetailView: View {
                     }
                     .sheet(isPresented: $showHistoricalFigureSelection) {
                         HistoricalFigureSelectionView(postId: viewModel.post.id.uuidString, postAuthor: viewModel.post.username)
-                            .presentationDetents([.height(420), .large])
+                            .presentationDetents([.height(580), .large])
                             .presentationDragIndicator(.visible)
                             .presentationBackground(Material.regular)
                             .presentationCornerRadius(25)

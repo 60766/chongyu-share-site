@@ -1668,36 +1668,36 @@ struct CharacterRankItem: View {
     }
     
     // 头像内容
+    @ViewBuilder
     private var avatarContent: some View {
-        Group {
-            if let character = character {
-                // 优先尝试加载自定义头像
-                if let customImage = CustomAvatarLoader.shared.loadCustomAvatar(characterId: character.id, avatarName: character.avatarName) {
-                    Image(uiImage: customImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 28, height: 28)
-                        .clipShape(Circle())
-                } else if UIImage(named: character.avatarName) != nil {
-                    // 如果是系统内置角色，使用bundle中的图片
-                    Image(character.avatarName)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 28, height: 28)
-                        .clipShape(Circle())
-                } else {
-                    // 显示角色名首字母作为占位符
-                    Text(character.name.prefix(1))
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(rankColor)
-                        .frame(width: 28, height: 28)
-                }
-            } else {
-                Text("?")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(rankColor)
+        if let character = character {
+            // 优先尝试加载自定义头像
+            if let customImage = CustomAvatarLoader.shared.loadCustomAvatar(characterId: character.id, avatarName: character.avatarName) {
+                Image(uiImage: customImage)
+                    .resizable()
+                    .scaledToFill()
                     .frame(width: 28, height: 28)
-            }
+                    .clipShape(Circle())
+            } else if UIImage(named: character.avatarName) != nil {
+                // 如果是系统内置角色，使用bundle中的图片
+                Image(character.avatarName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 28, height: 28)
+                    .clipShape(Circle())
+                } else {
+                    // 使用统一的CharacterAvatarService显示首字母头像
+                    CharacterAvatarService.shared.getAvatarView(
+                        for: character.id,
+                        name: character.name,
+                        size: 28
+                    )
+                }
+        } else {
+            Text("?")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(rankColor)
+                .frame(width: 28, height: 28)
         }
     }
     

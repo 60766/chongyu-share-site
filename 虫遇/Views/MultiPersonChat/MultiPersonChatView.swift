@@ -50,6 +50,36 @@ struct MultiPersonChatView: View {
         return safeAreaInsets?.bottom ?? 34 // 使用默认值34，适配大部分设备
     }
     
+    // 临时测试方法 - 添加测试消息
+    private func addTestMessages() {
+        if chatManager.messages.isEmpty {
+            let testMessages = [
+                ChatMessage(
+                    characterId: selectedCharacters.first?.id ?? "test1",
+                    content: "这是第一条测试消息，用来验证分享功能是否正常工作。",
+                    timestamp: Date().addingTimeInterval(-60),
+                    isUserMessage: false
+                ),
+                ChatMessage(
+                    characterId: selectedCharacters.count > 1 ? selectedCharacters[1].id : "test2",
+                    content: "这是第二条测试消息，我们来看看能否正确生成分享卡片。",
+                    timestamp: Date().addingTimeInterval(-30),
+                    isUserMessage: false
+                ),
+                ChatMessage(
+                    characterId: "user",
+                    content: "这是用户的测试消息。",
+                    timestamp: Date(),
+                    isUserMessage: true
+                )
+            ]
+            
+            DispatchQueue.main.async {
+                self.chatManager.messages.append(contentsOf: testMessages)
+            }
+        }
+    }
+    
     var body: some View {
         ZStack {
             // 背景 - 使用统一的温暖米白色背景
@@ -79,24 +109,48 @@ struct MultiPersonChatView: View {
                             }
                             
                             ForEach(chatManager.messages) { message in
-                                // 🎯 判断消息显示类型
-                                if message.isUserMessage {
-                                    // 用户引导消息 - 右侧显示
-                                    UserMessageBubble(message: message)
-                                        .id(message.id)
-                                } else if isUserPlayingCharacter(message.characterId) {
-                                    // 用户扮演的角色消息 - 右侧显示
-                                    UserRolePlayingBubble(message: message, character: selectedCharacters.first(where: { $0.id == message.characterId })!)
-                                        .id(message.id)
-                                } else if let character = selectedCharacters.first(where: { $0.id == message.characterId }) {
-                                    // AI角色消息 - 左侧显示，传入颜色索引确保不同角色使用不同颜色
-                                    ChatBubble(
-                                        message: message,
-                                        character: character,
-                                        colorIndex: characterColorMap[character.id] ?? 0
-                                    )
-                                    .id(message.id)
+                                HStack(alignment: .top, spacing: 12) {
+                                    // 分享模式下的选择框
+                                    if isShareMode {
+                                        Button(action: {
+                                            toggleMessageSelection(message.id.uuidString)
+                                        }) {
+                                            Image(systemName: selectedMessages.contains(message.id.uuidString) ? "checkmark.circle.fill" : "circle")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(selectedMessages.contains(message.id.uuidString) ? characterThemeColor : .gray.opacity(0.6))
+                                                .animation(.spring(response: 0.3), value: selectedMessages.contains(message.id.uuidString))
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                    
+                                    // 原有的消息内容
+                                    VStack {
+                                        // 🎯 判断消息显示类型
+                                        if message.isUserMessage {
+                                            // 用户引导消息 - 右侧显示
+                                            UserMessageBubble(message: message)
+                                        } else if isUserPlayingCharacter(message.characterId) {
+                                            // 用户扮演的角色消息 - 右侧显示
+                                            UserRolePlayingBubble(message: message, character: selectedCharacters.first(where: { $0.id == message.characterId })!)
+                                        } else if let character = selectedCharacters.first(where: { $0.id == message.characterId }) {
+                                            // AI角色消息 - 左侧显示，传入颜色索引确保不同角色使用不同颜色
+                                            ChatBubble(
+                                                message: message,
+                                                character: character,
+                                                colorIndex: characterColorMap[character.id] ?? 0
+                                            )
+                                        }
+                                    }
+                                    .opacity(isShareMode ? 0.8 : 1.0)
+                                    .animation(.easeInOut(duration: 0.3), value: isShareMode)
                                 }
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    if isShareMode {
+                                        toggleMessageSelection(message.id.uuidString)
+                                    }
+                                }
+                                .id(message.id)
                             }
                             
                             // 对话结束指示器
@@ -140,8 +194,22 @@ struct MultiPersonChatView: View {
                     userGuidanceInputView
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 } else if case .observer = userRole {
-                    // 观察者模式：不在内容中渲染按钮，避免被布局推高，只保留占位
-                    Color.clear.frame(height: bottomSafeAreaHeight)
+                    // 观察者模式：在分享模式下显示分享栏，否则只保留占位
+                    if isShareMode {
+                        ShareModeBottomBar(
+                            selectedCount: selectedMessages.count,
+                            onCancel: {
+                                exitShareMode()
+                            },
+                            onShare: {
+                                generateAndShareCards()
+                            }
+                        )
+                        .background(DesignSystem.Colors.background)
+                        .edgesIgnoringSafeArea(.bottom)
+                    } else {
+                        Color.clear.frame(height: bottomSafeAreaHeight)
+                    }
                 } else {
                     // 参与者模式：显示输入框
                     participantInputBar
@@ -164,15 +232,22 @@ struct MultiPersonChatView: View {
                     }
                 }
             )
-            // 在屏幕底部覆盖显示“继续对话”按钮（仅观察者模式）
+            // 在屏幕底部覆盖显示"继续对话"按钮（仅观察者模式且非分享模式）
             .overlay(alignment: .bottom) {
-                if case .observer = userRole, !showUserGuidanceInput {
+                if case .observer = userRole, !showUserGuidanceInput, !isShareMode {
                     continueChatButton
                 }
             }
         }
         .multiChatKeyboardAdaptive(dismissOnTap: true, safeArea: 50) // 启用点击空白区域关闭键盘，并增加安全区域
         .edgesIgnoringSafeArea(.bottom) // 忽略底部安全区域，确保输入框贴合屏幕底部
+        .fullScreenCover(isPresented: $showShareModal) {
+            MultiChatShareModalView(
+                isPresented: $showShareModal,
+                shareCards: shareCards,
+                chatTheme: chatTheme
+            )
+        }
         .onAppear {
             // 🔧 调试：打印选中的角色信息
             print("🎭 MultiPersonChatView.onAppear - 开始对话")
@@ -185,11 +260,14 @@ struct MultiPersonChatView: View {
             print("👤 用户角色: \(userRole)")
             print("📖 历史会话ID: \(historicalSessionId ?? "无")")
             
+            // 注释掉测试消息，正常使用时不需要
+            // addTestMessages()
+            
             // 根据是否有历史会话ID决定是新对话还是加载历史对话
             if let sessionId = historicalSessionId {
                 // 加载历史对话
                 print("🔄 加载历史对话: \(sessionId)")
-                chatManager.loadChatHistory(sessionId: sessionId, modelContext: modelContext)
+                chatManager.loadChatHistory(sessionId: sessionId, modelContext: modelContext, characters: selectedCharacters)
             } else {
                 // 开始新对话
                 print("🆕 开始新对话")
@@ -254,7 +332,7 @@ struct MultiPersonChatView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+                .padding(.vertical, 14)
                 .foregroundColor(.white)
                 .background(
                     LinearGradient(
@@ -265,11 +343,11 @@ struct MultiPersonChatView: View {
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 )
-                .shadow(color: Color(hex: "A78DC7").opacity(0.4), radius: 8, x: 0, y: 4)
+                .shadow(color: Color(hex: "A78DC7").opacity(0.4), radius: 6, x: 0, y: 3)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 24)
+                    RoundedRectangle(cornerRadius: 22)
                         .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
                 )
                 .contentShape(Rectangle())
@@ -314,16 +392,30 @@ struct MultiPersonChatView: View {
     
     // 参与者模式的输入栏
     private var participantInputBar: some View {
-        MultiChatInputBar(
-            messageText: $inputText,
-            isSending: $isSending,
-            characterThemeColor: characterThemeColor,
-            userRole: userRole,
-            selectedCharacters: selectedCharacters,
-            onSend: {
-                sendMessage()
+        Group {
+            if isShareMode {
+                ShareModeBottomBar(
+                    selectedCount: selectedMessages.count,
+                    onCancel: {
+                        exitShareMode()
+                    },
+                    onShare: {
+                        generateAndShareCards()
+                    }
+                )
+            } else {
+                MultiChatInputBar(
+                    messageText: $inputText,
+                    isSending: $isSending,
+                    characterThemeColor: characterThemeColor,
+                    userRole: userRole,
+                    selectedCharacters: selectedCharacters,
+                    onSend: {
+                        sendMessage()
+                    }
+                )
             }
-        )
+        }
         .background(DesignSystem.Colors.background)
         .edgesIgnoringSafeArea(.bottom) // 忽略底部安全区域，确保输入框贴合屏幕底部
     }
@@ -521,7 +613,122 @@ struct MultiPersonChatView: View {
     
     // 分享对话
     private func shareConversation() {
-        // 分享功能实现
+        enterShareMode()
+    }
+    
+    // MARK: - 分享功能
+    
+    // 分享相关状态
+    @State private var isShareMode = false
+    @State private var selectedMessages: Set<String> = []
+    @State private var showShareModal = false
+    @State private var shareCards: [UIImage] = []
+    
+    /// 进入分享模式
+    private func enterShareMode() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            isShareMode = true
+        }
+        // 隐藏键盘
+        hideKeyboard()
+    }
+    
+    /// 退出分享模式
+    private func exitShareMode() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            isShareMode = false
+            selectedMessages.removeAll()
+        }
+    }
+    
+    /// 切换消息选择状态
+    private func toggleMessageSelection(_ messageId: String) {
+        withAnimation(.spring(response: 0.3)) {
+            if selectedMessages.contains(messageId) {
+                selectedMessages.remove(messageId)
+                print("MultiPersonChatView - 取消选择消息: \(messageId)")
+            } else {
+                selectedMessages.insert(messageId)
+                print("MultiPersonChatView - 选择消息: \(messageId)")
+            }
+            print("MultiPersonChatView - 当前选中消息数量: \(selectedMessages.count)")
+        }
+    }
+    
+    /// 生成并分享卡片
+    private func generateAndShareCards() {
+        print("MultiPersonChatView - 开始生成分享卡片")
+        print("MultiPersonChatView - 选中消息ID: \(Array(selectedMessages))")
+        print("MultiPersonChatView - 总消息数量: \(chatManager.messages.count)")
+        print("MultiPersonChatView - 选中消息数量: \(selectedMessages.count)")
+        print("MultiPersonChatView - 可用角色数量: \(selectedCharacters.count)")
+        
+        // 调试：打印前几个消息的ID
+        for (index, message) in chatManager.messages.prefix(3).enumerated() {
+            print("MultiPersonChatView - 消息\(index): ID=\(message.id.uuidString), 内容=\(message.content.prefix(20))...")
+        }
+        
+        let selectedMessagesList = chatManager.messages.filter { selectedMessages.contains($0.id.uuidString) }
+        print("MultiPersonChatView - 过滤后消息数量: \(selectedMessagesList.count)")
+        
+        if selectedMessagesList.isEmpty {
+            print("MultiPersonChatView - 没有选中的消息，退出分享")
+            return
+        }
+        
+        // 生成分享卡片
+        let shareCards: [UIImage]
+        
+        if selectedMessagesList.count > 1 {
+            // 多条消息：生成合并卡片
+            print("MultiPersonChatView - 生成合并对话卡片，消息数量: \(selectedMessagesList.count)")
+            let mergedCard = MultiChatShareCardGenerator.generateMergedCard(
+                messages: selectedMessagesList,
+                characters: selectedCharacters,
+                theme: chatTheme
+            )
+            shareCards = [mergedCard]
+            print("MultiPersonChatView - 合并卡片生成成功")
+        } else {
+            // 单条消息：生成单独卡片
+            shareCards = selectedMessagesList.compactMap { message -> UIImage? in
+                if let character = selectedCharacters.first(where: { $0.id == message.characterId }) {
+                    print("MultiPersonChatView - 为消息生成卡片: \(message.content.prefix(20))...")
+                    print("MultiPersonChatView - 角色信息: \(character.name), ID: \(character.id)")
+                    
+                    let card = MultiChatShareCardGenerator.generateCard(
+                        message: message,
+                        character: character,
+                        theme: chatTheme
+                    )
+                    print("MultiPersonChatView - 卡片生成成功")
+                    return card
+                } else {
+                    print("MultiPersonChatView - 找不到角色 ID: \(message.characterId)")
+                    print("MultiPersonChatView - 可用角色ID: \(selectedCharacters.map { $0.id })")
+                    return nil
+                }
+            }
+        }
+        
+        print("MultiPersonChatView - 生成的卡片数量: \(shareCards.count)")
+        
+        if shareCards.isEmpty {
+            print("MultiPersonChatView - 没有生成任何卡片，无法分享")
+            return
+        }
+        
+        // 保存分享卡片并显示自定义分享模态视图
+        self.shareCards = shareCards
+        
+        // 先退出分享模式，然后显示分享模态视图
+        exitShareMode()
+        
+        // 延迟一点时间再展示分享界面，确保UI状态稳定
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            print("MultiPersonChatView - 准备展示自定义分享界面，卡片数量: \(shareCards.count)")
+            showShareModal = true
+        }
     }
     
     // 激活键盘

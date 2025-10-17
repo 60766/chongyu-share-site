@@ -29,16 +29,19 @@ struct ChatIntroCard: View {
                 HStack(spacing: 22) {
                     ForEach(participants) { character in
                         VStack(spacing: 8) {
-                            Image(character.avatar)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 50, height: 50)
-                                .clipShape(Circle())
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white, lineWidth: 1)
-                                )
-                                .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                            // 使用CharacterAvatarService支持首字母显示
+                            CharacterAvatarService.shared.getAvatarView(
+                                for: character.id,
+                                name: character.name,
+                                category: character.category.rawValue,
+                                size: 50,
+                                useCaching: true
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white, lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
                             
                             Text(character.name)
                                 .font(.system(size: 14))

@@ -477,7 +477,66 @@ class NotificationService: ObservableObject {
         let hasGuideNotification = notifications.contains { $0.type == .system && $0.username == "功能指南" }
         print("🔍 NotificationService: 是否已有新手指南通知: \(hasGuideNotification)")
         
-        // 简化版本已删除，只保留详细版本
+        if !hasGuideNotification {
+            // 生成功能指南通知
+            let guideNotification = NotificationModel(
+                type: .system,
+                avatar: "sparkles",
+                username: "功能指南",
+                content: """
+                🌟 欢迎来到虫遇！这里有丰富的功能等你探索：
+                
+                🕳️ 生成帖子：右滑首帖 → 「探索虫洞深处」 → 「启动虫洞捕捉」。多个角色会发布自己的感悟和朋友圈，分享不同视角的生活体验。
+                
+                可选方向（一次最多生成12篇）：
+                • 虫洞共鸣：不同次元角色围绕你的主题展开对话
+                • 日常心情：发布各自时代的真实感受和生活情绪体验
+                • 古潮新语：用各自智慧和思想体系分享对现代话题的深度见解
+                • 穿越吐槽：各种角色以各自时代视角，对现代事物发表有梗有料的幽默吐槽
+                • 时空记事：分享各自时代的重要时刻和亲历历史的真实感受
+                
+                ⚡ 一键生成：点击主页右侧彩球，让AI为你精心调配四种风味（日常心情、古潮新语、穿越吐槽、时空记事），12篇内容一次满足，比例还能按你喜好调整！
+                
+                ✍️ 发布动态：点击底部中间的发布按钮，编辑文字/图片，可选择互动角色后发布，角色会根据自己的视角给你点赞和有趣的回复
+                
+                💬 互动评论：在任何帖子下评论和点赞，角色会以独特视角回复，虚拟角色点赞用于成就系统，你的点赞记录可在空间页面查看
+                
+                📤 精彩分享：在角色详情页或对话页面使用分享功能，生成精美卡片分享到微信朋友圈，展示你与历史人物的对话瞬间
+                
+                💫 角色对话：在探索中选择角色进入详情，开始与 TA 一对一对话
+                
+                🎨 角色调校：在角色详情页点击个性化调节按钮，可调整角色的表达方式、语言风格、情感程度等5个维度，让每个历史人物更符合你的对话偏好
+                
+                🎭 梦幻联动：在探索页面点击「梦幻联动」，选择主题与参与角色，开启多人对话
+                
+                🎨 创建角色：在探索页面点击「创建角色」，快速创建新角色开始对话
+                
+                🏆 成就系统：通过与角色互动、获得虚拟角色点赞等行为解锁各种成就徽章，在空间页面查看你的成就收藏
+                
+                🎬 次元回放：用AI温柔地解读你与历史人物的互动轨迹，发现你在寻找什么、思考什么、成长什么，看见那个在时空中探索的真实自己
+                
+                💰 虫洞币充值：虫洞币是所有AI功能的基础货币，包括角色对话、内容生成、智能回复等都需要消耗虫洞币。在空间页面点击右上角钻石图标查看余额并充值，支持四档套餐（6-68元）
+                
+                现在开始，让思绪如光，穿越时空的边界......
+                """,
+                time: formatTimeAgo(Date()),
+                isOnline: false,
+                actionText: nil,
+                character: nil, // 系统通知不需要角色信息
+                previewContent: nil,
+                relatedPostId: nil,
+                relatedCommentId: nil,
+                triggeredByAction: "system",
+                isGenerated: false,
+                userComment: nil,
+                userPost: nil,
+                originalPost: nil,
+                originalPostAuthor: nil
+            )
+            
+            addNotification(guideNotification)
+            print("✅ NotificationService: 已生成功能指南通知")
+        }
         
         // 检查是否已经有版本更新通知了
         let hasUpdateNotification = notifications.contains { $0.type == .system && $0.username == "版本更新" }

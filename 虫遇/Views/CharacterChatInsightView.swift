@@ -91,7 +91,7 @@ struct CharacterChatInsightView: View {
             }
             .padding()
         }
-        .navigationTitle("互动画像")
+        .navigationTitle("聊天洞察")
         .navigationBarTitleDisplayMode(.inline)
         .alert("提示", isPresented: $showError) {
             Button("确定", role: .cancel) { }
@@ -398,7 +398,7 @@ struct CharacterChatInsightView: View {
                             .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(.blue)
                             .symbolRenderingMode(.hierarchical)
-                        Text("画像生成说明")
+                        Text("洞察生成说明")
                             .font(.callout)
                             .fontWeight(.semibold)
                             .foregroundStyle(.primary)
@@ -488,7 +488,7 @@ struct CharacterChatInsightView: View {
                         Image(systemName: "sparkles")
                             .font(.system(size: 16, weight: .semibold))
                             .symbolRenderingMode(.multicolor)
-                        Text("生成画像")
+                        Text("生成洞察")
                             .font(.callout)
                             .fontWeight(.semibold)
                     }
@@ -498,21 +498,21 @@ struct CharacterChatInsightView: View {
                     .background(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.blue,
-                                Color.purple.opacity(0.9)
+                                Color(red: 0.4, green: 0.6, blue: 0.95),  // 柔和蓝色
+                                Color(red: 0.65, green: 0.4, blue: 0.85)  // 柔和紫色
                             ]),
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
-                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))  // 更圆润的圆角
+                    .shadow(color: Color(red: 0.4, green: 0.6, blue: 0.95).opacity(0.25), radius: 6, x: 0, y: 3)
+                    .shadow(color: .black.opacity(0.08), radius: 1, x: 0, y: 1)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
-                .accessibilityLabel("生成互动画像")
-                .accessibilityHint("分析您与角色的聊天记录并生成个性化画像")
+                .accessibilityLabel("生成聊天洞察")
+                .accessibilityHint("分析您与角色的聊天记录并生成个性化洞察")
             }
             
             Spacer()

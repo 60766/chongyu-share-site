@@ -503,11 +503,35 @@ class MultiChatManager: ObservableObject {
     }
     
     /// 加载历史对话
-    func loadChatHistory(sessionId: String, modelContext: ModelContext) {
+    func loadChatHistory(sessionId: String, modelContext: ModelContext, characters: [CharacterModel] = []) {
+        self.modelContext = modelContext
+        
         // 加载会话信息
         if let session = dataService.getChatSession(sessionId: sessionId, modelContext: modelContext) {
             currentSession = session
+            
+            // 🔧 设置角色数据 - 从参与者ID加载角色信息
+            if characters.isEmpty {
+                // 如果没有传入角色数据，从会话的participantIds重建角色列表
+                self.characters = session.participantIds.compactMap { characterId in
+                    CharacterModel.getAllCharacters().first { $0.id == characterId }
+                }
+                print("✅ 从会话重建角色列表：\(self.characters.map { $0.name }.joined(separator: ", "))")
+            } else {
+                // 使用传入的角色数据
+                self.characters = characters
+                print("✅ 使用传入角色数据：\(characters.map { $0.name }.joined(separator: ", "))")
+            }
+            
+            // 🔧 设置其他会话属性
+            self.mode = ChatMode(rawValue: session.chatMode) ?? .freeTalk
+            self.theme = session.chatTheme
+            self.userRole = UserRole(rawValue: session.userRole) ?? .observer
+            
             print("✅ 已设置当前会话: \(session.topic)")
+            print("   - 角色数量: \(self.characters.count)")
+            print("   - 对话模式: \(self.mode)")
+            print("   - 用户角色: \(self.userRole)")
         }
         
         // 加载历史消息

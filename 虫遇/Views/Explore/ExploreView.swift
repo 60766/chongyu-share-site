@@ -196,10 +196,20 @@ struct ExploreView: View {
                                     }
                                     .padding(.vertical, 14)
                                     .frame(maxWidth: .infinity)
-                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                    .background(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color(red: 160/255, green: 130/255, blue: 250/255).opacity(0.08),
+                                                Color(red: 140/255, green: 110/255, blue: 230/255).opacity(0.06)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .stroke(Color.black.opacity(0.05), lineWidth: 1)
+                                            .stroke(Color(red: 160/255, green: 130/255, blue: 250/255).opacity(0.15), lineWidth: 1)
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
@@ -220,10 +230,20 @@ struct ExploreView: View {
                                     }
                                     .padding(.vertical, 14)
                                     .frame(maxWidth: .infinity)
-                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                    .background(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color(red: 70/255, green: 145/255, blue: 255/255).opacity(0.08),
+                                                Color(red: 50/255, green: 125/255, blue: 235/255).opacity(0.06)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .stroke(Color.black.opacity(0.05), lineWidth: 1)
+                                            .stroke(Color(red: 70/255, green: 145/255, blue: 255/255).opacity(0.15), lineWidth: 1)
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
@@ -1831,7 +1851,7 @@ struct CharacterGridItem: View {
     
     var body: some View {
         VStack(spacing: 6) {
-            // 角色头像
+            // 角色头像 - 使用统一的CharacterAvatarService
             ZStack {
                 if let customImage = customImage {
                     // 显示从文档目录加载的自定义头像
@@ -1841,21 +1861,79 @@ struct CharacterGridItem: View {
                         .frame(width: 100, height: 100)
                         .clipShape(Rectangle())
                         .cornerRadius(8)
-                } else if character.avatar == "default_avatar" || character.id.hasPrefix("custom_") {
-                    // 默认头像（如果自定义头像加载失败或未设置）
-                    Image(systemName: "person.circle.fill")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 100, height: 100)
-                        .foregroundColor(.gray)
-                } else {
-                    // 系统提供的头像
+                } else if let avatarImage = UIImage(named: character.avatar), avatarImage.size.width > 0 {
+                    // 系统提供的头像图片
                     Image(character.avatar)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: 100, height: 100)
                         .clipShape(Rectangle())
                         .cornerRadius(8)
+                } else {
+                    // 使用与CharacterAvatarService完全相同的渐变效果
+                    let avatarColor = CharacterAvatarService.shared.generateConsistentColor(for: character.id)
+                    let size: CGFloat = 100
+                    
+                    ZStack {
+                        // 使用与CharacterAvatarService相同的渐变背景
+                        Rectangle()
+                            .fill(
+                                RadialGradient(
+                                    gradient: Gradient(colors: [
+                                        avatarColor.opacity(0.45),
+                                        avatarColor.opacity(0.25),
+                                        avatarColor.opacity(0.08)
+                                    ]),
+                                    center: UnitPoint(x: 0.3, y: 0.3),
+                                    startRadius: size * 0.05,
+                                    endRadius: size * 0.85
+                                )
+                            )
+                            .overlay(
+                                // 增强的边框效果
+                                Rectangle()
+                                    .stroke(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.white.opacity(0.5),
+                                                avatarColor.opacity(0.2),
+                                                Color.black.opacity(0.08)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 2
+                                    )
+                            )
+                        
+                        // 文字放在右下角
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                Text(String(character.name.prefix(1)))
+                                    .font(.system(size: size * 0.44, weight: .bold, design: .rounded))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.white.opacity(0.95),
+                                                Color.white.opacity(0.85)
+                                            ]),
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                    .shadow(color: avatarColor.opacity(0.8), radius: 1, x: 0, y: 1)
+                                    .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
+                                    .padding(.trailing, 8)
+                                    .padding(.bottom, 8)
+                            }
+                        }
+                    }
+                    .shadow(color: avatarColor.opacity(0.25), radius: 6, x: 0, y: 3)
+                    .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                    .clipShape(Rectangle())
+                    .cornerRadius(8)
                 }
             }
             .frame(width: 100, height: 100)

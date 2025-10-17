@@ -843,16 +843,7 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         
         var filtered = availableFigures
         
-        // 应用搜索过滤
-        if !searchText.isEmpty {
-            filtered = filtered.filter { figure in
-                figure.name.localizedCaseInsensitiveContains(searchText) ||
-                figure.field.localizedCaseInsensitiveContains(searchText) ||
-                figure.introduction.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-        
-        // 应用分类过滤
+        // 先应用分类过滤
         if category != "全部" {
             if category == "最近" {
                 // 获取最近使用的历史人物
@@ -884,9 +875,17 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
                 }
             }
         } else {
-            // "全部"分类 - 确保不进行任何过滤，显示所有角色
+            // "全部"分类 - 显示所有角色
             filtered = availableFigures
             print("选择了'全部'分类，显示所有\(filtered.count)个角色")
+        }
+        
+        // 然后应用搜索过滤 - 只根据角色名字搜索
+        if !searchText.isEmpty {
+            filtered = filtered.filter { figure in
+                figure.name.localizedCaseInsensitiveContains(searchText)
+            }
+            print("应用搜索过滤后的角色数量: \(filtered.count)，搜索文本: \(searchText)")
         }
         
         // 打印过滤后的角色数量

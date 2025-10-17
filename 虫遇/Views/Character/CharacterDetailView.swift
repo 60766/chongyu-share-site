@@ -225,7 +225,7 @@ struct CharacterDetailView: View {
     /// 当前选中的标签索引
     @State private var selectedTabIndex = 0
     /// 标签选项
-    private let tabOptions = ["人物档案", "成就作品", "互动画像"]
+    private let tabOptions = ["人物档案", "成就作品", "聊天洞察"]
     /// 模拟对话数据
     @State private var conversations: [DisplayConversation] = []
     /// 内容动画状态
@@ -331,7 +331,7 @@ struct CharacterDetailView: View {
                         }
                         .tag(1)
                     
-                        // 第三个标签页：互动画像
+                        // 第三个标签页：聊天洞察
                         CharacterChatInsightView(
                             characterId: character.id,
                             characterName: character.name
@@ -512,19 +512,12 @@ struct CharacterDetailView: View {
                                         .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                                 )
                         } else {
-                            // 如果加载失败，显示初始字母头像
-                            Circle()
-                                .fill(Color.gray.opacity(0.15))
-                                .frame(width: 70, height: 70)
-                                .overlay(
-                                    Text(String(character.name.prefix(1)))
-                                        .font(.system(size: 32, weight: .medium))
-                                        .foregroundColor(Color.purple.opacity(0.8))
-                                )
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                                )
+                            // 使用统一的CharacterAvatarService显示首字母头像
+                            CharacterAvatarService.shared.getAvatarView(
+                                for: character.id,
+                                name: character.name,
+                                size: 70
+                            )
                         }
                     }
                 }
@@ -2646,14 +2639,12 @@ private struct ShareCardView: View {
                                     .stroke(DesignSystem.vibrantYellow.opacity(0.3), lineWidth: 1)
                             )
                     } else {
-                        Circle()
-                            .fill(DesignSystem.mediumPurple)
-                            .frame(width: 36, height: 36)
-                            .overlay(
-                                Text(String(character.name.prefix(1)))
-                                    .font(.system(size: 16))
-                                    .foregroundColor(DesignSystem.vibrantYellow)
-                            )
+                        // 使用统一的CharacterAvatarService显示首字母头像
+                        CharacterAvatarService.shared.getAvatarView(
+                            for: character.id,
+                            name: character.name,
+                            size: 36
+                        )
                     }
                     
                     // 回答内容

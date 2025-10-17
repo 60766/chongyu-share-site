@@ -330,6 +330,7 @@ class MultiCharacterChatService {
      */
     private func normalizeCharacterId(_ rawId: String, expectedCharacters: [CharacterModel]) -> String? {
         let normalizedInput = rawId.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        print("🔍 尝试匹配角色ID: '\(rawId)' (标准化后: '\(normalizedInput)')")
         
         // 1. 直接匹配
         if let character = expectedCharacters.first(where: { $0.id.lowercased() == normalizedInput }) {
@@ -354,7 +355,12 @@ class MultiCharacterChatService {
             "唐三藏": "tangsanzang",
             "yang-guo": "yangguo",
             "yang_guo": "yangguo",
-            "杨过": "yangguo"
+            "杨过": "yangguo",
+            "nikola_tesla": "tesla",
+            "nikola-tesla": "tesla",
+            "尼古拉·特斯拉": "tesla",
+            "尼古拉特斯拉": "tesla",
+            "特斯拉": "tesla"
         ]
         
         if let standardId = idMappings[normalizedInput] {
@@ -419,6 +425,7 @@ class MultiCharacterChatService {
         expectedCharacters: [CharacterModel]
     ) -> [(characterId: String, content: String)] {
         print("🔍 开始解析多角色回复，响应长度: \(response.count)")
+        print("📝 期望角色列表(\(expectedCharacters.count)个): \(expectedCharacters.map { "\($0.name)(\($0.id))" }.joined(separator: ", "))")
         print("📝 原始API响应内容:\n\(response)")
         
         var result: [(characterId: String, content: String)] = []

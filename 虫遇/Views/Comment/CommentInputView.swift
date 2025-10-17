@@ -502,7 +502,7 @@ struct CommentInputView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(DesignSystem.Colors.background) // 只给HStack添加背景色
+                    .background(Color.white) // 使用白色背景
                     // 修改分隔线使其更加明显
                     .overlay(
                         Rectangle()

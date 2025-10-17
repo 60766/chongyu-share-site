@@ -103,7 +103,7 @@ class CharacterAvatarService {
     }
     
     /**
-     * 获取角色头像视图
+     * 获取角色头像视图（圆形）
      * @param characterId 角色ID
      * @param name 角色名称
      * @param category 角色类别
@@ -163,19 +163,179 @@ class CharacterAvatarService {
         case .letter(let letter, let color):
             avatarView = AnyView(
                 ZStack {
+                    // 更强烈的苹果风格渐变背景
                     Circle()
-                        .fill(color.opacity(0.15))
+                        .fill(
+                            RadialGradient(
+                                gradient: Gradient(colors: [
+                                    color.opacity(0.45),
+                                    color.opacity(0.25),
+                                    color.opacity(0.08)
+                                ]),
+                                center: UnitPoint(x: 0.3, y: 0.3),
+                                startRadius: size * 0.05,
+                                endRadius: size * 0.85
+                            )
+                        )
                         .frame(width: size, height: size)
+                        .overlay(
+                            // 增强的边框效果
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0.5),
+                                            color.opacity(0.2),
+                                            Color.black.opacity(0.08)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 2
+                                )
+                        )
                     
+                    // 增强的文字样式 - 优化清晰度
                     Text(letter)
-                        .font(.system(size: size * 0.45, weight: .medium))
-                        .foregroundColor(color)
-                    
-                    Circle()
-                        .stroke(color.opacity(0.7), lineWidth: 1.5)
-                        .frame(width: size, height: size)
+                        .font(.system(size: size * 0.44, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.95),
+                                    Color.white.opacity(0.85)
+                                ]),
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .shadow(color: color.opacity(0.8), radius: 1, x: 0, y: 1)
+                        .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
                 }
+                .shadow(color: color.opacity(0.25), radius: 6, x: 0, y: 3)
+                .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
                 .contentShape(Circle()) // 确保头像可点击
+                .allowsHitTesting(true) // 明确允许点击事件
+            )
+        }
+        
+        // 🔧 优化：缓存视图结果
+        cacheQueue.async(flags: .barrier) {
+            self.avatarViewCache[cacheKey] = avatarView
+        }
+        
+        return avatarView
+    }
+    
+    /**
+     * 获取角色头像视图（方形）
+     * @param characterId 角色ID
+     * @param name 角色名称
+     * @param category 角色类别
+     * @param size 头像大小
+     * @param cornerRadius 圆角半径
+     * @return 头像视图
+     */
+    func getSquareAvatarView(for characterId: String, name: String = "", category: String = "", size: CGFloat = 40, cornerRadius: CGFloat = 12, useCaching: Bool = false) -> some View {
+        // 先检查视图缓存
+        let cacheKey = "\(characterId)_square_\(size)_\(cornerRadius)"
+        if useCaching, let cachedView = cacheQueue.sync(execute: { avatarViewCache[cacheKey] }) {
+            return cachedView
+        }
+        
+        let avatarType = getAvatarType(for: characterId, name: name, category: category)
+        
+        let avatarView: AnyView
+        
+        // 方形头像处理逻辑
+        switch avatarType {
+        case .image(let imageName):
+            avatarView = AnyView(
+                Image(imageName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                    )
+                    .contentShape(RoundedRectangle(cornerRadius: cornerRadius)) // 确保头像可点击
+                    .allowsHitTesting(true) // 明确允许点击事件
+            )
+            
+        case .systemIcon(let iconName, let color):
+            avatarView = AnyView(
+                ZStack {
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .fill(color.opacity(0.1))
+                        .frame(width: size, height: size)
+                    
+                    Image(systemName: iconName)
+                        .font(.system(size: size * 0.5))
+                        .foregroundColor(color)
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: cornerRadius)) // 确保头像可点击
+                .allowsHitTesting(true) // 明确允许点击事件
+            )
+            
+        case .letter(let letter, let color):
+            avatarView = AnyView(
+                ZStack {
+                    // 更强烈的苹果风格渐变背景
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .fill(
+                            RadialGradient(
+                                gradient: Gradient(colors: [
+                                    color.opacity(0.45),
+                                    color.opacity(0.25),
+                                    color.opacity(0.08)
+                                ]),
+                                center: UnitPoint(x: 0.3, y: 0.3),
+                                startRadius: size * 0.05,
+                                endRadius: size * 0.85
+                            )
+                        )
+                        .frame(width: size, height: size)
+                        .overlay(
+                            // 增强的边框效果
+                            RoundedRectangle(cornerRadius: cornerRadius)
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0.5),
+                                            color.opacity(0.2),
+                                            Color.black.opacity(0.08)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 2
+                                )
+                        )
+                    
+                    // 增强的文字样式 - 优化清晰度
+                    Text(letter)
+                        .font(.system(size: size * 0.44, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.95),
+                                    Color.white.opacity(0.85)
+                                ]),
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .shadow(color: color.opacity(0.8), radius: 1, x: 0, y: 1)
+                        .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
+                }
+                .shadow(color: color.opacity(0.25), radius: 6, x: 0, y: 3)
+                .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                .contentShape(RoundedRectangle(cornerRadius: cornerRadius)) // 确保头像可点击
                 .allowsHitTesting(true) // 明确允许点击事件
             )
         }
@@ -568,12 +728,45 @@ class CharacterAvatarService {
     }
     
     /**
-     * 生成角色的颜色（基于ID的一致性哈希）
+     * 生成角色的颜色（基于ID的一致性哈希）- 苹果风格优化版本
      * @param characterId 角色ID
      * @return 颜色
      */
     func generateConsistentColor(for characterId: String) -> Color {
-        let colors: [Color] = [.blue, .green, .orange, .red, .purple, .pink, .yellow, .teal, .indigo]
+        // 苹果风格的柔和色彩调色板 - 使用更加柔和、现代的颜色
+        let appleStyleColors: [Color] = [
+            // 蓝色系 - 苹果经典蓝
+            Color(red: 0.0, green: 0.48, blue: 1.0),           // SF Blue
+            Color(red: 0.20, green: 0.67, blue: 0.86),         // Light Blue
+            
+            // 绿色系 - 自然清新
+            Color(red: 0.20, green: 0.78, blue: 0.35),         // SF Green
+            Color(red: 0.40, green: 0.84, blue: 0.65),         // Mint Green
+            
+            // 橙色系 - 温暖活力（优化版）
+            Color(red: 0.95, green: 0.65, blue: 0.25),         // Soft Peach Orange
+            Color(red: 0.92, green: 0.58, blue: 0.20),         // Warm Amber
+            
+            // 红色系 - 优雅热情
+            Color(red: 1.0, green: 0.23, blue: 0.19),          // SF Red
+            Color(red: 1.0, green: 0.45, blue: 0.46),          // Pink Red
+            
+            // 紫色系 - 神秘优雅
+            Color(red: 0.69, green: 0.32, blue: 0.87),         // SF Purple
+            Color(red: 0.75, green: 0.35, blue: 0.95),         // Lavender
+            
+            // 粉色系 - 温柔可爱
+            Color(red: 1.0, green: 0.18, blue: 0.33),          // SF Pink
+            Color(red: 0.96, green: 0.47, blue: 0.64),         // Rose Pink
+            
+            // 青色系 - 清新现代
+            Color(red: 0.35, green: 0.78, blue: 0.98),         // Sky Blue
+            Color(red: 0.20, green: 0.68, blue: 0.90),         // Cyan
+            
+            // 靛蓝系 - 深邃稳重
+            Color(red: 0.35, green: 0.34, blue: 0.84),         // SF Indigo
+            Color(red: 0.46, green: 0.46, blue: 0.90)          // Light Indigo
+        ]
         
         // 使用角色ID的哈希值选择颜色，确保同一角色总是得到相同的颜色
         var hash = 0
@@ -581,8 +774,8 @@ class CharacterAvatarService {
             hash = ((hash << 5) &- hash) &+ Int(char.asciiValue ?? 0)
         }
         
-        let index = abs(hash) % colors.count
-        return colors[index]
+        let index = abs(hash) % appleStyleColors.count
+        return appleStyleColors[index]
     }
     
     /**

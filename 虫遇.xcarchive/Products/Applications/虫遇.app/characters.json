@@ -2326,12 +2326,12 @@
     },
     {
       "id": "sailor_moon",
-      "name": "美少女战士",
+      "name": "月野兔",
       "type": "anime",
       "subtype": "shoujo",
       "era": "现代",
       "primaryField": "魔法少女",
-      "briefDescription": "《美少女战士》主角，月野兔的变身身份，为爱与正义而战的少女英雄",
+      "briefDescription": "《美少女战士》主角，为爱与正义而战的少女英雄，拥有月亮的神秘力量",
       "avatarName": "sailor_moon",
       "region": "日本东京",
       "contentAffinities": {
