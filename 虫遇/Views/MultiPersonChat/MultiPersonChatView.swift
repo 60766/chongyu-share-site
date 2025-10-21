@@ -217,9 +217,9 @@ struct MultiPersonChatView: View {
             }
             .overlay(
                 // 引导按钮 - 固定在右下角
-                // 只在观察者模式下显示引导按钮
+                // 只在观察者模式下显示引导按钮，分享模式下隐藏避免重叠
                 Group {
-                    if case .observer = userRole {
+                    if case .observer = userRole, !isShareMode {
                         VStack {
                             Spacer()
                             HStack {
@@ -229,6 +229,7 @@ struct MultiPersonChatView: View {
                                     .padding(.bottom, 80)
                             }
                         }
+                        .transition(.opacity.combined(with: .scale))
                     }
                 }
             )

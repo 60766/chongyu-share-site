@@ -1158,7 +1158,7 @@ struct CharacterDetailView: View {
         viewController.view.backgroundColor = .clear
         buttonWindow.rootViewController = viewController
         
-        // 配置返回按钮
+        // 配置返回按钮（恢复较小尺寸与边距）
         let backButton = UIButton(type: .system)
         backButton.frame = CGRect(x: 16, y: topPadding + 10, width: 30, height: 30)
         
@@ -1260,7 +1260,7 @@ struct CharacterDetailView: View {
         viewController.view.backgroundColor = .clear
         buttonWindow.rootViewController = viewController
         
-        // 配置分享按钮
+        // 配置分享按钮（恢复较小尺寸与边距）
         let shareButton = UIButton(type: .system)
         shareButton.frame = CGRect(x: 16, y: topPadding + 11, width: 26, height: 26)
         

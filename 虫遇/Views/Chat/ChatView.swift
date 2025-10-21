@@ -62,6 +62,7 @@ struct ChatView: View {
     @State private var isShareMode = false
     @State private var selectedMessages: Set<String> = []
     @State private var showShareModal = false
+    @State private var shareCards: [UIImage] = []
     
     // 获取SwiftData的ModelContext
     @Environment(\.modelContext) private var modelContext
@@ -88,6 +89,8 @@ struct ChatView: View {
     
     // 系统返回按钮窗口引用
     @State private var systemBackButtonWindow: UIWindow?
+    // 系统分享按钮窗口引用（与角色详情一致的右上角小图标）
+    @State private var systemShareButtonWindow: UIWindow?
     
     // 添加公开的初始化器，解决访问控制问题
     init(character: CYChatCharacter, conversationId: String) {
@@ -419,18 +422,15 @@ struct ChatView: View {
         .toolbarBackground(DesignSystem.Colors.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    enterShareMode()
-                }) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 16))
-                        .foregroundColor(Color.warmAccent)
-                }
-            }
-        }
+        // 移除导航栏内置的分享按钮，改为系统级覆盖按钮以保持与角色详情一致
         .edgesIgnoringSafeArea(.bottom) // 忽略底部安全区域，确保输入框贴合屏幕底部
+        .fullScreenCover(isPresented: $showShareModal) {
+            ChatShareModalView(
+                isPresented: $showShareModal,
+                shareCards: shareCards,
+                characterName: character.name
+            )
+        }
         .dismissKeyboardOnTap() // 添加点击空白区域收起键盘的功能
         .onAppear {
             DispatchQueue.main.async {
@@ -482,6 +482,8 @@ struct ChatView: View {
                 
                 // 添加系统级返回按钮
                 addSystemLevelBackButton()
+                // 添加系统级分享按钮（与角色详情视觉一致）
+                addSystemLevelShareButton()
                 
                 // 使用keyboardAdaptive，无需手动设置键盘通知
                 
@@ -525,6 +527,12 @@ struct ChatView: View {
                 window.isHidden = true
                 window.rootViewController = nil
                 systemBackButtonWindow = nil
+            }
+            // 清理系统分享按钮窗口
+            if let window = systemShareButtonWindow {
+                window.isHidden = true
+                window.rootViewController = nil
+                systemShareButtonWindow = nil
             }
             
             // 使用keyboardAdaptive，无需手动移除键盘通知
@@ -571,6 +579,26 @@ struct ChatView: View {
         // 监听消息文本变化
         .onChange(of: messageText) { oldValue, newValue in
             // ChatInputBar组件会自动处理高度调整
+        }
+        // 在自定义分享卡片全屏打开/关闭时，隐藏/恢复系统级返回与分享按钮
+        .onChange(of: showShareModal) { oldValue, newValue in
+            if newValue {
+                // 打开分享卡片：隐藏系统级按钮避免遮挡
+                if let backWindow = systemBackButtonWindow { backWindow.isHidden = true }
+                if let shareWindow = systemShareButtonWindow { shareWindow.isHidden = true }
+            } else {
+                // 关闭分享卡片：恢复系统级按钮
+                if let backWindow = systemBackButtonWindow {
+                    backWindow.isHidden = false
+                } else {
+                    addSystemLevelBackButton()
+                }
+                if let shareWindow = systemShareButtonWindow {
+                    shareWindow.isHidden = false
+                } else {
+                    addSystemLevelShareButton()
+                }
+            }
         }
         // 移除viewOffset的onChange，使用统一的键盘适配
         // 移除keyboardHeight的onChange，使用keyboardAdaptive统一管理
@@ -976,7 +1004,7 @@ struct ChatView: View {
         viewController.view.backgroundColor = .clear
         buttonWindow.rootViewController = viewController
         
-        // 配置返回按钮
+        // 配置返回按钮（恢复原尺寸与边距）
         let backButton = UIButton(type: .system)
         backButton.frame = CGRect(x: 16, y: topPadding + 10, width: 30, height: 30)
         
@@ -1008,6 +1036,67 @@ struct ChatView: View {
         // 保存窗口引用并显示
         systemBackButtonWindow = buttonWindow
         buttonWindow.makeKeyAndVisible()
+    }
+    
+    /**
+     * 创建一个覆盖在右上角的系统级分享按钮
+     * 视觉与 `CharacterDetailView` 保持一致
+     */
+    private func addSystemLevelShareButton() {
+        // 计算顶部安全区域高度，为分享按钮定位
+        let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+        let topPadding = windowScene?.windows.first?.safeAreaInsets.top ?? 44
+        let screenWidth = UIScreen.main.bounds.width
+        
+        // 先移除旧窗口（如果存在）
+        systemShareButtonWindow?.isHidden = true
+        systemShareButtonWindow = nil
+        
+        // 创建新窗口 - 只覆盖右上角分享按钮区域
+        if let windowScene = windowScene {
+            let buttonWindow = UIWindow(windowScene: windowScene)
+            buttonWindow.frame = CGRect(
+                x: screenWidth - 55,
+                y: 0,
+                width: 55,
+                height: topPadding + 44
+            )
+            buttonWindow.tag = 9998
+            buttonWindow.isUserInteractionEnabled = true
+            buttonWindow.windowLevel = .alert + 1
+            buttonWindow.backgroundColor = .clear
+            
+            // 设置根视图控制器
+            let viewController = UIViewController()
+            viewController.view.backgroundColor = .clear
+            buttonWindow.rootViewController = viewController
+            
+            // 配置分享按钮（与角色详情相同尺寸与字重）
+            let shareButton = UIButton(type: .system)
+            shareButton.frame = CGRect(x: 16, y: topPadding + 11, width: 26, height: 26)
+            let imageConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+            let image = UIImage(systemName: "square.and.arrow.up", withConfiguration: imageConfig)
+            shareButton.setImage(image, for: .normal)
+            // 使用与角色详情一致的紫色
+            shareButton.tintColor = UIColor(red: 149/255, green: 138/255, blue: 177/255, alpha: 1.0)
+            
+            // 点击进入聊天分享模式
+            shareButton.addAction(UIAction { _ in
+                // 触发轻触反馈
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
+                
+                enterShareMode()
+            }, for: .touchUpInside)
+            
+            viewController.view.addSubview(shareButton)
+            
+            systemShareButtonWindow = buttonWindow
+            DispatchQueue.main.async {
+                buttonWindow.isHidden = false
+                buttonWindow.makeKeyAndVisible()
+            }
+        }
     }
     
     // 移除updateViewOffset方法，使用统一的键盘适配
@@ -1102,28 +1191,41 @@ struct ChatView: View {
         }
         
         // 生成分享卡片
-        let shareCards = selectedMessagesList.map { message in
-            ChatShareCardGenerator.generateCard(
-                message: message,
+        let shareCards: [UIImage]
+        
+        if selectedMessagesList.count > 1 {
+            // 多条消息：生成合并卡片
+            let mergedCard = ChatShareCardGenerator.generateMergedCard(
+                messages: selectedMessagesList,
                 character: character,
                 characterThemeColor: characterThemeColor
             )
+            shareCards = [mergedCard]
+        } else {
+            // 单条消息：生成单独卡片
+            shareCards = selectedMessagesList.map { message in
+                ChatShareCardGenerator.generateCard(
+                    message: message,
+                    character: character,
+                    characterThemeColor: characterThemeColor
+                )
+            }
         }
         
-        // 调用系统分享
-        let activityVC = UIActivityViewController(
-            activityItems: shareCards,
-            applicationActivities: nil
-        )
-        
-        // 获取当前视图控制器并展示分享面板
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootViewController = windowScene.windows.first?.rootViewController {
-            rootViewController.present(activityVC, animated: true)
+        if shareCards.isEmpty {
+            return
         }
         
-        // 分享完成后退出分享模式
+        // 保存分享卡片并显示自定义分享模态视图
+        self.shareCards = shareCards
+        
+        // 先退出分享模式，然后显示分享模态视图
         exitShareMode()
+        
+        // 延迟一点时间再展示分享界面，确保UI状态稳定
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            showShareModal = true
+        }
     }
 
 /**
@@ -1140,7 +1242,7 @@ struct ChatMessageBubbleView: View {
     
     var body: some View {
         // 计算气泡状态
-        let status = message.isFromUser
+        let _ = message.isFromUser
             ? messageStatus
             : .read // 角色的消息总是已读
         

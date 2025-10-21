@@ -11,89 +11,58 @@ struct ShareModeBottomBar: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 顶部分割线
-            Rectangle()
-                .fill(Color.gray.opacity(0.2))
-                .frame(height: 0.5)
+            // Apple 标准分割线
+            Divider()
             
-            HStack(spacing: 16) {
-                // 取消按钮
+            HStack(spacing: 0) {
+                // 取消按钮 - 品牌紫色
                 Button(action: onCancel) {
                     Text("取消")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(Color.gray.opacity(0.1))
-                        )
+                        .font(.system(size: 18))
+                        .foregroundColor(Color(hex: "9A8BB0"))
                 }
-                .buttonStyle(PlainButtonStyle())
+                .frame(width: 70, alignment: .leading)
                 
                 Spacer()
                 
-                // 选择提示文字
-                VStack(spacing: 2) {
+                // 中间状态文字 - SF Pro 排版
+                Group {
                     if selectedCount == 0 {
-                        Text("选择要分享的内容")
-                            .font(.system(size: 14))
+                        Text("选择项目")
+                            .font(.system(size: 17))
                             .foregroundColor(.secondary)
                     } else {
-                        Text("已选择 \(selectedCount) 条消息")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.primary)
+                        Text("已选择 \(selectedCount) 项")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
                 }
+                .animation(.easeInOut(duration: 0.2), value: selectedCount)
                 
                 Spacer()
                 
-                // 生成卡片按钮
+                // 生成按钮 - 品牌紫色加大版
                 Button(action: onShare) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 14))
-                        
-                        Text(selectedCount > 1 ? "生成卡片 (\(selectedCount))" : "生成卡片")
-                            .font(.system(size: 16, weight: .semibold))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(
-                                selectedCount > 0 
-                                ? LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color(hex: "B8B5FF"),
-                                        Color(hex: "9A8BB0")
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                                : LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.gray.opacity(0.3),
-                                        Color.gray.opacity(0.3)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    )
+                    Text("生成")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(selectedCount > 0 ? .white : .secondary)
+                        .frame(minWidth: 80)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(
+                            Capsule()
+                                .fill(selectedCount > 0 ? Color(hex: "9A8BB0") : Color.gray.opacity(0.2))
+                        )
                 }
-                .buttonStyle(PlainButtonStyle())
                 .disabled(selectedCount == 0)
-                .scaleEffect(selectedCount > 0 ? 1.0 : 0.95)
-                .animation(.spring(response: 0.3), value: selectedCount)
+                .animation(.easeInOut(duration: 0.2), value: selectedCount)
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.vertical, 12)
         }
         .background(
-            // 磨砂玻璃背景
-            VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+            // iOS 标准毛玻璃材质
+            VisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
         )
     }
 }

@@ -317,7 +317,7 @@ struct PostImageView: View {
             
             // 加载完成，从加载集合中移除
             Self.cacheAccessQueue.sync {
-                Self.loadingImages.remove(imageId)
+                _ = Self.loadingImages.remove(imageId)
             }
             
             // 在主线程更新UI
