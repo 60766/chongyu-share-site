@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>虫遇分享链接测试页面</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    .section {
+      margin-bottom: 40px;
+    }
+    .section h2 {
+      color: #333;
+      font-size: 1.5rem;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+    .link-item {
+      background: #f8f9fa;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+    }
+    .link-item h3 {
+      color: #667eea;
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+    }
+    .link-item p {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+    .link-item a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 5px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-right: 10px;
+      transition: background 0.3s;
+    }
+    .link-item a:hover {
+      background: #5568d3;
+    }
+    .url-display {
+      background: #e9ecef;
+      padding: 8px;
+      border-radius: 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      word-break: break-all;
+      margin-top: 10px;
+    }
+    .info {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 30px;
+    }
+    .info strong {
+      color: #856404;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🐛 虫遇分享链接测试</h1>
+    
+    <div class="info">
+      <strong>📝 说明：</strong>点击下方链接测试不同类型的分享页面显示效果。<br>
+      <strong>🔧 本地测试：</strong>将域名替换为 <code>localhost:8000</code> 或本地服务器地址。<br>
+      <strong>🌐 线上测试：</strong>直接点击链接在 share.chongyuai.com 上测试。
+    </div>
+
+    <!-- 单人聊天分享 -->
+    <div class="section">
+      <h2>💬 单人聊天分享</h2>
+      
+      <div class="link-item">
+        <h3>测试案例 1：与爱因斯坦的对话</h3>
+        <p>包含角色名称参数的完整链接</p>
+        <a href="https://share.chongyuai.com/wechat/chat?type=chat&id=conv-einstein-001&character=爱因斯坦" target="_blank">🔗 在线测试</a>
+        <a href="/wechat/chat?type=chat&id=conv-einstein-001&character=爱因斯坦" target="_blank">📱 本地测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/chat?type=chat&id=conv-einstein-001&character=爱因斯坦
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>测试案例 2：与莎士比亚的对话</h3>
+        <p>测试URL编码的中文字符</p>
+        <a href="https://share.chongyuai.com/wechat/chat?type=chat&id=conv-shakespeare-002&character=%E8%8E%8E%E5%A3%AB%E6%AF%94%E4%BA%9A" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/chat?type=chat&id=conv-shakespeare-002&character=%E8%8E%8E%E5%A3%AB%E6%AF%94%E4%BA%9A
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>测试案例 3：无角色名称</h3>
+        <p>只有ID，没有角色名称参数</p>
+        <a href="https://share.chongyuai.com/wechat/chat?type=chat&id=conv-test-003" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/chat?type=chat&id=conv-test-003
+        </div>
+      </div>
+    </div>
+
+    <!-- 多人聊天分享 -->
+    <div class="section">
+      <h2>👥 多人聊天分享</h2>
+      
+      <div class="link-item">
+        <h3>测试案例 1：物理学家讨论组</h3>
+        <p>包含会话名称的群聊分享</p>
+        <a href="https://share.chongyuai.com/wechat/multichat?type=multichat&id=multi-physics-001&name=物理学家讨论组" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/multichat?type=multichat&id=multi-physics-001&name=物理学家讨论组
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>测试案例 2：文学大师交流会</h3>
+        <p>测试长会话名称</p>
+        <a href="https://share.chongyuai.com/wechat/multichat?type=multichat&id=multi-literature-002&name=文学大师交流会：莎士比亚与李白的诗歌对话" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/multichat?type=multichat&id=multi-literature-002&name=文学大师交流会：莎士比亚与李白的诗歌对话
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>测试案例 3：无会话名称</h3>
+        <p>只有ID，没有会话名称</p>
+        <a href="https://share.chongyuai.com/wechat/multichat?type=multichat&id=multi-test-003" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/multichat?type=multichat&id=multi-test-003
+        </div>
+      </div>
+    </div>
+
+    <!-- 帖子分享 -->
+    <div class="section">
+      <h2>📝 帖子分享</h2>
+      
+      <div class="link-item">
+        <h3>测试案例 1：爱因斯坦的帖子</h3>
+        <p>包含作者名称的帖子分享</p>
+        <a href="https://share.chongyuai.com/wechat/post?type=post&id=post-einstein-001&author=爱因斯坦" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/post?type=post&id=post-einstein-001&author=爱因斯坦
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>测试案例 2：李白的诗作</h3>
+        <p>测试不同作者</p>
+        <a href="https://share.chongyuai.com/wechat/post?type=post&id=post-libai-002&author=李白" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/post?type=post&id=post-libai-002&author=李白
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>测试案例 3：无作者名称</h3>
+        <p>只有帖子ID</p>
+        <a href="https://share.chongyuai.com/wechat/post?type=post&id=post-test-003" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/post?type=post&id=post-test-003
+        </div>
+      </div>
+    </div>
+
+    <!-- 角色分享 -->
+    <div class="section">
+      <h2>👤 角色分享</h2>
+      
+      <div class="link-item">
+        <h3>测试案例 1：爱因斯坦</h3>
+        <p>包含角色名称的角色分享</p>
+        <a href="https://share.chongyuai.com/wechat/character?type=character&id=einstein&name=爱因斯坦" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/character?type=character&id=einstein&name=爱因斯坦
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>测试案例 2：孔子</h3>
+        <p>测试不同角色</p>
+        <a href="https://share.chongyuai.com/wechat/character?type=character&id=confucius&name=孔子" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/character?type=character&id=confucius&name=孔子
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>测试案例 3：无角色名称</h3>
+        <p>只有角色ID</p>
+        <a href="https://share.chongyuai.com/wechat/character?type=character&id=test-character" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/wechat/character?type=character&id=test-character
+        </div>
+      </div>
+    </div>
+
+    <!-- 向后兼容测试 -->
+    <div class="section">
+      <h2>🔄 向后兼容测试</h2>
+      
+      <div class="link-item">
+        <h3>旧格式 1：路径式聊天链接</h3>
+        <p>/chat/xxx 格式仍然支持</p>
+        <a href="https://share.chongyuai.com/chat/legacy-chat-001" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/chat/legacy-chat-001
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>旧格式 2：路径式群聊链接</h3>
+        <p>/multi/xxx 格式仍然支持</p>
+        <a href="https://share.chongyuai.com/multi/legacy-multi-001" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com/multi/legacy-multi-001
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>旧格式 3：图片分享链接</h3>
+        <p>?shareId=xxx&imageUrl=xxx 格式（带图片）</p>
+        <a href="https://share.chongyuai.com?shareId=img-share-001&imageUrl=https://example.com/image.jpg" target="_blank">🔗 在线测试</a>
+        <div class="url-display">
+          https://share.chongyuai.com?shareId=img-share-001&imageUrl=https://example.com/image.jpg
+        </div>
+      </div>
+    </div>
+
+    <!-- 本地测试说明 -->
+    <div class="section">
+      <h2>🔧 本地测试指南</h2>
+      
+      <div class="link-item">
+        <h3>1. 启动本地服务器</h3>
+        <p>在 ShareSite 目录运行：</p>
+        <div class="url-display">
+          python3 -m http.server 8000<br>
+          或<br>
+          npx serve
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>2. 访问测试页面</h3>
+        <p>在浏览器打开：</p>
+        <div class="url-display">
+          http://localhost:8000/test-links.html
+        </div>
+      </div>
+
+      <div class="link-item">
+        <h3>3. 测试分享链接</h3>
+        <p>将上面链接中的域名替换为：</p>
+        <div class="url-display">
+          localhost:8000
+        </div>
+        <p style="margin-top: 10px;">例如：</p>
+        <div class="url-display">
+          http://localhost:8000/wechat/chat?type=chat&id=test&character=测试
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+
