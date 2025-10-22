@@ -1,4 +1,14 @@
 {
+  "rewrites": [
+    {
+      "source": "/chat/:id",
+      "destination": "/chat/[id]"
+    },
+    {
+      "source": "/multi/:id",
+      "destination": "/multi/[id]"
+    }
+  ],
   "headers": [
     {
       "source": "/.well-known/apple-app-site-association",
