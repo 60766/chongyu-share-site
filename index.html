@@ -247,6 +247,96 @@
         <p>联系邮箱: shilong111234@icloud.com</p>
       </footer>
     </div>
+    <script>
+      // 处理动态路由
+      function handleRouting() {
+        const path = window.location.pathname;
+        const chatMatch = path.match(/^\/chat\/(.+)$/);
+        const multiMatch = path.match(/^\/multi\/(.+)$/);
+        
+        if (chatMatch) {
+          const chatId = chatMatch[1];
+          showChatShare(chatId);
+        } else if (multiMatch) {
+          const multiId = multiMatch[1];
+          showMultiShare(multiId);
+        }
+      }
+      
+      function showChatShare(chatId) {
+        document.title = '虫遇 - 聊天分享';
+        const container = document.querySelector('.container');
+        container.innerHTML = `
+          <header class="header">
+            <div class="logo">🐛 虫遇</div>
+            <div class="tagline">聊天分享</div>
+          </header>
+          <main class="main-content">
+            <div style="text-align: center; padding: 40px;">
+              <h2>📱 查看完整聊天记录</h2>
+              <p style="margin: 20px 0; font-size: 1.1rem;">
+                这是一个来自虫遇App的聊天分享链接
+              </p>
+              <p style="margin: 20px 0; color: #666;">
+                聊天ID: ${chatId}
+              </p>
+              <div class="download-section">
+                <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
+                <a href="chongyu://chat/${chatId}" class="download-btn">
+                  📱 在App中打开
+                </a>
+                <a href="https://apps.apple.com/app/虫遇" class="download-btn">
+                  🍎 下载虫遇App
+                </a>
+              </div>
+            </div>
+          </main>
+          <footer class="footer">
+            <p>&copy; 2024 虫遇 - 穿越时空的社交</p>
+          </footer>
+        `;
+      }
+      
+      function showMultiShare(multiId) {
+        document.title = '虫遇 - 群聊分享';
+        const container = document.querySelector('.container');
+        container.innerHTML = `
+          <header class="header">
+            <div class="logo">🐛 虫遇</div>
+            <div class="tagline">群聊分享</div>
+          </header>
+          <main class="main-content">
+            <div style="text-align: center; padding: 40px;">
+              <h2>👥 查看完整群聊记录</h2>
+              <p style="margin: 20px 0; font-size: 1.1rem;">
+                这是一个来自虫遇App的群聊分享链接
+              </p>
+              <p style="margin: 20px 0; color: #666;">
+                群聊ID: ${multiId}
+              </p>
+              <div class="download-section">
+                <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
+                <a href="chongyu://multi/${multiId}" class="download-btn">
+                  📱 在App中打开
+                </a>
+                <a href="https://apps.apple.com/app/虫遇" class="download-btn">
+                  🍎 下载虫遇App
+                </a>
+              </div>
+            </div>
+          </main>
+          <footer class="footer">
+            <p>&copy; 2024 虫遇 - 穿越时空的社交</p>
+          </footer>
+        `;
+      }
+      
+      // 页面加载时处理路由
+      document.addEventListener('DOMContentLoaded', handleRouting);
+      
+      // 处理浏览器前进后退
+      window.addEventListener('popstate', handleRouting);
+    </script>
   </body>
 </html>
 

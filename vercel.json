@@ -1,11 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/chat/:id",
+      "source": "/chat/(.*)",
       "destination": "/index.html"
     },
     {
-      "source": "/multi/:id",
+      "source": "/multi/(.*)",
       "destination": "/index.html"
     }
   ],
