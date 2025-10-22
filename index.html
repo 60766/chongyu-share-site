@@ -300,6 +300,23 @@
       // 处理动态路由
       function handleRouting() {
         const path = window.location.pathname;
+        const params = new URLSearchParams(window.location.search);
+        
+        // 处理URL查询参数格式：?shareId=xxx&imageUrl=xxx
+        const shareId = params.get('shareId');
+        const imageUrl = params.get('imageUrl');
+        
+        if (shareId && imageUrl) {
+          // 单人聊天分享
+          showImageShare(shareId, imageUrl, 'chat');
+          return;
+        } else if (shareId) {
+          // 多人聊天分享（只有shareId）
+          showImageShare(shareId, null, 'multi');
+          return;
+        }
+        
+        // 处理路径参数格式：/chat/xxx 或 /multi/xxx
         const chatMatch = path.match(/^\/chat\/(.+)$/);
         const multiMatch = path.match(/^\/multi\/(.+)$/);
         
@@ -310,6 +327,62 @@
           const multiId = multiMatch[1];
           showMultiShare(multiId);
         }
+      }
+      
+      // 显示分享卡片（支持图片）
+      function showImageShare(shareId, imageUrl, type) {
+        const title = type === 'chat' ? '聊天分享' : '群聊分享';
+        const emoji = type === 'chat' ? '📱' : '👥';
+        const scheme = type === 'chat' ? `chongyu://chat/${shareId}` : `chongyu://multi/${shareId}`;
+        
+        document.title = `虫遇 - ${title}`;
+        const container = document.querySelector('.container');
+        
+        let imageSection = '';
+        if (imageUrl) {
+          imageSection = `
+            <div style="margin: 30px 0;">
+              <img 
+                src="${decodeURIComponent(imageUrl)}" 
+                alt="分享卡片"
+                style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+              />
+              <p style="display: none; color: #999; margin-top: 10px;">图片加载失败</p>
+            </div>
+          `;
+        }
+        
+        container.innerHTML = `
+          <header class="header">
+            <div class="logo">🐛 虫遇</div>
+            <div class="tagline">${title}</div>
+          </header>
+          <main class="main-content">
+            <div style="text-align: center; padding: 40px;">
+              <h2>${emoji} 查看完整${type === 'chat' ? '聊天' : '群聊'}记录</h2>
+              <p style="margin: 20px 0; font-size: 1.1rem;">
+                这是一个来自虫遇App的${title}链接
+              </p>
+              ${imageSection}
+              <p style="margin: 20px 0; color: #666; font-size: 0.9rem;">
+                分享ID: ${shareId}
+              </p>
+              <div class="download-section">
+                <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
+                <a href="${scheme}" class="download-btn" style="display: inline-block; margin: 10px; padding: 15px 30px; background: white; color: #667eea; text-decoration: none; border-radius: 30px; font-weight: bold; transition: transform 0.2s;">
+                  📱 在App中打开
+                </a>
+                <a href="https://apps.apple.com/app/虫遇" class="download-btn" style="display: inline-block; margin: 10px; padding: 15px 30px; background: white; color: #667eea; text-decoration: none; border-radius: 30px; font-weight: bold; transition: transform 0.2s;">
+                  🍎 下载虫遇App
+                </a>
+              </div>
+            </div>
+          </main>
+          <footer class="footer">
+            <p>&copy; 2024 虫遇 - 穿越时空的社交</p>
+          </footer>
+        `;
       }
       
       function showChatShare(chatId) {
