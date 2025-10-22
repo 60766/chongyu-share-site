@@ -3,23 +3,251 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ChongYu Share</title>
+    <meta name="description" content="虫遇 - 穿越时空的社交应用，与历史人物对话互动，体验跨次元朋友圈" />
+    <meta name="keywords" content="虫遇,AI社交,历史人物,跨时空对话,朋友圈,iOS应用" />
+    <title>虫遇 - 穿越时空的社交</title>
     <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 40px; color: #111; }
-      code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; }
-      a { color: #0070f3; text-decoration: none; }
-      a:hover { text-decoration: underline; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+        line-height: 1.6; 
+        color: #333; 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      .container { 
+        max-width: 1200px; 
+        margin: 0 auto; 
+        padding: 20px; 
+      }
+      .header { 
+        text-align: center; 
+        padding: 60px 0; 
+        color: white; 
+      }
+      .logo { 
+        font-size: 3.5rem; 
+        font-weight: bold; 
+        margin-bottom: 10px; 
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      }
+      .tagline { 
+        font-size: 1.5rem; 
+        opacity: 0.9; 
+        margin-bottom: 30px; 
+      }
+      .main-content { 
+        background: white; 
+        border-radius: 20px; 
+        padding: 40px; 
+        margin: 20px 0; 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+      }
+      .section { 
+        margin-bottom: 40px; 
+      }
+      .section h2 { 
+        color: #667eea; 
+        font-size: 2rem; 
+        margin-bottom: 20px; 
+        text-align: center; 
+      }
+      .features { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+        gap: 30px; 
+        margin: 30px 0; 
+      }
+      .feature { 
+        text-align: center; 
+        padding: 30px 20px; 
+        border-radius: 15px; 
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
+      }
+      .feature-icon { 
+        font-size: 3rem; 
+        margin-bottom: 15px; 
+      }
+      .feature h3 { 
+        color: #333; 
+        margin-bottom: 10px; 
+      }
+      .download-section { 
+        text-align: center; 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        color: white; 
+        padding: 40px; 
+        border-radius: 15px; 
+        margin: 30px 0; 
+      }
+      .download-btn { 
+        display: inline-block; 
+        background: white; 
+        color: #667eea; 
+        padding: 15px 30px; 
+        border-radius: 25px; 
+        text-decoration: none; 
+        font-weight: bold; 
+        margin: 10px; 
+        transition: transform 0.3s ease; 
+      }
+      .download-btn:hover { 
+        transform: translateY(-2px); 
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2); 
+      }
+      .footer { 
+        text-align: center; 
+        padding: 30px; 
+        color: white; 
+        opacity: 0.8; 
+      }
+      .screenshots { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+        gap: 20px; 
+        margin: 30px 0; 
+      }
+      .screenshot { 
+        background: #f8f9fa; 
+        border-radius: 15px; 
+        padding: 20px; 
+        text-align: center; 
+        border: 2px solid #e9ecef; 
+      }
+      .tech-info { 
+        background: #f8f9fa; 
+        padding: 20px; 
+        border-radius: 10px; 
+        margin: 20px 0; 
+        font-size: 0.9rem; 
+        color: #666; 
+      }
+      @media (max-width: 768px) {
+        .logo { font-size: 2.5rem; }
+        .tagline { font-size: 1.2rem; }
+        .main-content { padding: 20px; }
+        .features { grid-template-columns: 1fr; }
+      }
     </style>
   </head>
   <body>
-    <h1>ChongYu Share</h1>
-    <p>用于 iOS Universal Links 的静态站点。</p>
-    <ul>
-      <li>AASA（well-known）：<a href="/.well-known/apple-app-site-association"><code>/.well-known/apple-app-site-association</code></a></li>
-      <li>AASA（root）：<a href="/apple-app-site-association"><code>/apple-app-site-association</code></a></li>
-      <li>示例唤起路径：<code>/wechat/...</code></li>
-    </ul>
+    <div class="container">
+      <header class="header">
+        <div class="logo">🐛 虫遇</div>
+        <div class="tagline">穿越时空的社交</div>
+        <p>与历史人物对话互动，体验前所未有的跨次元朋友圈</p>
+      </header>
+
+      <main class="main-content">
+        <section class="section">
+          <h2>🌟 应用介绍</h2>
+          <p style="text-align: center; font-size: 1.1rem; margin-bottom: 30px;">
+            虫遇是一款创新的AI社交应用，打破次元壁垒，让你与任何时代的历史人物进行深度对话。
+            在这里，你可以查看爱因斯坦的朋友圈动态，与莎士比亚讨论文学创作，
+            或者邀请达芬奇、孔子等多位大师参与群聊，体验跨时空的思想碰撞。
+          </p>
+        </section>
+
+        <section class="section">
+          <h2>✨ 核心功能</h2>
+          <div class="features">
+            <div class="feature">
+              <div class="feature-icon">💬</div>
+              <h3>AI角色对话</h3>
+              <p>与历史人物进行一对一深度对话，体验他们的智慧与人格魅力</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">👥</div>
+              <h3>多人群聊</h3>
+              <p>邀请多位历史人物参与群聊，观看跨时代的思想交流与碰撞</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📱</div>
+              <h3>朋友圈互动</h3>
+              <p>查看历史人物的动态分享，发布内容获得他们的点赞和评论</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🕳️</div>
+              <h3>虫洞探索</h3>
+              <p>AI智能生成个性化内容，探索不同时空的精彩故事</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>📱 应用截图</h2>
+          <div class="screenshots">
+            <div class="screenshot">
+              <h4>🏠 主页动态</h4>
+              <p>浏览历史人物的朋友圈，体验跨时空社交</p>
+            </div>
+            <div class="screenshot">
+              <h4>💭 私聊对话</h4>
+              <p>与任意历史人物进行深度一对一对话</p>
+            </div>
+            <div class="screenshot">
+              <h4>👥 群聊互动</h4>
+              <p>多人群聊，观看思想大师们的激烈讨论</p>
+            </div>
+            <div class="screenshot">
+              <h4>🔍 角色探索</h4>
+              <p>发现更多有趣的历史人物和虚拟角色</p>
+            </div>
+          </div>
+        </section>
+
+        <div class="download-section">
+          <h2 style="color: white; margin-bottom: 20px;">📲 立即下载</h2>
+          <p style="margin-bottom: 30px;">开启你的跨时空社交之旅</p>
+          <a href="https://apps.apple.com/app/虫遇" class="download-btn">
+            🍎 App Store 下载
+          </a>
+          <a href="https://testflight.apple.com/join/虫遇" class="download-btn">
+            ✈️ TestFlight 测试
+          </a>
+        </div>
+
+        <section class="section">
+          <h2>📋 应用信息</h2>
+          <div class="tech-info">
+            <p><strong>应用名称：</strong>虫遇</p>
+            <p><strong>开发者：</strong>李世龙</p>
+            <p><strong>应用类型：</strong>社交娱乐</p>
+            <p><strong>支持系统：</strong>iOS 15.0+</p>
+            <p><strong>Bundle ID：</strong>com.lishilong.chongyu</p>
+            <p><strong>版本：</strong>1.0</p>
+            <p><strong>更新时间：</strong>2024年10月</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>🎯 特色亮点</h2>
+          <ul style="font-size: 1.1rem; line-height: 2;">
+            <li>🤖 <strong>AI驱动：</strong>基于先进AI技术，每个角色都有独特的性格和知识背景</li>
+            <li>🌍 <strong>跨时空：</strong>汇聚古今中外的历史人物，打破时间和空间的限制</li>
+            <li>💡 <strong>智能生成：</strong>AI智能生成个性化内容，每次体验都独一无二</li>
+            <li>📱 <strong>社交体验：</strong>完整的社交功能，支持分享到微信朋友圈</li>
+            <li>🎨 <strong>精美设计：</strong>现代化UI设计，流畅的交互体验</li>
+          </ul>
+        </section>
+
+        <!-- Universal Links 技术信息 -->
+        <div class="tech-info" style="margin-top: 40px;">
+          <h3>🔗 技术支持</h3>
+          <p>本站点支持 iOS Universal Links，可直接从微信等应用打开虫遇App。</p>
+          <ul style="margin-top: 10px;">
+            <li>AASA配置：<a href="/.well-known/apple-app-site-association">/.well-known/apple-app-site-association</a></li>
+            <li>备用AASA：<a href="/apple-app-site-association">/apple-app-site-association</a></li>
+          </ul>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <p>&copy; 2024 虫遇 - 穿越时空的社交. 保留所有权利.</p>
+        <p>联系邮箱: shilong111234@icloud.com</p>
+      </footer>
+    </div>
   </body>
-  </html>
+</html>
 
 
