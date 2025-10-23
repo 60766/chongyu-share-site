@@ -121,7 +121,7 @@ struct PostShareModalView: View {
                     .padding(.bottom, 8)
                     
                     // 分享按钮组
-                    HStack(spacing: 35) {
+                    HStack(spacing: 40) {
                             // 微信分享
                             shareButton(
                                 title: "微信",
@@ -142,23 +142,13 @@ struct PostShareModalView: View {
                                 }
                             )
                             
-                            // 图片分享
+                            // 保存图片
                             shareButton(
-                                title: "图片",
-                                icon: "photo.fill",
+                                title: "保存卡片",
+                                icon: "square.and.arrow.down.fill",
                                 iconColor: Color(hex: "F5A623"),
                                 action: {
                                     saveImageToPhotos()
-                                }
-                            )
-                            
-                            // 链接分享
-                            shareButton(
-                                title: "链接",
-                                icon: "link",
-                                iconColor: Color(hex: "007AFF"),
-                                action: {
-                                    shareAsText()
                                 }
                             )
                                             }
@@ -200,65 +190,63 @@ struct PostShareModalView: View {
     // MARK: - 分享功能实现
     
     private func shareToWeChat() {
-        // 微信分享逻辑
+        // 微信分享逻辑 - 调用系统分享，用户可选择微信好友或朋友圈
+        // 添加触觉反馈
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        
         shareImage()
         isPresented = false
     }
     
     private func shareToMoments() {
-        // 朋友圈分享逻辑
+        // 朋友圈分享逻辑 - 同样调用系统分享
+        // 添加触觉反馈
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        
         shareImage()
         isPresented = false
     }
     
     private func saveImageToPhotos() {
-        // 保存图片到相册 - 添加短暂延迟确保视图渲染完成
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            if let image = self.generatePostShareImage() {
-                UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+        // 添加触觉反馈
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        
+        // 先生成图片再关闭界面，确保视图还在
+        if let image = self.generatePostShareImage() {
+            UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+            // 保存成功反馈
+            generator.notificationOccurred(.success)
+            
+            // 延迟关闭界面，让用户感受到反馈
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                isPresented = false
             }
+        } else {
+            // 保存失败反馈
+            generator.notificationOccurred(.error)
+            isPresented = false
         }
-        isPresented = false
-    }
-    
-    private func shareAsText() {
-        // 文本分享
-        let shareText = generatePostShareText()
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootViewController = windowScene.windows.first?.rootViewController {
-            
-            let activityVC = UIActivityViewController(activityItems: [shareText], applicationActivities: nil)
-            
-            // 在iPad上设置popover源视图
-            if let popoverController = activityVC.popoverPresentationController {
-                popoverController.sourceView = rootViewController.view
-                popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY, width: 0, height: 0)
-                popoverController.permittedArrowDirections = []
-            }
-            
-            rootViewController.present(activityVC, animated: true)
-        }
-        isPresented = false
     }
     
     private func shareImage() {
-        // 图片分享 - 添加短暂延迟确保视图渲染完成
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            if let image = self.generatePostShareImage() {
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let rootViewController = windowScene.windows.first?.rootViewController {
-                    
-                    let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+        // 先生成图片再进行分享
+        if let image = self.generatePostShareImage() {
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootViewController = windowScene.windows.first?.rootViewController {
                 
+                let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+            
                 // 在iPad上设置popover源视图
                 if let popoverController = activityVC.popoverPresentationController {
                     popoverController.sourceView = rootViewController.view
                     popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY, width: 0, height: 0)
                     popoverController.permittedArrowDirections = []
                 }
-                
-                    rootViewController.present(activityVC, animated: true)
-                }
+            
+                rootViewController.present(activityVC, animated: true)
             }
         }
     }
@@ -295,26 +283,126 @@ struct PostShareModalView: View {
     // MARK: - 内容生成
     
     private func generatePostShareImage() -> UIImage? {
+        // 🎯 第一性原理方案：
+        // 1. 在足够大的白色画布上渲染卡片（包含阴影）
+        // 2. 像素级精确检测卡片边界（包括阴影）
+        // 3. 裁剪，保留目标白边（上下左右完全一致）
+        
         let postShareCard = PostShareCard(
             post: post,
             includeFirstComment: includeFirstComment,
             colorScheme: selectedColorScheme
         )
         
-        return renderViewAsImage(postShareCard, size: CGSize(width: 375, height: 600))
+        // 在白色背景上渲染（给足够的空间容纳阴影）
+        let whiteCanvas = ZStack {
+            Color.white
+            postShareCard
+        }
+        
+        // 渲染到一个足够大的白色画布
+        // 高度估算：内容高度约400-600pt + 阴影空间30pt + buffer 100pt
+        guard let fullImage = renderViewAsImage(
+            whiteCanvas,
+            size: CGSize(width: 375 + 100, height: 800)  // 足够大的画布
+        ) else {
+            return nil
+        }
+        
+        // 精确裁剪，保留统一白边（8pt，视觉更紧凑）
+        return cropImageWithUniformPadding(fullImage, targetPadding: 8)
     }
     
-    private func generatePostShareText() -> String {
-        let contentPreview = post.content.prefix(100)
-        let ellipsis = post.content.count > 100 ? "..." : ""
+    // 像素级精确裁剪，确保上下左右白边完全一致
+    private func cropImageWithUniformPadding(_ image: UIImage, targetPadding: CGFloat) -> UIImage? {
+        guard let cgImage = image.cgImage else { return nil }
         
-        return """
-        【\(post.username)的虫遇动态】
+        let scale = image.scale
+        let width = cgImage.width
+        let height = cgImage.height
+        let bytesPerRow = width * 4
         
-        \(contentPreview)\(ellipsis)
+        // 创建像素数据上下文
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
         
-        来自虫遇App - 穿越时空的对话
-        """
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        
+        guard let pixelData = context.data else { return nil }
+        let data = pixelData.bindMemory(to: UInt8.self, capacity: width * height * 4)
+        
+        // 判断像素是否为纯白色（包括淡阴影）
+        // 阴影 opacity=0.12 的黑色 ≈ RGB(224, 224, 224)
+        // 使用阈值230可以过滤掉阴影，只检测实际卡片内容
+        func isWhitePixel(r: UInt8, g: UInt8, b: UInt8) -> Bool {
+            return r > 230 && g > 230 && b > 230
+        }
+        
+        // 找到内容的边界（非白色像素的最小最大坐标）
+        var minX = width
+        var maxX = 0
+        var minY = height
+        var maxY = 0
+        
+        for y in 0..<height {
+            for x in 0..<width {
+                let pixelIndex = (y * width + x) * 4
+                let r = data[pixelIndex]
+                let g = data[pixelIndex + 1]
+                let b = data[pixelIndex + 2]
+                
+                if !isWhitePixel(r: r, g: g, b: b) {
+                    minX = min(minX, x)
+                    maxX = max(maxX, x)
+                    minY = min(minY, y)
+                    maxY = max(maxY, y)
+                }
+            }
+        }
+        
+        // 如果没找到内容，返回原图
+        guard minX < maxX && minY < maxY else {
+            print("⚠️ 未检测到内容边界，返回原图")
+            return image
+        }
+        
+        // 转换目标padding到像素单位
+        let paddingPixels = Int(targetPadding * scale)
+        
+        // 🔍 调试日志：检测结果
+        print("✅ 内容边界检测成功:")
+        print("   - 图片尺寸: \(width)×\(height)px")
+        print("   - 内容边界: x[\(minX), \(maxX)] y[\(minY), \(maxY)]")
+        print("   - 内容尺寸: \((maxX - minX))×\((maxY - minY))px")
+        print("   - 目标白边: \(targetPadding)pt = \(paddingPixels)px")
+        
+        // 计算裁剪区域（内容边界 + 目标padding）
+        let cropX = max(0, minX - paddingPixels)
+        let cropY = max(0, minY - paddingPixels)
+        let cropWidth = min(width - cropX, maxX - minX + 1 + 2 * paddingPixels)
+        let cropHeight = min(height - cropY, maxY - minY + 1 + 2 * paddingPixels)
+        
+        print("   - 裁剪区域: (\(cropX), \(cropY), \(cropWidth), \(cropHeight))")
+        print("   - 白边验证: 上=\(minY - cropY)px 下=\(cropY + cropHeight - maxY)px 左=\(minX - cropX)px 右=\(cropX + cropWidth - maxX)px")
+        
+        let cropRect = CGRect(
+            x: cropX,
+            y: cropY,
+            width: cropWidth,
+            height: cropHeight
+        )
+        
+        // 裁剪
+        guard let croppedCGImage = cgImage.cropping(to: cropRect) else { return nil }
+        
+        return UIImage(cgImage: croppedCGImage, scale: scale, orientation: image.imageOrientation)
     }
     
     // 将SwiftUI视图渲染为UIImage
@@ -322,52 +410,38 @@ struct PostShareModalView: View {
         let controller = UIHostingController(rootView: view)
         controller.view.frame = CGRect(origin: .zero, size: size)
         controller.view.bounds = CGRect(origin: .zero, size: size)
-        controller.view.backgroundColor = UIColor.clear
+        controller.view.backgroundColor = .white
         
-        // 添加到窗口层次结构中，确保视图完全初始化
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first {
-            window.addSubview(controller.view)
-            controller.view.alpha = 0 // 设为透明，不影响用户界面
-            
-            // 强制布局更新和渲染
-            controller.view.setNeedsLayout()
-            controller.view.layoutIfNeeded()
-            
-            // 确保所有子视图都完成布局
-            controller.view.subviews.forEach { subview in
-                subview.setNeedsLayout()
-                subview.layoutIfNeeded()
-            }
-            
-            // 使用更高质量的渲染
-            let format = UIGraphicsImageRendererFormat()
-            format.scale = UIScreen.main.scale
-            format.opaque = false
-            
-            let renderer = UIGraphicsImageRenderer(size: size, format: format)
-            let image = renderer.image { context in
-                controller.view.layer.render(in: context.cgContext)
-            }
-            
-            // 清理：从窗口中移除视图
-            controller.view.removeFromSuperview()
-            
-            return image
-        }
+        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+        window.rootViewController = controller
+        window.backgroundColor = .white
+        window.isHidden = false
         
-        // 备用方案：如果无法获取窗口，使用原来的方法
+        // 强制布局
         controller.view.setNeedsLayout()
         controller.view.layoutIfNeeded()
         
+        // 等待渲染稳定
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+        
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        
+        // 高质量渲染
         let format = UIGraphicsImageRendererFormat()
-        format.scale = UIScreen.main.scale
-        format.opaque = false
+        format.scale = 3.0
+        format.opaque = true  // 白色背景，使用opaque提高性能
+        format.preferredRange = .standard
         
         let renderer = UIGraphicsImageRenderer(size: size, format: format)
-        return renderer.image { context in
-            controller.view.layer.render(in: context.cgContext)
+        let image = renderer.image { context in
+            controller.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
         }
+        
+        window.isHidden = true
+        window.rootViewController = nil
+        
+        return image
     }
 }
 

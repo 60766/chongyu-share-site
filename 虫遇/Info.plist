@@ -44,6 +44,10 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>需要访问您的相册以保存精美的分享卡片</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>需要访问您的相册以保存和分享内容</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

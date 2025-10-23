@@ -203,31 +203,12 @@ struct PostShareCard: View {
                 .padding(1.5)
         )
         .shadow(
-            color: colorConfig.shadowColors[0].opacity(0.5), // 主要阴影
-            radius: 20,
-            x: 0,
-            y: 12
-        )
-        .shadow(
-            color: colorConfig.shadowColors[1].opacity(0.4), // 阴影叠加
+            color: Color.black.opacity(0.12), // 稍微减淡阴影强度
             radius: 12,
-            x: 6,
-            y: 6
-        )
-        .shadow(
-            color: colorConfig.shadowColors[2].opacity(0.25), // 侧面阴影
-            radius: 8,
-            x: -3,
-            y: 8
-        )
-        .shadow(
-            color: Color.black.opacity(0.1), // 底层黑色阴影增加深度
-            radius: 25,
             x: 0,
-            y: 15
+            y: 0  // ✅ 关键修改：y=0 让阴影上下对称，便于精确裁剪
         )
-        .frame(width: cardWidth)
-        .clipped() // 确保内容不会溢出
+        .frame(width: cardWidth) // ✅ 保留固定宽度，确保布局一致性
     }
     
     // MARK: - 用户信息区域（完全复制PostCardView）
