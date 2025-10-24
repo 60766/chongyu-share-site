@@ -2,72 +2,521 @@ import SwiftUI
 import UIKit
 
 /**
+ * 分享卡片结果
+ * 包含预览版和保存版两个图片
+ */
+struct ShareCardResult {
+    let previewImage: UIImage  // 预览版（无白边，用于界面显示）
+    let saveImage: UIImage     // 保存版（带白边，用于保存和分享）
+}
+
+/**
  * 多人聊天分享卡片生成器
  * 用于生成多人对话的精美分享卡片
  */
 class MultiChatShareCardGenerator {
     
-    /// 生成分享卡片图片
+    /// 生成分享卡片图片（返回预览版和保存版）
     static func generateCard(
         message: ChatMessage,
         character: CharacterModel,
         theme: String
-    ) -> UIImage {
+    ) -> ShareCardResult {
         
-        let cardView = MultiChatShareCardView(
+        // 预览版（带阴影）
+        let previewCardView = MultiChatShareCardView(
             message: message,
             character: character,
-            theme: theme
+            theme: theme,
+            showShadow: true
         )
         
-        // 使用动态尺寸渲染并应用圆角
-        let cardHeight = cardView.calculateOptimalHeight()
-        let rawImage = cardView.asUIImage(size: CGSize(width: 350, height: cardHeight))
-        return rawImage.withRoundedCorners(radius: 24)
+        let cardHeight = previewCardView.calculateOptimalHeight()
+        
+        // 🎨 预览版：直接渲染卡片，应用圆角
+        let previewImageRaw = renderViewAsImage(previewCardView, size: CGSize(width: 320, height: cardHeight), opaque: false) ?? previewCardView.asUIImage(size: CGSize(width: 320, height: cardHeight))
+        let previewImage = previewImageRaw.withRoundedCorners(radius: 24, addGradientBackground: false)
+        
+        // 💾 保存版：彩色渐变背景渲染管线
+        let saveCardView = MultiChatShareCardView(
+            message: message,
+            character: character,
+            theme: theme,
+            showShadow: true,
+            showBackground: false  // 使用透明背景，让底层渐变显示
+        )
+        
+        // 计算扩大的背景尺寸
+        let backgroundPadding: CGFloat = 40  // 背景比卡片大40pt
+        let backgroundWidth = 320 + backgroundPadding * 2
+        let backgroundHeight = cardHeight + backgroundPadding * 2
+        
+        // 定义彩色渐变描边颜色 - 参考主页面帖子分享卡片
+        let borderColors = [
+            Color(red: 0.8, green: 0.6, blue: 1.0),   // 淡紫色
+            Color(red: 1.0, green: 0.5, blue: 0.8),   // 粉色
+            Color(red: 0.2, green: 0.7, blue: 1.0),   // 蓝色
+            Color(red: 1.0, green: 0.6, blue: 0.2)    // 橙色
+        ]
+        
+        let gradientCanvas = ZStack {
+            // 底层渐变背景 - 扩大范围
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 0.95, green: 0.85, blue: 1.0),  // 淡紫色
+                    Color(red: 0.85, green: 0.95, blue: 1.0)   // 淡蓝色
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .frame(width: backgroundWidth, height: backgroundHeight)
+            // 保存版不使用圆角，让背景完全铺满四个角
+            
+            // 上层透明卡片 - 居中对齐，添加描边
+            saveCardView
+                .frame(width: 320, height: cardHeight)
+                .overlay(
+                    // 外层精致边框 - 彩色渐变描边
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(
+                            LinearGradient(
+                                gradient: Gradient(colors: borderColors.map { $0.opacity(0.8) }),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 3.0
+                        )
+                )
+                .overlay(
+                    // 内层精致边框 - 白色高光
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.6),
+                                    Color.white.opacity(0.3),
+                                    Color.white.opacity(0.8)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.0
+                        )
+                        .padding(1.5)
+                )
+        }
+        
+        // 渲染到足够大的彩色画布（高度 = 卡片高度 + 阴影空间 + buffer）
+        guard let fullImage = renderViewAsImage(
+            gradientCanvas,
+            size: CGSize(width: backgroundWidth + 60, height: backgroundHeight + 60),
+            opaque: false
+        ) else {
+            // 如果渲染失败，fallback 到简单方案
+            let fallbackImage = previewImageRaw.withRoundedCorners(radius: 24)
+            return ShareCardResult(previewImage: previewImage, saveImage: fallbackImage)
+        }
+        
+        // 像素裁剪，删除左右和上面的白色空隙，只保留底部少量边距
+        let saveImage = cropImageWithColoredPadding(fullImage, targetPadding: 0) ?? fullImage
+        
+        return ShareCardResult(previewImage: previewImage, saveImage: saveImage)
     }
     
-    /// 批量生成分享卡片
+    /// 批量生成分享卡片（返回预览版和保存版）
     static func generateCards(
         messages: [ChatMessage],
         characters: [CharacterModel],
         theme: String
-    ) -> [UIImage] {
+    ) -> [ShareCardResult] {
         
         return messages.enumerated().map { index, message in
             let character = characters.first(where: { $0.id == message.characterId }) ?? characters.first!
             
-            let cardView = MultiChatShareCardView(
+            let previewCardView = MultiChatShareCardView(
                 message: message,
                 character: character,
                 theme: theme,
                 cardIndex: index + 1,
-                totalCards: messages.count
+                totalCards: messages.count,
+                showShadow: true
             )
             
-            // 使用动态尺寸渲染并应用圆角
-            let cardHeight = cardView.calculateOptimalHeight()
-            let rawImage = cardView.asUIImage(size: CGSize(width: 350, height: cardHeight))
-            return rawImage.withRoundedCorners(radius: 24)
+            let cardHeight = previewCardView.calculateOptimalHeight()
+            
+            // 🎨 预览版：直接渲染卡片，应用圆角
+            let previewImageRaw = renderViewAsImage(previewCardView, size: CGSize(width: 320, height: cardHeight), opaque: false) ?? previewCardView.asUIImage(size: CGSize(width: 320, height: cardHeight))
+            let previewImage = previewImageRaw.withRoundedCorners(radius: 24, addGradientBackground: false)
+            
+            // 💾 保存版：彩色渐变背景渲染管线
+            let saveCardView = MultiChatShareCardView(
+                message: message,
+                character: character,
+                theme: theme,
+                cardIndex: index + 1,
+                totalCards: messages.count,
+                showShadow: true,
+                showBackground: false  // 使用透明背景，让底层渐变显示
+            )
+            
+            // 计算扩大的背景尺寸
+            let backgroundPadding: CGFloat = 40  // 背景比卡片大40pt
+            let backgroundWidth = 320 + backgroundPadding * 2
+            let backgroundHeight = cardHeight + backgroundPadding * 2
+            
+            // 定义彩色渐变描边颜色 - 参考主页面帖子分享卡片
+            let borderColors = [
+                Color(red: 0.8, green: 0.6, blue: 1.0),   // 淡紫色
+                Color(red: 1.0, green: 0.5, blue: 0.8),   // 粉色
+                Color(red: 0.2, green: 0.7, blue: 1.0),   // 蓝色
+                Color(red: 1.0, green: 0.6, blue: 0.2)    // 橙色
+            ]
+            
+            let gradientCanvas = ZStack {
+                // 底层渐变背景 - 扩大范围
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.95, green: 0.85, blue: 1.0),  // 淡紫色
+                        Color(red: 0.85, green: 0.95, blue: 1.0)   // 淡蓝色
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .frame(width: backgroundWidth, height: backgroundHeight)
+                // 保存版不使用圆角，让背景完全铺满四个角
+                
+                // 上层透明卡片 - 居中对齐，添加描边
+                saveCardView
+                    .frame(width: 320, height: cardHeight)
+                    .overlay(
+                        // 外层精致边框 - 彩色渐变描边
+                        RoundedRectangle(cornerRadius: 24)
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: borderColors.map { $0.opacity(0.8) }),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 3.0
+                            )
+                    )
+                    .overlay(
+                        // 内层精致边框 - 白色高光
+                        RoundedRectangle(cornerRadius: 24)
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.white.opacity(0.6),
+                                        Color.white.opacity(0.3),
+                                        Color.white.opacity(0.8)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.0
+                            )
+                            .padding(1.5)
+                    )
+            }
+            
+            guard let fullImage = renderViewAsImage(
+                gradientCanvas,
+                size: CGSize(width: backgroundWidth + 60, height: backgroundHeight + 60),
+                opaque: false
+            ) else {
+                let fallbackImage = previewImageRaw.withRoundedCorners(radius: 24)
+                return ShareCardResult(previewImage: previewImage, saveImage: fallbackImage)
+            }
+            
+            let saveImage = cropImageWithColoredPadding(fullImage, targetPadding: 0) ?? fullImage
+            
+            return ShareCardResult(previewImage: previewImage, saveImage: saveImage)
         }
     }
     
-    /// 生成合并对话卡片（将多条消息合并到一张卡片上）
+    /// 生成合并对话卡片（将多条消息合并到一张卡片上，返回预览版和保存版）
     static func generateMergedCard(
         messages: [ChatMessage],
         characters: [CharacterModel],
         theme: String
-    ) -> UIImage {
+    ) -> ShareCardResult {
         
-        let cardView = MultiChatMergedCardView(
+        let previewCardView = MultiChatMergedCardView(
             messages: messages,
             characters: characters,
-            theme: theme
+            theme: theme,
+            showShadow: true
         )
         
-        // 使用动态尺寸渲染并应用圆角（合并卡片）
-        let cardHeight = cardView.calculateOptimalHeight()
-        let rawImage = cardView.asUIImage(size: CGSize(width: 350, height: cardHeight))
-        return rawImage.withRoundedCorners(radius: 24)
+        let cardHeight = previewCardView.calculateOptimalHeight()
+        
+        // 🎨 预览版：直接渲染卡片，应用圆角
+        let previewImageRaw = renderViewAsImage(previewCardView, size: CGSize(width: 320, height: cardHeight), opaque: false) ?? previewCardView.asUIImage(size: CGSize(width: 320, height: cardHeight))
+        let previewImage = previewImageRaw.withRoundedCorners(radius: 24, addGradientBackground: false)
+        
+        // 💾 保存版：彩色渐变背景渲染管线
+        let saveCardView = MultiChatMergedCardView(
+            messages: messages,
+            characters: characters,
+            theme: theme,
+            showShadow: true,
+            showBackground: false  // 使用透明背景，让底层渐变显示
+        )
+        
+        // 计算扩大的背景尺寸
+        let backgroundPadding: CGFloat = 40  // 背景比卡片大40pt
+        let backgroundWidth = 320 + backgroundPadding * 2
+        let backgroundHeight = cardHeight + backgroundPadding * 2
+        
+        // 定义彩色渐变描边颜色 - 参考主页面帖子分享卡片
+        let borderColors = [
+            Color(red: 0.8, green: 0.6, blue: 1.0),   // 淡紫色
+            Color(red: 1.0, green: 0.5, blue: 0.8),   // 粉色
+            Color(red: 0.2, green: 0.7, blue: 1.0),   // 蓝色
+            Color(red: 1.0, green: 0.6, blue: 0.2)    // 橙色
+        ]
+        
+        let gradientCanvas = ZStack {
+            // 底层渐变背景 - 扩大范围
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 0.95, green: 0.85, blue: 1.0),  // 淡紫色
+                    Color(red: 0.85, green: 0.95, blue: 1.0)   // 淡蓝色
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .frame(width: backgroundWidth, height: backgroundHeight)
+            // 保存版不使用圆角，让背景完全铺满四个角
+            
+            // 上层透明卡片 - 居中对齐，添加描边
+            saveCardView
+                .frame(width: 320, height: cardHeight)
+                .overlay(
+                    // 外层精致边框 - 彩色渐变描边
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(
+                            LinearGradient(
+                                gradient: Gradient(colors: borderColors.map { $0.opacity(0.8) }),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 3.0
+                        )
+                )
+                .overlay(
+                    // 内层精致边框 - 白色高光
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.6),
+                                    Color.white.opacity(0.3),
+                                    Color.white.opacity(0.8)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.0
+                        )
+                        .padding(1.5)
+                )
+        }
+        
+        guard let fullImage = renderViewAsImage(
+            gradientCanvas,
+            size: CGSize(width: backgroundWidth + 60, height: backgroundHeight + 60),
+            opaque: false
+        ) else {
+            let fallbackImage = previewImageRaw.withRoundedCorners(radius: 24)
+            return ShareCardResult(previewImage: previewImage, saveImage: fallbackImage)
+        }
+        
+        let saveImage = cropImageWithColoredPadding(fullImage, targetPadding: 0) ?? fullImage
+        
+        return ShareCardResult(previewImage: previewImage, saveImage: saveImage)
+    }
+    
+    // MARK: - 像素级精确裁剪（与PostShareModalView保持一致）
+    
+    /// 像素级精确裁剪，确保上下左右白边完全一致
+    private static func cropImageWithUniformPadding(_ image: UIImage, targetPadding: CGFloat) -> UIImage? {
+        guard let cgImage = image.cgImage else { return nil }
+        
+        let scale = image.scale
+        let width = cgImage.width
+        let height = cgImage.height
+        let bytesPerRow = width * 4
+        
+        // 创建像素数据上下文
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        
+        guard let pixelData = context.data else { return nil }
+        let data = pixelData.bindMemory(to: UInt8.self, capacity: width * height * 4)
+        
+        // 判断像素是否为纯白色（包括淡阴影）
+        // 阴影 opacity=0.12 的黑色 ≈ RGB(224, 224, 224)
+        // 使用阈值230可以过滤掉阴影，只检测实际卡片内容
+        func isWhitePixel(r: UInt8, g: UInt8, b: UInt8) -> Bool {
+            return r > 230 && g > 230 && b > 230
+        }
+        
+        // 找到内容的边界（非白色像素的最小最大坐标）
+        var minX = width
+        var maxX = 0
+        var minY = height
+        var maxY = 0
+        
+        for y in 0..<height {
+            for x in 0..<width {
+                let pixelIndex = (y * width + x) * 4
+                let r = data[pixelIndex]
+                let g = data[pixelIndex + 1]
+                let b = data[pixelIndex + 2]
+                
+                if !isWhitePixel(r: r, g: g, b: b) {
+                    minX = min(minX, x)
+                    maxX = max(maxX, x)
+                    minY = min(minY, y)
+                    maxY = max(maxY, y)
+                }
+            }
+        }
+        
+        // 如果没找到内容，返回原图
+        guard minX < maxX && minY < maxY else {
+            return image
+        }
+        
+        // 转换目标padding到像素单位
+        let paddingPixels = Int(targetPadding * scale)
+        
+        // 🔍 调试日志
+        print("🔍 MultiChat边界检测:")
+        print("   画布: \(width)×\(height)px (scale=\(scale))")
+        print("   内容边界: x[\(minX), \(maxX)] y[\(minY), \(maxY)]")
+        print("   内容尺寸: \((maxX - minX + 1))×\((maxY - minY + 1))px")
+        print("   目标padding: \(targetPadding)pt = \(paddingPixels)px")
+        
+        // 计算裁剪区域（内容边界 + 目标padding）
+        let cropX = max(0, minX - paddingPixels)
+        let cropY = max(0, minY - paddingPixels)
+        let cropWidth = min(width - cropX, maxX - minX + 1 + 2 * paddingPixels)
+        let cropHeight = min(height - cropY, maxY - minY + 1 + 2 * paddingPixels)
+        
+        print("   裁剪区域: (\(cropX), \(cropY), \(cropWidth), \(cropHeight))")
+        print("   实际白边: 左=\(minX - cropX)px 右=\(cropX + cropWidth - maxX - 1)px 上=\(minY - cropY)px 下=\(cropY + cropHeight - maxY - 1)px")
+        
+        let cropRect = CGRect(
+            x: cropX,
+            y: cropY,
+            width: cropWidth,
+            height: cropHeight
+        )
+        
+        // 裁剪
+        guard let croppedCGImage = cgImage.cropping(to: cropRect) else { return nil }
+        
+        return UIImage(cgImage: croppedCGImage, scale: scale, orientation: image.imageOrientation)
+    }
+    
+    /// 彩色背景的像素级精确裁剪，通过检测阴影边界来定位卡片
+    private static func cropImageWithColoredPadding(_ image: UIImage, targetPadding: CGFloat) -> UIImage? {
+        guard let cgImage = image.cgImage else { return nil }
+        
+        let scale = image.scale
+        let width = cgImage.width
+        let height = cgImage.height
+        let bytesPerRow = width * 4
+        
+        // 创建像素数据上下文
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        
+        guard let pixelData = context.data else { return nil }
+        let data = pixelData.bindMemory(to: UInt8.self, capacity: width * height * 4)
+        
+        // 获取画布的背景色（采样左上角）
+        let bgR = data[0]
+        let bgG = data[1]
+        let bgB = data[2]
+        
+        // 判断像素是否为背景色（包括轻微渐变）
+        // 允许一定的色差以适应渐变背景
+        func isBackgroundPixel(r: UInt8, g: UInt8, b: UInt8) -> Bool {
+            let threshold: Int = 40  // 色差阈值
+            return abs(Int(r) - Int(bgR)) < threshold &&
+                   abs(Int(g) - Int(bgG)) < threshold &&
+                   abs(Int(b) - Int(bgB)) < threshold
+        }
+        
+        // 找到内容的边界（非背景像素的最小最大坐标）
+        var minX = width
+        var maxX = 0
+        var minY = height
+        var maxY = 0
+        
+        for y in 0..<height {
+            for x in 0..<width {
+                let pixelIndex = (y * width + x) * 4
+                let r = data[pixelIndex]
+                let g = data[pixelIndex + 1]
+                let b = data[pixelIndex + 2]
+                
+                if !isBackgroundPixel(r: r, g: g, b: b) {
+                    minX = min(minX, x)
+                    maxX = max(maxX, x)
+                    minY = min(minY, y)
+                    maxY = max(maxY, y)
+                }
+            }
+        }
+        
+        // 如果没找到内容，返回原图
+        guard minX < maxX && minY < maxY else {
+            return image
+        }
+        
+        // 转换目标padding到像素单位
+        let paddingPixels = Int(targetPadding * scale)
+        
+        // 计算裁剪区域：左右上贴边，只在底部保留少量边距
+        let bottomPaddingPixels = Int(8 * scale)  // 底部保留8pt边距
+        let cropX = minX  // 左边贴边
+        let cropY = minY  // 上边贴边
+        let cropWidth = maxX - minX + 1  // 右边贴边
+        let cropHeight = min(height - cropY, maxY - minY + 1 + bottomPaddingPixels)  // 只在底部加边距
+        
+        let cropRect = CGRect(
+            x: cropX,
+            y: cropY,
+            width: cropWidth,
+            height: cropHeight
+        )
+        
+        // 裁剪
+        guard let croppedCGImage = cgImage.cropping(to: cropRect) else { return nil }
+        
+        return UIImage(cgImage: croppedCGImage, scale: scale, orientation: image.imageOrientation)
     }
 }
 
@@ -78,6 +527,22 @@ struct MultiChatMergedCardView: View {
     let messages: [ChatMessage]
     let characters: [CharacterModel]
     let theme: String
+    let showShadow: Bool
+    let showBackground: Bool
+    
+    init(
+        messages: [ChatMessage],
+        characters: [CharacterModel],
+        theme: String,
+        showShadow: Bool = true,
+        showBackground: Bool = true
+    ) {
+        self.messages = messages
+        self.characters = characters
+        self.theme = theme
+        self.showShadow = showShadow
+        self.showBackground = showBackground
+    }
     
     // 当消息数量较少时，头部需要更紧凑
     private var isSparseMessages: Bool { messages.count <= 2 }
@@ -138,19 +603,25 @@ struct MultiChatMergedCardView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
+        let totalHeight = calculateOptimalHeight()
+        let headerHeight: CGFloat = 32
+        let footerHeight: CGFloat = 60
+        let contentHeight = totalHeight - headerHeight - footerHeight
+        
+        return VStack(spacing: 0) {
             // 简化的顶部区域 - 固定高度
             simplifiedHeaderSection
-                .frame(height: 32)  // 固定顶部高度（与计算保持一致）
+                .frame(height: headerHeight)
             
-            // 主要内容区域 - 对话列表（动态高度）
+            // 主要内容区域 - 明确设置高度，确保填充剩余空间
             contentSection
+                .frame(height: contentHeight, alignment: .top)
             
             // 底部水印区域 - 固定高度
             footerSection
-                .frame(height: 60)  // 固定底部高度（与计算保持一致）
+                .frame(height: footerHeight)
         }
-        .frame(width: 350, height: calculateOptimalHeight())
+        .frame(width: 320, height: totalHeight)
         .background(
             ZStack {
                 // 主渐变（从上到下）- 参考主页面的梦幻渐变
@@ -194,8 +665,18 @@ struct MultiChatMergedCardView: View {
             }
         )
         .clipShape(RoundedRectangle(cornerRadius: 24))
-        .shadow(color: Color(hex: "9A8BB0").opacity(0.15), radius: 25, x: 0, y: 12)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+        .shadow(
+            color: showShadow ? Color(hex: "9A8BB0").opacity(0.12) : .clear,
+            radius: showShadow ? 12 : 0,
+            x: 0,
+            y: 0
+        )
+        .shadow(
+            color: showShadow ? Color.black.opacity(0.05) : .clear,
+            radius: showShadow ? 8 : 0,
+            x: 0,
+            y: 0
+        )
     }
     
     // 简化的顶部区域
@@ -530,19 +1011,25 @@ struct MultiChatShareCardView: View {
     let theme: String
     let cardIndex: Int?
     let totalCards: Int?
+    let showShadow: Bool
+    let showBackground: Bool
     
     init(
         message: ChatMessage,
         character: CharacterModel,
         theme: String,
         cardIndex: Int? = nil,
-        totalCards: Int? = nil
+        totalCards: Int? = nil,
+        showShadow: Bool = true,
+        showBackground: Bool = true
     ) {
         self.message = message
         self.character = character
         self.theme = theme
         self.cardIndex = cardIndex
         self.totalCards = totalCards
+        self.showShadow = showShadow
+        self.showBackground = showBackground
     }
     
     // 计算最佳高度（针对单条消息优化，更加紧凑）
@@ -595,52 +1082,64 @@ struct MultiChatShareCardView: View {
             footerSection
                 .frame(height: 70)  // 固定底部高度
         }
-        .frame(width: 350, height: calculateOptimalHeight())
+        .frame(width: 320, height: calculateOptimalHeight())
         .background(
-            ZStack {
-                // 主渐变（从上到下）- 参考主页面的梦幻渐变
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(hex: "FFF0F5"),  // 更亮的粉白色
-                        Color(hex: "FFE8F0"),  // 亮粉色
-                        Color(hex: "F0E8FF"),  // 亮紫色
-                        Color(hex: "E8F4FF"),  // 亮蓝色
-                        Color(hex: "FFE8D4")   // 淡橙色
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                
-                // 顶部水平渐变层（从左到右的色彩变化）
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(hex: "FFE8F0").opacity(0.4),  // 左侧粉色
-                        Color(hex: "FFD4E5").opacity(0.3),  // 粉红色
-                        Color.clear,                         // 中间透明
-                        Color(hex: "E8F4FF").opacity(0.3),  // 淡蓝色
-                        Color(hex: "F0E8FF").opacity(0.4)   // 右侧紫色
-                    ]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                
-                // 左上角明亮色彩点缀
-                RadialGradient(
-                    gradient: Gradient(colors: [
-                        Color.white.opacity(0.6),           // 亮白色中心
-                        Color(hex: "FFFEF5").opacity(0.5),  // 极淡的奶白色
-                        Color(hex: "FFF9E6").opacity(0.3),  // 非常淡的奶白色
-                        Color.clear
-                    ]),
-                    center: .topLeading,
-                    startRadius: 5,
-                    endRadius: 200
-                )
-            }
+            showBackground ? AnyView(
+                ZStack {
+                    // 主渐变（从上到下）- 参考主页面的梦幻渐变
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(hex: "FFF0F5"),  // 更亮的粉白色
+                            Color(hex: "FFE8F0"),  // 亮粉色
+                            Color(hex: "F0E8FF"),  // 亮紫色
+                            Color(hex: "E8F4FF"),  // 亮蓝色
+                            Color(hex: "FFE8D4")   // 淡橙色
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    
+                    // 顶部水平渐变层（从左到右的色彩变化）
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(hex: "FFE8F0").opacity(0.4),  // 左侧粉色
+                            Color(hex: "FFD4E5").opacity(0.3),  // 粉红色
+                            Color.clear,                         // 中间透明
+                            Color(hex: "E8F4FF").opacity(0.3),  // 淡蓝色
+                            Color(hex: "F0E8FF").opacity(0.4)   // 右侧紫色
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    
+                    // 左上角明亮色彩点缀
+                    RadialGradient(
+                        gradient: Gradient(colors: [
+                            Color.white.opacity(0.6),           // 亮白色中心
+                            Color(hex: "FFFEF5").opacity(0.5),  // 极淡的奶白色
+                            Color(hex: "FFF9E6").opacity(0.3),  // 非常淡的奶白色
+                            Color.clear
+                        ]),
+                        center: .topLeading,
+                        startRadius: 5,
+                        endRadius: 200
+                    )
+                }
+            ) : AnyView(Color.clear)
         )
         .clipShape(RoundedRectangle(cornerRadius: 24))
-        .shadow(color: Color(hex: "9A8BB0").opacity(0.15), radius: 25, x: 0, y: 12)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+        .shadow(
+            color: showShadow ? Color(hex: "9A8BB0").opacity(0.12) : .clear,
+            radius: showShadow ? 12 : 0,
+            x: 0,
+            y: 0
+        )
+        .shadow(
+            color: showShadow ? Color.black.opacity(0.05) : .clear,
+            radius: showShadow ? 8 : 0,
+            x: 0,
+            y: 0
+        )
     }
     
     // 简化的顶部区域（与MultiChatMergedCardView保持一致）
@@ -922,7 +1421,7 @@ struct MultiChatShareCardView: View {
 
 // UIImage 圆角裁剪扩展
 extension UIImage {
-    func withRoundedCorners(radius: CGFloat) -> UIImage {
+    func withRoundedCorners(radius: CGFloat, addGradientBackground: Bool = true) -> UIImage {
         let rect = CGRect(origin: .zero, size: size)
         
         UIGraphicsBeginImageContextWithOptions(size, false, scale)
@@ -935,10 +1434,63 @@ extension UIImage {
         context.addPath(path.cgPath)
         context.clip()
         
-        // 绘制图片
+        // 只有在需要时才绘制渐变背景
+        if addGradientBackground {
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+            let colors = [
+                UIColor(red: 0.95, green: 0.85, blue: 1.0, alpha: 1.0).cgColor,  // 淡紫色
+                UIColor(red: 0.85, green: 0.95, blue: 1.0, alpha: 1.0).cgColor   // 淡蓝色
+            ] as CFArray
+            
+            if let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: nil) {
+                // 绘制渐变背景（从左上到右下）
+                context.drawLinearGradient(
+                    gradient,
+                    start: CGPoint(x: 0, y: 0),
+                    end: CGPoint(x: rect.width, y: rect.height),
+                    options: []
+                )
+            }
+        }
+        
+        // 绘制原图片
         draw(in: rect)
         
         return UIGraphicsGetImageFromCurrentImageContext() ?? self
     }
+}
+
+// 通用的高质量渲染函数（与帖子分享一致的窗口渲染法）
+private func renderViewAsImage<T: View>(_ view: T, size: CGSize, opaque: Bool) -> UIImage? {
+    let controller = UIHostingController(rootView: view)
+    controller.view.frame = CGRect(origin: .zero, size: size)
+    controller.view.bounds = CGRect(origin: .zero, size: size)
+    controller.view.backgroundColor = opaque ? .white : .clear
+    
+    let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+    window.rootViewController = controller
+    window.backgroundColor = opaque ? .white : .clear
+    window.isHidden = false
+    
+    controller.view.setNeedsLayout()
+    controller.view.layoutIfNeeded()
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+    controller.view.setNeedsLayout()
+    controller.view.layoutIfNeeded()
+    
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 3.0
+    format.opaque = opaque
+    format.preferredRange = .standard
+    
+    let renderer = UIGraphicsImageRenderer(size: size, format: format)
+    let image = renderer.image { _ in
+        controller.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
+    }
+    
+    window.isHidden = true
+    window.rootViewController = nil
+    
+    return image
 }
 

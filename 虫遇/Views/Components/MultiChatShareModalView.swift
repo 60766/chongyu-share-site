@@ -7,7 +7,8 @@ import UIKit
  */
 struct MultiChatShareModalView: View {
     @Binding var isPresented: Bool
-    let shareCards: [UIImage]
+    let previewCards: [UIImage]  // 预览版（无白边）
+    let saveCards: [UIImage]     // 保存版（带白边）
     let chatTheme: String
     
     @State private var currentCardIndex: Int = 0
@@ -54,12 +55,12 @@ struct MultiChatShareModalView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         // 分享卡片轮播
-                        if !shareCards.isEmpty {
+                        if !previewCards.isEmpty {
                             VStack(spacing: 16) {
-                                // 卡片显示区域
+                                // 卡片显示区域 - 使用预览版（无白边）
                                 TabView(selection: $currentCardIndex) {
-                                    ForEach(0..<shareCards.count, id: \.self) { index in
-                                        Image(uiImage: shareCards[index])
+                                    ForEach(0..<previewCards.count, id: \.self) { index in
+                                        Image(uiImage: previewCards[index])
                                             .resizable()
                                             .aspectRatio(contentMode: .fit)
                                             .frame(maxWidth: 350, maxHeight: 500)
@@ -73,9 +74,9 @@ struct MultiChatShareModalView: View {
                                 .padding(.horizontal, 20)
                                 
                                 // 卡片指示器（如果有多张卡片）
-                                if shareCards.count > 1 {
+                                if previewCards.count > 1 {
                                     HStack(spacing: 8) {
-                                        ForEach(0..<shareCards.count, id: \.self) { index in
+                                        ForEach(0..<previewCards.count, id: \.self) { index in
                                             Circle()
                                                 .fill(currentCardIndex == index ? Color.white : Color.white.opacity(0.4))
                                                 .frame(width: 8, height: 8)
@@ -87,8 +88,8 @@ struct MultiChatShareModalView: View {
                                 }
                                 
                                 // 卡片计数信息
-                                if shareCards.count > 1 {
-                                    Text("\(currentCardIndex + 1) / \(shareCards.count)")
+                                if previewCards.count > 1 {
+                                    Text("\(currentCardIndex + 1) / \(previewCards.count)")
                                         .font(DesignSystem.Typography.caption)
                                         .foregroundColor(.white.opacity(0.7))
                                         .padding(.bottom, 8)
@@ -166,37 +167,40 @@ struct MultiChatShareModalView: View {
     // MARK: - 分享功能实现
     
     private func shareToWeChat() {
-        guard currentCardIndex < shareCards.count else { return }
+        guard currentCardIndex < saveCards.count else { return }
         
         // 添加触觉反馈
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         
-        let image = shareCards[currentCardIndex]
+        // 💾 使用保存版（带白边）
+        let image = saveCards[currentCardIndex]
         shareImage(image)
         isPresented = false
     }
     
     private func shareToMoments() {
-        guard currentCardIndex < shareCards.count else { return }
+        guard currentCardIndex < saveCards.count else { return }
         
         // 添加触觉反馈
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         
-        let image = shareCards[currentCardIndex]
+        // 💾 使用保存版（带白边）
+        let image = saveCards[currentCardIndex]
         shareImage(image)
         isPresented = false
     }
     
     private func saveCurrentImageToPhotos() {
-        guard currentCardIndex < shareCards.count else { return }
+        guard currentCardIndex < saveCards.count else { return }
         
         // 添加触觉反馈
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         
-        let image = shareCards[currentCardIndex]
+        // 💾 使用保存版（带白边）
+        let image = saveCards[currentCardIndex]
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
         
         // 保存成功反馈
@@ -239,14 +243,22 @@ struct MultiChatShareModalView: View {
 
 #Preview {
     // 创建示例图片
-    let sampleImage = UIGraphicsImageRenderer(size: CGSize(width: 350, height: 500)).image { context in
+    let samplePreview = UIGraphicsImageRenderer(size: CGSize(width: 350, height: 500)).image { context in
         UIColor.systemBlue.setFill()
         context.fill(CGRect(x: 0, y: 0, width: 350, height: 500))
     }
     
+    let sampleSave = UIGraphicsImageRenderer(size: CGSize(width: 366, height: 516)).image { context in
+        UIColor.white.setFill()
+        context.fill(CGRect(x: 0, y: 0, width: 366, height: 516))
+        UIColor.systemBlue.setFill()
+        context.fill(CGRect(x: 8, y: 8, width: 350, height: 500))
+    }
+    
     return MultiChatShareModalView(
         isPresented: .constant(true),
-        shareCards: [sampleImage, sampleImage],
+        previewCards: [samplePreview, samplePreview],
+        saveCards: [sampleSave, sampleSave],
         chatTheme: "人生中最重要的选择"
     )
 }

@@ -245,7 +245,8 @@ struct MultiPersonChatView: View {
         .fullScreenCover(isPresented: $showShareModal) {
             MultiChatShareModalView(
                 isPresented: $showShareModal,
-                shareCards: shareCards,
+                previewCards: previewCards,
+                saveCards: saveCards,
                 chatTheme: chatTheme
             )
         }
@@ -623,7 +624,8 @@ struct MultiPersonChatView: View {
     @State private var isShareMode = false
     @State private var selectedMessages: Set<String> = []
     @State private var showShareModal = false
-    @State private var shareCards: [UIImage] = []
+    @State private var previewCards: [UIImage] = []  // 预览版（无白边）
+    @State private var saveCards: [UIImage] = []     // 保存版（带白边）
     
     /// 进入分享模式
     private func enterShareMode() {
@@ -677,8 +679,8 @@ struct MultiPersonChatView: View {
             return
         }
         
-        // 生成分享卡片
-        let shareCards: [UIImage]
+        // 生成分享卡片（预览版 + 保存版）
+        let cardResults: [ShareCardResult]
         
         if selectedMessagesList.count > 1 {
             // 多条消息：生成合并卡片
@@ -688,11 +690,11 @@ struct MultiPersonChatView: View {
                 characters: selectedCharacters,
                 theme: chatTheme
             )
-            shareCards = [mergedCard]
+            cardResults = [mergedCard]
             print("MultiPersonChatView - 合并卡片生成成功")
         } else {
             // 单条消息：生成单独卡片
-            shareCards = selectedMessagesList.compactMap { message -> UIImage? in
+            cardResults = selectedMessagesList.compactMap { message -> ShareCardResult? in
                 if let character = selectedCharacters.first(where: { $0.id == message.characterId }) {
                     print("MultiPersonChatView - 为消息生成卡片: \(message.content.prefix(20))...")
                     print("MultiPersonChatView - 角色信息: \(character.name), ID: \(character.id)")
@@ -712,22 +714,23 @@ struct MultiPersonChatView: View {
             }
         }
         
-        print("MultiPersonChatView - 生成的卡片数量: \(shareCards.count)")
+        print("MultiPersonChatView - 生成的卡片数量: \(cardResults.count)")
         
-        if shareCards.isEmpty {
+        if cardResults.isEmpty {
             print("MultiPersonChatView - 没有生成任何卡片，无法分享")
             return
         }
         
-        // 保存分享卡片并显示自定义分享模态视图
-        self.shareCards = shareCards
+        // 分离预览版和保存版
+        self.previewCards = cardResults.map { $0.previewImage }
+        self.saveCards = cardResults.map { $0.saveImage }
         
         // 先退出分享模式，然后显示分享模态视图
         exitShareMode()
         
         // 延迟一点时间再展示分享界面，确保UI状态稳定
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            print("MultiPersonChatView - 准备展示自定义分享界面，卡片数量: \(shareCards.count)")
+            print("MultiPersonChatView - 准备展示自定义分享界面，卡片数量: \(self.previewCards.count)")
             showShareModal = true
         }
     }

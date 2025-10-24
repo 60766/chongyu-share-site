@@ -1,5 +1,18 @@
 import SwiftUI
 
+// 简单的条件修饰符，便于按需添加阴影等效果
+extension View {
+    @ViewBuilder
+    func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
+    }
+}
+import SwiftUI
+
 /**
  * 分享相关UI组件
  * 提供各种与分享功能相关的UI组件和辅助函数
