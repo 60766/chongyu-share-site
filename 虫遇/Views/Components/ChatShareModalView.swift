@@ -96,85 +96,37 @@ struct ChatShareModalView: View {
                             }
                         }
                         
-                        // 分享按钮组
-                        Group {
-                            if shareCards.count > 1 {
-                                // 多张卡片时的按钮布局
-                                HStack(spacing: 35) {
-                                    // 保存到相册
-                                    shareButton(
-                                        title: "保存图片",
-                                        icon: "photo.fill",
-                                        iconColor: Color(hex: "F5A623"),
-                                        action: {
-                                            saveCurrentImageToPhotos()
-                                        }
-                                    )
-                                    
-                                    // 分享当前卡片
-                                    shareButton(
-                                        title: "分享卡片",
-                                        icon: "square.and.arrow.up",
-                                        iconColor: Color(hex: "007AFF"),
-                                        action: {
-                                            shareCurrentImage()
-                                        }
-                                    )
-                                    
-                                    // 分享所有卡片
-                                    shareButton(
-                                        title: "分享全部",
-                                        icon: "square.stack.3d.up.fill",
-                                        iconColor: Color(hex: "34C759"),
-                                        action: {
-                                            shareAllImages()
-                                        }
-                                    )
-                                    
-                                    // 分享文本
-                                    shareButton(
-                                        title: "分享文本",
-                                        icon: "text.quote",
-                                        iconColor: Color(hex: "FF9500"),
-                                        action: {
-                                            shareAsText()
-                                        }
-                                    )
+                        // 分享按钮组 - 与MultiChatShareModalView保持一致
+                        HStack(spacing: 40) {
+                            // 微信分享
+                            shareButton(
+                                title: "微信",
+                                icon: "message.fill",
+                                iconColor: Color(hex: "09B83E"),
+                                action: {
+                                    shareToWeChat()
                                 }
-                            } else {
-                                // 单张卡片时的按钮布局
-                                HStack(spacing: 40) {
-                                    // 保存到相册
-                                    shareButton(
-                                        title: "保存图片",
-                                        icon: "photo.fill",
-                                        iconColor: Color(hex: "F5A623"),
-                                        action: {
-                                            saveCurrentImageToPhotos()
-                                        }
-                                    )
-                                    
-                                    // 分享卡片
-                                    shareButton(
-                                        title: "分享卡片",
-                                        icon: "square.and.arrow.up",
-                                        iconColor: Color(hex: "007AFF"),
-                                        action: {
-                                            shareCurrentImage()
-                                        }
-                                    )
-                                    
-                                    // 分享文本
-                                    shareButton(
-                                        title: "分享文本",
-                                        icon: "text.quote",
-                                        iconColor: Color(hex: "FF9500"),
-                                        action: {
-                                            shareAsText()
-                                        }
-                                    )
+                            )
+                            
+                            // 朋友圈分享
+                            shareButton(
+                                title: "朋友圈",
+                                icon: "person.2.circle.fill",
+                                iconColor: Color(hex: "09B83E"),
+                                action: {
+                                    shareToMoments()
                                 }
-                            }
+                            )
+                            
+                            // 保存卡片
+                            shareButton(
+                                title: "保存卡片",
+                                icon: "square.and.arrow.down.fill",
+                                iconColor: Color(hex: "F5A623"),
+                                action: {
+                                    saveCurrentImageToPhotos()
+                                }
+                            )
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
@@ -213,41 +165,57 @@ struct ChatShareModalView: View {
     
     // MARK: - 分享功能实现
     
+    private func shareToWeChat() {
+        guard currentCardIndex < shareCards.count else { return }
+        
+        // 添加触觉反馈
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        
+        let image = shareCards[currentCardIndex]
+        shareImage(image)
+        isPresented = false
+    }
+    
+    private func shareToMoments() {
+        guard currentCardIndex < shareCards.count else { return }
+        
+        // 添加触觉反馈
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        
+        let image = shareCards[currentCardIndex]
+        shareImage(image)
+        isPresented = false
+    }
+    
     private func saveCurrentImageToPhotos() {
         guard currentCardIndex < shareCards.count else { return }
+        
+        // 添加触觉反馈
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
         
         let image = shareCards[currentCardIndex]
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
         
+        // 保存成功反馈
+        generator.notificationOccurred(.success)
+        
         // 显示保存成功提示
         showSuccessMessage("图片已保存到相册")
         
-        isPresented = false
+        // 延迟关闭界面，让用户感受到反馈
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            isPresented = false
+        }
     }
     
-    private func shareCurrentImage() {
-        guard currentCardIndex < shareCards.count else { return }
-        
-        let image = shareCards[currentCardIndex]
-        presentActivityViewController(with: [image])
-    }
-    
-    private func shareAllImages() {
-        presentActivityViewController(with: shareCards)
-    }
-    
-    private func shareAsText() {
-        let shareText = generateShareText()
-        presentActivityViewController(with: [shareText])
-    }
-    
-    // MARK: - 辅助方法
-    
-    private func presentActivityViewController(with items: [Any]) {
+    private func shareImage(_ image: UIImage) {
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let rootViewController = windowScene.windows.first?.rootViewController {
             
-            let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
+            let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
             
             // 在iPad上设置popover源视图
             if let popoverController = activityVC.popoverPresentationController {
@@ -258,20 +226,9 @@ struct ChatShareModalView: View {
             
             rootViewController.present(activityVC, animated: true)
         }
-        
-        isPresented = false
     }
     
-    private func generateShareText() -> String {
-        return """
-        【虫遇对话】
-        
-        与\(characterName)的对话
-        
-        精彩的历史人物对话，来自虫遇App
-        - 穿越时空的智慧碰撞
-        """
-    }
+    // MARK: - 辅助方法
     
     private func showSuccessMessage(_ message: String) {
         // 这里可以添加成功提示的实现

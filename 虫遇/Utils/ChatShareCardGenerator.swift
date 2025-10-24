@@ -23,7 +23,7 @@ class ChatShareCardGenerator {
         // 使用动态尺寸渲染并应用圆角
         let cardHeight = cardView.calculateOptimalHeight()
         let rawImage = cardView.asUIImage(size: CGSize(width: 350, height: cardHeight))
-        return rawImage.withRoundedCorners(radius: 24)
+        return rawImage.withRoundedCorners(radius: 24, addGradientBackground: false)
     }
     
     /// 批量生成分享卡片
@@ -45,7 +45,7 @@ class ChatShareCardGenerator {
             // 使用动态尺寸渲染并应用圆角
             let cardHeight = cardView.calculateOptimalHeight()
             let rawImage = cardView.asUIImage(size: CGSize(width: 350, height: cardHeight))
-            return rawImage.withRoundedCorners(radius: 24)
+            return rawImage.withRoundedCorners(radius: 24, addGradientBackground: false)
         }
     }
     
@@ -65,7 +65,7 @@ class ChatShareCardGenerator {
         // 使用动态尺寸渲染并应用圆角
         let cardHeight = cardView.calculateOptimalHeight()
         let rawImage = cardView.asUIImage(size: CGSize(width: 350, height: cardHeight))
-        return rawImage.withRoundedCorners(radius: 24)
+        return rawImage.withRoundedCorners(radius: 24, addGradientBackground: false)
     }
 }
 
