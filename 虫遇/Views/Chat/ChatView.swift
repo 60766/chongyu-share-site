@@ -1195,20 +1195,21 @@ struct ChatView: View {
         
         if selectedMessagesList.count > 1 {
             // 多条消息：生成合并卡片
-            let mergedCard = ChatShareCardGenerator.generateMergedCard(
+            let mergedCardResult = ChatShareCardGenerator.generateMergedCard(
                 messages: selectedMessagesList,
                 character: character,
                 characterThemeColor: characterThemeColor
             )
-            shareCards = [mergedCard]
+            shareCards = [mergedCardResult.saveImage]  // 使用保存版（带彩色边框）
         } else {
             // 单条消息：生成单独卡片
             shareCards = selectedMessagesList.map { message in
-                ChatShareCardGenerator.generateCard(
+                let cardResult = ChatShareCardGenerator.generateCard(
                     message: message,
                     character: character,
                     characterThemeColor: characterThemeColor
                 )
+                return cardResult.saveImage  // 使用保存版（带彩色边框）
             }
         }
         
