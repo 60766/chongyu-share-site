@@ -190,23 +190,27 @@ struct PostShareModalView: View {
     // MARK: - 分享功能实现
     
     private func shareToWeChat() {
+        print("🔍 点击了微信分享按钮")
         // 微信分享逻辑 - 调用系统分享，用户可选择微信好友或朋友圈
         // 添加触觉反馈
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         
         shareImage()
-        isPresented = false
+        // 注意：不要立即关闭界面，等分享完成后再关闭
+        // isPresented = false
     }
     
     private func shareToMoments() {
+        print("🔍 点击了朋友圈分享按钮")
         // 朋友圈分享逻辑 - 同样调用系统分享
         // 添加触觉反馈
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         
         shareImage()
-        isPresented = false
+        // 注意：不要立即关闭界面，等分享完成后再关闭
+        // isPresented = false
     }
     
     private func saveImageToPhotos() {
@@ -232,22 +236,62 @@ struct PostShareModalView: View {
     }
     
     private func shareImage() {
+        print("🔍 开始分享图片...")
+        
         // 先生成图片再进行分享
-        if let image = self.generatePostShareImage() {
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootViewController = windowScene.windows.first?.rootViewController {
-                
-                let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
-            
-                // 在iPad上设置popover源视图
-                if let popoverController = activityVC.popoverPresentationController {
-                    popoverController.sourceView = rootViewController.view
-                    popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY, width: 0, height: 0)
-                    popoverController.permittedArrowDirections = []
+        guard let image = self.generatePostShareImage() else {
+            print("❌ 图片生成失败")
+            return
+        }
+        
+        print("✅ 图片生成成功，尺寸: \(image.size)")
+        
+        // 🔧 关键修复：先关闭分享模态视图，避免视图层级冲突
+        isPresented = false
+        
+        // 延迟一小段时间确保模态视图完全关闭，然后展示系统分享界面
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.presentSystemShareSheet(with: image)
+        }
+    }
+    
+    private func presentSystemShareSheet(with image: UIImage) {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+            print("❌ 无法获取windowScene")
+            return
+        }
+        
+        guard let rootViewController = windowScene.windows.first?.rootViewController else {
+            print("❌ 无法获取rootViewController")
+            return
+        }
+        
+        print("✅ 准备显示系统分享界面...")
+        
+        let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+        
+        // 在iPad上设置popover源视图
+        if let popoverController = activityVC.popoverPresentationController {
+            popoverController.sourceView = rootViewController.view
+            popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+        
+        // 添加完成回调
+        activityVC.completionWithItemsHandler = { activityType, completed, returnedItems, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ 分享失败: \(error.localizedDescription)")
+                } else if completed {
+                    print("✅ 分享成功: \(activityType?.rawValue ?? "未知")")
+                } else {
+                    print("ℹ️ 用户取消分享")
                 }
-            
-                rootViewController.present(activityVC, animated: true)
             }
+        }
+        
+        rootViewController.present(activityVC, animated: true) {
+            print("✅ 系统分享界面已显示")
         }
     }
     

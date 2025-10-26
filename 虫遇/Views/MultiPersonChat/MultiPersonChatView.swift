@@ -251,28 +251,12 @@ struct MultiPersonChatView: View {
             )
         }
         .onAppear {
-            // 🔧 调试：打印选中的角色信息
-            print("🎭 MultiPersonChatView.onAppear - 开始对话")
-            print("📝 选中角色数量: \(selectedCharacters.count)")
-            for character in selectedCharacters {
-                print("   - 角色: \(character.name) (ID: \(character.id))")
-            }
-            print("🎯 对话模式: \(chatMode)")
-            print("🎨 对话主题: \(chatTheme)")
-            print("👤 用户角色: \(userRole)")
-            print("📖 历史会话ID: \(historicalSessionId ?? "无")")
-            
-            // 注释掉测试消息，正常使用时不需要
-            // addTestMessages()
-            
             // 根据是否有历史会话ID决定是新对话还是加载历史对话
             if let sessionId = historicalSessionId {
                 // 加载历史对话
-                print("🔄 加载历史对话: \(sessionId)")
                 chatManager.loadChatHistory(sessionId: sessionId, modelContext: modelContext, characters: selectedCharacters)
             } else {
                 // 开始新对话
-                print("🆕 开始新对话")
             chatManager.startConversation(
                 characters: selectedCharacters,
                 mode: chatMode,
@@ -649,33 +633,17 @@ struct MultiPersonChatView: View {
         withAnimation(.spring(response: 0.3)) {
             if selectedMessages.contains(messageId) {
                 selectedMessages.remove(messageId)
-                print("MultiPersonChatView - 取消选择消息: \(messageId)")
             } else {
                 selectedMessages.insert(messageId)
-                print("MultiPersonChatView - 选择消息: \(messageId)")
             }
-            print("MultiPersonChatView - 当前选中消息数量: \(selectedMessages.count)")
         }
     }
     
     /// 生成并分享卡片
     private func generateAndShareCards() {
-        print("MultiPersonChatView - 开始生成分享卡片")
-        print("MultiPersonChatView - 选中消息ID: \(Array(selectedMessages))")
-        print("MultiPersonChatView - 总消息数量: \(chatManager.messages.count)")
-        print("MultiPersonChatView - 选中消息数量: \(selectedMessages.count)")
-        print("MultiPersonChatView - 可用角色数量: \(selectedCharacters.count)")
-        
-        // 调试：打印前几个消息的ID
-        for (index, message) in chatManager.messages.prefix(3).enumerated() {
-            print("MultiPersonChatView - 消息\(index): ID=\(message.id.uuidString), 内容=\(message.content.prefix(20))...")
-        }
-        
         let selectedMessagesList = chatManager.messages.filter { selectedMessages.contains($0.id.uuidString) }
-        print("MultiPersonChatView - 过滤后消息数量: \(selectedMessagesList.count)")
         
         if selectedMessagesList.isEmpty {
-            print("MultiPersonChatView - 没有选中的消息，退出分享")
             return
         }
         
@@ -684,40 +652,29 @@ struct MultiPersonChatView: View {
         
         if selectedMessagesList.count > 1 {
             // 多条消息：生成合并卡片
-            print("MultiPersonChatView - 生成合并对话卡片，消息数量: \(selectedMessagesList.count)")
             let mergedCard = MultiChatShareCardGenerator.generateMergedCard(
                 messages: selectedMessagesList,
                 characters: selectedCharacters,
                 theme: chatTheme
             )
             cardResults = [mergedCard]
-            print("MultiPersonChatView - 合并卡片生成成功")
         } else {
             // 单条消息：生成单独卡片
             cardResults = selectedMessagesList.compactMap { message -> ShareCardResult? in
                 if let character = selectedCharacters.first(where: { $0.id == message.characterId }) {
-                    print("MultiPersonChatView - 为消息生成卡片: \(message.content.prefix(20))...")
-                    print("MultiPersonChatView - 角色信息: \(character.name), ID: \(character.id)")
-                    
                     let card = MultiChatShareCardGenerator.generateCard(
                         message: message,
                         character: character,
                         theme: chatTheme
                     )
-                    print("MultiPersonChatView - 卡片生成成功")
                     return card
                 } else {
-                    print("MultiPersonChatView - 找不到角色 ID: \(message.characterId)")
-                    print("MultiPersonChatView - 可用角色ID: \(selectedCharacters.map { $0.id })")
                     return nil
                 }
             }
         }
         
-        print("MultiPersonChatView - 生成的卡片数量: \(cardResults.count)")
-        
         if cardResults.isEmpty {
-            print("MultiPersonChatView - 没有生成任何卡片，无法分享")
             return
         }
         
@@ -730,20 +687,17 @@ struct MultiPersonChatView: View {
         
         // 延迟一点时间再展示分享界面，确保UI状态稳定
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            print("MultiPersonChatView - 准备展示自定义分享界面，卡片数量: \(self.previewCards.count)")
             showShareModal = true
         }
     }
     
     // 激活键盘
     private func activateKeyboard() {
-        print("MultiPersonChatView - 激活键盘")
         MultiChatKeyboardHelper.forceShowKeyboard()
     }
     
     // 隐藏键盘
     private func hideKeyboard() {
-        print("MultiPersonChatView - 隐藏键盘")
         MultiChatKeyboardHelper.forceHideKeyboard()
     }
     
@@ -754,7 +708,6 @@ struct MultiPersonChatView: View {
     private func handleKeyboardNotification(_ notification: Notification, isShowing: Bool) {
         // 如果正在手动控制键盘，忽略系统通知避免状态冲突
         if isManuallyControllingKeyboard {
-            print("⚠️ 忽略系统键盘通知，正在手动控制")
             return
         }
         

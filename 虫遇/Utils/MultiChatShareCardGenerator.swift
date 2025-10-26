@@ -923,10 +923,10 @@ struct MultiChatMergedCardView: View {
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.secondary)
             }
-            .padding(.bottom, 8)  // 恢复合理的底部padding
+            .padding(.bottom, 4)  // 减少底部padding，优化空隙
             
-            // 下方较大的spacer，让底部空间更大
-            Spacer(minLength: 12)
+            // 下方较小的spacer，减少底部空隙
+            Spacer(minLength: 4)
         }
         .padding(.horizontal, 20)
     }
@@ -1329,7 +1329,7 @@ struct MultiChatShareCardView: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.secondary)
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, 4)  // 减少底部padding，优化空隙
             
             Spacer(minLength: 0)
         }

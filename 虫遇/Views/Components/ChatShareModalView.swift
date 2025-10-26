@@ -168,13 +168,21 @@ struct ChatShareModalView: View {
     private func shareToWeChat() {
         guard currentCardIndex < shareCards.count else { return }
         
+        print("🔍 点击了微信分享按钮")
+        
         // 添加触觉反馈
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         
         let image = shareCards[currentCardIndex]
-        shareImage(image)
+        
+        // 🔧 关键修复：先关闭分享模态视图，避免视图层级冲突
         isPresented = false
+        
+        // 🔧 增加延迟时间，确保SwiftUI模态视图完全关闭
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            self.presentSystemShareSheet(with: image)
+        }
     }
     
     private func shareToMoments() {
@@ -185,8 +193,14 @@ struct ChatShareModalView: View {
         generator.impactOccurred()
         
         let image = shareCards[currentCardIndex]
-        shareImage(image)
+        
+        // 关闭分享模态视图，避免视图层级冲突
         isPresented = false
+        
+        // 延迟确保SwiftUI模态视图完全关闭
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            self.presentSystemShareSheet(with: image)
+        }
     }
     
     private func saveCurrentImageToPhotos() {
@@ -211,21 +225,52 @@ struct ChatShareModalView: View {
         }
     }
     
-    private func shareImage(_ image: UIImage) {
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootViewController = windowScene.windows.first?.rootViewController {
-            
-            let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
-            
-            // 在iPad上设置popover源视图
-            if let popoverController = activityVC.popoverPresentationController {
-                popoverController.sourceView = rootViewController.view
-                popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY, width: 0, height: 0)
-                popoverController.permittedArrowDirections = []
-            }
-            
-            rootViewController.present(activityVC, animated: true)
+    private func presentSystemShareSheet(with image: UIImage) {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = windowScene.windows.first?.rootViewController else {
+            return
         }
+        
+        // 递归查找最顶层的视图控制器
+        func findTopViewController(_ controller: UIViewController) -> UIViewController {
+            if let presented = controller.presentedViewController {
+                return findTopViewController(presented)
+            }
+            if let nav = controller as? UINavigationController {
+                return findTopViewController(nav.visibleViewController ?? nav)
+            }
+            if let tab = controller as? UITabBarController {
+                return findTopViewController(tab.selectedViewController ?? tab)
+            }
+            return controller
+        }
+        
+        let topViewController = findTopViewController(rootViewController)
+        
+        
+        // 如果顶层视图控制器正在展示其他内容，先关闭
+        if topViewController.presentedViewController != nil {
+            topViewController.dismiss(animated: false) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.showActivityViewController(image: image, from: topViewController)
+                }
+            }
+        } else {
+            showActivityViewController(image: image, from: topViewController)
+        }
+    }
+    
+    private func showActivityViewController(image: UIImage, from viewController: UIViewController) {
+        let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+        
+        // 在iPad上设置popover源视图
+        if let popoverController = activityVC.popoverPresentationController {
+            popoverController.sourceView = viewController.view
+            popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+        
+        viewController.present(activityVC, animated: true)
     }
     
     // MARK: - 辅助方法

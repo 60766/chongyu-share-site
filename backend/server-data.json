@@ -1,16 +1,16 @@
 {
   "wallets": {
     "debug-token": {
-      "balance": 1800
+      "balance": 100000
     },
     "TEST_TOKEN": {
-      "balance": 307953
+      "balance": 500000
     },
     "D08B9230-99EE-43D4-88AE-4626E001776C": {
-      "balance": 526531
+      "balance": 1000000
     },
     "test-token": {
-      "balance": 0
+      "balance": 80400
     },
     "test_token_123": {
       "balance": 1647
@@ -1420,6 +1420,39 @@
         "apiType": "vision"
       },
       "at": 1759113225115
+    },
+    {
+      "id": "PnsixDqhaUch2bVOkcfw6",
+      "type": "topup",
+      "token": "test-token",
+      "amount": 26800,
+      "ref": "manual-topup-001",
+      "meta": {
+        "productId": "credits.xlarge"
+      },
+      "at": 1761445478749
+    },
+    {
+      "id": "lgAG8BVVsR6yZrauuabB5",
+      "type": "topup",
+      "token": "test-token",
+      "amount": 26800,
+      "ref": "manual-topup-002",
+      "meta": {
+        "productId": "credits.xlarge"
+      },
+      "at": 1761445488618
+    },
+    {
+      "id": "AsfiBhNUvrY36VwpmXV0N",
+      "type": "topup",
+      "token": "test-token",
+      "amount": 26800,
+      "ref": "manual-topup-003",
+      "meta": {
+        "productId": "credits.xlarge"
+      },
+      "at": 1761445500716
     }
   ],
   "processedIapTransactions": [
@@ -1477,11 +1510,14 @@
     "test_transaction_123",
     "test-txn-456",
     "test-txn-789",
-    "test_transaction_001"
+    "test_transaction_001",
+    "manual-topup-001",
+    "manual-topup-002",
+    "manual-topup-003"
   ],
   "appleIdAccounts": {},
   "backupCodeMap": {
     "343-738-180-780": "D08B9230-99EE-43D4-88AE-4626E001776C"
   },
-  "savedAt": 1759117108069
+  "savedAt": 1761446053493
 }

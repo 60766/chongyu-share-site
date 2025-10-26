@@ -1385,22 +1385,8 @@ struct ChatMessageBubbleView: View {
                         }
                         .background(
                             isWaitingMessage
-                                ? LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        characterThemeColor.opacity(0.12),
-                                        characterThemeColor.opacity(0.08)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                                : LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        characterThemeColor.opacity(0.16),
-                                        characterThemeColor.opacity(0.12)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                                ? Color.red.opacity(0.6)
+                                : Color.red
                         )
                         .foregroundColor(.primary)
                         .clipShape(
@@ -1410,21 +1396,14 @@ struct ChatMessageBubbleView: View {
                             )
                         )
                         .overlay(
-                            // 历史角色消息添加精致边框
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            // 角色消息添加精致边框，与彩色背景协调
+                            RoundedRectangle(cornerRadius: isWaitingMessage ? 14 : 16, style: .continuous)
                                 .stroke(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            characterThemeColor.opacity(0.25),
-                                            characterThemeColor.opacity(0.08)
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 0.8
+                                    Color(hex: "E8E3F8").opacity(0.3),
+                                    lineWidth: 0.5
                                 )
                         )
-                        .shadow(color: characterThemeColor.opacity(0.08), radius: 1.5, x: 0, y: 1)
+                        .shadow(color: Color(hex: "E8E3F8").opacity(0.15), radius: 2, x: 0, y: 1)
                     }
                     .padding(.leading, 4)
                     .padding(.top, 8)
@@ -1493,6 +1472,14 @@ struct ChatMessageBubbleView: View {
         
         // 立即开始动画
         animationDots = ".··"
+    }
+    
+    // 获取角色气泡颜色 - 参考多人对话的彩色方案
+    private func getCharacterBubbleColor() -> Color {
+        // 直接返回固定的彩色背景，所有角色使用统一的温暖淡紫色
+        let color = Color(hex: "E8E3F8") // 温暖淡紫色 - 提高纯度和对比度
+        print("🎨 getCharacterBubbleColor called, returning: \(color)")
+        return color
     }
 }
 
