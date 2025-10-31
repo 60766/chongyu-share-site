@@ -13,33 +13,34 @@ final class StoreKitManager: NSObject, ObservableObject {
         }
     }
     
-    // 你的商品ID
+    // 商品ID - 生产环境配置
+    // Bundle ID: com.lishilong.chongyu
     private let productIds: Set<String> = [
-        "credits.small",
-        "credits.medium",
-        "credits.large",
-        "credits.xlarge"
+        "com.lishilong.chongyu.100energy",   // ¥6 = 100能量
+        "com.lishilong.chongyu.300energy",   // ¥18 = 300能量
+        "com.lishilong.chongyu.700energy",   // ¥38 = 700能量
+        "com.lishilong.chongyu.1400energy"   // ¥68 = 1400能量
     ]
     
     // 备用产品数据 - 当StoreKit无法正常工作时使用
     private let fallbackProducts: [String: (displayName: String, price: String, description: String)] = [
-        "credits.small": (
-            displayName: "虫币入门包", 
+        "com.lishilong.chongyu.100energy": (
+            displayName: "100能量包", 
             price: "6", 
             description: "新手体验"
         ),
-        "credits.medium": (
-            displayName: "虫币标准包", 
+        "com.lishilong.chongyu.300energy": (
+            displayName: "300能量包", 
             price: "18", 
             description: "日常使用"
         ),
-        "credits.large": (
-            displayName: "虫币豪华包", 
+        "com.lishilong.chongyu.700energy": (
+            displayName: "700能量包", 
             price: "38", 
             description: "深度体验"
         ),
-        "credits.xlarge": (
-            displayName: "虫币至尊包", 
+        "com.lishilong.chongyu.1400energy": (
+            displayName: "1400能量包", 
             price: "68", 
             description: "畅享无忧"
         )

@@ -178,7 +178,7 @@ struct PurchaseView: View {
                         GridItem(.flexible()),
                         GridItem(.flexible())
                     ], spacing: 16) {
-                        ForEach(["credits.small", "credits.medium", "credits.large", "credits.xlarge"], id: \.self) { productId in
+                        ForEach(["com.lishilong.chongyu.100energy", "com.lishilong.chongyu.300energy", "com.lishilong.chongyu.700energy", "com.lishilong.chongyu.1400energy"], id: \.self) { productId in
                             if let productInfo = storeKitManager.getFallbackProductInfo(for: productId) {
                                 FallbackPurchaseOptionCard(
                                     productId: productId,
@@ -297,17 +297,17 @@ struct PurchaseView: View {
                         .foregroundColor(.white.opacity(0.7))
                     
                     HStack(spacing: 12) {
-                        DevPurchaseButton(title: "+1800", productId: "credits.small", isPurchasing: isPurchasing) {
-                            devTopup(productId: "credits.small")
+                        DevPurchaseButton(title: "+100", productId: "com.lishilong.chongyu.100energy", isPurchasing: isPurchasing) {
+                            devTopup(productId: "com.lishilong.chongyu.100energy")
                         }
-                        DevPurchaseButton(title: "+6000", productId: "credits.medium", isPurchasing: isPurchasing) {
-                            devTopup(productId: "credits.medium")
+                        DevPurchaseButton(title: "+300", productId: "com.lishilong.chongyu.300energy", isPurchasing: isPurchasing) {
+                            devTopup(productId: "com.lishilong.chongyu.300energy")
                         }
-                        DevPurchaseButton(title: "+13800", productId: "credits.large", isPurchasing: isPurchasing) {
-                            devTopup(productId: "credits.large")
+                        DevPurchaseButton(title: "+700", productId: "com.lishilong.chongyu.700energy", isPurchasing: isPurchasing) {
+                            devTopup(productId: "com.lishilong.chongyu.700energy")
                         }
-                        DevPurchaseButton(title: "+26800", productId: "credits.xlarge", isPurchasing: isPurchasing) {
-                            devTopup(productId: "credits.xlarge")
+                        DevPurchaseButton(title: "+1400", productId: "com.lishilong.chongyu.1400energy", isPurchasing: isPurchasing) {
+                            devTopup(productId: "com.lishilong.chongyu.1400energy")
                         }
                     }
                     
@@ -474,11 +474,11 @@ struct PurchaseOptionCard: View {
     
     private func productDescription(for productId: String) -> String {
         switch productId {
-        case "credits.small": return "新手体验\n1800 虫洞币"
-        case "credits.medium": return "日常使用\n6000 虫洞币"
-        case "credits.large": return "深度体验\n13800 虫洞币"
-        case "credits.xlarge": return "畅享无忧\n26800 虫洞币"
-        default: return "虫洞币充值包"
+        case "com.lishilong.chongyu.100energy": return "新手体验\n100 能量"
+        case "com.lishilong.chongyu.300energy": return "日常使用\n300 能量"
+        case "com.lishilong.chongyu.700energy": return "深度体验\n700 能量"
+        case "com.lishilong.chongyu.1400energy": return "畅享无忧\n1400 能量"
+        default: return "能量充值包"
         }
     }
 }
@@ -580,11 +580,11 @@ struct FallbackPurchaseOptionCard: View {
     
     private func productDescription(for productId: String) -> String {
         switch productId {
-        case "credits.small": return "适合轻度使用\n1800 虫洞币"
-        case "credits.medium": return "性价比之选\n6000 虫洞币"
-        case "credits.large": return "深度体验\n13800 虫洞币"
-        case "credits.xlarge": return "无限探索\n26800 虫洞币"
-        default: return "虫洞币充值包"
+        case "com.lishilong.chongyu.100energy": return "适合轻度使用\n100 能量"
+        case "com.lishilong.chongyu.300energy": return "性价比之选\n300 能量"
+        case "com.lishilong.chongyu.700energy": return "深度体验\n700 能量"
+        case "com.lishilong.chongyu.1400energy": return "无限探索\n1400 能量"
+        default: return "能量充值包"
         }
     }
 }

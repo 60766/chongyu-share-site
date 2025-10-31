@@ -1,0 +1,21 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set password "3Qq123456."
+set server_ip "121.40.184.29"
+
+puts "🔍 检查服务器状态...\n"
+
+# 检查PM2日志
+spawn ssh root@${server_ip} "pm2 logs chongyu-backend --lines 50 --nostream"
+expect {
+    "password:" {
+        send "$password\r"
+        expect eof
+    }
+    timeout {
+        puts "❌ 超时"
+        exit 1
+    }
+}
+

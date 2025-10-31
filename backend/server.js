@@ -199,14 +199,23 @@ app.post('/purchase/confirm', (req, res) => {
   if (!appAccountToken || !productId || !transactionId) return res.status(400).json({ error: 'missing params', got: { appAccountToken: !!appAccountToken, productId: !!productId, transactionId: !!transactionId } })
 
   // TODO: verify with App Store Server API using receipt. For MVP, accept and credit by SKU table.
+  // 支持两种Product ID格式：
+  // 1. 旧格式：credits.small, credits.medium, 等
+  // 2. 新格式（带Bundle ID）：com.lishilong.chongyu.100energy, 等
   const skuToCredits = {
+    // 旧格式（向后兼容）
     'credits.small': 1800,      // ¥6 入门包
     'credits.medium': 6000,     // ¥18 标准包
     'credits.large': 13800,     // ¥38 豪华包
     'credits.xlarge': 26800,    // ¥68 至尊包
+    // 新格式（生产环境Bundle ID）
+    'com.lishilong.chongyu.100energy': 1800,   // ¥6 = 100能量
+    'com.lishilong.chongyu.300energy': 6000,   // ¥18 = 300能量
+    'com.lishilong.chongyu.700energy': 13800,  // ¥38 = 700能量
+    'com.lishilong.chongyu.1400energy': 26800, // ¥68 = 1400能量
   }
   const credits = skuToCredits[productId]
-  if (!credits) return res.status(400).json({ error: 'unknown productId', productId })
+  if (!credits) return res.status(400).json({ error: 'unknown productId', productId, supported: Object.keys(skuToCredits) })
 
   // Idempotency: prevent duplicate credits for the same transactionId
   if (processedIapTransactions.has(transactionId)) {

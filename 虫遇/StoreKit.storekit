@@ -11,12 +11,12 @@
       "localizations" : [
         {
           "description" : "新手体验，1800虫洞币",
-          "displayName" : "虫币入门包",
+          "displayName" : "100能量包",
           "locale" : "zh_CN"
         }
       ],
-      "productID" : "credits.small",
-      "referenceName" : "虫币入门包",
+      "productID" : "com.lishilong.chongyu.100energy",
+      "referenceName" : "100能量包",
       "type" : "Consumable"
     },
     {
@@ -26,12 +26,12 @@
       "localizations" : [
         {
           "description" : "日常使用，6000虫洞币",
-          "displayName" : "虫币标准包",
+          "displayName" : "300能量包",
           "locale" : "zh_CN"
         }
       ],
-      "productID" : "credits.medium",
-      "referenceName" : "虫币标准包",
+      "productID" : "com.lishilong.chongyu.300energy",
+      "referenceName" : "300能量包",
       "type" : "Consumable"
     },
     {
@@ -41,12 +41,12 @@
       "localizations" : [
         {
           "description" : "深度体验，13800虫洞币",
-          "displayName" : "虫币豪华包",
+          "displayName" : "700能量包",
           "locale" : "zh_CN"
         }
       ],
-      "productID" : "credits.large",
-      "referenceName" : "虫币豪华包",
+      "productID" : "com.lishilong.chongyu.700energy",
+      "referenceName" : "700能量包",
       "type" : "Consumable"
     },
     {
@@ -56,12 +56,12 @@
       "localizations" : [
         {
           "description" : "畅享无忧，26800虫洞币",
-          "displayName" : "虫币至尊包",
+          "displayName" : "1400能量包",
           "locale" : "zh_CN"
         }
       ],
-      "productID" : "credits.xlarge",
-      "referenceName" : "虫币至尊包",
+      "productID" : "com.lishilong.chongyu.1400energy",
+      "referenceName" : "1400能量包",
       "type" : "Consumable"
     }
   ],

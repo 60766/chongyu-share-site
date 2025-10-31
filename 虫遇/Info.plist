@@ -21,37 +21,12 @@
 				<key>NSIncludesSubdomains</key>
 				<true/>
 			</dict>
-			<key>127.0.0.1</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-			<key>192.168.137.107</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-			<key>localhost</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
 		</dict>
 	</dict>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>需要访问您的相册以保存精美的分享卡片</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问您的相册以保存和分享内容</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
 	<key>UIHomeIndicatorAutoHidden</key>
 	<true/>
 	<key>UIScrollViewContentInsetAdjustmentBehavior</key>
