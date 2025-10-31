@@ -83,8 +83,8 @@ class AINetworkService: ObservableObject {
         } else {
             #if DEBUG
             // 临时测试生产环境后端
-            self.baseURL = URL(string: "http://121.40.184.29:3000")!
-            // self.baseURL = URL(string: "http://127.0.0.1:8787")!
+            // self.baseURL = URL(string: "http://121.40.184.29:3000")!
+            self.baseURL = URL(string: "http://127.0.0.1:8787")!
             #else
             self.baseURL = URL(string: "http://121.40.184.29:3000")!
             #endif

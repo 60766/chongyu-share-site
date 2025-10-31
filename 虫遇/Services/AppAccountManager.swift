@@ -454,8 +454,8 @@ class AppAccountManager: ObservableObject {
         }
         #if DEBUG
         // 临时测试生产环境后端
-        return URL(string: "http://121.40.184.29:3000")
-        // return URL(string: "http://127.0.0.1:8787")
+        // return URL(string: "http://121.40.184.29:3000")
+        return URL(string: "http://127.0.0.1:8787")
         #else
         return URL(string: "http://121.40.184.29:3000")
         #endif

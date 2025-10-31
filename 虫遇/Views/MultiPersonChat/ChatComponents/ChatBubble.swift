@@ -8,16 +8,27 @@ struct ChatBubble: View {
     
 
     
-    // 为不同虚拟角色设置不同的淡紫色背景，便于区分
+    // 为不同虚拟角色设置不同的彩色背景，便于区分
     private var bubbleColor: Color {
         // 使用传入的颜色索引，确保每个角色使用不同颜色
         let colors = [
-            Color(hex: "E8E3F8"), // 温暖淡紫色 - 提高纯度和对比度
-            Color(hex: "E3EBF9"), // 温暖淡蓝色 - 更明显的蓝调
-            Color(hex: "FFF4E0"), // 温暖淡黄色 - 更饱和的暖黄
-            Color(hex: "FFE8F0")  // 温暖淡粉色 - 更明显的粉调
+            Color(hex: "E3D5FF"), // 明显紫色
+            Color(hex: "D5E8FF"), // 明显蓝色
+            Color(hex: "FFE8C5"), // 明显橙黄色
+            Color(hex: "FFD5E8")  // 明显粉色
         ]
         return colors[colorIndex % colors.count]
+    }
+
+    // 作为描边的强调色，增强视觉区分
+    private var accentStrokeColor: Color {
+        let accents = [
+            Color(hex: "B8A3E8"), // 紫色描边
+            Color(hex: "A3C8E8"), // 蓝色描边
+            Color(hex: "E8C89A"), // 橙黄描边
+            Color(hex: "E8A3C8")  // 粉色描边
+        ]
+        return accents[colorIndex % accents.count].opacity(0.7)
     }
     
     // 优雅的名称颜色 - 使用统一的深色调确保可读性
@@ -56,11 +67,18 @@ struct ChatBubble: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(
-                        bubbleColor.opacity(0.6)
-                                                            .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(Color(hex: "D1D5DB"), lineWidth: 1)
-                                )
+                        ZStack {
+                            // 近白色基底，融合系统材质，保证质感与层次
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.75))
+                                .background(.ultraThinMaterial)
+                            // 增强角色色调叠加至 15%，保留色彩倾向
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(bubbleColor.opacity(0.15))
+                            // 发丝级描边，用去饱和强调色，提升边界定义
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(accentStrokeColor, lineWidth: 0.5)
+                        }
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 } else {
@@ -70,7 +88,17 @@ struct ChatBubble: View {
                         .padding(.horizontal, 14) // 稍微增加水平内边距
                         .padding(.vertical, 10) // 增加垂直内边距
                         .foregroundColor(.primary)
-                        .background(bubbleColor)
+                        .background(
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.white.opacity(0.8))
+                                    .background(.thinMaterial)
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(bubbleColor.opacity(0.15))
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(accentStrokeColor, lineWidth: 0.5)
+                            }
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)) // 参考单人聊天的圆角大小
                         .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1) // 添加微妙阴影
                 }

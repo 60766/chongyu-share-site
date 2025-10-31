@@ -172,6 +172,10 @@ struct ShareableMessageBubbleView: View {
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .fill(Color.backgroundPrimary)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(Color.black.opacity(0.05), lineWidth: 0.5)
+                                )
                                 .shadow(color: Color.black.opacity(0.04), radius: 1, x: 0, y: 0.5)
                         )
                         

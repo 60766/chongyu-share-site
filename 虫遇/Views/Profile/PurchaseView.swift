@@ -187,7 +187,9 @@ struct PurchaseView: View {
                                     description: productInfo.description,
                                     isPurchasing: isPurchasing,
                                     onPurchase: {
-                                        // devTopup(productId: productId) // 临时注释，等待实现
+                                        #if DEBUG
+                                        devTopup(productId: productId)
+                                        #endif
                                     }
                                 )
                             }

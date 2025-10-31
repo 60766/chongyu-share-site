@@ -82,9 +82,50 @@ struct MultiPersonChatView: View {
     
     var body: some View {
         ZStack {
-            // 背景 - 使用统一的温暖米白色背景
-            DesignSystem.Colors.background
-                .edgesIgnoringSafeArea(.all)
+            // 背景 - 与单聊一致的多层彩色渐变
+            ZStack {
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(hex: "FFF0F5"),
+                        Color(hex: "FFE8F0"),
+                        Color(hex: "F0E8FF"),
+                        Color(hex: "E8F4FF"),
+                        Color(hex: "FFE8D4")
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(hex: "FFE8F0").opacity(0.4),
+                        Color(hex: "FFD4E5").opacity(0.3),
+                        Color.clear,
+                        Color(hex: "E8F4FF").opacity(0.3),
+                        Color(hex: "F0E8FF").opacity(0.4)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(height: 300)
+                .frame(maxHeight: .infinity, alignment: .top)
+                
+                RadialGradient(
+                    gradient: Gradient(colors: [
+                        Color.white.opacity(0.8),
+                        Color(hex: "FFFEF5").opacity(0.7),
+                        Color(hex: "FFF9E6").opacity(0.5),
+                        Color(hex: "FFE8CC").opacity(0.3),
+                        Color.clear
+                    ]),
+                    center: .topLeading,
+                    startRadius: 5,
+                    endRadius: 450
+                )
+                .frame(maxHeight: .infinity, alignment: .top)
+            }
+            .ignoresSafeArea(.all)
+            .allowsHitTesting(false)
             
             VStack(spacing: 0) {
                 // 顶部信息区
@@ -94,6 +135,7 @@ struct MultiPersonChatView: View {
                     onBackTapped: { presentationMode.wrappedValue.dismiss() },
                     onShareTapped: { shareConversation() }
                 )
+                .background(Color.clear)
                 
 
                 

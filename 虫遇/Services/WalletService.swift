@@ -22,8 +22,8 @@ final class WalletService {
         }
         #if DEBUG
         // 临时测试生产环境后端
-        return URL(string: "http://121.40.184.29:3000")!
-        // return URL(string: "http://127.0.0.1:8787")!
+        // return URL(string: "http://121.40.184.29:3000")!
+        return URL(string: "http://127.0.0.1:8787")!
         #else
         // 生产环境使用阿里云服务器
         return URL(string: "http://121.40.184.29:3000")!

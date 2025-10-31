@@ -29,8 +29,8 @@ struct PostShareCard: View {
     
     // 分享卡片的最佳尺寸（适合社交平台分享）
     private let cardWidth: CGFloat = 375
-    private let maxContentLines: Int = 8 // 内容最大行数，避免过长
-    private let maxCommentLines: Int = 3 // 评论最大行数
+    private let maxContentLines: Int = 15 // 内容最大行数，避免过长
+    private let maxCommentLines: Int = 5 // 评论最大行数
     
     // MARK: - 色彩方案配置
     private var colorConfig: ColorConfiguration {

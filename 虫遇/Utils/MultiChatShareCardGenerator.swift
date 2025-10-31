@@ -496,9 +496,6 @@ class MultiChatShareCardGenerator {
             return image
         }
         
-        // 转换目标padding到像素单位
-        let paddingPixels = Int(targetPadding * scale)
-        
         // 计算裁剪区域：左右上贴边，只在底部保留少量边距
         let bottomPaddingPixels = Int(8 * scale)  // 底部保留8pt边距
         let cropX = minX  // 左边贴边

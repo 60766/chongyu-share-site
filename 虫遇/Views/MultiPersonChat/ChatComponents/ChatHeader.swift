@@ -45,14 +45,14 @@ struct ChatHeader: View {
             // 参与者指示器 - 更紧凑的布局
             participantsView
         }
-        .background(DesignSystem.Colors.background.opacity(0.98))
+        .background(Color.clear)
         .overlay(
             Rectangle()
                 .fill(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.warmAccent.opacity(0.01),
-                            Color.warmAccent.opacity(0.005)
+                            Color.warmAccent.opacity(0.008),
+                            Color.warmAccent.opacity(0.003)
                         ]),
                         startPoint: .leading,
                         endPoint: .trailing

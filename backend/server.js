@@ -184,8 +184,10 @@ app.get('/health', (_, res) => res.json({ ok: true }))
 
 app.get('/balance', (req, res) => {
   const appAccountToken = req.header('X-App-Account-Token') || req.query.appAccountToken
+  console.log('[BALANCE] Request from token:', appAccountToken ? `${appAccountToken.substring(0, 8)}...` : 'MISSING')
   if (!appAccountToken) return res.status(400).json({ error: 'missing appAccountToken' })
   const wallet = getWallet(appAccountToken)
+  console.log('[BALANCE] Current balance for token:', wallet.balance)
   res.json({ balance: wallet.balance, currency: 'CREDITS' })
 })
 

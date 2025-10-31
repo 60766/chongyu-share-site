@@ -107,65 +107,53 @@ struct ChatView: View {
     
     var body: some View {
         ZStack {
-            // 添加动态背景 - 增加丰富度但保持简洁
+            // 使用主页面的彩色渐变背景
             ZStack {
-                // 基础背景色 - 微妙渐变
+                // 主渐变（从上到下）
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        DesignSystem.Colors.background,
-                        DesignSystem.Colors.background.opacity(0.98),
-                        DesignSystem.Colors.background.opacity(0.95)
+                        Color(hex: "FFF0F5"),  // 更亮的粉白色
+                        Color(hex: "FFE8F0"),  // 亮粉色
+                        Color(hex: "F0E8FF"),  // 亮紫色
+                        Color(hex: "E8F4FF"),  // 亮蓝色
+                        Color(hex: "FFE8D4")   // 淡橙色
                     ]),
-                    startPoint: .top,
-                    endPoint: .bottom
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
-                .edgesIgnoringSafeArea(.all)
                 
-                // 添加微妙的纹理图案，增强时空感
-                GeometryReader { geometry in
-                    // 上半部分微妙装饰
-                    VStack {
-                        HStack(spacing: 0) {
-                            // 顶部装饰元素 - 星点图案
-                            ForEach(0..<20) { _ in
-                                Circle()
-                                    .fill(characterThemeColor.opacity(Double.random(in: 0.01...0.05)))
-                                    .frame(width: Double.random(in: 1...3), height: Double.random(in: 1...3))
-                                    .offset(
-                                        x: Double.random(in: 0...geometry.size.width),
-                                        y: Double.random(in: 0...geometry.size.height * 0.3)
-                                    )
-                            }
-                        }
-                        Spacer()
-                    }
-                    
-                    // 时代印记装饰元素
-                    ZStack {
-                        // 底部装饰元素 - 代表历史的轻微印记
-                        Circle()
-                            .stroke(characterThemeColor.opacity(0.03), lineWidth: 60)
-                            .frame(width: geometry.size.width * 1.8, height: geometry.size.width * 1.8)
-                            .offset(y: geometry.size.height * 0.65)
-                            .blur(radius: 30)
-                        
-                        // 中部装饰元素
-                        Circle()
-                            .stroke(characterThemeColor.opacity(0.02), lineWidth: 1.5)
-                            .frame(width: 220, height: 220)
-                            .offset(x: geometry.size.width * 0.4, y: geometry.size.height * 0.25)
-                            .blur(radius: 1)
-                            
-                        // 中部装饰元素 - 扩散圆环，代表思想传播
-                        ForEach(0..<3) { index in
-                            Circle()
-                                .stroke(characterThemeColor.opacity(0.01 + 0.01 * Double(3 - index)), lineWidth: 1)
-                                .frame(width: 100 + CGFloat(index) * 60, height: 100 + CGFloat(index) * 60)
-                                .offset(x: -geometry.size.width * 0.3, y: geometry.size.height * 0.28)
-                        }
-                    }
-                }
+                // 顶部水平渐变层（从左到右的色彩变化）
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(hex: "FFE8F0").opacity(0.4),  // 左侧粉色
+                        Color(hex: "FFD4E5").opacity(0.3),  // 粉红色
+                        Color.clear,                         // 中间透明
+                        Color(hex: "E8F4FF").opacity(0.3),  // 淡蓝色
+                        Color(hex: "F0E8FF").opacity(0.4)   // 右侧紫色
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(height: 300)
+                .frame(maxHeight: .infinity, alignment: .top)
+                
+                // 左上角明亮色彩点缀
+                RadialGradient(
+                    gradient: Gradient(colors: [
+                        Color.white.opacity(0.8),
+                        Color(hex: "FFFEF5").opacity(0.7),
+                        Color(hex: "FFF9E6").opacity(0.5),
+                        Color(hex: "FFE8CC").opacity(0.3),
+                        Color.clear
+                    ]),
+                    center: .topLeading,
+                    startRadius: 5,
+                    endRadius: 450
+                )
+                .frame(maxHeight: .infinity, alignment: .top)
             }
+            .ignoresSafeArea(.all)
+            .allowsHitTesting(false)
             
             // 主内容区域
             VStack(spacing: 0) {
@@ -183,21 +171,6 @@ struct ChatView: View {
                                 // 顶部安全间距 - 增大空间提高视觉平衡
                                 Spacer()
                                     .frame(height: 40)
-                                
-                                // 底部渐变覆盖，增强顶部视觉层次感
-                                ZStack {
-                                    // 顶部下方渐变，防止内容被导航栏遮挡
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            DesignSystem.Colors.background,
-                                            DesignSystem.Colors.background.opacity(0)
-                                        ]),
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                    .frame(height: 30)
-                                    .offset(y: -30)
-                                }
                                 
                                 // 会话信息卡片 - 更精致的设计
                                 if !messages.isEmpty {
@@ -220,7 +193,6 @@ struct ChatView: View {
                                             .foregroundColor(characterThemeColor.opacity(0.7))
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 3)
-                                            .background(DesignSystem.Colors.background)
                                     }
                                     .padding(.top, 10)
                                     .padding(.bottom, 16)
@@ -372,45 +344,10 @@ struct ChatView: View {
             
             // 录音界面已移除
             
-            // 顶部安全遮罩 - 确保内容不会与导航栏重叠
+            // 顶部安全区域 - 透明以显示彩色渐变背景
             VStack {
-                // 高级导航栏背景
-                ZStack {
-                    // 背景色
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    DesignSystem.Colors.background.opacity(0.98),
-                                    DesignSystem.Colors.background.opacity(0.95)
-                                ]),
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .frame(height: 44)
-                    
-                    // 顶部精致描边
-                    VStack {
-                        Spacer()
-                        Rectangle()
-                            .fill(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.warmAccent.opacity(0.01),
-                                        Color.warmAccent.opacity(0.005)
-                                    ]),
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(height: 0.15)
-                    }
+                Color.clear
                     .frame(height: 44)
-                }
-                .background(DesignSystem.Colors.background) // 添加背景色，确保贴合键盘
-                .shadow(color: Color.black.opacity(0.01), radius: 1, x: 0, y: 1)
-                
                 Spacer()
             }
             .edgesIgnoringSafeArea(.top)
@@ -419,8 +356,8 @@ struct ChatView: View {
         .navigationTitle(character.name)
         // 自定义导航栏样式，但不显示返回按钮
         .toolbarColorScheme(.light, for: .navigationBar)
-        .toolbarBackground(DesignSystem.Colors.background, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        // 让导航栏背景透明以露出页面渐变
+        .toolbarBackground(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
         // 移除导航栏内置的分享按钮，改为系统级覆盖按钮以保持与角色详情一致
         .edgesIgnoringSafeArea(.bottom) // 忽略底部安全区域，确保输入框贴合屏幕底部

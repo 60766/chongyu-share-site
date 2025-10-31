@@ -1337,8 +1337,8 @@ showCharacterPicker = true
                 }
             }
         }
-        // 添加帖子分享模态视图
-        .sheet(item: $postToShare) { post in
+        // 添加帖子分享模态视图 - 使用全屏展示
+        .fullScreenCover(item: $postToShare) { post in
             PostShareModalView(
                 isPresented: Binding(
                     get: { postToShare != nil },
