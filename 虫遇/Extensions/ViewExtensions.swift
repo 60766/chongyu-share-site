@@ -8,6 +8,7 @@ extension View {
     
     // MARK: - onChange 兼容扩展
     /// 兼容不同版本 SwiftUI 的 onChange 方法
+    @available(iOS 17.0, *)
     func onChangeCompat<Value: Equatable>(of value: Value, perform action: @escaping (_ oldValue: Value, _ newValue: Value) -> Void) -> some View {
         return self.onChange(of: value) { oldValue, newValue in
             action(oldValue, newValue)
