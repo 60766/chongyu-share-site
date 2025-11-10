@@ -81,13 +81,8 @@ class AINetworkService: ObservableObject {
         } else if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL"), let url = URL(string: userDefault) {
             self.baseURL = url
         } else {
-            #if DEBUG
-            // 临时测试生产环境后端
-            // self.baseURL = URL(string: "http://121.40.184.29:3000")!
-            self.baseURL = URL(string: "http://127.0.0.1:8787")!
-            #else
+            // 统一使用阿里云生产服务器（发布版本）
             self.baseURL = URL(string: "http://121.40.184.29:3000")!
-            #endif
         }
     }
     

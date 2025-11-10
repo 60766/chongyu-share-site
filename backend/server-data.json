@@ -4,25 +4,100 @@
       "balance": 1207200
     },
     "TEST_TOKEN": {
-      "balance": 1500000
+      "balance": 0
     },
     "D08B9230-99EE-43D4-88AE-4626E001776C": {
-      "balance": 2000000
+      "balance": 499995
     },
     "test-token": {
-      "balance": 1080400
+      "balance": 1080399
     },
     "test_token_123": {
-      "balance": 1001647
+      "balance": 1002647
     },
     "test_user_token_123": {
       "balance": 1000000
     },
     "test-token-123": {
-      "balance": 1013438
+      "balance": 1013436
     },
     "5ec25df2-f799-4fc0-8ee2-ac13d473131b": {
       "balance": 1012652
+    },
+    "TEST_VERIFY_TOKEN": {
+      "balance": 1798
+    },
+    "test-token-12345678": {
+      "balance": 1800
+    },
+    "test-user-1762498573": {
+      "balance": 1794
+    },
+    "test-user-1762498738": {
+      "balance": 1795
+    },
+    "test-check-rate": {
+      "balance": 1800
+    },
+    "test-1762502869": {
+      "balance": 1800
+    },
+    "final-test-1762502902": {
+      "balance": 1800
+    },
+    "verify-1762503037": {
+      "balance": 1800
+    },
+    "final-verify-1762503071": {
+      "balance": 1795
+    },
+    "detail-test-1762503095": {
+      "balance": 1798
+    },
+    "large-test-1762503125": {
+      "balance": 1780
+    },
+    "verify-1762503184": {
+      "balance": 1798
+    },
+    "verify-1762503426": {
+      "balance": 1798
+    },
+    "verify-1762503488": {
+      "balance": 1798
+    },
+    "test": {
+      "balance": 1800
+    },
+    "verify-1762503648": {
+      "balance": 1798
+    },
+    "verify-1762505311": {
+      "balance": 1798
+    },
+    "verify-1762505449": {
+      "balance": 1800
+    },
+    "verify-1762505596": {
+      "balance": 1793
+    },
+    "verify-1762505620": {
+      "balance": 1791
+    },
+    "verify-1762505648": {
+      "balance": 1793
+    },
+    "test-debug-1762505991": {
+      "balance": 1791
+    },
+    "test-concurrent-1762506182": {
+      "balance": 1707
+    },
+    "onekey-rate-test-1762506684": {
+      "balance": 1792
+    },
+    "rate-test-1762506755": {
+      "balance": 1793
     }
   },
   "transactions": [
@@ -1501,6 +1576,1293 @@
         "receipt": ""
       },
       "at": 1761447726189
+    },
+    {
+      "id": "eZS6ylONY8g7LKRVXIP4Q",
+      "type": "admin-set",
+      "token": "TEST_TOKEN",
+      "amount": 0,
+      "ref": "admin-adjustment",
+      "meta": {},
+      "at": 1761987230000
+    },
+    {
+      "id": "WwncfR2XXBfOH3UvdlIyL",
+      "type": "topup",
+      "token": "test_token_123",
+      "amount": 1000,
+      "ref": "recharge_1761987499005",
+      "meta": {
+        "type": "recharge",
+        "currency": "CREDITS"
+      },
+      "at": 1761987499005
+    },
+    {
+      "id": "I1bYAw6DTVH1WLsycqbUP",
+      "type": "admin-set",
+      "token": "TEST_TOKEN",
+      "amount": 0,
+      "ref": "admin-adjustment",
+      "meta": {},
+      "at": 1761987748388
+    },
+    {
+      "id": "GpSPggDYRrKR0vdworziW",
+      "type": "admin-set",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 500000,
+      "ref": "admin-adjustment",
+      "meta": {},
+      "at": 1761988718349
+    },
+    {
+      "id": "pEOLKWwkKtqoQJMNtqNs6",
+      "type": "topup",
+      "token": "TEST_TOKEN",
+      "amount": 1800,
+      "ref": "dev-DFEE0B2E-A8A4-4853-B4D0-1DF7E9B57E94",
+      "meta": {
+        "productId": "com.lishilong.chongyu.100energy",
+        "receipt": ""
+      },
+      "at": 1761988825696
+    },
+    {
+      "id": "qveWw7lm2cpJfDzxIFILF",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "p80xUq5VUrWOmll2A5L98VNDrx8n",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988835041
+    },
+    {
+      "id": "PiRI1Xuh3gUDbrhXNWCbm",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "9dLya9Gr4ZXPa0ZzsxfaFFNF5wKu",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988835047
+    },
+    {
+      "id": "RL4fa5K1oszHlC67TE1Y6",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "4001NzNXwifG965swtipx9z13EJQ",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988835049
+    },
+    {
+      "id": "xYCdcjYMdpY1eK5fdyIFq",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "7yosOX7QArgyl1KJBArHa2LVz5OY",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988835209
+    },
+    {
+      "id": "6ymM80EcYxZlXmIdbfaKK",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "fHIeBhfbzR7r46Jea34r9yXMLk5A",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988835211
+    },
+    {
+      "id": "KjQKnJmp5BTv0FQPWwJaZ",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "dImBV5jplWuiImq7CM9hhumDSghq",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988835213
+    },
+    {
+      "id": "RIVEfEdVRtbsIOEWgJG19",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "kGJLSjNu3qFqF4K4xfpFQjLanPXb",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988835828
+    },
+    {
+      "id": "cnwijgpaQ4JZ8CAYTPBYZ",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "Oh2VH8z4G3RYf1Z2l5EqZLazXWhx",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988835830
+    },
+    {
+      "id": "YHXrVZFGMNA5yegHDk5Wg",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "ko0uwIE3ODS8oWa0fS78nxKb1u3q",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988835833
+    },
+    {
+      "id": "i1IsvkGWswZe0yKGwJgil",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "D9U80HqUpOvgFIvRParJ4IbvBNcA",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988836461
+    },
+    {
+      "id": "b1MWHCjCd1SZ9agmdtoK0",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "2u1qPpZnocVDBoczcTiD9H3xLFBK",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988836463
+    },
+    {
+      "id": "3gzQTR3fafMiVpQJ536MZ",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "OmGfEYSRoKSy8NAnx1TCGTe2rXdi",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988836465
+    },
+    {
+      "id": "oVhKomlCi71eYEU5KsAEG",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "1CSPNhlmPvuTC97kwl6lJP8pjRYo",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988919272
+    },
+    {
+      "id": "P1M78ig28pr7lNvjMR3tY",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "IWk1uanjNulIl1R6lxKvADmoE1Nj",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988919274
+    },
+    {
+      "id": "OIwvZV2SPtKnyrw3a6FLM",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "zevyKzP1kZPMM62HVRuveOtpLhDT",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988919276
+    },
+    {
+      "id": "4MaoyrZCTncX2MQbAIP3k",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "ve3cz0IURr6oY6wowaDjOTVlI89M",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988919427
+    },
+    {
+      "id": "pajYZxIAgTCSTm7pFsHG3",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "mKNr1TsueOzK8ZIi1t4EJ2AILMd5",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988919429
+    },
+    {
+      "id": "raPjpC0DXOsGrKrlpndeJ",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "0KLpCjTTfB2sMZHGBCWXbi6FLit5",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988919432
+    },
+    {
+      "id": "tX3W0eeGRuyXrzAj0bUGs",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "ZdhoNDlJkyXdgJPYkvMDjTGLdx9h",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988920102
+    },
+    {
+      "id": "qlQHQpRcyS1IWeSnbpMo7",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "tJMvpbk0p4Yv6N3cTNw77RfX4xRJ",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988920104
+    },
+    {
+      "id": "uQZC8oy68NoGe9H1wKl97",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "jFyVAjZScyoKb1xN5oYJSeXSO2V8",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988920106
+    },
+    {
+      "id": "T3lHfz6Gxj1Ak3JD6SVl8",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "bw8LKIqriyceUZzSPLxjp4aP0cQe",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988920696
+    },
+    {
+      "id": "AbOdP4GTMtORVFYx5irrt",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "GHwbd7KnTnZlBLMBYKkvaTIyIEj0",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988920698
+    },
+    {
+      "id": "Ef9L2rxD8AdLzuQbcDpF3",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "s9fUvz4KQsgIyCEf6rhb7JC0yTNt",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988920700
+    },
+    {
+      "id": "3TWoD8BDzV45PRMhj525c",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "mU3E9qeAlZ6RQuOfilMz8gEZGLmD",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988929298
+    },
+    {
+      "id": "0uFBUkGH2DLlH29pBs0Bs",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "hiQQVycmwZwpCoMd7oOqDlD83UFs",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988929301
+    },
+    {
+      "id": "HkAnU0SIRKjzLlFHDYPC2",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "JrSKv8ppBt4O8uZRxRRSsAK0QOw1",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988929303
+    },
+    {
+      "id": "9jxP7ojs0brGjpMI9expA",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "IV0I0pBytJqkffPxTwBUdxDLxyu2",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988929483
+    },
+    {
+      "id": "e9HEaltkjv4Hu7xAsG5hE",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "dH8sPqdRPVxyCRT8M5q4CugujhjS",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988929485
+    },
+    {
+      "id": "XQctZSGZOQtBZwlcaZoE5",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "TqQhLYo2lge9lMyZQjWFsLz957lK",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988929486
+    },
+    {
+      "id": "xjrYlbyQm8VofGzixPpeY",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "E093gazcGIKQkNQI35Y5xzqvMgw7",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988930208
+    },
+    {
+      "id": "AsJ2AGAJf2kVhbQSMy1Pt",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "QC2u7nzeIVjjMy3FO4VOVi3B4k8Y",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988930211
+    },
+    {
+      "id": "wFzyfpHbgqOhDbWIUimMV",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "brEzRh7NLiqEvyq4Q79l4lapos5a",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988930213
+    },
+    {
+      "id": "d0b3JUN3nFNeTovlR7NON",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "3Vw0Fwtai2kC8j49HXd4AGZIbf7f",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988930845
+    },
+    {
+      "id": "1uM7srGyU7eW5Sqogiil9",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "LDJQoiBR1ipO1f1y8WSkjvtyEnaD",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988930847
+    },
+    {
+      "id": "aY49qhuBR9DFVdnQqU46V",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "9ljbfnc8LZVYXdMBBE2FwCt97Eue",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988930849
+    },
+    {
+      "id": "rvFQFDREH0wALPz8eVYcL",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "iDXrSqNyhAbsDI2mGnx8FVW5SAFB",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988939450
+    },
+    {
+      "id": "5usgVbvSS1n5LWfM8ueeD",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "dO8ms0PuOiQOqMXCxf2jQN7xoxdW",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988939452
+    },
+    {
+      "id": "PUorqQ0WZ2Kpl2WGe2X1i",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "RyepxAlP4j9kVKwdGC1Z0T1Z1F4i",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988939454
+    },
+    {
+      "id": "LAYuu7z5WA2YXE53Hr61X",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "tCwttMyPLHXeixgGGZweULtiHe32",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988939527
+    },
+    {
+      "id": "rcj8mGefWYOY2cpK3uZ6w",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "N23JHSOT3ndHvdhIldvkxdpNPBgk",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988939529
+    },
+    {
+      "id": "CBQ2SLJxTYlkYkSnGpIIZ",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "UxDUo2LPNFtuqkr9dquzdbUYq31t",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988939532
+    },
+    {
+      "id": "kpy0oFcDDWyKEOwA3JcSH",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "RwFlMauI9fVj30ANMXImuMCkYE78",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988940176
+    },
+    {
+      "id": "pvyVzF0Yj5a4sdOAughEP",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "TXOH2B4d5yOm2JZYgzkjqVVfnG4e",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988940177
+    },
+    {
+      "id": "EwlBu2DecWEpt2D5gs0Wr",
+      "type": "debit",
+      "token": "TEST_TOKEN",
+      "amount": 40,
+      "ref": "zL8uX8uHyGnB8wRkZglG1kIn8U1T",
+      "meta": {
+        "totalTokens": 400,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1761988940179
+    },
+    {
+      "id": "hxyACf08eTk1tx6s6nZfh",
+      "type": "gift",
+      "token": "TEST_VERIFY_TOKEN",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762059969698
+    },
+    {
+      "id": "Mojxj6vycGiq9BuuTL9ao",
+      "type": "debit",
+      "token": "TEST_VERIFY_TOKEN",
+      "amount": 2,
+      "ref": "naEQQkyLchZUuOHfxm0qs0eqmCUt",
+      "meta": {
+        "totalTokens": 409,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762059988475
+    },
+    {
+      "id": "NJe6hwrAoVawI7oZmaqUq",
+      "type": "debit",
+      "token": "test-token-123",
+      "amount": 2,
+      "ref": "Z4oghUVdDS5xbiumQayH12Kgdvx1",
+      "meta": {
+        "totalTokens": 312,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762060494722
+    },
+    {
+      "id": "lMejJkRrDpDCptSsyIu2w",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 1,
+      "ref": "aNUlpmFDkYyxIj3S3mNBVMyaweDZ",
+      "meta": {
+        "totalTokens": 222,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762060596249
+    },
+    {
+      "id": "lemXCX9mc0cI92hnQpwkL",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 2,
+      "ref": "YQqT0GY80dvAjW75dGan5DusQJ47",
+      "meta": {
+        "totalTokens": 257,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762060617809
+    },
+    {
+      "id": "4JZ8cplCC6WPB6iZhnax9",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 1,
+      "ref": "Mlq4gbMZcmqWjksR0uYIY4ZwiMLl",
+      "meta": {
+        "totalTokens": 77,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762060636800
+    },
+    {
+      "id": "ZYe9P4K09Xc4oG8n7wItn",
+      "type": "debit",
+      "token": "D08B9230-99EE-43D4-88AE-4626E001776C",
+      "amount": 1,
+      "ref": "UIrjPrPC8LtodnEDKxC1qXZRU48j",
+      "meta": {
+        "totalTokens": 71,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762061351124
+    },
+    {
+      "id": "HPw9Tl0RpE8UsLjTmdtNW",
+      "type": "gift",
+      "token": "test-token-12345678",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762062258077
+    },
+    {
+      "id": "yJmHIwtwfbpXUrwLVhWKy",
+      "type": "debit",
+      "token": "test-token",
+      "amount": 1,
+      "ref": "AiZxXGGh4Ry6KWD2ZxAhoUisY11Z",
+      "meta": {
+        "totalTokens": 133,
+        "providerModel": "doubao-seed-1-6-vision-250815",
+        "apiType": "vision"
+      },
+      "at": 1762482900802
+    },
+    {
+      "id": "3ht0MLKNd1lEFKZa9Wlds",
+      "type": "gift",
+      "token": "test-user-1762498573",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762498573273
+    },
+    {
+      "id": "FhjFUyUiUwDZjWwmevYwF",
+      "type": "debit",
+      "token": "test-user-1762498573",
+      "amount": 6,
+      "ref": "c3qcDlQHV8VJ4Vyzlss92YzNUNxy",
+      "meta": {
+        "totalTokens": 333,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762498583028
+    },
+    {
+      "id": "tBCGjGswa67qfAHWRxPAd",
+      "type": "gift",
+      "token": "test-user-1762498738",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762498738446
+    },
+    {
+      "id": "t9KMPajGZPlT0DEGG5s6I",
+      "type": "debit",
+      "token": "test-user-1762498738",
+      "amount": 5,
+      "ref": "WKzrjiidj8J8iO6nTnsz4ZRZIh1h",
+      "meta": {
+        "totalTokens": 296,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762498747625
+    },
+    {
+      "id": "3K3tgfm0k8Od5uooN4751",
+      "type": "gift",
+      "token": "test-check-rate",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762502856551
+    },
+    {
+      "id": "L7cMMCoLpexWvaPCb5Kbj",
+      "type": "gift",
+      "token": "test-1762502869",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762502869259
+    },
+    {
+      "id": "ev3sIqG861xMZTvOB72BJ",
+      "type": "gift",
+      "token": "final-test-1762502902",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762502902088
+    },
+    {
+      "id": "RGq3BZ5aFsojU7jLZnVSE",
+      "type": "gift",
+      "token": "verify-1762503037",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762503037747
+    },
+    {
+      "id": "TnX3RLMf5lqR4sHlQeRE2",
+      "type": "gift",
+      "token": "final-verify-1762503071",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762503072020
+    },
+    {
+      "id": "RSHe0Zw5Q18QuLTV3u9rM",
+      "type": "debit",
+      "token": "final-verify-1762503071",
+      "amount": 5,
+      "ref": "ucHACW86pCNO56Oh2K5kzY9lQM44",
+      "meta": {
+        "totalTokens": 257,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762503078153
+    },
+    {
+      "id": "mroXM2F0QsHt3FUCuOEWv",
+      "type": "gift",
+      "token": "detail-test-1762503095",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762503095334
+    },
+    {
+      "id": "iO0MqVif1YG3ihoBBwCVB",
+      "type": "debit",
+      "token": "detail-test-1762503095",
+      "amount": 2,
+      "ref": "siaqXzdt6mR7l1gqVwFp53sBzeEO",
+      "meta": {
+        "totalTokens": 117,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762503098310
+    },
+    {
+      "id": "1QMeoa7BjggyRQFALy6Gt",
+      "type": "gift",
+      "token": "large-test-1762503125",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762503125061
+    },
+    {
+      "id": "r7sqgnlGysIaHlh8d9wTp",
+      "type": "debit",
+      "token": "large-test-1762503125",
+      "amount": 20,
+      "ref": "IbPLil6z7bVg1nRumceE4Y0xtBD9",
+      "meta": {
+        "totalTokens": 1210,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762503157805
+    },
+    {
+      "id": "KGA6eqj3Ywre0gjNOjysw",
+      "type": "gift",
+      "token": "verify-1762503184",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762503184888
+    },
+    {
+      "id": "GrwDTmZEo6dYRr96NZiFP",
+      "type": "debit",
+      "token": "verify-1762503184",
+      "amount": 2,
+      "ref": "0gCiE2L5YDHLNFS2ygSpVelaomrY",
+      "meta": {
+        "totalTokens": 95,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762503188987
+    },
+    {
+      "id": "5qZIJmCy3l9iuWdOmtiNg",
+      "type": "gift",
+      "token": "verify-1762503426",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762503426351
+    },
+    {
+      "id": "E8qaVQXCjnr22KaoOhzru",
+      "type": "debit",
+      "token": "verify-1762503426",
+      "amount": 2,
+      "ref": "S7xqfCM32PwfyB8Hi5Qn2ftUlTC2",
+      "meta": {
+        "totalTokens": 115,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762503445667
+    },
+    {
+      "id": "iB30srzCMtfj7AY73VLE8",
+      "type": "gift",
+      "token": "verify-1762503488",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762503488805
+    },
+    {
+      "id": "PF6e360YvoKBsExXQzTA0",
+      "type": "debit",
+      "token": "verify-1762503488",
+      "amount": 2,
+      "ref": "pO2EmYe6MejE2eg8PMFUaan3Eozq",
+      "meta": {
+        "totalTokens": 105,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762503505871
+    },
+    {
+      "id": "rWYyBaLG6LjjGUgrbeODY",
+      "type": "gift",
+      "token": "test",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762503640517
+    },
+    {
+      "id": "IGEuuM1imNmWTQ2VLA0e5",
+      "type": "gift",
+      "token": "verify-1762503648",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762503648225
+    },
+    {
+      "id": "VbqvfcsHCD7mGDxSmAPwj",
+      "type": "debit",
+      "token": "verify-1762503648",
+      "amount": 2,
+      "ref": "XmWLKiZRs94BAVgxmA1zp3sjhB0K",
+      "meta": {
+        "totalTokens": 72,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762503654970
+    },
+    {
+      "id": "qSjc7Per4OFUdBxdNRkGf",
+      "type": "gift",
+      "token": "verify-1762505311",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762505311445
+    },
+    {
+      "id": "HYySgSpgYKqXRln4uUc8y",
+      "type": "debit",
+      "token": "verify-1762505311",
+      "amount": 2,
+      "ref": "fWJWP4SilRXFTxGufAlQkB2wM2cc",
+      "meta": {
+        "totalTokens": 98,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762505314545
+    },
+    {
+      "id": "oAdxoU9yq17t0M4sCPAsA",
+      "type": "gift",
+      "token": "verify-1762505449",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762505449856
+    },
+    {
+      "id": "YzlYWX1tuMawbbgCb2jwK",
+      "type": "gift",
+      "token": "verify-1762505596",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762505596764
+    },
+    {
+      "id": "Idk0ljGUgDHztquaj1Yq2",
+      "type": "debit",
+      "token": "verify-1762505596",
+      "amount": 7,
+      "ref": "EOVFwTNzeJnTDTwFA8LIlhyMuxNh",
+      "meta": {
+        "totalTokens": 390,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762505608946
+    },
+    {
+      "id": "HUw9oBvyT2kM0VKNRb9IF",
+      "type": "gift",
+      "token": "verify-1762505620",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762505620263
+    },
+    {
+      "id": "BwT4Q3qJRkjcgkjkKr6gC",
+      "type": "debit",
+      "token": "verify-1762505620",
+      "amount": 9,
+      "ref": "Fre3Hh8sLU4dTIWU25jB248TyMeF",
+      "meta": {
+        "totalTokens": 534,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762505637058
+    },
+    {
+      "id": "Jy11BqSYOfbtUMm7jvvcd",
+      "type": "gift",
+      "token": "verify-1762505648",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762505648310
+    },
+    {
+      "id": "2bqY0nzM6AwKOD31B87ay",
+      "type": "debit",
+      "token": "verify-1762505648",
+      "amount": 7,
+      "ref": "zUwJxh9arMccocrq9egXvIjuGcXI",
+      "meta": {
+        "totalTokens": 381,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762505659964
+    },
+    {
+      "id": "C2tnge4WxpJzfTObPEf0k",
+      "type": "gift",
+      "token": "test-debug-1762505991",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762505991183
+    },
+    {
+      "id": "yOVo5k278poc4AJKySwok",
+      "type": "debit",
+      "token": "test-debug-1762505991",
+      "amount": 9,
+      "ref": "0DqBtamcX8ltXw0N6Qj0KzIV3y1w",
+      "meta": {
+        "totalTokens": 508,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506007657
+    },
+    {
+      "id": "DsziTnoC5uHMAKntJ50Kq",
+      "type": "gift",
+      "token": "test-concurrent-1762506182",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762506182505
+    },
+    {
+      "id": "v2PB5W3zDinp7GCgKziFA",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 5,
+      "ref": "D16U0WATaN9318XaAJMj69X4cQKj",
+      "meta": {
+        "totalTokens": 262,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506190882
+    },
+    {
+      "id": "r8eDbIj1mAZxf2dxL3uuh",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 6,
+      "ref": "wiA6qoPp4UkBXHBb4BVcD3njBtgE",
+      "meta": {
+        "totalTokens": 314,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506192471
+    },
+    {
+      "id": "YMm7I17UlrLuUk1Eqo1RS",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 7,
+      "ref": "PeN4dW1Ss8QnFHQ8iFLJV9eet42W",
+      "meta": {
+        "totalTokens": 372,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506194529
+    },
+    {
+      "id": "Usl9z7W6W54iCFyK99rpQ",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 7,
+      "ref": "VU0XeHNGt6WvP3ZwkT7STfeWmaGg",
+      "meta": {
+        "totalTokens": 407,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506195206
+    },
+    {
+      "id": "LBAWVDNaFKhCuHIURW39F",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 7,
+      "ref": "lRsmXEGa6rQDKJ3KYu9P3Ehl3PGo",
+      "meta": {
+        "totalTokens": 391,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506195264
+    },
+    {
+      "id": "odQkeDSU7MZ3E0nqLcOl9",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 7,
+      "ref": "M5V8efNn4ADn4yek31YMh16dcBeN",
+      "meta": {
+        "totalTokens": 410,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506195616
+    },
+    {
+      "id": "aKKd5ZAkCyowrQzlUWjcm",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 8,
+      "ref": "U7lnZ8drlttYNZYwP1iE3OMoM5vg",
+      "meta": {
+        "totalTokens": 452,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506196495
+    },
+    {
+      "id": "mREOvWePcksfRCpf4va1X",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 8,
+      "ref": "Cnfa5BSboJ71P2RJurVjKXkQf4fn",
+      "meta": {
+        "totalTokens": 445,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506196977
+    },
+    {
+      "id": "inffNh0xrMtnFgT7yKa9t",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 9,
+      "ref": "G4Y8ephsrLF7KAQ3jfp0JnuvRJL4",
+      "meta": {
+        "totalTokens": 496,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506197601
+    },
+    {
+      "id": "kgAIRakqxuyfDPK2OfxXc",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 9,
+      "ref": "Ls1jsKLBLkfzQkUf5b1bTkDe9bzg",
+      "meta": {
+        "totalTokens": 513,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506198353
+    },
+    {
+      "id": "ehICvpAcCVlReJ3S9lKRi",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 10,
+      "ref": "J26DPl3dL3DrfOzFn7RbUJMye4YQ",
+      "meta": {
+        "totalTokens": 581,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506201029
+    },
+    {
+      "id": "JQQ7RPKQRStKQ3Be2jvlf",
+      "type": "debit",
+      "token": "test-concurrent-1762506182",
+      "amount": 10,
+      "ref": "FJT1rYLwHFyqqRZnqajVcipdX8bt",
+      "meta": {
+        "totalTokens": 595,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506201457
+    },
+    {
+      "id": "wLfpZiQtgVbzrZzKCB0Ny",
+      "type": "gift",
+      "token": "onekey-rate-test-1762506684",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762506686968
+    },
+    {
+      "id": "4hKRhPOwrKDptguLjzV6D",
+      "type": "debit",
+      "token": "onekey-rate-test-1762506684",
+      "amount": 8,
+      "ref": "Fx50t8RzDJ9mv9l5CoeyTPdsHolu",
+      "meta": {
+        "totalTokens": 478,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506710334
+    },
+    {
+      "id": "tB2N5gxNwUWkxmTihpUp0",
+      "type": "gift",
+      "token": "rate-test-1762506755",
+      "amount": 1800,
+      "ref": "new_user_welcome",
+      "meta": {
+        "reason": "新用户注册赠送"
+      },
+      "at": 1762506757571
+    },
+    {
+      "id": "a43BOfSIjJHEsdlqQwSwm",
+      "type": "debit",
+      "token": "rate-test-1762506755",
+      "amount": 7,
+      "ref": "JnJViEIRsjFj05andn99A4AWB3Ph",
+      "meta": {
+        "totalTokens": 411,
+        "providerModel": "deepseek-r1-250120"
+      },
+      "at": 1762506781462
     }
   ],
   "processedIapTransactions": [
@@ -1565,11 +2927,12 @@
     "manual-charge-1761447711",
     "manual-charge-1761447724",
     "manual-charge-1761447725",
-    "manual-charge-1761447726"
+    "manual-charge-1761447726",
+    "dev-DFEE0B2E-A8A4-4853-B4D0-1DF7E9B57E94"
   ],
   "appleIdAccounts": {},
   "backupCodeMap": {
     "343-738-180-780": "D08B9230-99EE-43D4-88AE-4626E001776C"
   },
-  "savedAt": 1761469725624
+  "savedAt": 1762757936480
 }

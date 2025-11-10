@@ -10,13 +10,13 @@
       "internalID" : "6449356781",
       "localizations" : [
         {
-          "description" : "新手体验，1800虫洞币",
-          "displayName" : "100能量包",
+          "description" : "适合轻度使用",
+          "displayName" : "1800虫洞币",
           "locale" : "zh_CN"
         }
       ],
       "productID" : "com.lishilong.chongyu.100energy",
-      "referenceName" : "100能量包",
+      "referenceName" : "1800虫洞币",
       "type" : "Consumable"
     },
     {
@@ -25,13 +25,13 @@
       "internalID" : "6449356782",
       "localizations" : [
         {
-          "description" : "日常使用，6000虫洞币",
-          "displayName" : "300能量包",
+          "description" : "性价比之选",
+          "displayName" : "6000虫洞币",
           "locale" : "zh_CN"
         }
       ],
       "productID" : "com.lishilong.chongyu.300energy",
-      "referenceName" : "300能量包",
+      "referenceName" : "6000虫洞币",
       "type" : "Consumable"
     },
     {
@@ -40,13 +40,13 @@
       "internalID" : "6449356783",
       "localizations" : [
         {
-          "description" : "深度体验，13800虫洞币",
-          "displayName" : "700能量包",
+          "description" : "深度体验",
+          "displayName" : "13800虫洞币",
           "locale" : "zh_CN"
         }
       ],
       "productID" : "com.lishilong.chongyu.700energy",
-      "referenceName" : "700能量包",
+      "referenceName" : "13800虫洞币",
       "type" : "Consumable"
     },
     {
@@ -55,13 +55,13 @@
       "internalID" : "6449356784",
       "localizations" : [
         {
-          "description" : "畅享无忧，26800虫洞币",
-          "displayName" : "1400能量包",
+          "description" : "无限探索",
+          "displayName" : "24000虫洞币",
           "locale" : "zh_CN"
         }
       ],
       "productID" : "com.lishilong.chongyu.1400energy",
-      "referenceName" : "1400能量包",
+      "referenceName" : "24000虫洞币",
       "type" : "Consumable"
     }
   ],

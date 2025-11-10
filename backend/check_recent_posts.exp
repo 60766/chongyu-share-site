@@ -1,0 +1,41 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+
+spawn ssh root@47.94.254.130
+
+expect {
+    "password:" {
+        send "Lsl568568568\r"
+    }
+    "yes/no" {
+        send "yes\r"
+        exp_continue
+    }
+}
+
+expect "*]#"
+send "cd /var/www/chongyu-backend\r"
+
+expect "*]#"
+send "echo '=== 最近12次API调用的tokens和扣币记录 ==='\r"
+
+expect "*]#"
+send "pm2 logs chongyu-backend --lines 200 --nostream | grep -E '(✅ 成功处理|X-Usage-Tokens|X-Cost-Credits|totalTokens|costCredits)' | tail -48\r"
+
+expect "*]#"
+send "echo '\n=== 当前费率配置 ==='\r"
+
+expect "*]#"
+send "grep CREDITS_PER_1K_TOKENS production.env\r"
+
+expect "*]#"
+send "echo '\n=== 计算总消耗 ==='\r"
+
+expect "*]#"
+send "pm2 logs chongyu-backend --lines 200 --nostream | grep 'costCredits' | tail -12 | awk '{sum+=\\$NF} END {print \"最近12次总消耗: \" sum \" 虫洞币\"}'\r"
+
+expect "*]#"
+send "exit\r"
+
+expect eof

@@ -37,11 +37,8 @@ class DoubaoVisionService {
         if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL"), let url = URL(string: userDefault) {
             return url
         }
-        #if DEBUG
-        return URL(string: "http://localhost:3000")!
-        #else
+        // 统一使用阿里云生产服务器（发布版本）
         return URL(string: "http://121.40.184.29:3000")!
-        #endif
     }
     
     private let model = "doubao-seed-1-6-vision-250815"
@@ -211,7 +208,7 @@ class DoubaoVisionService {
             
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
-            request.timeoutInterval = 60.0  // 增加超时时间到60秒
+            // ⚠️ 不设置request.timeoutInterval，使用URLSessionConfiguration的超时设置（300秒）
             request.addValue("application/json", forHTTPHeaderField: "Content-Type")
             request.addValue("application/json", forHTTPHeaderField: "Accept")
             
@@ -315,7 +312,7 @@ class DoubaoVisionService {
             
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
-            request.timeoutInterval = 60.0  // 增加超时时间到60秒
+            // ⚠️ 不设置request.timeoutInterval，使用URLSessionConfiguration的超时设置（300秒）
             request.addValue("application/json", forHTTPHeaderField: "Content-Type")
             request.addValue("application/json", forHTTPHeaderField: "Accept")
             

@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+set timeout 60
+set server [lindex $argv 0]
+set command [lindex $argv 1]
+set password "3Qq123456."
+
+spawn ssh -o StrictHostKeyChecking=no root@$server $command
+expect {
+    "password:" {
+        send "$password\r"
+        exp_continue
+    }
+    "yes/no" {
+        send "yes\r"
+        exp_continue
+    }
+    eof
+}
+wait
+

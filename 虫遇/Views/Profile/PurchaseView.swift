@@ -93,12 +93,12 @@ struct PurchaseView: View {
                     .foregroundColor(.cyan)
             }
             
-            Text("获取更多虫洞币")
+            Text("充值虫洞币")
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundColor(.white)
             
-            Text("用于解锁更多次元对话功能")
+            Text("开启更多次元对话体验")
                 .font(.subheadline)
                 .foregroundColor(.white.opacity(0.7))
         }
@@ -156,7 +156,7 @@ struct PurchaseView: View {
     private var purchaseOptionsSection: some View {
         VStack(spacing: 16) {
             HStack {
-                Text("充值选项")
+                Text("选择套餐")
                     .font(.headline)
                     .foregroundColor(.white)
                 Spacer()
@@ -196,7 +196,7 @@ struct PurchaseView: View {
                         }
                     }
                     
-                    Text("⚠️ 模拟器环境下的测试充值")
+                    Text("⚠️ 测试环境，非真实交易")
                         .font(.caption2)
                         .foregroundColor(.yellow.opacity(0.8))
                 }
@@ -224,21 +224,21 @@ struct PurchaseView: View {
                     VStack(spacing: 8) {
                     ProgressView()
                         .tint(.cyan)
-                    Text("加载充值选项中...")
+                    Text("正在加载套餐...")
                         .foregroundColor(.white.opacity(0.7))
                 }
                     
                     VStack(spacing: 8) {
-                        Text("如果加载失败，可能是因为：")
+                        Text("加载时间较长？")
                             .font(.caption)
                             .foregroundColor(.white.opacity(0.6))
-                        Text("• App Store Connect未配置商品")
+                        Text("• 请检查网络连接")
                             .font(.caption2)
                             .foregroundColor(.white.opacity(0.5))
-                        Text("• 需要真实设备测试")
+                        Text("• 尝试切换Wi-Fi或移动网络")
                             .font(.caption2)
                             .foregroundColor(.white.opacity(0.5))
-                        Text("• StoreKit配置文件未正确应用")
+                        Text("• 或点击下方重新加载")
                             .font(.caption2)
                             .foregroundColor(.white.opacity(0.5))
                     }
@@ -282,11 +282,11 @@ struct PurchaseView: View {
                             .font(.caption2)
                             .foregroundColor(.white.opacity(0.5))
                         #if targetEnvironment(simulator)
-                        Text("运行环境: 模拟器（需要.storekit配置或改用真机+Sandbox）")
+                        Text("运行环境: 模拟器")
                             .font(.caption2)
                             .foregroundColor(.yellow.opacity(0.7))
                         #else
-                        Text("运行环境: 真机")
+                        Text("运行环境: 真实设备")
                             .font(.caption2)
                             .foregroundColor(.white.opacity(0.5))
                         #endif
@@ -330,15 +330,15 @@ struct PurchaseView: View {
     
     private var infoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("充值说明")
+            Text("购买须知")
                 .font(.headline)
                 .foregroundColor(.white)
             
             VStack(alignment: .leading, spacing: 8) {
-                InfoRow(icon: "checkmark.circle", text: "虫洞币用于次元对话功能")
-                InfoRow(icon: "checkmark.circle", text: "支持Apple Pay安全支付")
-                InfoRow(icon: "checkmark.circle", text: "充值后立即到账")
+                InfoRow(icon: "checkmark.circle", text: "用于解锁AI次元对话")
+                InfoRow(icon: "checkmark.circle", text: "安全支付，立即到账")
                 InfoRow(icon: "checkmark.circle", text: "永久有效，不会过期")
+                InfoRow(icon: "checkmark.circle", text: "购买即表示同意用户协议")
             }
         }
         .padding(20)
@@ -410,76 +410,147 @@ struct PurchaseOptionCard: View {
     
     var body: some View {
         Button(action: onPurchase) {
-            VStack(spacing: 12) {
-                // 产品名称
-                Text(product.displayName)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                
-                // 价格
-                Text(product.displayPrice)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.cyan)
-                
-                // 产品描述
-                Text(productDescription(for: product.id))
-                    .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.7))
-                    .multilineTextAlignment(.center)
-                
-                // 产品ID（调试用）
-                #if DEBUG
-                Text("\(product.id)")
-                    .font(.caption2)
-                    .foregroundColor(.white.opacity(0.4))
-                #endif
-            }
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 120)
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.12),
-                                Color.white.opacity(0.05)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 12) {
+                    // 虫洞币数量（主标题）
+                    Text(coinAmount(for: product.id))
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                    
+                    // 价格
+                    Text(product.displayPrice)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.cyan)
+                    
+                    // 用途说明
+                    Text(productUsageDescription(for: product.id))
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                    
+                    // API请求次数说明
+                    Text(apiRequestCount(for: product.id))
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.5))
+                        .multilineTextAlignment(.center)
+                    
+                    // 产品ID（调试用）
+                    #if DEBUG
+                    Text("\(product.id)")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.4))
+                    #endif
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 120)
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(
+                            LinearGradient(
+                                colors: isRecommended(for: product.id) ? [
+                                    Color.orange.opacity(0.15),
+                                    Color.purple.opacity(0.08)
+                                ] : [
+                                    Color.white.opacity(0.12),
+                                    Color.white.opacity(0.05)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(
+                            LinearGradient(
+                                colors: isRecommended(for: product.id) ? [
+                                    Color.orange.opacity(0.5),
+                                    Color.purple.opacity(0.3)
+                                ] : [
+                                    Color.cyan.opacity(0.3),
+                                    Color.purple.opacity(0.2)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: isRecommended(for: product.id) ? 1.5 : 1
                         )
-            )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                Color.cyan.opacity(0.3),
-                                Color.purple.opacity(0.2)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            )
-            .scaleEffect(isPurchasing ? 0.95 : 1.0)
-            .opacity(isPurchasing ? 0.6 : 1.0)
+                )
+                .scaleEffect(isPurchasing ? 0.95 : 1.0)
+                .opacity(isPurchasing ? 0.6 : 1.0)
+                
+                // 推荐标签 - 放在右上角外部
+                if isRecommended(for: product.id) {
+                    Text("推荐")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.orange, Color.orange.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .offset(x: -10, y: -6)
+                        .shadow(color: .orange.opacity(0.5), radius: 4, x: 0, y: 2)
+                }
+            }
         }
         .disabled(isPurchasing)
         .animation(.easeInOut(duration: 0.15), value: isPurchasing)
     }
     
-    private func productDescription(for productId: String) -> String {
+    // 虫洞币数量
+    private func coinAmount(for productId: String) -> String {
         switch productId {
-        case "com.lishilong.chongyu.100energy": return "新手体验\n100 能量"
-        case "com.lishilong.chongyu.300energy": return "日常使用\n300 能量"
-        case "com.lishilong.chongyu.700energy": return "深度体验\n700 能量"
-        case "com.lishilong.chongyu.1400energy": return "畅享无忧\n1400 能量"
-        default: return "能量充值包"
+        case "com.lishilong.chongyu.100energy": return "1,800 虫洞币"
+        case "com.lishilong.chongyu.300energy": return "6,000 虫洞币"
+        case "com.lishilong.chongyu.700energy": return "13,800 虫洞币"
+        case "com.lishilong.chongyu.1400energy": return "24,000 虫洞币"
+        default: return "虫洞币"
         }
+    }
+    
+    // 用途描述
+    private func productUsageDescription(for productId: String) -> String {
+        switch productId {
+        case "com.lishilong.chongyu.100energy": return "适合轻度使用"
+        case "com.lishilong.chongyu.300energy": return "性价比之选"
+        case "com.lishilong.chongyu.700energy": return "深度体验"
+        case "com.lishilong.chongyu.1400energy": return "无限探索"
+        default: return "用于解锁更多次元对话功能"
+        }
+    }
+    
+    // API请求次数说明（基于实际token消耗计算）
+    // 计费规则：100虫洞币/1K tokens，视觉API 200虫洞币/1K tokens
+    // 简单对话约50币，普通对话约80币，长对话约150币，图片分析约300币
+    private func apiRequestCount(for productId: String) -> String {
+        switch productId {
+        case "com.lishilong.chongyu.100energy": 
+            // 1800币：普通对话22次(1800÷80)，简单对话36次(1800÷50)
+            return "约22-36次对话"
+        case "com.lishilong.chongyu.300energy": 
+            // 6000币：普通对话75次(6000÷80)，简单对话120次(6000÷50)
+            return "约75-120次对话"
+        case "com.lishilong.chongyu.700energy": 
+            // 13800币：普通对话172次(13800÷80)，简单对话276次(13800÷50)
+            return "约172-276次对话"
+        case "com.lishilong.chongyu.1400energy": 
+            // 24000币：普通对话300次(24000÷80)，简单对话480次(24000÷50)
+            return "约300-480次对话"
+        default: return ""
+        }
+    }
+    
+    // 是否推荐
+    private func isRecommended(for productId: String) -> Bool {
+        return productId == "com.lishilong.chongyu.300energy"
     }
 }
 
@@ -513,79 +584,150 @@ struct FallbackPurchaseOptionCard: View {
     
     var body: some View {
         Button(action: onPurchase) {
-            VStack(spacing: 12) {
-                // 产品名称
-                Text(displayName)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 12) {
+                    // 虫洞币数量（主标题）
+                    Text(coinAmount(for: productId))
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                    
+                    // 价格
+                    Text("¥\(price)")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.cyan)
+                    
+                    // 产品描述（用途说明）
+                    Text(productUsageDescription(for: productId))
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                    
+                    // API请求次数说明
+                    Text(apiRequestCount(for: productId))
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.5))
+                        .multilineTextAlignment(.center)
+                    
+                    // 模拟器标识
+                    HStack(spacing: 4) {
+                        Image(systemName: "testtube.2")
+                            .font(.caption2)
+                            .foregroundColor(.yellow)
+                        Text("测试模式")
+                            .font(.caption2)
+                            .foregroundColor(.yellow)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 120)
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(
+                            LinearGradient(
+                                colors: isRecommended(for: productId) ? [
+                                    Color.orange.opacity(0.12),
+                                    Color.purple.opacity(0.06)
+                                ] : [
+                                    Color.yellow.opacity(0.08),
+                                    Color.orange.opacity(0.05)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(
+                            LinearGradient(
+                                colors: isRecommended(for: productId) ? [
+                                    Color.orange.opacity(0.4),
+                                    Color.purple.opacity(0.25)
+                                ] : [
+                                    Color.yellow.opacity(0.3),
+                                    Color.orange.opacity(0.2)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: isRecommended(for: productId) ? 1.5 : 1
+                        )
+                )
+                .scaleEffect(isPurchasing ? 0.95 : 1.0)
+                .opacity(isPurchasing ? 0.6 : 1.0)
                 
-                // 价格
-                Text("¥\(price)")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.cyan)
-                
-                // 产品描述
-                Text(productDescription(for: productId))
-                    .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.7))
-                    .multilineTextAlignment(.center)
-                
-                // 模拟器标识
-                HStack(spacing: 4) {
-                    Image(systemName: "testtube.2")
-                        .font(.caption2)
-                        .foregroundColor(.yellow)
-                    Text("测试模式")
-                        .font(.caption2)
-                        .foregroundColor(.yellow)
+                // 推荐标签 - 放在右上角外部
+                if isRecommended(for: productId) {
+                    Text("推荐")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.orange, Color.orange.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .offset(x: -10, y: -6)
+                        .shadow(color: .orange.opacity(0.5), radius: 4, x: 0, y: 2)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 120)
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.yellow.opacity(0.08),
-                                Color.orange.opacity(0.05)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                Color.yellow.opacity(0.3),
-                                Color.orange.opacity(0.2)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            )
-            .scaleEffect(isPurchasing ? 0.95 : 1.0)
-            .opacity(isPurchasing ? 0.6 : 1.0)
         }
         .disabled(isPurchasing)
         .animation(.easeInOut(duration: 0.15), value: isPurchasing)
     }
     
-    private func productDescription(for productId: String) -> String {
+    // 虫洞币数量
+    private func coinAmount(for productId: String) -> String {
         switch productId {
-        case "com.lishilong.chongyu.100energy": return "适合轻度使用\n100 能量"
-        case "com.lishilong.chongyu.300energy": return "性价比之选\n300 能量"
-        case "com.lishilong.chongyu.700energy": return "深度体验\n700 能量"
-        case "com.lishilong.chongyu.1400energy": return "无限探索\n1400 能量"
-        default: return "能量充值包"
+        case "com.lishilong.chongyu.100energy": return "1,800 虫洞币"
+        case "com.lishilong.chongyu.300energy": return "6,000 虫洞币"
+        case "com.lishilong.chongyu.700energy": return "13,800 虫洞币"
+        case "com.lishilong.chongyu.1400energy": return "24,000 虫洞币"
+        default: return "虫洞币"
         }
+    }
+    
+    // 用途描述
+    private func productUsageDescription(for productId: String) -> String {
+        switch productId {
+        case "com.lishilong.chongyu.100energy": return "适合轻度使用"
+        case "com.lishilong.chongyu.300energy": return "性价比之选"
+        case "com.lishilong.chongyu.700energy": return "深度体验"
+        case "com.lishilong.chongyu.1400energy": return "无限探索"
+        default: return "用于解锁更多次元对话功能"
+        }
+    }
+    
+    // API请求次数说明（基于实际token消耗计算）
+    // 计费规则：100虫洞币/1K tokens，视觉API 200虫洞币/1K tokens
+    // 简单对话约50币，普通对话约80币，长对话约150币，图片分析约300币
+    private func apiRequestCount(for productId: String) -> String {
+        switch productId {
+        case "com.lishilong.chongyu.100energy": 
+            // 1800币：普通对话22次(1800÷80)，简单对话36次(1800÷50)
+            return "约22-36次对话"
+        case "com.lishilong.chongyu.300energy": 
+            // 6000币：普通对话75次(6000÷80)，简单对话120次(6000÷50)
+            return "约75-120次对话"
+        case "com.lishilong.chongyu.700energy": 
+            // 13800币：普通对话172次(13800÷80)，简单对话276次(13800÷50)
+            return "约172-276次对话"
+        case "com.lishilong.chongyu.1400energy": 
+            // 24000币：普通对话300次(24000÷80)，简单对话480次(24000÷50)
+            return "约300-480次对话"
+        default: return ""
+        }
+    }
+    
+    // 是否推荐
+    private func isRecommended(for productId: String) -> Bool {
+        return productId == "com.lishilong.chongyu.300energy"
     }
 }
 
@@ -631,10 +773,10 @@ struct DevPurchaseButton: View {
     
     private func productName(for productId: String) -> String {
         switch productId {
-        case "credits.small": return "小包"
-        case "credits.medium": return "中包"
-        case "credits.large": return "大包"
-        case "credits.xlarge": return "超值包"
+        case "com.lishilong.chongyu.100energy": return "1800币"
+        case "com.lishilong.chongyu.300energy": return "6000币"
+        case "com.lishilong.chongyu.700energy": return "13800币"
+        case "com.lishilong.chongyu.1400energy": return "24000币"
         default: return ""
         }
     }

@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+set timeout 30
+
+spawn ssh root@47.94.254.130
+expect {
+    "password:" {
+        send "lishilong112211\r"
+        exp_continue
+    }
+    "*]#" {
+        send "cd /var/www/chongyu-backend\r"
+    }
+}
+
+expect "*]#"
+send "tail -100 transactions.jsonl\r"
+
+expect "*]#"
+send "exit\r"
+expect eof

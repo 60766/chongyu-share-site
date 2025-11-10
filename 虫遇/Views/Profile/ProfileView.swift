@@ -1954,12 +1954,7 @@ struct ProfileView: View {
     
     // 计算用户帖子 - 简化版本，避免复杂的缓存逻辑
     private var userPosts: [UserPostModel] {
-        let filtered = postViewModel.posts.filter { $0.source == "user" }
-        print("📊 用户帖子数量: \(filtered.count)")
-        for post in filtered {
-            print("  - 帖子 \(post.id): 图片数量 = \(post.images.count), 图片IDs = \(post.images)")
-        }
-        return filtered
+        return postViewModel.posts.filter { $0.source == "user" }
     }
     
     // 计算总点赞数 - 简化版本

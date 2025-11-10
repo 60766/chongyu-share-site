@@ -22,6 +22,8 @@ struct AccountManagementView: View {
     @State private var isLoggingOut = false
     @State private var exportPayload: ExportPayload?
     @State private var securityAlertMessage = ""
+    @State private var showingDebugToken = false
+    @State private var copiedToken = false
     
     // 优化的颜色系统
     private var primaryAccentColor: Color {
@@ -137,6 +139,35 @@ struct AccountManagementView: View {
                 subtitle: "Lv.\(profileManager.userLevel)",
                 iconColor: statusColors["info"]!
             )
+            
+            #if DEBUG
+            // 调试：显示真实 Token
+            Button(action: {
+                showingDebugToken = true
+            }) {
+                HStack {
+                    Image(systemName: "ladybug.fill")
+                        .foregroundColor(.orange)
+                        .frame(width: 24)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("开发者选项")
+                            .font(.body)
+                            .foregroundColor(.primary)
+                        Text("查看账号 Token")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+            #endif
         } header: {
             Text("账号信息")
                 .font(.caption)
@@ -146,6 +177,18 @@ struct AccountManagementView: View {
             Text("您的账号信息由系统自动生成并安全存储")
                 .font(.caption2)
                 .foregroundColor(.secondary.opacity(0.8))
+        }
+        .alert("账号 Token", isPresented: $showingDebugToken) {
+            Button("复制") {
+                UIPasteboard.general.string = accountManager.appAccountToken
+                copiedToken = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    copiedToken = false
+                }
+            }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text(accountManager.appAccountToken)
         }
     }
     

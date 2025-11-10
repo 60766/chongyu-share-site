@@ -13,21 +13,14 @@ final class WalletService {
     private var baseURL: URL {
         if let override = ProcessInfo.processInfo.environment["BACKEND_BASE_URL"], let url = URL(string: override) {
             return url
-        }
-        if let plistURL = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String, let url = URL(string: plistURL) {
+        } else if let plistURL = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String, let url = URL(string: plistURL) {
             return url
-        }
-        if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL"), let url = URL(string: userDefault) {
+        } else if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL"), let url = URL(string: userDefault) {
             return url
+        } else {
+            // 统一使用阿里云生产服务器（发布版本）
+            return URL(string: "http://121.40.184.29:3000")!
         }
-        #if DEBUG
-        // 临时测试生产环境后端
-        // return URL(string: "http://121.40.184.29:3000")!
-        return URL(string: "http://127.0.0.1:8787")!
-        #else
-        // 生产环境使用阿里云服务器
-        return URL(string: "http://121.40.184.29:3000")!
-        #endif
     }
     
     private func makeRequest(path: String, method: String = "GET", body: Data? = nil) -> URLRequest {

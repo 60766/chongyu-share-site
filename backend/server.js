@@ -23,7 +23,16 @@ function generateId() {
   return nanoid(28)
 }
 
-dotenv.config()
+// 加载环境配置：优先 production.env，回退到 .env
+// 使用 override: true 确保 production.env 中的值覆盖系统环境变量
+const productionEnvPath = path.resolve(__dirname, 'production.env')
+if (fs.existsSync(productionEnvPath)) {
+  dotenv.config({ path: productionEnvPath, override: true })
+  console.log('[Config] Loaded production.env')
+} else {
+  dotenv.config({ override: true })
+  console.log('[Config] Loaded .env (production.env not found)')
+}
 
 const app = express()
 app.use(cors())
@@ -124,10 +133,17 @@ setInterval(() => {
 process.on('SIGINT', () => { try { saveToDisk() } catch {} process.exit() })
 process.on('SIGTERM', () => { try { saveToDisk() } catch {} process.exit() })
 
-const CREDITS_PER_1K_TOKENS = Number(process.env.CREDITS_PER_1K_TOKENS || 100) // example: 100 credits / 1k tokens
+const CREDITS_PER_1K_TOKENS = Number(process.env.CREDITS_PER_1K_TOKENS || 1.7) // 兼容旧配置：统一费率（不再推荐使用）
+// 新配置：分别设置文本与视觉的每1k tokens扣费（默认：文本8.2，视觉0.84，确保盈利）
+const CREDITS_TEXT_PER_1K_TOKENS = Number(process.env.CREDITS_TEXT_PER_1K_TOKENS || 8.2)
+const CREDITS_VISION_PER_1K_TOKENS = Number(process.env.CREDITS_VISION_PER_1K_TOKENS || 0.84)
 const PROVIDER_ENDPOINT = process.env.PROVIDER_ENDPOINT || 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
 const PROVIDER_MODEL = process.env.PROVIDER_MODEL || 'deepseek-r1-250120'
 const PROVIDER_API_KEY = process.env.PROVIDER_API_KEY || 'demo_key_placeholder'
+
+// 输出费率配置日志
+console.log(`[Config] CREDITS_TEXT_PER_1K_TOKENS = ${CREDITS_TEXT_PER_1K_TOKENS}`)
+console.log(`[Config] CREDITS_VISION_PER_1K_TOKENS = ${CREDITS_VISION_PER_1K_TOKENS}`)
 
 // Apple Sign In config
 const APPLE_ISSUER = 'https://appleid.apple.com'
@@ -160,7 +176,25 @@ async function verifyAppleIdentityToken(identityToken, expectedSub) {
 }
 
 function getWallet(token) {
-  if (!wallets.has(token)) wallets.set(token, { balance: 0 })
+  if (!wallets.has(token)) {
+    // 新用户赠送初始虫洞币
+    const INITIAL_CREDITS = 1800  // 1800虫洞币新手礼包
+    wallets.set(token, { balance: INITIAL_CREDITS })
+    
+    // 记录赠送交易
+    transactions.push({ 
+      id: nanoid(), 
+      type: 'gift', 
+      token, 
+      amount: INITIAL_CREDITS, 
+      ref: 'new_user_welcome', 
+      meta: { reason: '新用户注册赠送' }, 
+      at: Date.now() 
+    })
+    
+    scheduleSave()
+    console.log(`[Wallet] 新用户 ${token.substring(0, 8)}... 获得 ${INITIAL_CREDITS} 虫洞币`)
+  }
   return wallets.get(token)
 }
 
@@ -191,6 +225,28 @@ app.get('/balance', (req, res) => {
   res.json({ balance: wallet.balance, currency: 'CREDITS' })
 })
 
+// 管理端点：设置余额（仅用于测试）
+app.post('/admin/set-balance', (req, res) => {
+  const { appAccountToken, balance } = req.body || {}
+  if (!appAccountToken || typeof balance !== 'number') {
+    return res.status(400).json({ error: 'missing appAccountToken or balance' })
+  }
+  const wallet = getWallet(appAccountToken)
+  wallet.balance = Math.max(0, balance)
+  transactions.push({ 
+    id: nanoid(), 
+    type: 'admin-set', 
+    token: appAccountToken, 
+    amount: balance, 
+    ref: 'admin-adjustment', 
+    meta: {}, 
+    at: Date.now() 
+  })
+  scheduleSave()
+  console.log(`[ADMIN] Set balance for ${appAccountToken.substring(0, 8)}... to ${balance}`)
+  res.json({ balance: wallet.balance, currency: 'CREDITS' })
+})
+
 app.post('/purchase/confirm', (req, res) => {
   const appAccountToken = req.body?.appAccountToken || req.header('X-App-Account-Token') || req.query.appAccountToken
   const { productId, transactionId, receipt } = req.body || {}
@@ -212,7 +268,7 @@ app.post('/purchase/confirm', (req, res) => {
     'com.lishilong.chongyu.100energy': 1800,   // ¥6 = 100能量
     'com.lishilong.chongyu.300energy': 6000,   // ¥18 = 300能量
     'com.lishilong.chongyu.700energy': 13800,  // ¥38 = 700能量
-    'com.lishilong.chongyu.1400energy': 26800, // ¥68 = 1400能量
+    'com.lishilong.chongyu.1400energy': 24000, // ¥68 = 1400能量
   }
   const credits = skuToCredits[productId]
   if (!credits) return res.status(400).json({ error: 'unknown productId', productId, supported: Object.keys(skuToCredits) })
@@ -342,6 +398,39 @@ app.post('/account/restore-by-backup', (req, res) => {
   res.json({ appAccountToken: token })
 })
 
+// 充值端点（用于处理应用内购买充值）
+app.post('/recharge', (req, res) => {
+  const appAccountToken = req.body?.appAccountToken || req.header('X-App-Account-Token')
+  const { amount, currency = 'CREDITS' } = req.body || {}
+  
+  console.log('[Recharge] Request received', { appAccountToken: !!appAccountToken, amount, currency })
+  
+  if (!appAccountToken) {
+    return res.status(400).json({ error: 'missing appAccountToken' })
+  }
+  
+  if (typeof amount !== 'number' || amount <= 0) {
+    return res.status(400).json({ error: 'invalid amount', amount })
+  }
+  
+  // 执行充值
+  const balanceAfter = creditWallet(appAccountToken, amount, `recharge_${Date.now()}`, { 
+    type: 'recharge',
+    currency 
+  })
+  
+  scheduleSave()
+  
+  console.log('[Recharge] Success', { appAccountToken: appAccountToken.substring(0, 8), amount, balanceAfter })
+  
+  res.json({ 
+    success: true,
+    balance: balanceAfter, 
+    currency,
+    amount 
+  })
+})
+
 app.post('/api/proxy', async (req, res) => {
   const appAccountToken = req.header('X-App-Account-Token') || req.body.appAccountToken
   if (!appAccountToken) return res.status(400).json({ error: 'missing appAccountToken' })
@@ -394,7 +483,10 @@ app.post('/api/proxy', async (req, res) => {
       totalTokens = 800
     }
 
-    const costCredits = Math.ceil((totalTokens / 1000) * CREDITS_PER_1K_TOKENS)
+    const costCredits = Math.floor((totalTokens / 1000) * CREDITS_TEXT_PER_1K_TOKENS)
+    
+    // 调试日志：显示实际使用的费率
+    console.log(`[Billing] 文本API计费: ${totalTokens} tokens, 费率=${CREDITS_TEXT_PER_1K_TOKENS}/1K, 计算=${(totalTokens / 1000) * CREDITS_TEXT_PER_1K_TOKENS}, 扣费=${costCredits}虫洞币`)
 
     if (wallet.balance < costCredits) {
       return res.status(402).json({ error: 'insufficient_credits', needed: costCredits, balance: wallet.balance })
@@ -502,8 +594,11 @@ app.post('/api/vision', async (req, res) => {
       totalTokens = 1500
     }
 
-    // 视觉API成本更高，使用2倍费率
-    const costCredits = Math.ceil((totalTokens / 1000) * CREDITS_PER_1K_TOKENS * 2)
+    // 视觉API使用单独的计费标准
+    const costCredits = Math.floor((totalTokens / 1000) * CREDITS_VISION_PER_1K_TOKENS)
+    
+    // 调试日志：显示实际使用的费率
+    console.log(`[Billing] 视觉API计费: ${totalTokens} tokens, 费率=${CREDITS_VISION_PER_1K_TOKENS}/1K, 计算=${(totalTokens / 1000) * CREDITS_VISION_PER_1K_TOKENS}, 扣费=${costCredits}虫洞币`)
 
     if (wallet.balance < costCredits) {
       return res.status(402).json({ error: 'insufficient_credits', needed: costCredits, balance: wallet.balance })
@@ -547,6 +642,11 @@ app.post('/api/vision', async (req, res) => {
 const port = process.env.PORT || 8787
 const server = app.listen(port, () => {
   console.log(`Backend listening on http://localhost:${port}`)
+  console.log(`[Config] CREDITS_PER_1K_TOKENS = ${CREDITS_PER_1K_TOKENS}`)
+  console.log(`[Config] CREDITS_TEXT_PER_1K_TOKENS = ${CREDITS_TEXT_PER_1K_TOKENS}`)
+  console.log(`[Config] CREDITS_VISION_PER_1K_TOKENS = ${CREDITS_VISION_PER_1K_TOKENS}`)
+  console.log(`[Config] PROVIDER_MODEL = ${PROVIDER_MODEL}`)
+  console.log(`[Config] NODE_ENV = ${process.env.NODE_ENV || 'development'}`)
 }) 
 // Extend HTTP server timeouts to allow long-running AI requests
 server.headersTimeout = 305_000

@@ -1,0 +1,67 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set password "3Qq123456."
+set server_ip "121.40.184.29"
+set remote_path "/var/www/chongyu-backend/"
+
+puts "🚀 开始部署更新到云服务器..."
+puts ""
+
+# 1. 上传 server.js
+puts "📤 \[1/3\] 上传 server.js..."
+spawn scp /Users/lishilong/IOS开发/虫遇/虫遇/backend/server.js root@${server_ip}:${remote_path}
+expect {
+    "password:" {
+        send "$password\r"
+        expect eof
+    }
+    timeout {
+        puts "❌ SCP超时"
+        exit 1
+    }
+}
+sleep 1
+
+# 2. 上传 production.env
+puts "📤 \[2/3\] 上传 production.env..."
+spawn scp /Users/lishilong/IOS开发/虫遇/虫遇/backend/production.env root@${server_ip}:${remote_path}
+expect {
+    "password:" {
+        send "$password\r"
+        expect eof
+    }
+    timeout {
+        puts "❌ SCP超时"
+        exit 1
+    }
+}
+sleep 1
+
+# 3. 重启PM2服务
+puts "🔄 \[3/3\] 重启PM2服务..."
+spawn ssh root@${server_ip} "cd ${remote_path} && pm2 restart chongyu-backend && pm2 logs chongyu-backend --lines 5"
+expect {
+    "password:" {
+        send "$password\r"
+        expect eof
+    }
+    timeout {
+        puts "❌ SSH超时"
+        exit 1
+    }
+}
+
+puts ""
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts "✅ 部署完成！"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts ""
+puts "📝 更新内容："
+puts "   • CREDITS_PER_1K_TOKENS: 1.68 → 1.7"
+puts "   • 用户充¥6可用tokens: 约1,071,000"
+puts "   • 可生成帖子数: 约1,234篇"
+puts "   • API价值: ¥1.48 (接近目标¥1.5)"
+puts ""
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
