@@ -248,6 +248,7 @@ struct CharacterDetailView: View {
     
     // TabBar管理器
     @ObservedObject private var tabBarManager = TabBarManager.shared
+    @ObservedObject private var followManager = FollowManager.shared
     
     // 添加状态变量以控制导航
     @State private var navigateToChatView = false
@@ -422,6 +423,16 @@ struct CharacterDetailView: View {
             // 控制分享按钮窗口的显示/隐藏
             if let window = systemShareButtonWindow {
                 window.isHidden = newValue
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("FollowStatusChanged"))) { notification in
+            guard let username = notification.userInfo?["username"] as? String,
+                  username == character.name else { return }
+            
+            if let isFollowed = notification.userInfo?["isFollowed"] as? Bool {
+                isFavorited = isFollowed
+            } else {
+                isFavorited = followManager.isFollowing(character.name)
             }
         }
         
@@ -1351,42 +1362,25 @@ struct CharacterDetailView: View {
     
     /**
      * 切换角色关注状态
-     * 当用户点击关注按钮时调用，更新关注状态并保存到UserDefaults
+     * 当用户点击关注按钮时调用，统一走FollowManager逻辑
      */
     private func toggleFavorite() {
-        // 切换关注状态
-        isFavorited.toggle()
+        let previousState = isFavorited
+        let newState = followManager.toggleFollow(for: character.name)
+        isFavorited = newState
         
-        // 获取当前的收藏列表
-        var favorites: [String] = []
-        if let savedFavorites = UserDefaults.standard.data(forKey: "favoriteCharacters"),
-           let decoded = try? JSONDecoder().decode([String].self, from: savedFavorites) {
-            favorites = decoded
+        if newState && !previousState {
+            displayFollowerCount += 1
+        } else if !newState && previousState && displayFollowerCount > 0 {
+            displayFollowerCount -= 1
         }
         
-        if isFavorited {
-            // 添加到收藏
-            if !favorites.contains(character.id) {
-                favorites.append(character.id)
-                // 模拟增加粉丝数
-                displayFollowerCount += 1
-            }
-        } else {
-            // 从收藏移除
-            favorites.removeAll { $0 == character.id }
-            // 模拟减少粉丝数，但确保不会小于0
-            if displayFollowerCount > 0 {
-                displayFollowerCount -= 1
-            }
-        }
-        
-        // 保存更新后的收藏列表
-        if let encoded = try? JSONEncoder().encode(favorites) {
-            UserDefaults.standard.set(encoded, forKey: "favoriteCharacters")
-        }
-        
-        // 发送变化通知，让其他视图知道关注状态改变
-        NotificationCenter.default.post(name: Notification.Name("FavoriteStatusChanged"), object: nil, userInfo: ["characterId": character.id, "isFavorited": isFavorited])
+        // 兼容历史通知，保证旧逻辑依然能收到关注变化
+        NotificationCenter.default.post(
+            name: Notification.Name("FavoriteStatusChanged"),
+            object: nil,
+            userInfo: ["characterId": character.id, "isFavorited": newState]
+        )
     }
     
     /**
@@ -1492,12 +1486,10 @@ struct CharacterDetailView: View {
     
     /**
      * 检查收藏状态
-     * 检查当前角色是否被用户收藏
+     * 与FollowManager保持一致
      */
     private func checkFavoriteStatus() {
-        // 这里应该从用户偏好或数据库中获取收藏状态
-        // 暂时使用模拟数据
-        isFavorited = UserDefaults.standard.bool(forKey: "favorite_\(character.id)")
+        isFavorited = followManager.isFollowing(character.name)
     }
     
     // 格式化显示名称，处理过长或中英文混合的名称

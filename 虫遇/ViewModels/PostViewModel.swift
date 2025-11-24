@@ -89,6 +89,16 @@ class PostViewModel: ObservableObject {
         
         print("⚡️ PostViewModel快速初始化完成，先显示 \(samplePosts.count) 条示例帖子")
         
+        // 监听数据恢复通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("PostsDataRestored"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            print("📥 PostViewModel: 收到数据恢复通知，重新加载帖子")
+            self?.reloadPostsFromUserDefaults()
+        }
+        
         // ⚡️ 异步加载完整数据，不阻塞UI
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
@@ -144,6 +154,16 @@ class PostViewModel: ObservableObject {
                     self.isInitialized = true
                 }
             }
+        }
+        
+        // 监听数据恢复通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("PostsDataRestored"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            print("📥 PostViewModel: 收到数据恢复通知，重新加载帖子")
+            self?.reloadPostsFromUserDefaults()
         }
         
         // 监听 PostCommentsUpdated 通知，强制刷新 comments
@@ -203,11 +223,13 @@ class PostViewModel: ObservableObject {
      */
     private func saveUserPosts() {
         let userPosts = posts.filter { $0.source == "user" }
+        // 确保按时间排序（最新的在前）
+        let sortedUserPosts = userPosts.sorted { $0.datePosted > $1.datePosted }
         
         do {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(userPosts)
+            let data = try encoder.encode(sortedUserPosts)
             UserDefaults.standard.set(data, forKey: userPostsKey)
         } catch {
             // 保存失败，静默处理
@@ -223,11 +245,13 @@ class PostViewModel: ObservableObject {
             guard let source = post.source else { return false }
             return source != "user" && source != "welcome" // 排除用户帖子和欢迎帖子
         }
+        // 确保按时间排序（最新的在前）
+        let sortedAIPosts = aiPosts.sorted { $0.datePosted > $1.datePosted }
         
         do {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(aiPosts)
+            let data = try encoder.encode(sortedAIPosts)
             UserDefaults.standard.set(data, forKey: aiPostsKey)
         } catch {
             // 保存失败，静默处理
@@ -276,8 +300,10 @@ class PostViewModel: ObservableObject {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let userPosts = try decoder.decode([UserPostModel].self, from: data)
-            print("✅ 成功读取 \(userPosts.count) 条用户帖子")
-            return userPosts
+            // 按时间倒序排列（最新的在前）
+            let sortedPosts = userPosts.sorted { $0.datePosted > $1.datePosted }
+            print("✅ 成功读取 \(sortedPosts.count) 条用户帖子（已按时间排序）")
+            return sortedPosts
         } catch {
             print("❌ 恢复用户帖子失败: \(error.localizedDescription)")
             return []
@@ -332,15 +358,17 @@ class PostViewModel: ObservableObject {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let aiPosts = try decoder.decode([UserPostModel].self, from: data)
+            // 按时间倒序排列（最新的在前）
+            let sortedPosts = aiPosts.sorted { $0.datePosted > $1.datePosted }
             
             // 打印恢复的AI帖子来源统计
-            let sourceStats = Dictionary(grouping: aiPosts, by: { $0.source ?? "未知" })
+            let sourceStats = Dictionary(grouping: sortedPosts, by: { $0.source ?? "未知" })
             for (source, posts) in sourceStats {
                 print("   - 读取 \(source): \(posts.count) 条")
             }
             
-            print("✅ 成功读取 \(aiPosts.count) 条AI生成帖子")
-            return aiPosts
+            print("✅ 成功读取 \(sortedPosts.count) 条AI生成帖子（已按时间排序）")
+            return sortedPosts
         } catch {
             print("❌ 恢复AI生成帖子失败: \(error.localizedDescription)")
             return []
@@ -3145,6 +3173,45 @@ class PostViewModel: ObservableObject {
      */
     func saveAtCriticalPoint(reason: String) {
         scheduleSaveOperation(reason: reason)
+    }
+    
+    /// 从UserDefaults重新加载帖子数据
+    private func reloadPostsFromUserDefaults() {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            // 1. 恢复用户帖子
+            let userPosts = self.restoreUserPostsData()
+            
+            // 2. 恢复AI生成的帖子
+            let aiPosts = self.restoreAIPostsData()
+            
+            // 3. 合并所有帖子并去重
+            var allPostsDict: [UUID: UserPostModel] = [:]
+            
+            // 添加用户帖子（优先级最高）
+            for post in userPosts {
+                allPostsDict[post.id] = post
+            }
+            
+            // 添加AI帖子（如果ID不冲突）
+            for post in aiPosts {
+                if allPostsDict[post.id] == nil {
+                    allPostsDict[post.id] = post
+                }
+            }
+            
+            // 按时间倒序排列
+            let uniquePosts = Array(allPostsDict.values).sorted { $0.datePosted > $1.datePosted }
+            
+            print("🔄 PostViewModel: 重新加载完成，共 \(uniquePosts.count) 条帖子")
+            
+            // 在主线程更新UI
+            DispatchQueue.main.async {
+                self.posts = uniquePosts
+                print("✅ PostViewModel: UI已更新，显示全部 \(uniquePosts.count) 条帖子")
+            }
+        }
     }
     
     /**

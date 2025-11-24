@@ -194,7 +194,7 @@ struct PostShareModalView: View {
             // 视图出现时生成预览图片
             generatePreviewImage()
         }
-        .onChange(of: selectedColorScheme) { _ in
+        .onChange(of: selectedColorScheme) { oldValue, newValue in
             // 切换色彩方案时重新生成预览图片
             generatePreviewImage()
         }

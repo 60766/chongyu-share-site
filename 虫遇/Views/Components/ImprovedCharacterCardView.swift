@@ -37,8 +37,8 @@ struct ImprovedCharacterCardView: View {
                     if let customImage = customImage {
                         Image(uiImage: customImage)
                             .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(minWidth: 0, maxWidth: .infinity)
+                            .scaledToFill()
+                            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                             .aspectRatio(1.0, contentMode: .fill) // 保持正方形比例
                             .clipped()
                             .overlay(
@@ -81,8 +81,8 @@ struct ImprovedCharacterCardView: View {
                     else if let image = UIImage(named: character.avatar) {
                         Image(uiImage: image)
                             .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(minWidth: 0, maxWidth: .infinity)
+                            .scaledToFill()
+                            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                             .aspectRatio(1.0, contentMode: .fill) // 保持正方形比例
                             .clipped()
                             .overlay(

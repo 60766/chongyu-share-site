@@ -36,7 +36,39 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             }
         }
         
+        // 延迟检查自动备份（等待应用完全启动）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            self.checkAndPerformAutoBackup()
+        }
+        
         return true
+    }
+    
+    /// 应用进入前台时调用
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        // 检查是否需要自动备份
+        checkAndPerformAutoBackup()
+    }
+    
+    /// 检查并执行自动备份
+    private func checkAndPerformAutoBackup() {
+        // 检查自动备份是否开启
+        guard UserDefaults.standard.bool(forKey: "iCloudAutoBackupEnabled") else {
+            return
+        }
+        
+        // 检查是否需要备份
+        guard iCloudBackupService.shared.shouldAutoBackup() else {
+            return
+        }
+        
+        // 在主线程发送通知，确保接收方也在主线程处理 ModelContext
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("TriggerAutoBackup"),
+                object: nil
+            )
+        }
     }
 }
 

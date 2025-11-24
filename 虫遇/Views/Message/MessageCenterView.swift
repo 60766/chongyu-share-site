@@ -6,13 +6,16 @@ import SwiftData
  * 显示用户与角色的对话列表
  */
 struct MessageCenterView: View {
+    /// SwiftData ModelContext
+    @Environment(\.modelContext) private var modelContext
+    
     /// 搜索文本
     @State private var searchText = ""
     /// 选中的标签索引
     @State private var selectedTabIndex = 0
     /// 标签选项
     private let tabOptions = ["全部对话", "未读消息", "收藏对话"]
-    /// 模拟对话数据
+    /// 对话数据（从SwiftData加载）
     @State private var conversations: [SDConversation] = []
     /// 模拟角色数据 - 修改为CYChatCharacter类型
     @State private var characters: [String: CYChatCharacter] = [:]
@@ -137,11 +140,16 @@ struct MessageCenterView: View {
             }
         }
         .onAppear {
-            loadMockData()
+            loadConversations()
+            loadMockCharacters()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ConversationsRestored"))) { _ in
+            // 当对话恢复后，重新加载对话列表
+            loadConversations()
         }
     }
     
-    /// 过滤后的对话列表
+    /// 过滤后的对话列表（按时间排序，最新的在前）
     private var filteredConversations: [SDConversation] {
         var result = conversations
         
@@ -166,20 +174,51 @@ struct MessageCenterView: View {
             }
         }
         
-        return result
+        // 按最后消息时间排序（最新的在前）
+        return result.sorted { $0.lastMessageTime > $1.lastMessageTime }
     }
     
     /// 删除对话
     private func deleteConversation(_ conversation: SDConversation) {
+        // 从SwiftData删除对话及其所有消息
+        do {
+            let conversationId = conversation.id
+            // 删除所有相关消息
+            let messagesDescriptor = FetchDescriptor<Message>(
+                predicate: #Predicate<Message> { message in
+                    message.conversationId == conversationId
+                }
+            )
+            let messages = try modelContext.fetch(messagesDescriptor)
+            for message in messages {
+                modelContext.delete(message)
+            }
+            
+            // 删除对话
+            modelContext.delete(conversation)
+            try modelContext.save()
+            
+            // 从本地数组移除
         if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
             conversations.remove(at: index)
+            }
+            
+            print("✅ 已删除对话: \(conversation.id)")
+        } catch {
+            print("❌ 删除对话失败: \(error)")
         }
     }
     
     /// 切换已读/未读状态
     private func toggleReadStatus(_ conversation: SDConversation) {
+        // 更新SwiftData中的对话
+        do {
         if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
             conversations[index].messageCount = conversations[index].messageCount > 0 ? 0 : 1
+                try modelContext.save()
+            }
+        } catch {
+            print("❌ 更新对话状态失败: \(error)")
         }
     }
     
@@ -189,9 +228,27 @@ struct MessageCenterView: View {
     }
     
     /**
-     * 加载模拟数据
+     * 从SwiftData加载真实对话数据
      */
-    private func loadMockData() {
+    private func loadConversations() {
+        do {
+            let currentUserId = AppAccountManager.shared.appAccountToken
+            let fetchDescriptor = FetchDescriptor<SDConversation>(
+                predicate: #Predicate { $0.userId == currentUserId },
+                sortBy: [SortDescriptor(\.lastMessageTime, order: .reverse)] // 按最后消息时间倒序排列
+            )
+            conversations = try modelContext.fetch(fetchDescriptor)
+            print("✅ MessageCenterView: 加载了 \(conversations.count) 个对话（已按时间排序）")
+        } catch {
+            print("❌ MessageCenterView: 加载对话失败: \(error)")
+            conversations = []
+        }
+    }
+    
+    /**
+     * 加载角色数据（用于显示角色信息）
+     */
+    private func loadMockCharacters() {
         // 模拟角色数据 - 使用CYChatCharacter替代Character
         let einstein = CYChatCharacter(
             id: "1",

@@ -4,19 +4,20 @@ final class BackendTestService {
     static let shared = BackendTestService()
     private init() {}
     
+    // 共享的SSL验证delegate（与WalletService相同）
+    private let sslDelegate = SSLValidationDelegate()
+    
+    // 创建带有SSL处理的URLSession
+    private func createSession() -> URLSession {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        return URLSession(configuration: config, delegate: sslDelegate, delegateQueue: nil)
+    }
+    
     // 与其他服务保持一致的后端地址解析逻辑
     private var baseURL: URL {
-        if let override = ProcessInfo.processInfo.environment["BACKEND_BASE_URL"], let url = URL(string: override) {
-            return url
-        }
-        if let plistURL = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String, let url = URL(string: plistURL) {
-            return url
-        }
-        if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL"), let url = URL(string: userDefault) {
-            return url
-        }
-        // 统一使用阿里云生产服务器（发布版本）
-        return URL(string: "http://121.40.184.29:3000")!
+        BackendURLProvider.resolvedURL()
     }
     
     /// 测试后端连接状态
@@ -29,11 +30,7 @@ final class BackendTestService {
             request.httpMethod = "GET"
             request.addValue("application/json", forHTTPHeaderField: "Accept")
             
-            // Use longer timeouts for backend test calls
-            let config = URLSessionConfiguration.default
-            config.timeoutIntervalForRequest = 300
-            config.timeoutIntervalForResource = 300
-            let session = URLSession(configuration: config)
+            let session = createSession()
             let (data, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
@@ -89,11 +86,7 @@ final class BackendTestService {
             request.httpMethod = "GET"
             request.addValue("application/json", forHTTPHeaderField: "Accept")
             
-            // Use longer timeouts for backend test calls
-            let config = URLSessionConfiguration.default
-            config.timeoutIntervalForRequest = 300
-            config.timeoutIntervalForResource = 300
-            let session = URLSession(configuration: config)
+            let session = createSession()
             let (data, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {

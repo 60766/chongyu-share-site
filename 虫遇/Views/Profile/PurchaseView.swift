@@ -290,6 +290,12 @@ struct PurchaseView: View {
                             .font(.caption2)
                             .foregroundColor(.white.opacity(0.5))
                         #endif
+                        // 显示 App Account Token（用于设置测试余额）
+                        Text("Token: \(AppAccountManager.shared.appAccountToken)")
+                            .font(.caption2)
+                            .foregroundColor(.cyan.opacity(0.8))
+                            .textSelection(.enabled)
+                            .padding(.top, 4)
                     }
                     
                     Text("开发者调试充值（本地后端）")

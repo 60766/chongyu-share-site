@@ -21,6 +21,9 @@ class WalletManager: ObservableObject {
         isLoading = true
         Task {
             do {
+                #if DEBUG
+                print("💰 [WalletManager] 开始加载余额...")
+                #endif
                 let walletBalance = try await WalletService.shared.fetchBalance()
                 await MainActor.run {
                     self.balance = walletBalance.balance
@@ -28,9 +31,17 @@ class WalletManager: ObservableObject {
                     self.isLoading = false
                 }
             } catch {
-                print("加载余额失败: \(error)")
+                // 保留错误日志，对生产环境很重要
+                print("❌ [WalletManager] 加载余额失败: \(error)")
+                #if DEBUG
+                if let urlError = error as? URLError {
+                    print("   URLError code: \(urlError.code.rawValue)")
+                    print("   URLError: \(urlError.localizedDescription)")
+                }
+                #endif
                 await MainActor.run {
                     self.isLoading = false
+                    // 保持余额为 0，不更新
                 }
             }
         }

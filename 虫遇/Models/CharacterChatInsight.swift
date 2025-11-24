@@ -68,13 +68,13 @@ final class CharacterChatInsightCache {
     var lastMessageTimestamp: Date
     
     init(
-        id: String,
-        characterId: String,
-        characterName: String,
-        insightData: Data,
+        id: String = UUID().uuidString,
+        characterId: String = "",
+        characterName: String = "",
+        insightData: Data = Data(),
         generatedAt: Date = Date(),
-        messageCount: Int,
-        lastMessageTimestamp: Date
+        messageCount: Int = 0,
+        lastMessageTimestamp: Date = Date()
     ) {
         self.id = id
         self.characterId = characterId

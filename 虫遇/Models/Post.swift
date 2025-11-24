@@ -12,8 +12,8 @@ final class Post: Identifiable {
     var content: String
     /// 发布时间
     var createdAt: Date
-    /// 发布用户
-    var user: User
+    /// 发布用户（可选，符合CloudKit要求）
+    @Relationship var user: User?
     /// 相关角色ID - 使用ID替代直接关联
     var characterId: String
     /// 角色回复内容
@@ -44,7 +44,7 @@ final class Post: Identifiable {
         id: String = UUID().uuidString,
         content: String,
         createdAt: Date = Date(),
-        user: User,
+        user: User? = nil,
         characterId: String,
         responses: [String] = [],
         likeCount: Int = 0,
@@ -137,7 +137,7 @@ struct UIPost: Identifiable {
         self.id = post.id
         self.content = post.content
         self.createdAt = post.createdAt
-        self.user = post.user
+        self.user = post.user ?? User(id: "unknown", nickname: "未知用户", avatarUrl: "", intro: nil, followingCount: 0, followerCount: 0, likeCount: 0, createdAt: Date(), lastActive: Date())
         self.characterId = post.characterId
         self.character = character
         self.responses = post.responses

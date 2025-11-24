@@ -12,8 +12,8 @@ final class Comment: Identifiable {
     var postId: String
     /// 评论内容
     var content: String
-    /// 评论用户
-    @Relationship var user: User
+    /// 评论用户（可选，符合CloudKit要求）
+    @Relationship var user: User?
     /// 评论时间
     var createdAt: Date
     /// 点赞数
@@ -38,7 +38,7 @@ final class Comment: Identifiable {
         id: String = UUID().uuidString,
         postId: String,
         content: String,
-        user: User,
+        user: User? = nil,
         createdAt: Date = Date(),
         likeCount: Int = 0,
         isLiked: Bool = false,

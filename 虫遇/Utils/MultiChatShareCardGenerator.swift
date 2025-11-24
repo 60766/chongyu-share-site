@@ -781,7 +781,7 @@ struct MultiChatMergedCardView: View {
                     if let character = characters.first(where: { $0.id == message.characterId }) {
                         Text(character.name)
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(getCharacterColor(for: character))
+                            .foregroundColor(Color(hex: "9A8BB0"))
                             .padding(.bottom, 2)
                     }
                 } else {
@@ -797,8 +797,8 @@ struct MultiChatMergedCardView: View {
                 
                 // 消息内容
                 Text(formatMessageContent(message.content))
-                    .font(.system(size: 13, weight: .medium))
-                    .lineSpacing(3)
+                    .font(.system(size: 13.5, weight: .regular))
+                    .lineSpacing(4)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(

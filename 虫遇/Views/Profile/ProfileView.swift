@@ -875,7 +875,7 @@ struct ProfileView: View {
                                 .font(.system(size: 18, weight: selectedTabIndex == index ? .semibold : .medium))
                                 .foregroundColor(selectedTabIndex == index ? tabColor(for: index) : Color.secondary.opacity(0.6))
                                 .symbolRenderingMode(.hierarchical)
-                                .symbolEffect(.bounce.wholeSymbol, options: .speed(0.8).repeat(1), isActive: selectedTabIndex == index)
+                                .symbolEffect(.bounce, value: selectedTabIndex == index)
                             
                             // 文字
                         Text(tabOptions[index])
@@ -1424,14 +1424,12 @@ struct ProfileView: View {
                                         .stroke(Color.white.opacity(0.2), lineWidth: 1)
                                 )
                         } else {
-                        Image("default_avatar")
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 60, height: 60)
-                            .clipShape(Circle())
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            Avatar(
+                                url: "default_avatar",
+                                name: userProfileManager.username,
+                                size: 60,
+                                borderColor: Color.white.opacity(0.2),
+                                borderWidth: 1
                             )
                         }
                         

@@ -21,23 +21,129 @@ struct ChongYuApp: App {
     @StateObject private var storeKitManager = StoreKitManager.shared
     
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Character.self,
-            User.self,
-            Message.self,
-            SDConversation.self,
-            Post.self,
-            Comment.self,
-            MultiPersonChatSession.self,
-            MultiPersonChatMessage.self,
-            CharacterChatInsightCache.self
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        // 🔍 诊断模式：逐个测试每个Model类
+        #if DEBUG
+        print("🔍 [SwiftData] 开始诊断Model类...")
+        
+        // 测试每个Model类是否能被正确识别
+        let modelClasses: [(String, Any.Type)] = [
+            ("Character", Character.self),
+            ("User", User.self),
+            ("Message", Message.self),
+            ("SDConversation", SDConversation.self),
+            ("Post", Post.self),
+            ("Comment", Comment.self),
+            ("MultiPersonChatSession", MultiPersonChatSession.self),
+            ("MultiPersonChatMessage", MultiPersonChatMessage.self),
+            ("CharacterChatInsightCache", CharacterChatInsightCache.self)
+        ]
+        
+        for (name, type) in modelClasses {
+            print("   ✅ \(name): \(type)")
+        }
+        #endif
+        
+        // 分阶段构建Schema，找出问题Model
+        var schemaModels: [any PersistentModel.Type] = []
+        
+        // 阶段1：基础模型（无关系）
+        schemaModels.append(Character.self)
+        schemaModels.append(User.self)
+        schemaModels.append(Message.self)
+        schemaModels.append(SDConversation.self)
+        
+        // 阶段2：有关系的模型
+        schemaModels.append(Post.self)
+        schemaModels.append(Comment.self)
+        
+        // 阶段3：多人聊天模型
+        schemaModels.append(MultiPersonChatSession.self)
+        schemaModels.append(MultiPersonChatMessage.self)
+        
+        // 阶段4：缓存模型
+        schemaModels.append(CharacterChatInsightCache.self)
+        
+        let schema = Schema(schemaModels)
+        
+        // 创建配置，禁用CloudKit（我们只需要本地存储）
+        // 使用cloudKitDatabase: .none 来禁用CloudKit集成
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .none  // 禁用CloudKit，只使用本地SQLite
+        )
+
+        // 🔍 详细诊断：逐个测试每个Model类
+        #if DEBUG
+        print("🔍 [SwiftData] 测试每个Model类...")
+        for modelType in schemaModels {
+            let typeName = String(describing: modelType)
+            print("   📦 测试: \(typeName)")
+            
+            // 尝试创建Schema只包含这个Model
+            do {
+                let testSchema = Schema([modelType])
+                let testConfig = ModelConfiguration(schema: testSchema, isStoredInMemoryOnly: true)
+                let _ = try ModelContainer(for: testSchema, configurations: [testConfig])
+                print("      ✅ \(typeName) 通过")
+            } catch {
+                print("      ❌ \(typeName) 失败: \(error)")
+            }
+        }
+        #endif
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            fatalError("无法创建ModelContainer: \(error)")
+            print("❌ [SwiftData] ModelContainer创建失败: \(error)")
+            print("   错误类型: \(type(of: error))")
+            print("   错误详情: \(error.localizedDescription)")
+            
+            // 尝试删除损坏的数据库文件
+            let fileManager = FileManager.default
+            if let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+                let dbPath = documentsPath.appendingPathComponent("default.store")
+                let dbShmPath = documentsPath.appendingPathComponent("default.store-shm")
+                let dbWalPath = documentsPath.appendingPathComponent("default.store-wal")
+                
+                // 备份并删除旧数据库文件
+                for dbFile in [dbPath, dbShmPath, dbWalPath] {
+                    if fileManager.fileExists(atPath: dbFile.path) {
+                        let backupPath = dbFile.appendingPathExtension("backup")
+                        // 尝试备份，如果失败则直接删除
+                        if (try? fileManager.moveItem(at: dbFile, to: backupPath)) != nil {
+                            print("   📦 已备份: \(dbFile.lastPathComponent)")
+                        } else {
+                            // 如果备份失败，直接删除
+                            try? fileManager.removeItem(at: dbFile)
+                            print("   🗑️ 已删除: \(dbFile.lastPathComponent)")
+                        }
+                    }
+                }
+                
+                // 尝试重新创建
+                do {
+                    let retryContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
+                    print("   ✅ 删除旧数据库后重新创建成功")
+                    return retryContainer
+                } catch {
+                    print("   ⚠️ 重新创建仍然失败: \(error)")
+                }
+            }
+            
+            // 最后的fallback：使用内存模式（数据不会持久化，但至少应用可以启动）
+            print("   🔄 尝试使用内存模式作为fallback...")
+            let memoryConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            do {
+                let fallbackContainer = try ModelContainer(for: schema, configurations: [memoryConfig])
+                print("   ✅ 使用内存模式（数据不会持久化，重启后丢失）")
+                print("   ⚠️ 建议：删除应用重新安装以恢复持久化存储")
+                return fallbackContainer
+            } catch {
+                // 如果连内存模式都失败，说明Schema定义有问题
+                print("   ❌ 内存模式创建也失败，Schema可能有问题")
+                fatalError("无法创建ModelContainer（包括内存模式）: \(error)\n\n可能的原因：\n1. Schema定义有问题\n2. Model类定义错误\n3. 系统资源不足\n\n建议：\n1. 检查所有@Model类的定义\n2. 确保所有Model类都正确导入SwiftData\n3. 删除应用重新安装")
+            }
         }
     }()
 
@@ -90,8 +196,35 @@ struct ChongYuApp: App {
                     print("[APP] StoreKit 产品加载完成: \(storeKitManager.products.count) 个")
                     #endif
                 }
+                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TriggerAutoBackup"))) { _ in
+                    // 延迟执行，确保 ModelContext 已准备好
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        performAutoBackupIfNeeded()
+                    }
+                }
         }
         .modelContainer(sharedModelContainer)
+    }
+    
+    /// 执行自动备份（如果需要）
+    private func performAutoBackupIfNeeded() {
+        // 检查自动备份是否开启
+        guard UserDefaults.standard.bool(forKey: "iCloudAutoBackupEnabled") else {
+            return
+        }
+        
+        // 检查是否需要备份
+        guard iCloudBackupService.shared.shouldAutoBackup() else {
+            return
+        }
+        
+        // 在主线程发送通知，确保接收方也在主线程处理
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("PerformAutoBackup"),
+                object: nil
+            )
+        }
     }
     
     private func setupAppearance() {

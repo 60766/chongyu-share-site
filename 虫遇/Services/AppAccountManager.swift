@@ -6,16 +6,9 @@ class AppAccountManager: ObservableObject {
     static let shared = AppAccountManager()
     private init() {}
     
-    /// 用于触发UI更新的版本号
-    @Published private var backupCodeVersion = 0
-    
-    /// 内存缓存的备份码（确保立即更新）
-    private var cachedBackupCode: String?
-    
     private let serviceIdentifier = "com.虫遇.appaccount"
     private let accountKey = "app_account_token"
     private let accountCreationKey = "account_creation_date"
-    private let backupCodeKey = "backup_code"
     
     var appAccountToken: String {
         if let existing = retrieveTokenFromKeychain() {
@@ -24,21 +17,44 @@ class AppAccountManager: ObservableObject {
         if let override = ProcessInfo.processInfo.environment["TEST_APP_ACCOUNT_TOKEN"], !override.isEmpty {
             saveTokenToKeychain(override)
             saveAccountCreationDate()
-            generateBackupCode()
             return override
         }
         let newToken = UUID().uuidString
         saveTokenToKeychain(newToken)
         // 记录账号创建时间
         saveAccountCreationDate()
-        // 生成备份码
-        generateBackupCode()
         return newToken
     }
     
     // MARK: - 账号信息
     
-    /// 获取账号显示ID（数字格式）
+    /// 获取账号显示标识（优先使用真实的 Apple ID 邮箱，否则显示 token 前8位+后4位）
+    @MainActor
+    var accountDisplayIdentifier: String {
+        // 优先使用真实的 Apple ID 邮箱（用于显示）
+        if let appleIDEmail = AppleSignInManager.shared.userAppleIDEmail, !appleIDEmail.isEmpty {
+            return appleIDEmail
+        }
+        // 否则显示 appAccountToken 的前8位 + 后4位
+        let token = appAccountToken
+        let prefix = String(token.prefix(8))
+        let suffix = String(token.suffix(4))
+        return "\(prefix)...\(suffix)"
+    }
+    
+    /// 获取完整的账号标识（用于复制）
+    @MainActor
+    var fullAccountIdentifier: String {
+        // 优先使用真实的 Apple ID 邮箱（用于显示）
+        if let appleIDEmail = AppleSignInManager.shared.userAppleIDEmail, !appleIDEmail.isEmpty {
+            return appleIDEmail
+        }
+        // 否则返回完整的 appAccountToken
+        return appAccountToken
+    }
+    
+    /// 获取账号显示ID（数字格式）- 已废弃，保留用于兼容
+    @available(*, deprecated, message: "使用 accountDisplayIdentifier 替代")
     var accountDisplayId: String {
         let token = appAccountToken
         
@@ -70,117 +86,43 @@ class AppAccountManager: ObservableObject {
         return hoursSinceCreation < 24
     }
     
-    // MARK: - 找回码管理
+    // MARK: - 账号找回
     
-    /// 获取当前备份码
-    var currentBackupCode: String? {
-        // 使用backupCodeVersion确保SwiftUI检测到变化
-        _ = backupCodeVersion
-        
-        // 优先返回缓存的值，然后从钥匙串读取
-        if let cached = cachedBackupCode {
-            return cached
-        }
-        
-        let keychainValue = retrieveBackupCodeFromKeychain()
-        cachedBackupCode = keychainValue
-        return keychainValue
-    }
-    
-    /// 检查当前备份码是否为旧格式
-    var needsBackupCodeUpgrade: Bool {
-        guard let backupCode = currentBackupCode else { return false }
-        return !isDigitalFormat(backupCode)
-    }
-    
-    /// 检查备份码是否为数字格式
-    private func isDigitalFormat(_ backupCode: String) -> Bool {
-        let components = backupCode.components(separatedBy: "-")
-        guard components.count == 4 else { return false }
-        return components.allSatisfy { component in
-            component.count == 3 && component.allSatisfy { $0.isNumber }
-        }
-    }
-    
-    /// 生成新的找回码
-    @discardableResult
-    func generateBackupCode() -> String {
-        // 中国用户友好的找回码：使用数字组合，更容易记忆
-        let segments = (0..<4).map { _ in 
-            String(format: "%03d", Int.random(in: 100...999))
-        }
-        let backupCode = segments.joined(separator: "-")
-        
-        // 立即更新缓存
-        cachedBackupCode = backupCode
-        
-        // 保存到钥匙串
-        saveBackupCodeToKeychain(backupCode)
-        
-        // 通知界面更新
-        DispatchQueue.main.async {
-            self.backupCodeVersion += 1
-        }
-        
-        // 尝试向后端注册备份码（忽略失败）
-        registerBackupCodeToBackend(backupCode: backupCode, appAccountToken: appAccountToken)
-        
-        return backupCode
-    }
-    
-    /// 验证备份码并恢复账号
-    func restoreAccountWithBackupCode(_ backupCode: String, completion: @escaping (Result<RestoreOutcome, BackupCodeError>) -> Void) {
+    /// 通过 token 找回账号
+    func restoreAccountWithToken(_ token: String, completion: @escaping (Result<String, TokenRestoreError>) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
-            let cleanedBackupCode = backupCode.trimmingCharacters(in: .whitespacesAndNewlines)
+            let cleanedToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
             
-            // 验证备份码格式（支持新格式：XXX-XXX-XXX-XXX 和旧格式：word-word-word-word）
-            let components = cleanedBackupCode.components(separatedBy: "-")
-            guard components.count == 4 else {
+            // 验证 token 格式（仅支持完整 UUID）
+            // UUID 格式：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36字符)
+            guard cleanedToken.count == 36, cleanedToken.contains("-") else {
                 DispatchQueue.main.async {
                     completion(.failure(.invalidFormat))
                 }
                 return
             }
             
-            // 检查是否为新格式（数字）或旧格式（单词）
-            let isDigitalFormat = components.allSatisfy { component in
-                component.count == 3 && component.allSatisfy { $0.isNumber }
-            }
-            
-            let isWordFormat = components.allSatisfy { component in
-                component.count > 0 && component.allSatisfy { $0.isLetter }
-            }
-            
-            guard isDigitalFormat || isWordFormat else {
-                DispatchQueue.main.async {
-                    completion(.failure(.invalidFormat))
-                }
-                return
-            }
-            
-            // 先尝试从后端恢复
-            self.restoreFromBackend(backupCode: cleanedBackupCode) { backendToken, isNetworkError in
+            // 尝试从后端恢复
+            self.restoreFromBackendByToken(token: cleanedToken) { backendToken, isNetworkError in
                 if let serverToken = backendToken {
-                    // 使用服务端令牌恢复（保持当前找回码不变）
+                    // 使用服务端令牌恢复
                     self.saveTokenToKeychain(serverToken)
                     self.saveAccountCreationDate()
-                    self.cachedBackupCode = cleanedBackupCode
-                    self.saveBackupCodeToKeychain(cleanedBackupCode)
                     DispatchQueue.main.async {
                         NotificationCenter.default.post(
                             name: .userAccountRestored,
                             object: nil,
-                            userInfo: ["token": serverToken, "backupCode": cleanedBackupCode, "restoreSource": "server"]
+                            userInfo: ["token": serverToken, "restoreSource": "server"]
                         )
-                        completion(.success(.serverHit(token: serverToken)))
+                        completion(.success(serverToken))
                         #if DEBUG
-                        print("💰 余额找回成功(命中云端): \(String(serverToken.prefix(8)))...")
+                        print("💰 账号找回成功(命中云端): \(String(serverToken.prefix(8)))...")
                         #endif
                     }
                     return
                 }
                 
-                // 网络错误：直接反馈给调用方，不进行本地推导
+                // 网络错误
                 if isNetworkError {
                     DispatchQueue.main.async {
                         completion(.failure(.networkError))
@@ -188,15 +130,9 @@ class AppAccountManager: ObservableObject {
                     return
                 }
                 
-                // 服务端未找到：仅返回本地占位建议，不替换当前账号，交由 UI 二次确认
-                let tokenData = cleanedBackupCode.data(using: .utf8)!
-                let tokenHash = tokenData.base64EncodedString()
-                let derivedToken = "backup-\(tokenHash.prefix(32))"
+                // 服务端未找到
                 DispatchQueue.main.async {
-                    completion(.success(.localDerived(token: derivedToken)))
-                    #if DEBUG
-                    print("ℹ️ 未找回余额(建议本地占位，未切换): \(String(derivedToken.prefix(8)))...")
-                    #endif
+                    completion(.failure(.notFound))
                 }
             }
         }
@@ -226,10 +162,7 @@ class AppAccountManager: ObservableObject {
                 print("✅ 已清除钥匙串数据")
             }
             
-            // 2. 清除备份码
-            self.clearBackupCodeFromKeychain()
-            
-            // 3. 清除账号创建时间
+            // 2. 清除账号创建时间
             UserDefaults.standard.removeObject(forKey: self.accountCreationKey)
             
             // 4. 通知其他组件清除用户数据
@@ -259,22 +192,16 @@ class AppAccountManager: ObservableObject {
             ]
             SecItemDelete(deleteQuery as CFDictionary)
             
-            // 清除旧备份码
-            self.clearBackupCodeFromKeychain()
-            
             // 生成新令牌
             let newToken = UUID().uuidString
             self.saveTokenToKeychain(newToken)
             self.saveAccountCreationDate()
             
-            // 生成新备份码
-            let newBackupCode = self.generateBackupCode()
-            
             DispatchQueue.main.async {
                 NotificationCenter.default.post(
                     name: .userAccountCreated,
                     object: nil,
-                    userInfo: ["token": newToken, "backupCode": newBackupCode]
+                    userInfo: ["token": newToken]
                 )
                 
                 completion(newToken)
@@ -290,12 +217,11 @@ class AppAccountManager: ObservableObject {
             if UserDefaults.standard.object(forKey: self.accountCreationKey) == nil {
                 self.saveAccountCreationDate()
             }
-            let newBackupCode = self.generateBackupCode()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(
                     name: .userAccountTokenReplaced,
                     object: nil,
-                    userInfo: ["token": newToken, "backupCode": newBackupCode]
+                    userInfo: ["token": newToken]
                 )
                 #if DEBUG
                 print("🔁 本地账号已替换为服务端账号: \(String(newToken.prefix(8)))...")
@@ -304,35 +230,14 @@ class AppAccountManager: ObservableObject {
         }
     }
     
-    /// 采用本地占位恢复（经用户确认后调用）
-    func adoptLocalDerivedAccount(token: String, backupCode: String) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            let cleaned = backupCode.trimmingCharacters(in: .whitespacesAndNewlines)
-            self.saveTokenToKeychain(token)
-            self.saveAccountCreationDate()
-            self.cachedBackupCode = cleaned
-            self.saveBackupCodeToKeychain(cleaned)
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(
-                    name: .userAccountRestored,
-                    object: nil,
-                    userInfo: ["token": token, "backupCode": cleaned, "restoreSource": "local"]
-                )
-                #if DEBUG
-                print("📝 已采用本地占位账号: \(String(token.prefix(8)))...")
-                #endif
-            }
-        }
-    }
-    
     /// 获取账号统计信息
+    @MainActor
     func getAccountStats() -> [String: Any] {
         return [
-            "accountId": accountDisplayId,
+            "accountIdentifier": accountDisplayIdentifier,
             "creationDate": accountCreationDate,
             "isNewAccount": isNewAccount,
-            "daysSinceCreation": Int(Date().timeIntervalSince(accountCreationDate) / 86400),
-            "hasBackupCode": currentBackupCode != nil
+            "daysSinceCreation": Int(Date().timeIntervalSince(accountCreationDate) / 86400)
         ]
     }
     
@@ -376,136 +281,23 @@ class AppAccountManager: ObservableObject {
         return nil
     }
     
-    private func saveBackupCodeToKeychain(_ backupCode: String) {
-        let deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceIdentifier,
-            kSecAttrAccount as String: backupCodeKey,
-            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-        
-        let codeData = Data(backupCode.utf8)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceIdentifier,
-            kSecAttrAccount as String: backupCodeKey,
-            kSecValueData as String: codeData,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
-            kSecAttrSynchronizable as String: true // 备份码也支持 iCloud 同步
-        ]
-        SecItemAdd(query as CFDictionary, nil)
-    }
-    
-    private func retrieveBackupCodeFromKeychain() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceIdentifier,
-            kSecAttrAccount as String: backupCodeKey,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
-        ]
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        if status == errSecSuccess, let data = result as? Data {
-            return String(data: data, encoding: .utf8)
-        }
-        return nil
-    }
-    
-    private func clearBackupCodeFromKeychain() {
-        // 清除缓存
-        cachedBackupCode = nil
-        
-        let deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceIdentifier,
-            kSecAttrAccount as String: backupCodeKey,
-            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-        
-        // 通知界面更新
-        DispatchQueue.main.async {
-            self.backupCodeVersion += 1
-        }
-    }
-    
     private func saveAccountCreationDate() {
         UserDefaults.standard.set(Date(), forKey: accountCreationKey)
     }
     
     private func backendBaseURL() -> URL? {
-        // 优先级：环境变量 -> Info.plist -> 用户默认
-        let candidates: [String?] = [
-            ProcessInfo.processInfo.environment["BACKEND_BASE_URL"],
-            Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String,
-            UserDefaults.standard.string(forKey: "BackendBaseURL")
-        ]
-        for candidate in candidates {
-            if let raw = candidate, let url = URL(string: raw) {
-                #if DEBUG
-            return url
-                #else
-                if url.scheme?.lowercased() == "https" { return url }
-                #endif
-        }
-        }
-        #if DEBUG
-        // 临时测试生产环境后端
-        // return URL(string: "http://121.40.184.29:3000")
-        return URL(string: "http://127.0.0.1:8787")
-        #else
-        return URL(string: "http://121.40.184.29:3000")
-        #endif
+        return BackendURLProvider.resolvedURL()
     }
     
-    private func registerBackupCodeToBackend(backupCode: String, appAccountToken: String) {
-        guard let base = backendBaseURL() else { return }
-        var req = URLRequest(url: base.appendingPathComponent("/account/register-backup"))
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.timeoutInterval = 10
-        let body: [String: Any] = [
-            "backupCode": backupCode,
-            "appAccountToken": appAccountToken
-        ]
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        
-        func fire(attemptsRemaining: Int) {
-            // Use longer timeouts for backup operations
-            let config = URLSessionConfiguration.default
-            config.timeoutIntervalForRequest = 300
-            config.timeoutIntervalForResource = 300
-            let session = URLSession(configuration: config)
-            session.dataTask(with: req) { _, response, error in
-                if let _ = error {
-                    if attemptsRemaining > 0 {
-                        DispatchQueue.global().asyncAfter(deadline: .now() + 0.8) {
-                            fire(attemptsRemaining: attemptsRemaining - 1)
-                        }
-                    }
-                    return
-                }
-                if let http = response as? HTTPURLResponse, http.statusCode >= 500, attemptsRemaining > 0 {
-                    DispatchQueue.global().asyncAfter(deadline: .now() + 0.8) {
-                        fire(attemptsRemaining: attemptsRemaining - 1)
-                    }
-                }
-            }.resume()
-        }
-        fire(attemptsRemaining: 1)
-    }
-    
-    private func restoreFromBackend(backupCode: String, attemptsRemaining: Int = 2, completion: @escaping (String?, Bool) -> Void) {
+    /// 通过 token 从后端恢复账号
+    private func restoreFromBackendByToken(token: String, attemptsRemaining: Int = 2, completion: @escaping (String?, Bool) -> Void) {
         guard let base = backendBaseURL() else { completion(nil, true); return }
-        var req = URLRequest(url: base.appendingPathComponent("/account/restore-by-backup"))
+        var req = URLRequest(url: base.appendingPathComponent("/account/restore-by-token"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = ["backupCode": backupCode]
+        let body: [String: Any] = ["appAccountToken": token]
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        // Use longer timeouts for backup operations
+        // Use longer timeouts for restore operations
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 300
         config.timeoutIntervalForResource = 300
@@ -514,7 +306,7 @@ class AppAccountManager: ObservableObject {
             if let _ = error {
                 if attemptsRemaining > 0 {
                     DispatchQueue.global().asyncAfter(deadline: .now() + 0.8) {
-                        self.restoreFromBackend(backupCode: backupCode, attemptsRemaining: attemptsRemaining - 1, completion: completion)
+                        self.restoreFromBackendByToken(token: token, attemptsRemaining: attemptsRemaining - 1, completion: completion)
                     }
                 } else {
                     completion(nil, true)
@@ -528,7 +320,7 @@ class AppAccountManager: ObservableObject {
             } else if let http = response as? HTTPURLResponse, http.statusCode >= 500 {
                 if attemptsRemaining > 0 {
                     DispatchQueue.global().asyncAfter(deadline: .now() + 0.8) {
-                        self.restoreFromBackend(backupCode: backupCode, attemptsRemaining: attemptsRemaining - 1, completion: completion)
+                        self.restoreFromBackendByToken(token: token, attemptsRemaining: attemptsRemaining - 1, completion: completion)
                     }
                 } else {
                     completion(nil, true)
@@ -540,28 +332,25 @@ class AppAccountManager: ObservableObject {
     }
 }
 
-// MARK: - 备份码错误类型
-enum BackupCodeError: LocalizedError {
+// MARK: - Token 找回错误类型
+enum TokenRestoreError: LocalizedError {
     case invalidFormat
     case networkError
+    case notFound
     case unknown
     
     var errorDescription: String? {
         switch self {
         case .invalidFormat:
-            return "找回码格式不正确。请确保输入4组3位数字，用短横线连接（如：123-456-789-012）。"
+            return "账号标识格式不正确。请输入完整的 UUID 或简化格式（前8位...后4位）。"
         case .networkError:
             return "网络连接失败，请稍后再试。"
+        case .notFound:
+            return "未找到该账号。请确认账号标识是否正确。"
         case .unknown:
             return "未知错误，请稍后再试。"
         }
     }
-}
-
-// MARK: - 恢复结果类型
-enum RestoreOutcome {
-    case serverHit(token: String) // 命中云端映射：余额可找回
-    case localDerived(token: String) // 本地占位账号：未找回余额
 }
 
 // MARK: - 通知扩展

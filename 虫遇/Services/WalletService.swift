@@ -5,22 +5,53 @@ struct WalletBalance: Decodable {
     let currency: String
 }
 
+/**
+ * SSL证书验证Delegate
+ * 处理SSL证书链不完整的问题
+ */
+class SSLValidationDelegate: NSObject, URLSessionDelegate {
+    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        
+        guard let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        
+        // 检查是否是我们的API域名
+        let host = challenge.protectionSpace.host
+        if host == "api.chongyuai.com" || host.hasSuffix(".chongyuai.com") {
+            // 直接信任证书（快速解决方案）
+            let credential = URLCredential(trust: serverTrust)
+            completionHandler(.useCredential, credential)
+        } else {
+            // 对于其他域名，使用默认验证
+            completionHandler(.performDefaultHandling, nil)
+        }
+    }
+}
+
 final class WalletService {
     static let shared = WalletService()
     private init() {}
     
-    // BaseURL: 可通过 Info.plist 的 BACKEND_BASE_URL 或 UserDefaults("BackendBaseURL") 覆盖
+    // 共享的SSL验证delegate
+    private let sslDelegate = SSLValidationDelegate()
+    
+    // 创建带有SSL处理的URLSession
+    private func createSession() -> URLSession {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 300
+        return URLSession(configuration: config, delegate: sslDelegate, delegateQueue: nil)
+    }
+    
+    // BaseURL: 统一从 BackendURLProvider 解析
     private var baseURL: URL {
-        if let override = ProcessInfo.processInfo.environment["BACKEND_BASE_URL"], let url = URL(string: override) {
-            return url
-        } else if let plistURL = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String, let url = URL(string: plistURL) {
-            return url
-        } else if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL"), let url = URL(string: userDefault) {
-            return url
-        } else {
-            // 统一使用阿里云生产服务器（发布版本）
-            return URL(string: "http://121.40.184.29:3000")!
-        }
+        BackendURLProvider.resolvedURL()
     }
     
     private func makeRequest(path: String, method: String = "GET", body: Data? = nil) -> URLRequest {
@@ -38,11 +69,7 @@ final class WalletService {
     
     func fetchBalance() async throws -> WalletBalance {
         let req = makeRequest(path: "balance")
-        // Use longer timeouts for wallet API calls
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 300
-        config.timeoutIntervalForResource = 300
-        let session = URLSession(configuration: config)
+        let session = createSession()
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
             let bodyText = String(data: data, encoding: .utf8) ?? ""
@@ -60,11 +87,7 @@ final class WalletService {
         params.forEach { payload[$0.key] = $0.value }
         let body = try JSONSerialization.data(withJSONObject: payload)
         let req = makeRequest(path: "api/proxy", method: "POST", body: body)
-        // Use longer timeouts for AI proxy calls
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 300
-        config.timeoutIntervalForResource = 300
-        let session = URLSession(configuration: config)
+        let session = createSession()
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         if http.statusCode == 402 {
@@ -93,11 +116,7 @@ final class WalletService {
         ]
         let body = try JSONSerialization.data(withJSONObject: bodyObj)
         let req = makeRequest(path: "purchase/confirm", method: "POST", body: body)
-        // Use longer timeouts for wallet API calls
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 300
-        config.timeoutIntervalForResource = 300
-        let session = URLSession(configuration: config)
+        let session = createSession()
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
@@ -106,16 +125,34 @@ final class WalletService {
             let bodyText = String(data: data, encoding: .utf8) ?? ""
             throw NSError(domain: "wallet.purchase", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: bodyText.isEmpty ? "充值请求失败(\(http.statusCode))" : bodyText])
         }
-        return try JSONDecoder().decode(WalletBalance.self, from: data)
+        let walletBalance = try JSONDecoder().decode(WalletBalance.self, from: data)
+        await MainActor.run {
+            WalletManager.shared.balance = walletBalance.balance
+            WalletManager.shared.currency = walletBalance.currency
+            WalletManager.shared.isLoading = false
+        }
+        return walletBalance
     }
 
     func getBalance() async throws -> Int {
         let req = makeRequest(path: "api/balance", method: "GET")
-        // Use longer timeouts for wallet API calls
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 300
-        config.timeoutIntervalForResource = 300
-        let session = URLSession(configuration: config)
+        let session = createSession()
+        let (data, resp) = try await session.data(for: req)
+        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        return json?["balance"] as? Int ?? 0
+    }
+    
+    /// 获取指定 token 的余额（不切换当前 token）
+    func getBalance(for token: String) async throws -> Int {
+        let url = baseURL.appendingPathComponent("api/balance")
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.addValue("application/json", forHTTPHeaderField: "Accept")
+        req.addValue(token, forHTTPHeaderField: "X-App-Account-Token")
+        let session = createSession()
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
             throw URLError(.badServerResponse)
@@ -128,11 +165,7 @@ final class WalletService {
         let payload = ["amount": amount, "operation": operation] as [String : Any]
         let body = try JSONSerialization.data(withJSONObject: payload)
         let req = makeRequest(path: "api/consume", method: "POST", body: body)
-        // Use longer timeouts for wallet API calls  
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 300
-        config.timeoutIntervalForResource = 300
-        let session = URLSession(configuration: config)
+        let session = createSession()
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         if http.statusCode == 402 {

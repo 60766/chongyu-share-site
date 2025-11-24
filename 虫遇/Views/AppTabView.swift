@@ -16,6 +16,14 @@ struct AppTabView: View {
     // TabBar可见性管理器
     @ObservedObject private var tabBarManager = TabBarManager.shared
     
+    // 获取 ModelContext 用于自动备份
+    @Environment(\.modelContext) private var modelContext
+    
+    // Toast 状态
+    @State private var showToast = false
+    @State private var toastMessage = ""
+    @State private var toastIsSuccess = true
+    
     var body: some View {
         // 主容器
         ZStack(alignment: .bottom) {
@@ -139,9 +147,29 @@ struct AppTabView: View {
                     })
             }
         }
+        // 备份Toast提示（放在最上层）
+        .overlay(alignment: .top) {
+            if showToast {
+                BackupToastView(message: toastMessage, isSuccess: toastIsSuccess)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(1000)
+            }
+        }
         // 统一的安全区域设置 - 只设置一次，移除所有重复设置
         .ignoresSafeArea(.all, edges: .bottom)
         .environmentObject(tabBarManager) // 确保TabBarManager在所有子视图中可用
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PerformAutoBackup"))) { _ in
+            // 执行自动备份（在后台线程）
+            performAutoBackupInBackground()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("iCloudBackupSucceeded"))) { _ in
+            // 显示备份成功提示（轻量级，不打扰用户）
+            showBackupToast(message: "备份成功", isSuccess: true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("iCloudBackupFailed"))) { notification in
+            // 显示备份失败提示（轻量级，不打扰用户）
+            showBackupToast(message: "备份失败，请检查iCloud设置", isSuccess: false)
+        }
         .onAppear {
             // 🚀 性能优化：直接设置TabBarController引用，避免递归搜索
             setupTabBarControllerReference()
@@ -224,6 +252,56 @@ struct AppTabView: View {
         UITabBar.appearance().barTintColor = .clear
         UITabBar.appearance().backgroundImage = UIImage()
         UITabBar.appearance().shadowImage = UIImage()
+    }
+    
+    /// 在后台执行自动备份
+    private func performAutoBackupInBackground() {
+        // 检查自动备份是否开启
+        guard UserDefaults.standard.bool(forKey: "iCloudAutoBackupEnabled") else {
+            return
+        }
+        
+        // 检查是否需要备份
+        guard iCloudBackupService.shared.shouldAutoBackup() else {
+            return
+        }
+        
+        // ⚠️ 重要：ModelContext 必须在主线程使用
+        // 在主线程导出数据，然后在后台线程保存到 iCloud
+        let context = modelContext
+        DispatchQueue.main.async {
+            // 在主线程导出用户数据（ModelContext 操作必须在主线程）
+            let data = UserDataManager.shared.exportUserData(modelContext: context)
+            
+            // 在后台线程执行 iCloud 保存操作
+            DispatchQueue.global(qos: .utility).async {
+                iCloudBackupService.shared.performAutoBackup(data: data) { result in
+                    switch result {
+                    case .success(let filePath):
+                        print("✅ [自动备份] 备份成功: \(filePath)")
+                    case .failure(let error):
+                        print("⚠️ [自动备份] 备份失败: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
+    }
+    
+    /// 显示备份Toast提示
+    private func showBackupToast(message: String, isSuccess: Bool) {
+        toastMessage = message
+        toastIsSuccess = isSuccess
+        
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showToast = true
+        }
+        
+        // 3秒后自动隐藏
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showToast = false
+            }
+        }
     }
 }
 

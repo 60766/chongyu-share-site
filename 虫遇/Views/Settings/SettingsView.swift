@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 /**
  * 设置页视图
@@ -10,16 +11,12 @@ struct SettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
     
     /// 暗黑模式选项
-    @State private var darkModeOption = "跟随系统"
     /// 角色分配模式
     @State private var characterDistributionMode = "均衡分配"
-    /// 清除缓存按钮状态
-    @State private var isClearingCache = false
     /// 关于我们展示状态
     @State private var showingAbout = false
     /// API设置展示状态
     @State private var showingAPISettings = false
-    @State private var balanceText: String = "—"
     
     // 优化的颜色系统
     private var primaryAccentColor: Color {
@@ -55,7 +52,52 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             List {
-                // 角色互动设置
+                // 账号设置 - 最重要，放在最前面
+                Section {
+                    // 账号管理
+                    NavigationLink(destination: AccountManagementView()) {
+                        SettingRowView(
+                            icon: "person.circle.fill",
+                            title: "账号管理",
+                            subtitle: AppAccountManager.shared.accountDisplayIdentifier,
+                            iconColor: iconColors["account"]!
+                        )
+                    }
+                    
+                    // 隐私设置
+                    NavigationLink(destination: PrivacySettingsView()) {
+                        SettingRowView(
+                            icon: "lock.shield.fill",
+                            title: "隐私设置",
+                            iconColor: iconColors["security"]!
+                        )
+                    }
+                } header: {
+                    Text("账号设置")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .textCase(.none)
+                }
+                
+                // 数据与备份 - 数据保护功能
+                Section {
+                    // 数据备份
+                    NavigationLink(destination: DataBackupView()) {
+                        SettingRowView(
+                            icon: "icloud.and.arrow.up.fill",
+                            title: "数据备份",
+                            subtitle: getBackupStatusSubtitle(),
+                            iconColor: Color(hex: "3498DB")
+                        )
+                    }
+                } header: {
+                    Text("数据与备份")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .textCase(.none)
+                }
+                
+                // 角色互动设置 - 核心功能，日常使用
                 Section {
                     // 角色分配模式
                     NavigationLink(destination: CharacterDistributionModeView(selectedMode: $characterDistributionMode)) {
@@ -77,28 +119,6 @@ struct SettingsView: View {
                             subtitleColor: .orange
                         )
                     }
-                } header: {
-                    Text("角色互动设置")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .textCase(.none)
-                } footer: {
-                    Text("管理角色在对话中的出现频率和屏蔽设置")
-                        .font(.caption2)
-                        .foregroundColor(.secondary.opacity(0.8))
-                }
-                
-                // 系统设置
-                Section {
-                    // 暗黑模式
-                    NavigationLink(destination: DarkModeSettingView(selectedOption: $darkModeOption)) {
-                        SettingRowView(
-                            icon: "moon.fill",
-                            title: "暗黑模式",
-                            subtitle: darkModeOption,
-                            iconColor: iconColors["system"]!
-                        )
-                    }
                     
                     // 内容偏好设置
                     NavigationLink(destination: ContentPreferencesView()) {
@@ -106,69 +126,18 @@ struct SettingsView: View {
                             icon: "slider.horizontal.3",
                             title: "内容偏好",
                             subtitle: getReducedContentTypesCount().map { "\($0)种已调整" },
-                            iconColor: iconColors["system"]!,
+                            iconColor: iconColors["character"]!,
                             subtitleColor: .orange
                         )
                     }
-                    
-                    // 清除缓存
-                    Button(action: clearCache) {
-                        SettingRowView(
-                            icon: "trash.fill",
-                            title: "清除缓存",
-                            subtitle: isClearingCache ? nil : "25.6MB",
-                            iconColor: iconColors["system"]!,
-                            trailing: {
-                            if isClearingCache {
-                                ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: primaryAccentColor))
-                                        .scaleEffect(0.8)
-                                }
-                            }
-                        )
-                    }
-                    .foregroundColor(.primary)
                 } header: {
-                    Text("系统设置")
+                    Text("帖子生成设置")
                         .font(.caption)
                                     .foregroundColor(.secondary)
                         .textCase(.none)
                 }
                 
-                // 账号设置 - 合并重复的section
-                Section {
-                    // 账号管理
-                    NavigationLink(destination: AccountManagementView()) {
-                        SettingRowView(
-                            icon: "person.circle.fill",
-                            title: "账号管理",
-                            subtitle: String(AppAccountManager.shared.accountDisplayId.prefix(3)) + " " + 
-                                     String(AppAccountManager.shared.accountDisplayId.dropFirst(3).prefix(3)) + " " +
-                                     String(AppAccountManager.shared.accountDisplayId.dropFirst(6).prefix(3)),
-                            iconColor: iconColors["account"]!
-                        )
-                    }
-                    
-                    // 隐私设置
-                    NavigationLink(destination: PrivacySettingsView()) {
-                        SettingRowView(
-                            icon: "lock.shield.fill",
-                            title: "隐私设置",
-                            iconColor: iconColors["security"]!
-                        )
-                    }
-                } header: {
-                    Text("账号设置")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .textCase(.none)
-                } footer: {
-                    Text("管理您的账号信息和隐私设置")
-                        .font(.caption2)
-                        .foregroundColor(.secondary.opacity(0.8))
-                }
-                
-                // 帮助和关于
+                // 帮助和关于 - 信息类，放在最后
                 Section {
                     // 联系我们
                     NavigationLink(destination: ContactUsView()) {
@@ -184,7 +153,7 @@ struct SettingsView: View {
                         SettingRowView(
                             icon: "info.circle.fill",
                             title: "关于虫遇",
-                            subtitle: "v1.0.0",
+                            subtitle: AppVersionHelper.fullVersion,
                             iconColor: iconColors["help"]!
                         )
                     }
@@ -217,13 +186,10 @@ struct SettingsView: View {
                     .foregroundColor(primaryAccentColor)
                 }
             )
-            .onAppear {
-                print("SettingsView已显示")
-            }
             .alert(isPresented: $showingAbout) {
                 Alert(
                     title: Text("关于虫遇"),
-                    message: Text("虫遇 v1.0.0\n一款让你与历史人物进行对话的应用\n\n© 2024 虫遇团队\n技术支持: support@chongyu.com"),
+                    message: Text("虫遇 \(AppVersionHelper.fullVersion)\n一款让你与历史人物进行对话的应用\n\n© 2024 虫遇团队\n技术支持: li2410669277@gmail.com"),
                     dismissButton: .default(Text("确定"))
                 )
             }
@@ -232,23 +198,12 @@ struct SettingsView: View {
     
     // MARK: - 辅助方法
     
-    /**
-     * 清除缓存
-     */
-    private func clearCache() {
-        // 触觉反馈
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
-        
-        isClearingCache = true
-        
-        // 模拟清除缓存过程
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            isClearingCache = false
-            
-            // 轻微的成功反馈
-            let successGenerator = UINotificationFeedbackGenerator()
-            successGenerator.notificationOccurred(.success)
+    private func getBackupStatusSubtitle() -> String {
+        let backups = iCloudBackupService.shared.getAllBackups()
+        if backups.isEmpty {
+            return "暂无备份"
+        } else {
+            return "\(backups.count) 个备份"
         }
     }
     
@@ -275,6 +230,7 @@ struct SettingsView: View {
         }
         return blockedCharacters.count
     }
+    
 }
 
 // MARK: - 设置行组件
@@ -435,63 +391,134 @@ struct CharacterDistributionModeView: View {
     
     var body: some View {
         List {
-            // 模式说明
-            Section(header: Text("模式说明")) {
-                VStack(alignment: .leading, spacing: 10) {
+            // 模式选择（整合说明和选择）
+            Section(header:
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("决定「一键生成」与「虫洞探索」时的角色选择策略。")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+            ) {
+                // 均衡分配
+                Button(action: {
+                    selectedMode = "均衡分配"
+                    CharacterRotationSystem.shared.switchToMode(.equal)
+                }) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
                     Text("均衡分配")
                         .font(.headline)
-                    Text("根据使用频率平衡分配角色，确保各角色出现机会均等，但可能会在短期内看到重复角色")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text("严格轮换")
-                        .font(.headline)
-                        .padding(.top, 5)
-                    Text("确保每个角色仅出现一次，直到所有角色都展示过后才重新开始循环，最大化角色多样性")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text("关注优先")
-                        .font(.headline)
-                        .padding(.top, 5)
-                    Text("优先展示您关注的角色，同时保持一定程度的多样性（尚未完全开放）")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 5)
-            }
-            
-            // 模式选择
-            Section(header: Text("选择模式")) {
-                ForEach(modes, id: \.self) { mode in
-                    Button(action: {
-                        selectedMode = mode
-                        
-                        // 切换角色分配模式
-                        switch mode {
-                        case "均衡分配":
-                            CharacterRotationSystem.shared.switchToMode(.equal)
-                        case "严格轮换":
-                            CharacterRotationSystem.shared.switchToMode(.strictRotation)
-                        case "关注优先":
-                            CharacterRotationSystem.shared.switchToMode(.preferenceBase)
-                        default:
-                            break
-                        }
-                    }) {
-                        HStack {
-                            Text(mode)
                                 .foregroundColor(.primary)
                             
                             Spacer()
                             
-                            if selectedMode == mode {
-                                Image(systemName: "checkmark")
+                            if selectedMode == "均衡分配" {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 20, weight: .medium))
                                     .foregroundColor(primaryAccentColor)
                             }
                         }
+                        
+                        Text("生成帖子时，根据使用频率平衡分配虚拟角色，确保各角色出现机会均等，但可能会在短期内看到重复角色")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(selectedMode == "均衡分配" ? primaryAccentColor.opacity(0.14) : Color(.systemGray6))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(selectedMode == "均衡分配" ? primaryAccentColor.opacity(0.35) : Color(.systemGray4).opacity(0.6), lineWidth: 1)
+                    )
                 }
+                .buttonStyle(PlainButtonStyle())
+                .listRowBackground(Color.clear)
+                
+                // 严格轮换
+                Button(action: {
+                    selectedMode = "严格轮换"
+                    CharacterRotationSystem.shared.switchToMode(.strictRotation)
+                }) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                    Text("严格轮换")
+                        .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            if selectedMode == "严格轮换" {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundColor(primaryAccentColor)
+                            }
+                        }
+                        
+                        Text("生成帖子时，确保每个虚拟角色仅出现一次，直到所有角色都展示过后才重新开始循环，最大化角色多样性")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(selectedMode == "严格轮换" ? primaryAccentColor.opacity(0.14) : Color(.systemGray6))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(selectedMode == "严格轮换" ? primaryAccentColor.opacity(0.35) : Color(.systemGray4).opacity(0.6), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .listRowBackground(Color.clear)
+            
+                // 关注优先
+                    Button(action: {
+                    selectedMode = "关注优先"
+                            CharacterRotationSystem.shared.switchToMode(.preferenceBase)
+                    }) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("关注优先")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            if selectedMode == "关注优先" {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundColor(primaryAccentColor)
+                            }
+                        }
+                        
+                        Text("生成帖子时，优先展示您关注的虚拟角色，同时保持一定程度的多样性（尚未完全开放）")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(selectedMode == "关注优先" ? primaryAccentColor.opacity(0.14) : Color(.systemGray6))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(selectedMode == "关注优先" ? primaryAccentColor.opacity(0.35) : Color(.systemGray4).opacity(0.6), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .listRowBackground(Color.clear)
             }
             
             // 重置轮换状态
@@ -502,12 +529,23 @@ struct CharacterDistributionModeView: View {
                     HStack {
                         Spacer()
                         Text("重置轮换状态")
-                            .foregroundColor(.red)
+                            .font(.body)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
                         Spacer()
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(primaryAccentColor)
+                    )
                 }
+                .buttonStyle(PlainButtonStyle())
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
             } footer: {
-                Text("重置将清除所有角色使用记录，所有角色将重新开始轮换")
+                Text("重置将清除所有虚拟角色在帖子生成时的使用记录，所有角色将重新开始轮换")
                     .font(.caption)
             }
         }

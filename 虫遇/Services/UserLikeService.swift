@@ -21,6 +21,19 @@ class UserLikeService: ObservableObject {
         
         // 监听点赞行为
         setupLikeListeners()
+        
+        // 监听恢复通知
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLikesDataRestored(_:)),
+            name: NSNotification.Name("LikesDataRestored"),
+            object: nil
+        )
+    }
+    
+    @objc private func handleLikesDataRestored(_ notification: Notification) {
+        loadLikes()
+        print("🔄 UserLikeService: 已重新加载点赞记录，共 \(userLikes.count) 条")
     }
     
     // MARK: - 监听器设置
@@ -236,6 +249,7 @@ class UserLikeService: ObservableObject {
         
         do {
             let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
             userLikes = try decoder.decode([LikeRecord].self, from: data)
             print("📂 加载了 \(userLikes.count) 条点赞记录")
         } catch {

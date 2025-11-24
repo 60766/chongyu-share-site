@@ -117,23 +117,25 @@ class KeyboardHeightSubscription<S: Subscriber>: Subscription where S.Input == C
     init(subscriber: S) {
         self.subscriber = subscriber
         
-        // 监听键盘显示通知
+        // 监听键盘 frame 变化，兼容 iOS 16+ 的“下滑收起键盘”等交互
         NotificationCenter.default
-            .publisher(for: UIResponder.keyboardWillShowNotification)
+            .publisher(for: UIResponder.keyboardWillChangeFrameNotification)
             .compactMap { notification -> CGFloat? in
-                let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
-                return keyboardFrame?.height
+                guard let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+                    return nil
+                }
+                
+                // keyboard frame 是屏幕坐标系，y >= 屏幕高度表示完全隐藏
+                let screenHeight = UIScreen.main.bounds.height
+                if endFrame.origin.y >= screenHeight {
+                    return 0
+                } else {
+                    // 键盘高度 = 屏幕底部到键盘顶端的距离
+                    return max(0, screenHeight - endFrame.origin.y)
+                }
             }
             .sink { [weak self] height in
                 _ = self?.subscriber?.receive(height)
-            }
-            .store(in: &cancellables)
-        
-        // 监听键盘隐藏通知
-        NotificationCenter.default
-            .publisher(for: UIResponder.keyboardWillHideNotification)
-            .sink { [weak self] _ in
-                _ = self?.subscriber?.receive(0)
             }
             .store(in: &cancellables)
     }

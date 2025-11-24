@@ -27,18 +27,7 @@ class DoubaoVisionService {
     
     // 豆包视觉API配置（通过后端代理）
     private var baseURL: URL {
-        // 使用与AINetworkService相同的baseURL逻辑
-        if let override = ProcessInfo.processInfo.environment["BACKEND_BASE_URL"], let url = URL(string: override) {
-            return url
-        }
-        if let plistURL = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String, let url = URL(string: plistURL) {
-            return url
-        }
-        if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL"), let url = URL(string: userDefault) {
-            return url
-        }
-        // 统一使用阿里云生产服务器（发布版本）
-        return URL(string: "http://121.40.184.29:3000")!
+        BackendURLProvider.resolvedURL()
     }
     
     private let model = "doubao-seed-1-6-vision-250815"
@@ -200,11 +189,13 @@ class DoubaoVisionService {
             // 创建请求（通过后端代理）
             let url = self.baseURL.appendingPathComponent("api/vision")
             
+#if DEBUG
             print("🌐 豆包视觉API请求URL: \(url.absoluteString)")
             print("🔑 使用Token: \(AppAccountManager.shared.appAccountToken)")
             if totalBatches > 1 {
                 print("📊 当前批次: \(batchIndex + 1)/\(totalBatches), 图片数量: \(images.count)")
             }
+#endif
             
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
@@ -271,10 +262,12 @@ class DoubaoVisionService {
                         } else {
                             print("✅ 豆包视觉分析成功")
                         }
+#if DEBUG
                         print("📄 豆包AI原始响应（前500字符）:")
                         print("---")
                         print(String(content.prefix(500)))
                         print("---")
+#endif
                         
                         // 解析角色评论
                         let commentsMap = self.parseCharacterComments(from: content, characters: characters)
@@ -717,8 +710,10 @@ class DoubaoVisionService {
         // 保存最后一个角色的评论
         saveCurrentCharacter()
         
+#if DEBUG
         print("🎭 解析到\(result.count)个角色评论: \(result.keys.joined(separator: ", "))")
         print("❤️ 点赞决策: \(characterLikeDecisions)")
+#endif
         return result
     }
 } 

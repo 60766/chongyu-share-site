@@ -41,7 +41,7 @@ struct ContactUsView: View {
                         contactCard(
                             icon: "envelope.fill",
                             title: "邮箱反馈",
-                            subtitle: "feedback@chongyu.app",
+                            subtitle: "li2410669277@gmail.com",
                             description: "发送邮件给我们，我们会在24小时内回复"
                         )
                         
@@ -71,7 +71,7 @@ struct ContactUsView: View {
                                 .font(.headline)
                                 .foregroundColor(.primary)
                             
-                            Text("版本 1.0.0")
+                            Text("版本 \(AppVersionHelper.version)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -165,15 +165,19 @@ struct ContactUsView: View {
         switch type {
         case "邮箱反馈":
             // 打开邮件应用
-            if let url = URL(string: "mailto:feedback@chongyu.app?subject=虫遇应用反馈") {
+            if let url = URL(string: "mailto:li2410669277@gmail.com?subject=虫遇应用反馈") {
                 UIApplication.shared.open(url)
             }
         case "意见建议":
-            // 这里可以打开应用内反馈页面或者外部反馈表单
-            break
+            // 打开邮件应用发送反馈
+            if let url = URL(string: "mailto:li2410669277@gmail.com?subject=虫遇应用意见建议") {
+                UIApplication.shared.open(url)
+            }
         case "应用评分":
             // 打开App Store评分页面
-            if let url = URL(string: "https://apps.apple.com/app/idXXXXXXXXXX?action=write-review") {
+            // TODO: 替换为真实的应用ID
+            if Bundle.main.bundleIdentifier != nil,
+               let url = URL(string: "https://apps.apple.com/search?term=虫遇") {
                 UIApplication.shared.open(url)
             }
         default:

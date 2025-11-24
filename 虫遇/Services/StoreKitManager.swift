@@ -49,11 +49,15 @@ final class StoreKitManager: NSObject, ObservableObject {
     func loadProducts() async {
         // 检查是否在模拟器中运行
         #if targetEnvironment(simulator)
+        #if DEBUG
         print("[IAP] ℹ️ 当前运行在模拟器。如未在Scheme的Run→Options绑定.storekit配置文件，将无法从App Store获取真实商品。可选择：1) 绑定.storekit 2) 使用真机+Sandbox账号测试")
+        #endif
         
         // 检查 StoreKit 配置文件是否存在
         if let storeKitPath = Bundle.main.path(forResource: "StoreKit", ofType: "storekit") {
+            #if DEBUG
             print("[IAP] ✅ 找到 StoreKit 配置文件: \(storeKitPath)")
+            #endif
             
             // 尝试读取配置文件内容
             do {
@@ -61,6 +65,7 @@ final class StoreKitManager: NSObject, ObservableObject {
                 let json = try JSONSerialization.jsonObject(with: data, options: [])
                 if let dict = json as? [String: Any],
                    let products = dict["products"] as? [[String: Any]] {
+                    #if DEBUG
                     print("[IAP] 📋 配置文件中包含 \(products.count) 个产品:")
                     for product in products {
                         if let productID = product["productID"] as? String,
@@ -68,17 +73,18 @@ final class StoreKitManager: NSObject, ObservableObject {
                             print("[IAP]   - \(productID): \(displayName)")
                         }
                     }
+                    #endif
                 }
                 
                 // 检查 Bundle ID 匹配
                 if let dict = json as? [String: Any],
                    let configBundleID = dict["identifier"] as? String {
                     let appBundleID = Bundle.main.bundleIdentifier ?? "未知"
+                    #if DEBUG
                     print("[IAP] 📦 配置文件 Bundle ID: \(configBundleID)")
                     print("[IAP] 📦 应用 Bundle ID: \(appBundleID)")
-                    if configBundleID == appBundleID {
-                        print("[IAP] ✅ Bundle ID 匹配")
-                    } else {
+                    #endif
+                    if configBundleID != appBundleID {
                         print("[IAP] ❌ Bundle ID 不匹配！这可能是问题所在")
                     }
                 }
@@ -86,27 +92,35 @@ final class StoreKitManager: NSObject, ObservableObject {
                 print("[IAP] ❌ 无法读取 StoreKit 配置文件: \(error)")
             }
         } else {
+            #if DEBUG
             print("[IAP] ❌ 未找到 StoreKit 配置文件")
+            #endif
         }
-        #else
-        print("[IAP] ℹ️ 当前运行在真机")
         #endif
         
         guard AppStore.canMakePayments else {
             print("[IAP] ❌ 设备不支持应用内购买")
             return
         }
+        #if DEBUG
         print("[IAP] ✅ 设备支持应用内购买")
+        #endif
         
         do {
+            #if DEBUG
             print("[IAP] 🔄 开始请求产品信息...")
             print("[IAP] 📋 请求的产品 IDs: \(Array(productIds).sorted())")
+            #endif
             
             let products = try await Product.products(for: Array(productIds))
+            #if DEBUG
             print("[IAP] 成功加载 \(products.count) 个商品")
+            #endif
             
             if products.isEmpty {
-                print("[IAP] ⚠️ 没有找到任何商品，可能原因：")
+                print("[IAP] ⚠️ 没有找到任何商品")
+                #if DEBUG
+                print("[IAP] 可能原因：")
                 print("[IAP] 1. App Store Connect中未配置这些Product ID")
                 print("[IAP] 2. Bundle ID不匹配")
                 print("[IAP] 3. 开发者账号Team ID不正确")
@@ -130,6 +144,7 @@ final class StoreKitManager: NSObject, ObservableObject {
                         print("[IAP]   - \(productId): 请求失败 - \(error)")
                     }
                 }
+                #endif
                 
                 // 在模拟器中使用备用方案
                 #if targetEnvironment(simulator)
@@ -138,9 +153,11 @@ final class StoreKitManager: NSObject, ObservableObject {
                 return
                 #endif
             } else {
+                #if DEBUG
                 for product in products {
                     print("[IAP] 商品: \(product.id) - \(product.displayName) - \(product.displayPrice)")
                 }
+                #endif
             }
             
             await MainActor.run { 
@@ -149,6 +166,7 @@ final class StoreKitManager: NSObject, ObservableObject {
             }
         } catch {
             print("[IAP] ❌ 加载商品失败: \(error)")
+            #if DEBUG
             print("[IAP] 错误详情: \(error.localizedDescription)")
             if let nsError = error as NSError? {
                 print("[IAP] 错误域: \(nsError.domain), 错误代码: \(nsError.code)")
@@ -187,10 +205,13 @@ final class StoreKitManager: NSObject, ObservableObject {
                     }
                 }
             }
+            #endif
             
             // 在模拟器中遇到错误时使用备用方案
             #if targetEnvironment(simulator)
+            #if DEBUG
             print("[IAP] 🔄 由于错误，启用模拟器备用模式...")
+            #endif
             await createFallbackProducts()
             #endif
         }
@@ -264,7 +285,9 @@ final class StoreKitManager: NSObject, ObservableObject {
             print("[IAP] ⚠️ 交易验证失败: \(verificationError)")
             throw verificationError
         case .verified(let signedType):
+            #if DEBUG
             print("[IAP] ✅ 交易验证成功")
+            #endif
             return signedType
         }
     }

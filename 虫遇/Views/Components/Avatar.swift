@@ -129,6 +129,10 @@ struct Avatar: View {
                 avatarService.getAvatarView(for: cleanCharacterId, name: name, category: category, size: size, useCaching: useCaching)
                     .contentShape(Circle()) // 确保头像可点击
                     .allowsHitTesting(true) // 明确允许点击事件
+            } else if url == "default_avatar" {
+                systemIcon
+                    .contentShape(Circle())
+                    .allowsHitTesting(true)
             } else if url.starts(with: "http") {
                 // 远程URL图片 - 使用缓存加载
                 CachedImage(url: url, placeholder: Image(systemName: "person.circle.fill"))

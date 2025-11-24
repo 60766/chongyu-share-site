@@ -7,7 +7,12 @@ import Foundation
 class CharacterRotationSystem {
     // 单例模式
     static let shared = CharacterRotationSystem()
-    private init() { loadRotationState() }
+    private var followStatusObserver: NSObjectProtocol?
+    
+    private init() {
+        loadRotationState()
+        observeFollowStatusChanges()
+    }
     
     // 角色使用计数
     private var usageCount: [String: Int] = [:]
@@ -29,6 +34,9 @@ class CharacterRotationSystem {
     private var allCharacterIds: Set<String> = []
     // 当前周期编号
     private var currentCycleNumber: Int = 1
+    // 关注优先模式的参数配置
+    private let preferenceFavoriteRatio: Double = 0.7     // 关注角色目标占比
+    private let preferenceMinimumExplorationCount = 1     // 至少探索1个角色（若有）
     
     // 系统模式枚举
     enum DistributionMode {
@@ -421,7 +429,12 @@ class CharacterRotationSystem {
     private func loadUserPreferences() {
         if let favorites = UserDefaults.standard.array(forKey: "userFavoriteCharacters") as? [String] {
             userFavorites = Set(favorites)
+        } else {
+            userFavorites.removeAll()
         }
+        
+        // 与 FollowManager 同步，确保关注优先模式使用最新关注列表
+        mergeFollowManagerFavorites()
         if let dislikes = UserDefaults.standard.array(forKey: "userDislikeCharacters") as? [String] {
             userDislikes = Set(dislikes)
         }
@@ -481,40 +494,116 @@ class CharacterRotationSystem {
      * 基于用户偏好的推荐算法（第二阶段实现）
      */
     private func getPreferenceBasedCharacters(count: Int) -> [CharacterSystem.CharacterIdentity] {
-        let allCharacters = CharacterSystem.shared.getAllCharacters()
-        var result: [CharacterSystem.CharacterIdentity] = []
+        guard count > 0 else { return [] }
         
-        // 1. 优先选择用户关注的角色（50%的比例）
-        let favoriteCount = min(count / 2, userFavorites.count)
-        if favoriteCount > 0 {
-            let favoriteCharacters = allCharacters.filter { userFavorites.contains($0.id) }.shuffled()
-            result.append(contentsOf: favoriteCharacters.prefix(favoriteCount))
+        if currentSelectionIds.count >= count + 2 {
+            beginNewGenerationSession()
         }
         
-        // 2. 其余位置按使用频率均衡分配
+        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        let availableFavorites = allCharacters.filter { userFavorites.contains($0.id) && !userDislikes.contains($0.id) }
+        let availableOthers = allCharacters.filter { !userFavorites.contains($0.id) && !userDislikes.contains($0.id) }
+        
+        // 如果没有关注角色，则退回均衡策略
+        if availableFavorites.isEmpty {
+            return getBalancedCharacters(count: count)
+        }
+        
+        var targetFavoriteCount = min(
+            availableFavorites.count,
+            Int(round(Double(count) * preferenceFavoriteRatio))
+        )
+        var targetExplorationCount = max(0, count - targetFavoriteCount)
+        
+        // 确保探索池至少有机会出现
+        if !availableOthers.isEmpty {
+            if targetExplorationCount == 0 && count > 1 {
+                targetExplorationCount = min(preferenceMinimumExplorationCount, count)
+                targetFavoriteCount = max(0, count - targetExplorationCount)
+            }
+        } else {
+            // 没有探索角色时全部来自关注池
+            targetFavoriteCount = min(count, availableFavorites.count)
+            targetExplorationCount = 0
+        }
+        
+        var result: [CharacterSystem.CharacterIdentity] = []
+        var excludedIds = Set<String>()
+        
+        let favoriteSelection = selectCharacters(
+            from: availableFavorites,
+            count: targetFavoriteCount,
+            allCharacters: allCharacters,
+            excluding: excludedIds
+        )
+        result.append(contentsOf: favoriteSelection)
+        excludedIds.formUnion(favoriteSelection.map { $0.id })
+        
+        let explorationSelection = selectCharacters(
+            from: availableOthers,
+            count: targetExplorationCount,
+            allCharacters: allCharacters,
+            excluding: excludedIds
+        )
+        result.append(contentsOf: explorationSelection)
+        excludedIds.formUnion(explorationSelection.map { $0.id })
+        
+        // 如果仍未满足数量，使用剩余角色补齐
         if result.count < count {
             let remainingCount = count - result.count
-            let selectedIds = Set(result.map { $0.id })
-            let candidates = allCharacters.filter { 
-                !selectedIds.contains($0.id) && !userDislikes.contains($0.id) 
+            let fallbackPool = allCharacters.filter {
+                !excludedIds.contains($0.id) && !userDislikes.contains($0.id)
             }
-            
-            // 使用轮换逻辑选择候选角色
-            let sortedCandidates = candidates.sorted {
-                let usage1 = usageCount[$0.id] ?? 0
-                let usage2 = usageCount[$1.id] ?? 0
-                return usage1 < usage2
-            }
-            
-            result.append(contentsOf: sortedCandidates.prefix(remainingCount))
+            let fallbackSelection = selectCharacters(
+                from: fallbackPool,
+                count: remainingCount,
+                allCharacters: allCharacters,
+                excluding: excludedIds
+            )
+            result.append(contentsOf: fallbackSelection)
         }
         
-        // 3. 记录使用情况
         for character in result {
             markCharacterUsed(characterId: character.id, type: character.type)
         }
         
         return result
+    }
+
+    /**
+     * 根据使用频率、冷却期等规则从候选池中选择角色
+     */
+    private func selectCharacters(
+        from pool: [CharacterSystem.CharacterIdentity],
+        count: Int,
+        allCharacters: [CharacterSystem.CharacterIdentity],
+        excluding excludedIds: Set<String>
+    ) -> [CharacterSystem.CharacterIdentity] {
+        guard count > 0 else { return [] }
+        
+        let coolingCount = min(recentlyUsedCharacterIds.count, max(5, allCharacters.count / 8))
+        let coolingSet = Set(recentlyUsedCharacterIds.prefix(coolingCount))
+        
+        let primaryFiltered = pool.filter {
+            !excludedIds.contains($0.id) &&
+            !currentSelectionIds.contains($0.id)
+        }
+        
+        let cooledFiltered = primaryFiltered.filter { !coolingSet.contains($0.id) }
+        let finalPool = cooledFiltered.isEmpty ? primaryFiltered : cooledFiltered
+        
+        let sorted = finalPool.sorted { char1, char2 in
+            let usage1 = usageCount[char1.id] ?? 0
+            let usage2 = usageCount[char2.id] ?? 0
+            if usage1 == usage2 {
+                let time1 = lastUsedTime[char1.id] ?? Date.distantPast
+                let time2 = lastUsedTime[char2.id] ?? Date.distantPast
+                return time1 < time2
+            }
+            return usage1 < usage2
+        }
+        
+        return Array(sorted.prefix(count))
     }
     
     /**
@@ -609,5 +698,52 @@ class CharacterRotationSystem {
         - 用户关注角色数量：\(userFavorites.count)
         - 用户不喜欢角色数量：\(userDislikes.count)
         """
+    }
+    
+    // MARK: - 关注状态同步
+    
+    private func observeFollowStatusChanges() {
+        followStatusObserver = NotificationCenter.default.addObserver(
+            forName: Notification.Name("FollowStatusChanged"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self,
+                  let username = notification.userInfo?["username"] as? String,
+                  let characterId = self.characterId(for: username) else {
+                return
+            }
+            
+            if let isFollowed = notification.userInfo?["isFollowed"] as? Bool {
+                if isFollowed {
+                    self.userFavorites.insert(characterId)
+                } else {
+                    self.userFavorites.remove(characterId)
+                }
+                self.saveUserPreferences()
+            } else {
+                // 未提供状态时，根据FollowManager重新同步
+                self.mergeFollowManagerFavorites()
+                self.saveUserPreferences()
+            }
+        }
+    }
+    
+    private func mergeFollowManagerFavorites() {
+        let followedNames = FollowManager.shared.getFollowedUsers()
+        let matchedIds = followedNames.compactMap { characterId(for: $0) }
+        userFavorites.formUnion(matchedIds)
+    }
+    
+    private func characterId(for nameOrId: String) -> String? {
+        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        if let match = allCharacters.first(where: { $0.name == nameOrId }) {
+            return match.id
+        }
+        // 如果传入的本身就是ID
+        if allCharacters.contains(where: { $0.id == nameOrId }) {
+            return nameOrId
+        }
+        return nil
     }
 }

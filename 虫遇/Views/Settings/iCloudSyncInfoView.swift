@@ -36,13 +36,6 @@ struct iCloudSyncInfoView: View {
                         )
                         
                         FeatureItem(
-                            icon: "shield.fill",
-                            color: .blue,
-                            title: "找回码同步",
-                            description: "找回码也会通过 iCloud 钥匙串安全同步，无需手动转移"
-                        )
-                        
-                        FeatureItem(
                             icon: "arrow.clockwise",
                             color: .orange,
                             title: "自动恢复",

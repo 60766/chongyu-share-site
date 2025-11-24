@@ -28,17 +28,7 @@ class APIConfigManager {
      * 这是唯一需要的配置，用于连接后端服务
      */
     var backendBaseURL: String? {
-        // 优先级：环境变量 -> Info.plist -> UserDefaults
-        if let override = ProcessInfo.processInfo.environment["BACKEND_BASE_URL"] {
-            return override
-        }
-        if let plistURL = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String {
-            return plistURL
-        }
-        if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL") {
-            return userDefault
-        }
-        return nil
+        return BackendURLProvider.resolvedString()
     }
     
     /**

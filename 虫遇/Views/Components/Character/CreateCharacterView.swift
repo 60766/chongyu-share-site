@@ -547,9 +547,9 @@ struct CreateCharacterView: View {
                 if let choices = resp["choices"] as? [[String: Any]],
                    let first = choices.first,
                    let message = first["message"] as? [String: Any],
-                   let content = message["content"] as? String {
-                    // 解析角色信息JSON
-                    if let data = content.data(using: .utf8) {
+                   let content = extractMessageContent(from: message) {
+                    let cleanedContent = sanitizeJSONContent(content)
+                    if let data = cleanedContent.data(using: .utf8) {
                         if let info = try? JSONDecoder().decode(CharacterInfo.self, from: data) {
                             await fillFormWithCharacterInfo(info)
                         } else if let jsonObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
@@ -603,6 +603,50 @@ struct CreateCharacterView: View {
         }
     }
     
+    /// 兼容 OpenAI 新格式的 content（可能是字符串，也可能是数组）
+    private func extractMessageContent(from message: [String: Any]) -> String? {
+        if let str = message["content"] as? String {
+            return str.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        if let contentArray = message["content"] as? [[String: Any]] {
+            let texts: [String] = contentArray.compactMap { item in
+                guard let type = item["type"] as? String, type == "text" else { return nil }
+                if let text = item["text"] as? String {
+                    return text
+                }
+                if let textDict = item["text"] as? [String: Any],
+                   let value = textDict["value"] as? String {
+                    return value
+                }
+                return nil
+            }
+            let combined = texts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            return combined.isEmpty ? nil : combined
+        }
+        
+        return nil
+    }
+    
+    /// 去掉模型返回的 ```json ``` 包裹或额外说明，只保留纯 JSON
+    private func sanitizeJSONContent(_ content: String) -> String {
+        var cleaned = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if cleaned.hasPrefix("```") {
+            // 去掉代码块包裹
+            cleaned = cleaned
+                .replacingOccurrences(of: "```json", with: "")
+                .replacingOccurrences(of: "```", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        if let start = cleaned.firstIndex(of: "{"),
+           let end = cleaned.lastIndex(of: "}") {
+            return String(cleaned[start...end])
+        }
+        return cleaned
+    }
+    
     // 将字符串映射到角色分类
     private func mapStringToCategory(_ categoryString: String) -> CharacterCategory? {
         switch categoryString.lowercased() {
@@ -649,7 +693,11 @@ struct CreateCharacterView: View {
     
     // 安全地保存图像
     private func safelySaveImage(_ image: UIImage, forCharacterId: String) {
-        guard let data = image.jpegData(compressionQuality: 0.8) else { 
+        // 先裁剪图片为正方形（居中裁剪）
+        let croppedImage = cropImageToSquare(image)
+        
+        // 压缩并转换为JPEG数据（使用较高质量以保持清晰度）
+        guard let data = croppedImage.jpegData(compressionQuality: 0.85) else { 
             print("❌ CreateCharacterView - 无法将图像转换为JPEG数据")
             return 
         }
@@ -668,9 +716,54 @@ struct CreateCharacterView: View {
             
             // 写入数据
             try data.write(to: fileURL)
-            print("✅ CreateCharacterView - 头像已保存到: \(fileURL.path)")
+            print("✅ CreateCharacterView - 头像已保存到: \(fileURL.path), 尺寸: \(Int(croppedImage.size.width))x\(Int(croppedImage.size.height))")
         } catch {
             print("❌ CreateCharacterView - 保存头像失败: \(error)")
+        }
+    }
+    
+    /// 裁剪图片为正方形（居中裁剪）
+    private func cropImageToSquare(_ image: UIImage) -> UIImage {
+        let originalSize = image.size
+        let minDimension = min(originalSize.width, originalSize.height)
+        
+        // 如果已经是正方形，检查是否需要缩放
+        if originalSize.width == originalSize.height {
+            // 如果图片太大，先缩放（限制最大尺寸为512x512）
+            if minDimension > 512 {
+                return resizeImage(image, to: CGSize(width: 512, height: 512))
+            }
+            return image
+        }
+        
+        // 计算裁剪区域（居中裁剪）
+        let cropRect = CGRect(
+            x: (originalSize.width - minDimension) / 2,
+            y: (originalSize.height - minDimension) / 2,
+            width: minDimension,
+            height: minDimension
+        )
+        
+        // 裁剪图片
+        guard let cgImage = image.cgImage?.cropping(to: cropRect) else {
+            return image
+        }
+        
+        var croppedImage = UIImage(cgImage: cgImage, scale: image.scale, orientation: image.imageOrientation)
+        
+        // 如果裁剪后的图片太大，缩放（限制最大尺寸为512x512）
+        if minDimension > 512 {
+            croppedImage = resizeImage(croppedImage, to: CGSize(width: 512, height: 512))
+        }
+        
+        return croppedImage
+    }
+    
+    /// 调整图片大小
+    private func resizeImage(_ image: UIImage, to size: CGSize) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
         }
     }
 

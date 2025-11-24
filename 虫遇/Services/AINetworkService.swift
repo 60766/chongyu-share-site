@@ -3,8 +3,9 @@ import Combine
 
 /**
  * 自定义URLSessionDataDelegate，用于捕获部分数据
+ * 同时实现URLSessionDelegate以处理SSL验证
  */
-class PartialDataDelegate: NSObject, URLSessionDataDelegate {
+class PartialDataDelegate: NSObject, URLSessionDataDelegate, URLSessionDelegate {
     private var receivedData = Data()
     private var completion: ((Data?, URLResponse?, Error?) -> Void)?
     
@@ -23,6 +24,30 @@ class PartialDataDelegate: NSObject, URLSessionDataDelegate {
             completion?(receivedData.isEmpty ? nil : receivedData, task.response, error)
         } else {
             completion?(error == nil ? receivedData : nil, task.response, error)
+        }
+    }
+    
+    // SSL验证处理（与WalletService中的SSLValidationDelegate相同逻辑）
+    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        
+        guard let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        
+        // 检查是否是我们的API域名
+        let host = challenge.protectionSpace.host
+        if host == "api.chongyuai.com" || host.hasSuffix(".chongyuai.com") {
+            // 直接信任证书（快速解决方案）
+            let credential = URLCredential(trust: serverTrust)
+            completionHandler(.useCredential, credential)
+        } else {
+            // 对于其他域名，使用默认验证
+            completionHandler(.performDefaultHandling, nil)
         }
     }
 }
@@ -73,20 +98,13 @@ class AINetworkService: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     private init() {
-        // 与 WalletService 一致的后端地址解析逻辑
-        if let override = ProcessInfo.processInfo.environment["BACKEND_BASE_URL"], let url = URL(string: override) {
-            self.baseURL = url
-        } else if let plistURL = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String, let url = URL(string: plistURL) {
-            self.baseURL = url
-        } else if let userDefault = UserDefaults.standard.string(forKey: "BackendBaseURL"), let url = URL(string: userDefault) {
-            self.baseURL = url
-        } else {
-            // 统一使用阿里云生产服务器（发布版本）
-            self.baseURL = URL(string: "http://121.40.184.29:3000")!
-        }
+        let url = BackendURLProvider.resolvedURL()
+        #if DEBUG
+        print("🌐 [AINetworkService] 使用 baseURL: \(url.absoluteString)")
+        #endif
+        self.baseURL = url
     }
     
-    // 与 WalletService 一致的后端地址解析逻辑
     private var baseURL: URL
     
     /**
@@ -108,10 +126,14 @@ class AINetworkService: ObservableObject {
                     return
                 }
                 
+                #if DEBUG
                 print("📥 HTTP status: \(httpResponse.statusCode)")
+                #endif
                 
                 if httpResponse.statusCode == 402 {
+                    #if DEBUG
                     print("💳 402 Payment Required from backend")
+                    #endif
                     Task { @MainActor in
                         WalletManager.shared.showPurchaseSheet()
                     }
@@ -211,7 +233,9 @@ class AINetworkService: ObservableObject {
         request.addValue("application/json", forHTTPHeaderField: "Accept")
         let token = AppAccountManager.shared.appAccountToken
         request.addValue(token, forHTTPHeaderField: "X-App-Account-Token")
+        #if DEBUG
         print("🪪 实际使用的Token: \(token)")
+        #endif
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
@@ -292,7 +316,9 @@ class AINetworkService: ObservableObject {
         request.addValue("application/json", forHTTPHeaderField: "Accept")
         let chatToken = AppAccountManager.shared.appAccountToken
         request.addValue(chatToken, forHTTPHeaderField: "X-App-Account-Token")
+        #if DEBUG
         print("🪪 聊天使用的Token: \(chatToken)")
+        #endif
         do { request.httpBody = try JSONSerialization.data(withJSONObject: requestBody) } catch {
             return Fail(error: AINetworkError.requestFailed(error)).eraseToAnyPublisher()
         }
@@ -307,7 +333,9 @@ class AINetworkService: ObservableObject {
      */
     private func parseJSONResponse(data: Data, allowPartial: Bool = false) -> AnyPublisher<String, AINetworkError> {
         do {
+            #if DEBUG
             print("📦 Received data size: \(data.count) bytes")
+            #endif
             
             // 尝试解析完整的JSON
             if let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
@@ -341,14 +369,18 @@ class AINetworkService: ObservableObject {
             return Fail(error: AINetworkError.decodingError(NSError(domain: "Encoding", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to decode data as UTF-8"]))).eraseToAnyPublisher()
         }
         
+        #if DEBUG
         print("🔍 Attempting partial JSON parsing from: \(dataString.prefix(200))...")
+        #endif
         
         // 尝试修复不完整的JSON
         let repairedJSON = self.repairIncompleteJSON(dataString)
         
         if let repairedData = repairedJSON.data(using: .utf8),
            let jsonObject = try? JSONSerialization.jsonObject(with: repairedData) as? [String: Any] {
+            #if DEBUG
             print("✅ Successfully repaired and parsed partial JSON")
+            #endif
             return self.extractContentFromJSON(jsonObject)
         }
         
@@ -378,7 +410,9 @@ class AINetworkService: ObservableObject {
             repaired += String(repeating: "}", count: missingBraces)
         }
         
+        #if DEBUG
         print("🔧 JSON repair: \(jsonString.count) -> \(repaired.count) chars")
+        #endif
         return repaired
     }
     
@@ -414,7 +448,9 @@ class AINetworkService: ObservableObject {
                             .replacingOccurrences(of: "\\t", with: "\t")
                             .replacingOccurrences(of: "\\\\", with: "\\")
                         
+                        #if DEBUG
                         print("✅ Extracted content via regex pattern #\(index + 1): \(unescapedContent.prefix(100))...")
+                        #endif
                         return Just(unescapedContent.trimmingCharacters(in: .whitespacesAndNewlines))
                             .setFailureType(to: AINetworkError.self)
                             .eraseToAnyPublisher()
@@ -424,7 +460,9 @@ class AINetworkService: ObservableObject {
         }
         
         print("❌ Failed to extract content from partial data")
+        #if DEBUG
         print("🔍 Data sample: \(dataString.prefix(500))")
+        #endif
         return Fail(error: AINetworkError.decodingError(NSError(domain: "Regex", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to extract content from partial data"]))).eraseToAnyPublisher()
     }
     
