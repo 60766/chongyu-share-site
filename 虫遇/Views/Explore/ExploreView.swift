@@ -146,25 +146,6 @@ struct ExploreView: View {
                             RoundedRectangle(cornerRadius: 14)
                                 .stroke(DesignSystem.Colors.primary.opacity(0.2), lineWidth: 1)
                         )
-                        
-                        // 扫码按钮 - 圆润极简设计
-                        Button(action: {
-                            // 扫码功能暂未开放
-                            print("扫码按钮被点击")
-                        }) {
-                            ZStack {
-                                // 圆角方形框架，表示扫描区域
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color.primary.opacity(0.4), lineWidth: 1)
-                                    .frame(width: 14, height: 14)
-                                
-                                // 中间的横线，更淡的颜色
-                                Capsule()
-                                    .fill(Color.primary.opacity(0.4))
-                                    .frame(width: 8, height: 1)
-                            }
-                            .frame(width: 30, height: 30)
-                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 14)

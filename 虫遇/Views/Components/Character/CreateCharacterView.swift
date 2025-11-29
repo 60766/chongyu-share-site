@@ -37,8 +37,6 @@ struct CreateCharacterView: View {
     // 图像选择
     @State private var selectedImage: UIImage?
     @State private var isShowingImagePicker = false
-    @State private var selectedImageSource: UIImagePickerController.SourceType = .photoLibrary
-    @State private var showingSourceOptions = false
     
     // 错误处理
     @State private var showingError = false
@@ -62,7 +60,7 @@ struct CreateCharacterView: View {
     
     // 验证状态
     private var isFormValid: Bool {
-        !name.isEmpty && !introduction.isEmpty && !field.isEmpty
+        !name.isEmpty && !introduction.isEmpty && !field.isEmpty && selectedImage != nil
     }
     
     // 提交按钮是否禁用
@@ -214,24 +212,11 @@ struct CreateCharacterView: View {
                         
                         HStack(spacing: 12) {
                             Button(action: {
-                                selectedImageSource = .photoLibrary
                                 isShowingImagePicker = true
                             }) {
                                 HStack(spacing: 6) {
                                     Image(systemName: "photo")
                                     Text("从相册选择")
-                                }
-                            }
-                            .buttonStyle(BorderlessButtonStyle())
-                            .foregroundColor(Color(hex: "6A7FDB"))
-                            
-                            Button(action: {
-                                selectedImageSource = .camera
-                                isShowingImagePicker = true
-                            }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "camera")
-                                    Text("拍摄头像")
                                 }
                             }
                             .buttonStyle(BorderlessButtonStyle())
@@ -309,18 +294,26 @@ struct CreateCharacterView: View {
                 Button("取消") {
                     presentationMode.wrappedValue.dismiss()
                 }
-                .foregroundColor(Color(hex: "6A7FDB"))
+                .foregroundColor(Color(hex: "9A8BB0"))
             }
             
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("创建") {
+                Button {
                     if validateForm() {
                         createCharacter()
                     }
+                } label: {
+                    Text("创建")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(isSubmitDisabled ? .gray : .white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(isSubmitDisabled ? Color.gray.opacity(0.2) : Color(hex: "8B7EC8"))
+                        )
                 }
                 .disabled(isSubmitDisabled)
-                .fontWeight(.bold)
-                .foregroundColor(isSubmitDisabled ? .gray : Color(hex: "6A7FDB"))
             }
         }
         .alert(isPresented: $showingError) {
@@ -357,7 +350,7 @@ struct CreateCharacterView: View {
                                     Button("购买") {
                                         Task {
                                             do {
-                                                try await storeKitManager.purchase(product)
+                                                _ = try await storeKitManager.purchase(product)
                                                 purchaseErrorMessage = nil
                                                 showRechargeSheet = false
                                             } catch {
@@ -415,6 +408,12 @@ struct CreateCharacterView: View {
         
         if field.isEmpty {
             errorMessage = "请输入角色职业/身份"
+            showingError = true
+            return false
+        }
+        
+        if selectedImage == nil {
+            errorMessage = "请为角色添加头像"
             showingError = true
             return false
         }
@@ -993,71 +992,85 @@ struct QuickCreateHelpView: View {
     
     var body: some View {
         NavigationView {
+            ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                    // 标题
                 Text("如何使用快速创建功能")
                     .font(.headline)
                     .padding(.top)
                 
-                VStack(alignment: .leading, spacing: 15) {
+                    // 使用步骤
+                    VStack(alignment: .leading, spacing: 14) {
                     HStack(alignment: .top) {
                         Text("1.")
-                            .font(.body)
-                            .fontWeight(.bold)
-                            .frame(width: 25, alignment: .leading)
+                                .font(.body.weight(.bold))
+                                .frame(width: 22, alignment: .leading)
                         
-                        Text("输入角色名称和出处，例如\"航海王中的索隆\"或\"物理学家爱因斯坦\"")
+                            Text("输入角色名称，例如“航海王中的索隆”或“爱因斯坦”。名称最重要，描述越具体越好。")
                     }
                     
                     HStack(alignment: .top) {
                         Text("2.")
-                            .font(.body)
-                            .fontWeight(.bold)
-                            .frame(width: 25, alignment: .leading)
+                                .font(.body.weight(.bold))
+                                .frame(width: 22, alignment: .leading)
                         
-                        Text("点击搜索按钮，系统会自动生成角色信息")
+                            Text("点击搜索按钮，系统会自动生成角色资料。")
                     }
                     
                     HStack(alignment: .top) {
                         Text("3.")
-                            .font(.body)
-                            .fontWeight(.bold)
-                            .frame(width: 25, alignment: .leading)
+                                .font(.body.weight(.bold))
+                                .frame(width: 22, alignment: .leading)
                         
-                        Text("检查并调整生成的信息，确保准确性")
+                            Text("检查生成的名称是否正确，其他信息可按需修改。")
                     }
                     
                     HStack(alignment: .top) {
                         Text("4.")
-                            .font(.body)
-                            .fontWeight(.bold)
-                            .frame(width: 25, alignment: .leading)
+                                .font(.body.weight(.bold))
+                                .frame(width: 22, alignment: .leading)
                         
-                        Text("添加角色头像（可选）")
-                    }
-                    
-                    HStack(alignment: .top) {
-                        Text("5.")
-                            .font(.body)
-                            .fontWeight(.bold)
-                            .frame(width: 25, alignment: .leading)
-                        
-                        Text("点击\"创建\"按钮完成")
+                            Text("添加头像，然后点击“创建”完成。")
                     }
                 }
                 .padding()
-                
-                Divider()
-                
-                Text("提示：")
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+                    
+                    // 使用提示
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("使用小提示")
                     .font(.headline)
+                            .padding(.bottom, 2)
+                        
+                        Text("""
+                        • 角色名称最关键，请使用真实、准确的称呼  
+                        • 支持历史人物、公众人物、知名动漫/影视/游戏角色  
+                        • 生成的信息可以随时修改
+                        """)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+                    
+                    // 角色与内容说明
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("角色与内容说明")
+                            .font(.headline)
+                            .padding(.top, 12)
+                            .padding(.bottom, 2)
+                        
+                        Text("仅支持互联网上已有公开信息的角色。所有对话内容均为 AI 虚构演绎，用于娱乐体验，不代表任何真实人物或机构立场。")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                     .padding(.horizontal)
                 
-                Text("• 描述越详细，生成的信息越准确\n• 目前支持部分知名角色的自动识别\n• 所有生成的信息均可手动修改\n• 创建的角色仅供个人使用")
-                    .padding(.horizontal)
-                
-                Spacer()
+                    Spacer(minLength: 16)
             }
             .padding()
+            }
             .navigationBarTitle("使用帮助", displayMode: .inline)
             .navigationBarItems(trailing: Button("关闭") {
                 presentationMode.wrappedValue.dismiss()

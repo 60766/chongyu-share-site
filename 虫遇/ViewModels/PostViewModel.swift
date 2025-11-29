@@ -83,9 +83,16 @@ class PostViewModel: ObservableObject {
         
         // ⚡️ 优化：先加载少量关键帖子，快速显示UI
         let samplePosts = ModelData.samplePosts
+        let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
         
-        // 先显示示例帖子，让UI快速响应
-        self.posts = samplePosts
+        // 先显示示例帖子，让UI快速响应（过滤掉已看过的欢迎帖子）
+        let filteredSamplePosts = samplePosts.filter { post in
+            if post.source == "welcome" && hasSeenWelcomePost {
+                return false
+            }
+            return true
+        }
+        self.posts = filteredSamplePosts
         
         print("⚡️ PostViewModel快速初始化完成，先显示 \(samplePosts.count) 条示例帖子")
         
@@ -126,10 +133,19 @@ class PostViewModel: ObservableObject {
                 }
             }
             
-            // 添加示例帖子（如果ID不冲突）
+            // 添加示例帖子（如果ID不冲突）- 只在首次使用时显示欢迎帖子
+            let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
             for post in samplePosts {
+                // 如果是欢迎帖子且用户已经看过，则跳过
+                if post.source == "welcome" && hasSeenWelcomePost {
+                    continue
+                }
                 if allPostsDict[post.id] == nil {
                     allPostsDict[post.id] = post
+                    // 如果是欢迎帖子，标记为已看过
+                    if post.source == "welcome" {
+                        UserDefaults.standard.set(true, forKey: "hasSeenWelcomePost")
+                    }
                 }
             }
             
@@ -392,9 +408,18 @@ class PostViewModel: ObservableObject {
         
         // 防止在恢复过程中内存错误，我们使用示例帖子作为基础数据
         let samplePosts = ModelData.samplePosts
+        let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
         
-        if !samplePosts.isEmpty {
-            self.posts = samplePosts
+        // 过滤掉已看过的欢迎帖子
+        let filteredSamplePosts = samplePosts.filter { post in
+            if post.source == "welcome" && hasSeenWelcomePost {
+                return false
+            }
+            return true
+        }
+        
+        if !filteredSamplePosts.isEmpty {
+            self.posts = filteredSamplePosts
             
             // 使用存根信息验证数据完整性
             // 如果存在不匹配的情况，可能需要重新加载示例数据
@@ -454,15 +479,24 @@ class PostViewModel: ObservableObject {
      */
     private func loadSamplePosts() {
         let samplePosts = ModelData.samplePosts
+        let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
         
-        // 添加示例帖子到现有帖子列表，避免重复
+        // 添加示例帖子到现有帖子列表，避免重复（跳过已看过的欢迎帖子）
         for samplePost in samplePosts {
+            // 如果是欢迎帖子且用户已经看过，则跳过
+            if samplePost.source == "welcome" && hasSeenWelcomePost {
+                continue
+            }
             if !posts.contains(where: { $0.id == samplePost.id }) {
                 posts.append(samplePost)
+                // 如果是欢迎帖子，标记为已看过
+                if samplePost.source == "welcome" {
+                    UserDefaults.standard.set(true, forKey: "hasSeenWelcomePost")
+                }
             }
         }
         
-        print("📦 加载了 \(samplePosts.count) 条示例帖子，当前总帖子数: \(posts.count)")
+        print("📦 加载了示例帖子，当前总帖子数: \(posts.count)")
     }
     
     /**

@@ -9,6 +9,8 @@ class AppAccountManager: ObservableObject {
     private let serviceIdentifier = "com.虫遇.appaccount"
     private let accountKey = "app_account_token"
     private let accountCreationKey = "account_creation_date"
+    private let deviceServiceIdentifier = "com.虫遇.device"
+    private let deviceAccountKey = "device_identifier"
     
     var appAccountToken: String {
         if let existing = retrieveTokenFromKeychain() {
@@ -24,6 +26,16 @@ class AppAccountManager: ObservableObject {
         // 记录账号创建时间
         saveAccountCreationDate()
         return newToken
+    }
+    
+    /// 设备唯一标识（存储于独立的钥匙串条目，不随账号重置）
+    var deviceIdentifier: String {
+        if let existing = retrieveDeviceIdentifierFromKeychain() {
+            return existing
+        }
+        let newId = UUID().uuidString
+        saveDeviceIdentifierToKeychain(newId)
+        return newId
     }
     
     // MARK: - 账号信息
@@ -272,6 +284,44 @@ class AppAccountManager: ObservableObject {
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
             kSecAttrSynchronizable as String: kSecAttrSynchronizableAny // 支持从 iCloud 同步获取
+        ]
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecSuccess, let data = result as? Data {
+            return String(data: data, encoding: .utf8)
+        }
+        return nil
+    }
+    
+    private func saveDeviceIdentifierToKeychain(_ identifier: String) {
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: deviceServiceIdentifier,
+            kSecAttrAccount as String: deviceAccountKey,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+        
+        let data = Data(identifier.utf8)
+        let addQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: deviceServiceIdentifier,
+            kSecAttrAccount as String: deviceAccountKey,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            kSecAttrSynchronizable as String: true
+        ]
+        SecItemAdd(addQuery as CFDictionary, nil)
+    }
+    
+    private func retrieveDeviceIdentifierFromKeychain() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: deviceServiceIdentifier,
+            kSecAttrAccount as String: deviceAccountKey,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
         ]
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)

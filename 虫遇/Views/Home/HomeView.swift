@@ -888,6 +888,7 @@ struct HomeView: View {
     
     // 内容生成状态管理器
     @ObservedObject private var generationStateManager = ContentGenerationStateManager.shared
+    @ObservedObject private var contentGeneratorService = ContentGeneratorService.shared
     
     // 通知管理器
     @StateObject private var notificationManager: HomeViewNotificationManager
@@ -899,6 +900,8 @@ struct HomeView: View {
     @State private var showGenerateSuccess = false
     @State private var showGenerateError = false
     @State private var generateError = ""
+    @State private var showInsufficientBalance = false // 余额不足提示
+    @State private var showPurchaseView = false // 显示充值页面
     @State private var isGeneratingPosts = false
     @State private var generatePostsTask: Task<Void, Never>? = nil
     
@@ -1090,6 +1093,145 @@ showCharacterPicker = true
                     }
                 }
                 
+                // 余额不足提示 - 显示充值选项
+                if showInsufficientBalance {
+                    let isSignedIn = AppleSignInManager.shared.isSignedIn
+                    let hasWelcomeGift = !isSignedIn
+                    let showServiceBusy = isSignedIn && contentGeneratorService.isBackendBusy
+                    // 半透明背景遮罩
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showInsufficientBalance = false
+                            }
+                        }
+                    
+                    VStack {
+                        Spacer()
+                        
+                        // 余额不足提示卡片 - 参考充值页面配色
+                        VStack(spacing: 16) {
+                            // 图标和标题
+                            HStack(spacing: 10) {
+                                Image(systemName: "diamond.fill")
+                                    .font(.system(size: 22, weight: .medium))
+                                    .foregroundColor(.cyan.opacity(0.8))
+                                
+                                Text("虫洞币不足")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            // 提示文本
+                            Text(showServiceBusy
+                                 ? "生成服务暂时忙碌，请稍后再试，我们会尽快恢复。"
+                                 : hasWelcomeGift
+                                    ? "绑定 Apple ID 可领取 600 虫洞币欢迎礼包，立即登录后即可继续创作"
+                                    : "您的虫洞币余额不足，无法生成内容")
+                                .font(.system(size: 14))
+                                .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(4)
+                            
+                            // 按钮组
+                            VStack(spacing: 12) {
+                                // 充值按钮
+                                Button(action: {
+                                    if showServiceBusy {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showInsufficientBalance = false
+                                        }
+                                    } else if hasWelcomeGift {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showInsufficientBalance = false
+                                        }
+                                        AppleSignInManager.shared.signInWithApple()
+                                    } else {
+                                        showPurchaseView = true
+                                    }
+                                }) {
+                                    Text(showServiceBusy ? "稍后再试" :
+                                         hasWelcomeGift ? "登录并领取 600 虫洞币" : "立即充值")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 14)
+                                        .background(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color(red: 92/255, green: 72/255, blue: 210/255),
+                                                    Color(red: 52/255, green: 32/255, blue: 120/255)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .cornerRadius(14)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14)
+                                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                        )
+                                }
+                                
+                                // 取消按钮
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showInsufficientBalance = false
+                                    }
+                                }) {
+                                    Text("稍后再说")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                            }
+                        }
+                        .padding(24)
+                        .background(
+                            ZStack {
+                                // 毛玻璃背景
+                                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color(red: 46/255, green: 28/255, blue: 80/255).opacity(0.95),
+                                                Color(red: 30/255, green: 18/255, blue: 48/255).opacity(0.98)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .background(
+                                        .ultraThinMaterial,
+                                        in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                    )
+                                
+                                // 边框
+                                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0.2),
+                                                Color.white.opacity(0.1)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1
+                                    )
+                            }
+                        )
+                        .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 8)
+                        .frame(maxWidth: 320)
+                        
+                        Spacer()
+                            .frame(height: 220) // 位置调整，确保在按钮上方显示
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.spring(response: 0.4, dampingFraction: 0.75), value: showInsufficientBalance)
+                    .zIndex(1000) // 确保在最上层显示
+                }
+                
                 // 错误提示 - 从按钮区域移到屏幕中央，作为全局浮动提示
                 if showGenerateError {
                     VStack {
@@ -1189,9 +1331,17 @@ showCharacterPicker = true
                 
                 // 延迟执行重型操作，不阻塞页面切换
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    // 二次确认数据存在
+                    // 二次确认数据存在（过滤掉已看过的欢迎帖子）
                     if postViewModel.posts.isEmpty {
-                        postViewModel.posts = ModelData.samplePosts
+                        let samplePosts = ModelData.samplePosts
+                        let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
+                        let filteredSamplePosts = samplePosts.filter { post in
+                            if post.source == "welcome" && hasSeenWelcomePost {
+                                return false
+                            }
+                            return true
+                        }
+                        postViewModel.posts = filteredSamplePosts
                     }
                     
                     // 延迟注册订阅，避免阻塞主线程
@@ -1205,12 +1355,6 @@ showCharacterPicker = true
             .onDisappear {
                 // 在视图消失时清理资源
                 cancellables.removeAll()
-                
-                // 取消生成任务
-                if let task = generatePostsTask {
-                    task.cancel()
-                    generatePostsTask = nil
-                }
             }
             // 使用水平模态过渡代替全屏覆盖
             .fullscreenHorizontalModal(
@@ -1316,6 +1460,9 @@ showCharacterPicker = true
         }
         
         // 添加编辑帖子视图的sheet
+        .sheet(isPresented: $showPurchaseView) {
+            PurchaseView()
+        }
         .sheet(item: $editingPost) { post in
             EditPostView(
                 post: post,
@@ -1919,7 +2066,15 @@ showCharacterPicker = true
         
         if postViewModel.posts.isEmpty {
             print("📋 HomeView.loadSampleData: 帖子为空，加载示例帖子")
-            postViewModel.posts = ModelData.samplePosts
+            let samplePosts = ModelData.samplePosts
+            let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
+            let filteredSamplePosts = samplePosts.filter { post in
+                if post.source == "welcome" && hasSeenWelcomePost {
+                    return false
+                }
+                return true
+            }
+            postViewModel.posts = filteredSamplePosts
             print("📋 HomeView.loadSampleData: 示例帖子加载完成，数量: \(postViewModel.posts.count)")
             
             // 打印所有帖子的ID和内容前缀，方便调试
@@ -2122,6 +2277,26 @@ showCharacterPicker = true
      * 该方法使用ContentGeneratorService生成虫洞内容并添加到帖子列表
      */
     private func generateAndAddPosts() async {
+        // 首先检查余额：如果未登录或余额为0，直接提示，不调用API
+        if !AppleSignInManager.shared.isSignedIn {
+            await MainActor.run {
+                isGeneratingPosts = false
+                showInsufficientBalance = true
+                print("💰 未登录 Apple ID，无法生成内容")
+            }
+            return
+        }
+        
+        // 检查余额是否为0
+        if WalletManager.shared.balance <= 0 {
+            await MainActor.run {
+                isGeneratingPosts = false
+                showInsufficientBalance = true
+                print("💰 余额为0，无法生成内容")
+            }
+            return
+        }
+        
         // 创建本地取消令牌集合，避免资源泄漏
         var localCancellables = Set<AnyCancellable>()
         
@@ -2332,6 +2507,58 @@ showCharacterPicker = true
             
             // 在主线程处理错误
             await MainActor.run {
+                // 检查是否是余额不足错误
+                let nsError = error as NSError
+                if nsError.domain == "wallet" && nsError.code == 402 {
+                    // 余额不足，显示特殊提示
+                    showInsufficientBalance = true
+                    isGeneratingPosts = false
+                    print("💰 余额不足，显示充值提示")
+                    return
+                }
+                
+                // 检查是否是系统tokens不足错误（503服务不可用或其他系统错误）
+                // 这些错误与用户无关，是系统层面的问题
+                if let aiError = error as? AINetworkError {
+                    if case .httpError(let code) = aiError {
+                        // 503 Service Unavailable 通常表示系统资源不足（如tokens不足）
+                        // 500 Internal Server Error 也可能是系统问题
+                        if code == 503 || code == 500 {
+                            generateError = "系统暂时繁忙，请稍后再试"
+                            isGeneratingPosts = false
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showGenerateError = true
+                            }
+                            print("⚠️ 系统错误（\(code)），显示友好提示")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showGenerateError = false
+                                }
+                            }
+                            return
+                        }
+                    }
+                }
+                
+                // 检查NSError中的系统错误码
+                if nsError.domain == NSURLErrorDomain {
+                    // 某些系统错误也可能表示服务端问题
+                    if nsError.code == NSURLErrorBadServerResponse {
+                        generateError = "系统暂时繁忙，请稍后再试"
+                        isGeneratingPosts = false
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showGenerateError = true
+                        }
+                        print("⚠️ 服务器响应错误，显示友好提示")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showGenerateError = false
+                            }
+                        }
+                        return
+                    }
+                }
+                
                 // 网络错误处理 - 设置更友好的错误信息
                 if let networkError = error as? URLError {
                     switch networkError.code {

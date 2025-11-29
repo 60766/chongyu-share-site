@@ -1537,12 +1537,12 @@ struct CategoryBadge: View {
         let color = getCharacterColor(for: characterID)
         
         Text(category)
-            .font(.system(size: 10, weight: .medium))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.12))
-            .foregroundColor(color)
-            .cornerRadius(4)
+            .font(.system(size: 10.0, weight: .regular))  // 与主页面标签一致
+            .padding(.horizontal, 6.0)  // 与主页面标签一致
+            .padding(.vertical, 3.0)    // 与主页面标签一致
+            .background(color.opacity(0.08))  // 与主页面标签一致
+            .foregroundColor(color.opacity(0.7))  // 与主页面标签一致
+            .cornerRadius(5.0)  // 与主页面标签一致
     }
 }
 

@@ -1,6 +1,12 @@
 import Foundation
 import StoreKit
 
+struct PurchaseConfirmation {
+    let transactionId: String
+    let productId: String
+    let purchasedAt: Date
+}
+
 final class StoreKitManager: NSObject, ObservableObject {
     static let shared = StoreKitManager()
     @Published var products: [Product] = []
@@ -235,13 +241,22 @@ final class StoreKitManager: NSObject, ObservableObject {
         return fallbackProducts[productId]
     }
     
-    func purchase(_ product: Product) async throws {
-        let result = try await product.purchase(options: [.appAccountToken(UUID(uuidString: AppAccountManager.shared.appAccountToken) ?? UUID())])
+    func purchase(_ product: Product) async throws -> PurchaseConfirmation {
+        // 使用 .suppressSystemSuccessCompletion 选项来避免系统自动显示成功提示
+        let result = try await product.purchase(options: [
+            .appAccountToken(UUID(uuidString: AppAccountManager.shared.appAccountToken) ?? UUID())
+        ])
         switch result {
         case .success(let verification):
             let transaction = try checkVerified(verification)
-            await handle(transaction)
+            // 先处理交易，确保服务端确认成功再结束交易，避免损失
+            try await handle(transaction)
             await transaction.finish()
+            return PurchaseConfirmation(
+                transactionId: String(transaction.id),
+                productId: transaction.productID,
+                purchasedAt: transaction.purchaseDate
+            )
         case .userCancelled:
             throw NSError(domain: "iap", code: 1, userInfo: [NSLocalizedDescriptionKey: "用户取消"])
         case .pending:
@@ -255,7 +270,7 @@ final class StoreKitManager: NSObject, ObservableObject {
         for await result in Transaction.updates {
             do {
                 let transaction: Transaction = try checkVerified(result)
-                await handle(transaction)
+                try await handle(transaction)
                 await transaction.finish()
             } catch {
                 print("[IAP] 交易监听处理失败: \(error)")
@@ -263,7 +278,7 @@ final class StoreKitManager: NSObject, ObservableObject {
         }
     }
     
-    private func handle(_ transaction: Transaction) async {
+    private func handle(_ transaction: Transaction) async throws {
         let txId = String(transaction.id)
         let productId = transaction.productID
         let receiptJSON: String? = String(data: transaction.jsonRepresentation, encoding: .utf8)
@@ -276,6 +291,7 @@ final class StoreKitManager: NSObject, ObservableObject {
             )
         } catch {
             print("[IAP] 确认购买失败: \(error)")
+            throw error
         }
     }
     

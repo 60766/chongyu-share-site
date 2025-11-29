@@ -341,12 +341,6 @@ public struct WormholeExplorationView: View {
             // 加载当前内容类型的帖子数量
             loadCurrentPostCount()
         }
-        .onDisappear {
-            // 在视图消失时取消所有正在进行的任务
-            print("🧹 WormholeExplorationView已消失，正在清理资源...")
-            generatePostsTask?.cancel()
-            generatePostsTask = nil
-        }
         .alert("生成失败", isPresented: $showErrorAlert) {
             Button("确定", role: .cancel) {}
         } message: {

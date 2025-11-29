@@ -61,7 +61,7 @@ struct ChatInputBar: View {
                 }
                 .frame(minHeight: 44)
                 .background(
-                    RoundedRectangle(cornerRadius: 18)
+                    RoundedRectangle(cornerRadius: 20)
                         .fill(Color(UIColor.systemGray6))
                         .opacity(0.9)
                 )
@@ -100,12 +100,12 @@ struct ChatInputBar: View {
                     Text("发送")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray.opacity(0.3) : characterThemeColor)
-                                .shadow(color: characterThemeColor.opacity(0.2), radius: 3, x: 0, y: 1)
+                            RoundedRectangle(cornerRadius: 18)
+                                .fill(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray.opacity(0.3) : Color(red: 0.55, green: 0.35, blue: 0.75))
+                                .shadow(color: Color(red: 0.55, green: 0.35, blue: 0.75).opacity(0.2), radius: 3, x: 0, y: 1)
                         )
                 }
                 .disabled(messageText.isEmpty)
@@ -115,7 +115,7 @@ struct ChatInputBar: View {
             .padding(.vertical, 6)  // 和梦幻联动完全一致
             .padding(.bottom, max(8, keyboardHeight > 0 ? 8 : 8)) // 根据键盘状态调整底部间距
             .background(
-                Color(.systemBackground).opacity(0.9)  // 和梦幻联动一致的透明度
+                Color.white
             )
             .overlay(
                 Rectangle()

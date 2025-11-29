@@ -54,10 +54,14 @@ struct MultiChatInputBar: View {
                     .disabled(false)
                     .opacity(1)
                     .onAppear {
-                        // 在组件出现时立即获得焦点，提供最快的响应速度
-                        print("MultiChatInputBar - 组件已出现，立即获得焦点")
-                        if !textFieldFocused {
-                            withAnimation(.easeInOut(duration: 0.15)) {
+                        // 延迟一小段时间再获得焦点，确保键盘监听已准备好，避免闪烁
+                        print("MultiChatInputBar - 组件已出现，准备获得焦点")
+                        // 使用非常短的延迟，确保 MultiChatKeyboardAdaptive 的监听已准备好
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                            if !textFieldFocused {
+                                print("MultiChatInputBar - 设置焦点，触发键盘")
+                                // 立即设置焦点，不使用动画，让键盘立即弹出
+                                // 键盘高度更新会使用系统键盘的动画参数，自动同步
                                 textFieldFocused = true
                             }
                         }
@@ -72,7 +76,7 @@ struct MultiChatInputBar: View {
                 }
                 .frame(minHeight: 44)
                 .background(
-                    RoundedRectangle(cornerRadius: 18)
+                    RoundedRectangle(cornerRadius: 20)
                         .fill(Color(UIColor.systemGray6))
                         .opacity(0.9)
                 )
@@ -95,34 +99,6 @@ struct MultiChatInputBar: View {
                         }
                     }
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    characterThemeColor.opacity(0.05),
-                                    Color(.systemGray6).opacity(0.35)
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            characterThemeColor.opacity(0.2),
-                                            characterThemeColor.opacity(0.05)
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 0.8
-                                )
-                        )
-                        .shadow(color: Color.black.opacity(0.04), radius: 1, x: 0, y: 1)
-                )
                 .frame(maxWidth: .infinity)
                 
                 Button(action: {
@@ -139,12 +115,12 @@ struct MultiChatInputBar: View {
                     Text("发送")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray.opacity(0.3) : characterThemeColor)
-                                .shadow(color: characterThemeColor.opacity(0.2), radius: 3, x: 0, y: 1)
+                            RoundedRectangle(cornerRadius: 18)
+                                .fill(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray.opacity(0.3) : Color(red: 0.55, green: 0.35, blue: 0.75))
+                                .shadow(color: Color(red: 0.55, green: 0.35, blue: 0.75).opacity(0.2), radius: 3, x: 0, y: 1)
                         )
                 }
                 .disabled(messageText.isEmpty)
@@ -154,7 +130,7 @@ struct MultiChatInputBar: View {
             .padding(.vertical, 6)
             .padding(.bottom, 8) // 增加底部内边距，确保在安全区域内有足够的间距
             .background(
-                DesignSystem.Colors.background.opacity(0.9)
+                Color.white
             )
             .overlay(
                 Rectangle()

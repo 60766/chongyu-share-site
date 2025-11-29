@@ -148,6 +148,15 @@ struct SettingsView: View {
                         )
                     }
                     
+                    NavigationLink(destination: ReviewGuideView()) {
+                        SettingRowView(
+                            icon: "checkmark.shield.fill",
+                            title: "审核使用说明",
+                            subtitle: "提供测试账号与操作路径",
+                            iconColor: iconColors["security"]!
+                        )
+                    }
+                    
                     // 关于我们
                     Button(action: { showingAbout = true }) {
                         SettingRowView(

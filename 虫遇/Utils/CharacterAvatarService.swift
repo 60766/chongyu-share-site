@@ -631,8 +631,15 @@ class CharacterAvatarService {
                     case "artist", "painter", "musician": return "artist"
                     case "fiction", "character": return "fiction"
                     case "anime", "manga", "game": return "acg"
+                    case "vocaloid", "virtual_singer", "vtuber", "virtual_streamer": return "acg" // 虚拟歌手/虚拟主播归类为动漫游戏
                     default: return "historical"
                     }
+                }
+                // 如果subtype为空，尝试从角色ID或名称判断
+                let characterIdLower = characterId.lowercased()
+                if characterIdLower.contains("hatsune") || characterIdLower.contains("miku") || 
+                   characterIdLower.contains("vocaloid") || characterIdLower.contains("vtuber") {
+                    return "acg"
                 }
                 return "historical"
             }
@@ -642,7 +649,8 @@ class CharacterAvatarService {
         let fallbackCategoryMap: [String: String] = [
             // 备用映射，只保留一些重要的角色
             "einstein": "scientist", "kongzi": "philosopher", "shakespeare": "writer", 
-            "davinci": "artist", "sherlock": "fiction", "naruto": "acg"
+            "davinci": "artist", "sherlock": "fiction", "naruto": "acg",
+            "hatsune": "acg", "hatsune_miku": "acg" // 初音未来归类为动漫游戏
         ]
         
         // 确保ID为小写，以便正确匹配
@@ -809,8 +817,8 @@ class CharacterAvatarService {
             "scientist": .blue,
             "artist": .purple,
             "writer": .orange,
-            "historical": .red,
-            "mythology": .yellow,
+            "historical": Color(hex: "DC2626"), // 使用更深的红色，与动漫游戏的粉色明显区分
+            "mythology": Color(hex: "F59E0B"), // 使用更深的琥珀色/金色，在白色背景下更明显
             "fiction": .cyan,
             "acg": .pink,
             "film": .indigo,

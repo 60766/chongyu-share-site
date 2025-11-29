@@ -40,11 +40,12 @@ app.use(express.json({ limit: '50mb' }))  // 增大限制以支持多图片上�
 app.use(morgan('dev'))
 
 // In-memory store for demo. Replace with persistent DB in production.
-const wallets = new Map() // key: appAccountToken, value: { balance: number }
+const wallets = new Map() // key: appAccountToken, value: { balance: number, createdAt: number, welcome?: WelcomeMeta }
 const transactions = []
 const processedIapTransactions = new Set()
 const appleIdAccounts = new Map() // key: appleUserId, value: { appAccountToken: string, linkedAt: number }
 const backupCodeMap = new Map() // key: backupCode, value: appAccountToken
+const deviceWelcomeRecords = new Map() // key: normalized deviceId, value: { firstToken, giftCount, firstGrantedAt, lastToken, lastAttemptAt }
 
 // --- File persistence (lightweight) ---
 const DATA_FILE = process.env.DATA_FILE || path.resolve(process.cwd(), 'server-data.json')
@@ -52,11 +53,21 @@ let saveTimer = null
 
 function serializeState() {
   return {
-    wallets: Object.fromEntries(Array.from(wallets.entries()).map(([k, v]) => [k, { balance: Number(v?.balance || 0) }])),
+    wallets: Object.fromEntries(
+      Array.from(wallets.entries()).map(([k, v]) => [
+        k,
+        {
+          balance: Number(v?.balance || 0),
+          createdAt: v?.createdAt || Date.now(),
+          welcome: v?.welcome || null,
+        },
+      ])
+    ),
     transactions,
     processedIapTransactions: Array.from(processedIapTransactions.values()),
     appleIdAccounts: Object.fromEntries(Array.from(appleIdAccounts.entries())),
     backupCodeMap: Object.fromEntries(Array.from(backupCodeMap.entries())),
+    deviceWelcomeRecords: Object.fromEntries(Array.from(deviceWelcomeRecords.entries())),
     savedAt: Date.now(),
   }
 }
@@ -87,7 +98,11 @@ function loadFromDisk() {
     // wallets
     if (json?.wallets && typeof json.wallets === 'object') {
       Object.entries(json.wallets).forEach(([token, w]) => {
-        wallets.set(token, { balance: Number(w?.balance || 0) })
+        wallets.set(token, {
+          balance: Number(w?.balance || 0),
+          createdAt: w?.createdAt || Date.now(),
+          welcome: w?.welcome || null,
+        })
       })
     }
     // transactions
@@ -120,6 +135,12 @@ function loadFromDisk() {
         backupCodeMap.set(code, token)
       })
     }
+    if (json?.deviceWelcomeRecords && typeof json.deviceWelcomeRecords === 'object') {
+      deviceWelcomeRecords.clear()
+      Object.entries(json.deviceWelcomeRecords).forEach(([deviceId, record]) => {
+        deviceWelcomeRecords.set(deviceId, record)
+      })
+    }
     console.log('[Persist] loaded from', DATA_FILE)
   } catch (err) {
     console.error('[Persist] load failed:', err?.message || err)
@@ -138,8 +159,10 @@ const CREDITS_PER_1K_TOKENS = Number(process.env.CREDITS_PER_1K_TOKENS || 1.7) /
 const CREDITS_TEXT_PER_1K_TOKENS = Number(process.env.CREDITS_TEXT_PER_1K_TOKENS || 8.2)
 const CREDITS_VISION_PER_1K_TOKENS = Number(process.env.CREDITS_VISION_PER_1K_TOKENS || 0.84)
 const PROVIDER_ENDPOINT = process.env.PROVIDER_ENDPOINT || 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
-const PROVIDER_MODEL = process.env.PROVIDER_MODEL || 'deepseek-r1-250120'
+const PROVIDER_MODEL = process.env.PROVIDER_MODEL || 'deepseek-r1-250528'
 const PROVIDER_API_KEY = process.env.PROVIDER_API_KEY || 'demo_key_placeholder'
+const INITIAL_WELCOME_CREDITS = Number(process.env.INITIAL_WELCOME_CREDITS || 600)
+const MIN_DEVICE_ID_LENGTH = Number(process.env.MIN_DEVICE_ID_LENGTH || 16)
 
 // 输出费率配置日志
 console.log(`[Config] CREDITS_TEXT_PER_1K_TOKENS = ${CREDITS_TEXT_PER_1K_TOKENS}`)
@@ -175,31 +198,84 @@ async function verifyAppleIdentityToken(identityToken, expectedSub) {
   }
 }
 
-function getWallet(token) {
+function normalizeDeviceId(deviceId) {
+  if (!deviceId || typeof deviceId !== 'string') return ''
+  return deviceId.trim().toLowerCase()
+}
+
+function evaluateWelcomeEligibility(deviceId, token) {
+  const normalized = normalizeDeviceId(deviceId)
+  if (!normalized || normalized.length < MIN_DEVICE_ID_LENGTH) {
+    return { allowed: false, reason: 'missing_or_invalid_device', deviceId: normalized }
+  }
+  const record = deviceWelcomeRecords.get(normalized)
+  if (!record) {
+    deviceWelcomeRecords.set(normalized, {
+      firstToken: token,
+      giftCount: 1,
+      firstGrantedAt: Date.now(),
+    })
+    scheduleSave()
+    return { allowed: true, reason: 'first_device_grant', deviceId: normalized }
+  }
+  record.giftCount = (record.giftCount || 1) + 1
+  record.lastToken = token
+  record.lastAttemptAt = Date.now()
+  scheduleSave()
+  return { allowed: false, reason: 'device_already_granted', deviceId: normalized }
+}
+
+function getWallet(token, options = {}) {
+  const { deviceId = null, allowWelcome = true } = options
   if (!wallets.has(token)) {
-    // 新用户赠送初始虫洞币
-    const INITIAL_CREDITS = 1800  // 1800虫洞币新手礼包
-    wallets.set(token, { balance: INITIAL_CREDITS })
-    
-    // 记录赠送交易
+    let initialCredits = 0
+    let welcomeMeta = { granted: false, reason: 'not_attempted' }
+    if (allowWelcome) {
+      const eligibility = evaluateWelcomeEligibility(deviceId, token)
+      if (eligibility.allowed) {
+        initialCredits = INITIAL_WELCOME_CREDITS
+        welcomeMeta = {
+          granted: true,
+          reason: eligibility.reason,
+          deviceId: eligibility.deviceId,
+          grantedAt: Date.now(),
+        }
+      } else {
+        welcomeMeta = {
+          granted: false,
+          reason: eligibility.reason,
+          deviceId: eligibility.deviceId,
+        }
+      }
+    }
+    wallets.set(token, {
+      balance: initialCredits,
+      createdAt: Date.now(),
+      welcome: welcomeMeta,
+    })
+
+    if (initialCredits > 0) {
     transactions.push({ 
       id: nanoid(), 
       type: 'gift', 
       token, 
-      amount: INITIAL_CREDITS, 
+        amount: initialCredits,
       ref: 'new_user_welcome', 
-      meta: { reason: '新用户注册赠送' }, 
-      at: Date.now() 
+        meta: { reason: '新用户注册赠送', deviceId: normalizeDeviceId(deviceId) },
+        at: Date.now(),
     })
+      console.log(`[Wallet] 新用户 ${token.substring(0, 8)}... 获得 ${initialCredits} 虫洞币 (device=${normalizeDeviceId(deviceId) || 'unknown'})`)
+    } else {
+      console.log(`[Wallet] 新用户 ${token.substring(0, 8)}... 创建钱包但未赠送虫洞币，原因=${welcomeMeta.reason}`)
+    }
     
     scheduleSave()
-    console.log(`[Wallet] 新用户 ${token.substring(0, 8)}... 获得 ${INITIAL_CREDITS} 虫洞币`)
   }
   return wallets.get(token)
 }
 
 function debitWallet(token, amount, ref, meta = {}) {
-  const wallet = getWallet(token)
+  const wallet = getWallet(token, { allowWelcome: false })
   wallet.balance = Math.max(0, wallet.balance - amount)
   transactions.push({ id: nanoid(), type: 'debit', token, amount, ref, meta, at: Date.now() })
   scheduleSave()
@@ -207,7 +283,7 @@ function debitWallet(token, amount, ref, meta = {}) {
 }
 
 function creditWallet(token, amount, ref, meta = {}) {
-  const wallet = getWallet(token)
+  const wallet = getWallet(token, { allowWelcome: false })
   wallet.balance += amount
   transactions.push({ id: nanoid(), type: 'topup', token, amount, ref, meta, at: Date.now() })
   scheduleSave()
@@ -218,11 +294,16 @@ app.get('/health', (_, res) => res.json({ ok: true }))
 
 app.get('/balance', (req, res) => {
   const appAccountToken = req.header('X-App-Account-Token') || req.query.appAccountToken
-  console.log('[BALANCE] Request from token:', appAccountToken ? `${appAccountToken.substring(0, 8)}...` : 'MISSING')
+  const deviceId = req.header('X-Device-Id') || req.query.deviceId
+  console.log('[BALANCE] Request from token:', appAccountToken ? `${appAccountToken.substring(0, 8)}...` : 'MISSING', '| device:', deviceId ? `${normalizeDeviceId(deviceId).slice(0, 8)}...` : 'MISSING')
   if (!appAccountToken) return res.status(400).json({ error: 'missing appAccountToken' })
-  const wallet = getWallet(appAccountToken)
+  const wallet = getWallet(appAccountToken, { deviceId })
   console.log('[BALANCE] Current balance for token:', wallet.balance)
-  res.json({ balance: wallet.balance, currency: 'CREDITS' })
+  if (wallet?.welcome) {
+    res.setHeader('X-Welcome-Granted', wallet.welcome.granted ? '1' : '0')
+    if (wallet.welcome.reason) res.setHeader('X-Welcome-Reason', wallet.welcome.reason)
+  }
+  res.json({ balance: wallet.balance, currency: 'CREDITS', welcome: wallet.welcome || null })
 })
 
 // 管理端点：设置余额（仅用于测试）
@@ -231,7 +312,7 @@ app.post('/admin/set-balance', (req, res) => {
   if (!appAccountToken || typeof balance !== 'number') {
     return res.status(400).json({ error: 'missing appAccountToken or balance' })
   }
-  const wallet = getWallet(appAccountToken)
+  const wallet = getWallet(appAccountToken, { allowWelcome: false })
   wallet.balance = Math.max(0, balance)
   transactions.push({ 
     id: nanoid(), 
@@ -275,7 +356,7 @@ app.post('/purchase/confirm', (req, res) => {
 
   // Idempotency: prevent duplicate credits for the same transactionId
   if (processedIapTransactions.has(transactionId)) {
-    const wallet = getWallet(appAccountToken)
+    const wallet = getWallet(appAccountToken, { allowWelcome: false })
     return res.json({ balance: wallet.balance, currency: 'CREDITS' })
   }
 
@@ -435,7 +516,7 @@ app.post('/api/proxy', async (req, res) => {
   const appAccountToken = req.header('X-App-Account-Token') || req.body.appAccountToken
   if (!appAccountToken) return res.status(400).json({ error: 'missing appAccountToken' })
 
-  const wallet = getWallet(appAccountToken)
+  const wallet = getWallet(appAccountToken, { allowWelcome: false })
   if (wallet.balance <= 0) return res.status(402).json({ error: 'insufficient_credits', balance: wallet.balance })
 
   const { model, messages, stream, ...rest } = req.body || {}
@@ -474,19 +555,35 @@ app.post('/api/proxy', async (req, res) => {
 
     // Estimate usage/tokens
     let totalTokens = 0
+    let inputTokens = 0
+    let outputTokens = 0
+    
     if (data?.usage?.total_tokens != null) {
       totalTokens = Number(data.usage.total_tokens)
+      inputTokens = Number(data.usage.input_tokens || 0)
+      outputTokens = Number(data.usage.output_tokens || 0)
     } else if (data?.usage?.input_tokens != null || data?.usage?.output_tokens != null) {
-      totalTokens = Number(data.usage.input_tokens || 0) + Number(data.usage.output_tokens || 0)
+      inputTokens = Number(data.usage.input_tokens || 0)
+      outputTokens = Number(data.usage.output_tokens || 0)
+      totalTokens = inputTokens + outputTokens
     } else {
       // fallback rough estimate
       totalTokens = 800
+      inputTokens = 200
+      outputTokens = 600
     }
 
     const costCredits = Math.floor((totalTokens / 1000) * CREDITS_TEXT_PER_1K_TOKENS)
     
-    // 调试日志：显示实际使用的费率
-    console.log(`[Billing] 文本API计费: ${totalTokens} tokens, 费率=${CREDITS_TEXT_PER_1K_TOKENS}/1K, 计算=${(totalTokens / 1000) * CREDITS_TEXT_PER_1K_TOKENS}, 扣费=${costCredits}虫洞币`)
+    // 详细计费日志：记录输入/输出 tokens 用于价格验证
+    const inputCost = (inputTokens / 1000) * 0.004  // 假设输入价格 ¥0.004/1K
+    const outputCost = (outputTokens / 1000) * 0.016  // 假设输出价格 ¥0.016/1K
+    const estimatedApiCost = inputCost + outputCost
+    console.log(`[Billing] 文本API计费详情:`)
+    console.log(`  - 总tokens: ${totalTokens} (输入: ${inputTokens}, 输出: ${outputTokens})`)
+    console.log(`  - 输入:输出比例: ${inputTokens > 0 ? (outputTokens / inputTokens).toFixed(2) : 'N/A'}:1`)
+    console.log(`  - 估算API成本: ¥${estimatedApiCost.toFixed(4)} (输入¥${inputCost.toFixed(4)} + 输出¥${outputCost.toFixed(4)})`)
+    console.log(`  - 虫洞币费率: ${CREDITS_TEXT_PER_1K_TOKENS}/1K, 扣费: ${costCredits}虫洞币`)
 
     if (wallet.balance < costCredits) {
       return res.status(402).json({ error: 'insufficient_credits', needed: costCredits, balance: wallet.balance })
@@ -530,12 +627,12 @@ app.post('/api/proxy', async (req, res) => {
   }
 })
 
-// 豆包视觉API代理端点
+// 通义千问 3-VL-Flash 视觉API代理端点
 app.post('/api/vision', async (req, res) => {
   const appAccountToken = req.header('X-App-Account-Token') || req.body.appAccountToken
   if (!appAccountToken) return res.status(400).json({ error: 'missing appAccountToken' })
 
-  const wallet = getWallet(appAccountToken)
+  const wallet = getWallet(appAccountToken, { allowWelcome: false })
   if (wallet.balance <= 0) return res.status(402).json({ error: 'insufficient_credits', balance: wallet.balance })
 
   const { model, messages, max_tokens, temperature, ...rest } = req.body || {}
@@ -554,27 +651,39 @@ app.post('/api/vision', async (req, res) => {
   const requestBodySize = JSON.stringify(req.body).length
   console.log(`[Vision API] 📊 请求统计: ${imageCount}张图片, 请求体大小: ${(requestBodySize / 1024 / 1024).toFixed(2)}MB`)
   
-  // 豆包视觉API配置
-  const DOUBAO_VISION_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
-  const DOUBAO_API_KEY = process.env.DOUBAO_API_KEY || '5ec25df2-f799-4fc0-8ee2-ac13d473131b'
-  const DOUBAO_MODEL = model || 'doubao-seed-1-6-vision-250815'
+  // 通义千问 3-VL-Flash 视觉API配置（OpenAI兼容接口）
+  const QWEN_VISION_ENDPOINT = process.env.QWEN_VISION_ENDPOINT || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+  const QWEN_VISION_API_KEY = process.env.QWEN_VISION_API_KEY || ''
+  const QWEN_VISION_MODEL = model || process.env.QWEN_VISION_MODEL || 'qwen3-vl-flash'
+
+  // 调试日志：确认配置是否正确加载
+  console.log('[Vision API] 🔧 配置检查:')
+  console.log(`  - Endpoint: ${QWEN_VISION_ENDPOINT}`)
+  console.log(`  - Model: ${QWEN_VISION_MODEL}`)
+  console.log(`  - API Key: ${QWEN_VISION_API_KEY ? QWEN_VISION_API_KEY.substring(0, 10) + '...' : '❌ 未配置'}`)
+
+  if (!QWEN_VISION_API_KEY) {
+    console.error('[Vision API] ❌ 错误: QWEN_VISION_API_KEY 未配置！')
+    return res.status(500).json({ error: 'Vision API key not configured' })
+  }
 
   const payload = {
-    model: DOUBAO_MODEL,
+    model: QWEN_VISION_MODEL,
     messages,
     max_tokens: max_tokens || 1000,
     temperature: temperature || 0.3,
     ...rest,
   }
 
+  const startTime = Date.now() // 移到 try 块之前，确保 catch 块可以访问
+
   try {
-    console.log('[Vision API] 🚀 调用豆包视觉API')
-    const startTime = Date.now()
+    console.log('[Vision API] 🚀 调用通义千问 3-VL-Flash 视觉API')
     
-    const visionResp = await axios.post(DOUBAO_VISION_ENDPOINT, payload, {
+    const visionResp = await axios.post(QWEN_VISION_ENDPOINT, payload, {
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${DOUBAO_API_KEY}`,
+        Authorization: `Bearer ${QWEN_VISION_API_KEY}`,
       },
       timeout: 120_000, // 120秒超时
       maxContentLength: Infinity,
@@ -625,8 +734,8 @@ app.post('/api/vision', async (req, res) => {
     
     // 详细错误日志
     if (err.response) {
-      console.error(`[Vision API] 豆包API响应状态: ${err.response.status}`)
-      console.error(`[Vision API] 豆包API错误详情:`, JSON.stringify(err.response.data, null, 2))
+      console.error(`[Vision API] 通义视觉API响应状态: ${err.response.status}`)
+      console.error(`[Vision API] 通义视觉API错误详情:`, JSON.stringify(err.response.data, null, 2))
     } else if (err.request) {
       console.error(`[Vision API] 请求发送但没有收到响应`)
     } else {

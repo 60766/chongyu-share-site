@@ -653,32 +653,26 @@ struct CommentInputView: View {
             object: nil
         )
         
-        // 提交评论
+        // 提交评论（这会清空commentText和草稿）
         commentManager.submitComment()
         
-        // 确保输入框文本被清空（双重保险）
-        DispatchQueue.main.async {
-            if !self.commentManager.commentText.isEmpty {
-                print("🔧 CommentInputView - 手动清空输入框文本")
-                self.commentManager.commentText = ""
-            }
-        }
+        // 立即清空文本（参考ChatView的实现，先清空文本）
+        commentManager.commentText = ""
         
-        // 重置输入框状态
-        withAnimation(.easeInOut(duration: 0.2)) {
-            textFieldFocused = false
-            isExpanded = false
-            textViewHeight = 36 // 重置输入框高度
-            
-            // 强制重置键盘和位置状态，确保输入框回到底部
-            keyboardVisible = false
-            keyboardHeight = 0
-            viewOffset = 0
-            bottomPadding = 0
-        }
+        // 发送消息后重置输入框状态（参考ChatView的实现）
+        textFieldFocused = false
+        isInputFocused = false
         
-        // 隐藏键盘
+        // 发送消息后隐藏键盘（参考ChatView的实现）
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        
+        // 重置所有输入框状态（不使用动画，同步执行）
+        isExpanded = false
+        textViewHeight = 36 // 重置输入框高度
+        keyboardVisible = false
+        keyboardHeight = 0
+        viewOffset = 0
+        bottomPadding = 0
     }
     
     // 重置键盘和视图偏移（不使用动画）

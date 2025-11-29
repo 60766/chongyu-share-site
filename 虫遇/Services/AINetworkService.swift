@@ -136,6 +136,7 @@ class AINetworkService: ObservableObject {
                     #endif
                     Task { @MainActor in
                         WalletManager.shared.showPurchaseSheet()
+                        ContentGeneratorService.shared.markBackendBusy(false)
                     }
                     promise(.failure(.httpError(402)))
                     return
@@ -143,8 +144,15 @@ class AINetworkService: ObservableObject {
                 
                 if httpResponse.statusCode != 200 {
                     print("❌ Non-200 status: \(httpResponse.statusCode)")
+                    Task { @MainActor in
+                        ContentGeneratorService.shared.markBackendBusy(true)
+                    }
                     promise(.failure(.httpError(httpResponse.statusCode)))
                     return
+                }
+                
+                Task { @MainActor in
+                    ContentGeneratorService.shared.markBackendBusy(false)
                 }
                 
                 // 更新钱包余额
@@ -176,8 +184,14 @@ class AINetworkService: ObservableObject {
                     } else {
                         promise(.failure(.requestFailed(error)))
                     }
+                    Task { @MainActor in
+                        ContentGeneratorService.shared.markBackendBusy(true)
+                    }
                 } else {
                     promise(.failure(.invalidResponse))
+                    Task { @MainActor in
+                        ContentGeneratorService.shared.markBackendBusy(true)
+                    }
                 }
             }
             
@@ -198,7 +212,7 @@ class AINetworkService: ObservableObject {
         }
         if let balanceString = balanceString, let newBalance = Int(balanceString) {
             Task { @MainActor in
-                WalletManager.shared.balance = newBalance
+                WalletManager.shared.updateBalance(newBalance)
             }
         }
     }
@@ -233,6 +247,7 @@ class AINetworkService: ObservableObject {
         request.addValue("application/json", forHTTPHeaderField: "Accept")
         let token = AppAccountManager.shared.appAccountToken
         request.addValue(token, forHTTPHeaderField: "X-App-Account-Token")
+        request.addValue(AppAccountManager.shared.deviceIdentifier, forHTTPHeaderField: "X-Device-Id")
         #if DEBUG
         print("🪪 实际使用的Token: \(token)")
         #endif
@@ -316,6 +331,7 @@ class AINetworkService: ObservableObject {
         request.addValue("application/json", forHTTPHeaderField: "Accept")
         let chatToken = AppAccountManager.shared.appAccountToken
         request.addValue(chatToken, forHTTPHeaderField: "X-App-Account-Token")
+        request.addValue(AppAccountManager.shared.deviceIdentifier, forHTTPHeaderField: "X-Device-Id")
         #if DEBUG
         print("🪪 聊天使用的Token: \(chatToken)")
         #endif

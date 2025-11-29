@@ -214,6 +214,9 @@ class MultiChatManager: ObservableObject {
             return nil
         }()
         
+        // 获取用户名字（从UserProfileManager获取）
+        let userName = UserProfileManager.shared.getCurrentUsername()
+        
         // 使用新的批量生成服务
         MultiCharacterChatService.shared.generateMultiCharacterChat(
             characters: characters,
@@ -221,7 +224,8 @@ class MultiChatManager: ObservableObject {
             userMessage: lastUserMessage,
             chatTheme: theme,
             maxResponders: characters.count, // 用户选择多少角色就让多少角色参与对话
-            userRole: .observer
+            userRole: .observer,
+            userName: userName
         ) { [weak self] result in
             guard let self = self else { return }
             

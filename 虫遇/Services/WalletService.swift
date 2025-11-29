@@ -64,6 +64,7 @@ final class WalletService {
         }
         req.addValue("application/json", forHTTPHeaderField: "Accept")
         req.addValue(AppAccountManager.shared.appAccountToken, forHTTPHeaderField: "X-App-Account-Token")
+        req.addValue(AppAccountManager.shared.deviceIdentifier, forHTTPHeaderField: "X-Device-Id")
         return req
     }
     
@@ -101,7 +102,7 @@ final class WalletService {
         if let balanceStr = (http.allHeaderFields["X-Balance-After"] as? String) ?? (http.allHeaderFields["x-balance-after"] as? String),
            let newBalance = Int(balanceStr) {
             await MainActor.run {
-                WalletManager.shared.balance = newBalance
+                WalletManager.shared.updateBalance(newBalance)
             }
         }
         return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
@@ -127,8 +128,7 @@ final class WalletService {
         }
         let walletBalance = try JSONDecoder().decode(WalletBalance.self, from: data)
         await MainActor.run {
-            WalletManager.shared.balance = walletBalance.balance
-            WalletManager.shared.currency = walletBalance.currency
+            WalletManager.shared.updateBalance(walletBalance.balance, currency: walletBalance.currency)
             WalletManager.shared.isLoading = false
         }
         return walletBalance
@@ -152,6 +152,7 @@ final class WalletService {
         req.httpMethod = "GET"
         req.addValue("application/json", forHTTPHeaderField: "Accept")
         req.addValue(token, forHTTPHeaderField: "X-App-Account-Token")
+        req.addValue(AppAccountManager.shared.deviceIdentifier, forHTTPHeaderField: "X-Device-Id")
         let session = createSession()
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
@@ -179,7 +180,7 @@ final class WalletService {
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let newBalance = json["balance"] as? Int {
             await MainActor.run {
-                WalletManager.shared.balance = newBalance
+                WalletManager.shared.updateBalance(newBalance)
             }
         }
     }

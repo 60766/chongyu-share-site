@@ -487,7 +487,6 @@ struct ProfileView: View {
     // 用户名点击计数
     @State private var usernameTapCount = 0
 
-    @State private var showRealStarMap = false
     
     // 添加PostViewModel依赖来获取用户帖子数据
     @ObservedObject private var postViewModel = PostViewModel.shared
@@ -1338,9 +1337,6 @@ struct ProfileView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
-        .fullScreenCover(isPresented: $showRealStarMap) {
-            RealStarMapView()
-        }
     }
     
     // MARK: - UI组件
@@ -1657,14 +1653,6 @@ struct ProfileView: View {
                 .foregroundColor(.primary)
                                 
                                 Spacer()
-                                
-                                Button(action: {
-                                    showRealStarMap = true
-                }) {
-                                    Text("虫遇星图")
-                            .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(.orange)
-                                }
         }
         .padding(.bottom, 16)
     }

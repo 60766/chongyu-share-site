@@ -4,7 +4,6 @@ import SwiftUI
 /// 提供AI服务说明、数据权利和隐私政策访问
 struct PrivacySettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var showingPrivacyPolicyAlert = false
     
     // 主题颜色
     private var primaryAccentColor: Color {
@@ -13,11 +12,9 @@ struct PrivacySettingsView: View {
     
     var body: some View {
         List {
-            // AI服务说明
             thirdPartyServicesSection
-            
-            // 隐私政策
-            privacyPolicySection
+            legalDocumentsSection
+            contactSection
         }
         .listStyle(InsetGroupedListStyle())
         .scrollContentBackground(.hidden)
@@ -77,45 +74,69 @@ struct PrivacySettingsView: View {
         }
     }
     
-    // MARK: - 隐私政策
+    // MARK: - 法律文档
     
-    private var privacyPolicySection: some View {
-        Section {
-            Button(action: {
-                showingPrivacyPolicyAlert = true
-            }) {
+    private var legalDocumentsSection: some View {
+        Section("法律与文档") {
+            NavigationLink {
+                PolicyDocumentView(title: "隐私政策", documentText: PolicyDocument.privacyPolicy)
+            } label: {
+                documentRow(icon: "doc.text", title: "隐私政策", subtitle: "了解我们如何处理与保护数据")
+            }
+            
+            NavigationLink {
+                PolicyDocumentView(title: "用户协议", documentText: PolicyDocument.userAgreement)
+            } label: {
+                documentRow(icon: "book.closed", title: "用户协议", subtitle: "阅读服务条款与行为规范")
+            }
+        }
+    }
+    
+    private func documentRow(icon: String, title: String, subtitle: String) -> some View {
                 HStack {
-                    Image(systemName: "doc.text")
+            Image(systemName: icon)
                         .foregroundColor(.purple)
                         .frame(width: 24)
                     
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("隐私政策")
+                Text(title)
                             .foregroundColor(.primary)
-                        Text("了解我们如何保护您的隐私")
+                Text(subtitle)
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     
                     Spacer()
-                    
-                    Image(systemName: "arrow.up.right.square")
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+    
+    // MARK: - 联系方式
+    
+    private var contactSection: some View {
+        Section("联系我们") {
+            HStack {
+                Image(systemName: "envelope")
+                    .foregroundColor(.green)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("客服邮箱")
+                        .foregroundColor(.primary)
+                    Text("support@chongyuai.com")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-            }
-            .padding(.vertical, 4)
-        }
-        .alert("隐私政策", isPresented: $showingPrivacyPolicyAlert) {
-            Button("通过邮件获取") {
-                // 打开邮件应用
-                if let url = URL(string: "mailto:li2410669277@gmail.com?subject=虫遇隐私政策请求") {
+                Spacer()
+                Button("写信") {
+                    if let url = URL(string: "mailto:support@chongyuai.com") {
                     UIApplication.shared.open(url)
         }
     }
-            Button("取消", role: .cancel) { }
-        } message: {
-            Text("隐私政策页面正在准备中。如需查看隐私政策，请通过邮件联系我们，我们会尽快为您提供。")
+                .font(.footnote.weight(.semibold))
+            }
         }
     }
 }

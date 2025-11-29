@@ -5,10 +5,18 @@ import Combine
  * 内容生成服务
  * 整合角色系统和内容生成系统，提供统一的内容生成接口
  */
-class ContentGeneratorService {
+class ContentGeneratorService: ObservableObject {
     // 单例模式
     static let shared = ContentGeneratorService()
     private init() {}
+    
+    @Published private(set) var isBackendBusy: Bool = false
+    
+    @MainActor
+    func markBackendBusy(_ busy: Bool) {
+        guard isBackendBusy != busy else { return }
+        isBackendBusy = busy
+    }
     
     // 依赖服务
     private let characterSystem = CharacterSystem.shared

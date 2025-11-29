@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>BACKEND_BASE_URL</key>
-	<string>http://121.40.184.29:3000</string>
+	<string>https://api.chongyuai.com</string>
 	<key>NASA_API_BASE_URL</key>
 	<string>https://api.nasa.gov</string>
 	<key>NASA_API_KEY</key>
@@ -32,15 +32,6 @@
 				<false/>
 				<key>NSExceptionMinimumTLSVersion</key>
 				<string>TLSv1.2</string>
-			</dict>
-			<key>121.40.184.29</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-				<key>NSAllowsArbitraryLoadsInWebContent</key>
-				<false/>
 			</dict>
 		</dict>
 	</dict>

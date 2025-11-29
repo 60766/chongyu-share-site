@@ -761,14 +761,122 @@ class VirtualCharacterService {
         
         // 保存帖子内容的副本，确保即使在后台也能访问
         let postContent = post.content
+        let postImages = post.images  // 获取图片标识符数组
         
-        // 统一使用MultiCharacterCommentService处理所有角色评论生成，无论是单个还是多个角色
-        print("🔄 使用批量评论生成服务处理\(validCharacterIDs.count)个角色")
+        // 🎯 检查帖子是否有图片，如果有则使用视觉模型
+        if !postImages.isEmpty {
+            print("📸 检测到帖子包含\(postImages.count)张图片，使用视觉模型生成评论")
+            
+            // 从图片标识符加载 UIImage 数组
+            var images: [UIImage] = []
+            print("📸 开始加载图片，帖子包含\(postImages.count)张图片")
+            for (index, imageId) in postImages.enumerated() {
+                if let image = ImageManager.shared.getImage(withId: imageId) {
+                    images.append(image)
+                    print("✅ 成功加载图片 \(index + 1)/\(postImages.count): \(imageId)")
+                } else {
+                    print("⚠️ 无法加载图片 \(index + 1)/\(postImages.count): \(imageId)")
+                }
+            }
+            
+            if images.isEmpty {
+                print("❌ 所有图片加载失败，回退到文本API")
+                // 回退到文本API
+                self.fallbackToTextAPI(
+                    characterIDs: validCharacterIDs,
+                    postId: postId,
+                    postContent: postContent,
+                    postAuthor: finalPostAuthor,
+                    backgroundTaskID: backgroundTaskID
+                )
+                return
+            }
+            
+            if images.count < postImages.count {
+                print("⚠️ 警告：只成功加载了\(images.count)/\(postImages.count)张图片，将使用已加载的图片")
+            } else {
+                print("✅ 成功加载所有\(images.count)张图片")
+            }
+            
+            // 使用视觉模型生成评论（会使用新的提示词）
+            print("🔄 使用视觉模型处理\(validCharacterIDs.count)个角色的评论生成，图片数量: \(images.count)张")
+            DoubaoVisionService.shared.analyzeImagesAndGenerateComments(
+                images,
+                postContent: postContent,
+                characters: validCharacterIDs
+            )
+            .sink(
+                receiveCompletion: { [weak self] completion in
+                    guard let self = self else {
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        return
+                    }
+                    
+                    if case .failure(let error) = completion {
+                        print("❌ 视觉模型生成评论失败: \(error.localizedDescription)")
+                        // 发送失败通知
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("CharacterReplyGenerationFailed"),
+                            object: nil,
+                            userInfo: [
+                                "postID": postId,
+                                "error": error.localizedDescription
+                            ]
+                        )
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    } else {
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        print("✅ 视觉模型评论生成任务完成")
+                    }
+                },
+                receiveValue: { [weak self] commentsMap in
+                    guard let self = self else {
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        return
+                    }
+                    
+                    print("✅ 视觉模型生成成功，共生成\(commentsMap.count)条评论")
+                    
+                    // 处理视觉模型返回的评论并添加到帖子
+                    self.addVisionCommentsToPost(
+                        commentsMap: commentsMap,
+                        characterIDs: validCharacterIDs,
+                        postId: postId,
+                        postAuthor: finalPostAuthor,
+                        backgroundTaskID: backgroundTaskID
+                    )
+                }
+            )
+            .store(in: &cancellables)
+        } else {
+            // 没有图片，使用文本API
+            print("📝 帖子没有图片，使用文本API生成评论")
+            self.fallbackToTextAPI(
+                characterIDs: validCharacterIDs,
+                postId: postId,
+                postContent: postContent,
+                postAuthor: finalPostAuthor,
+                backgroundTaskID: backgroundTaskID
+            )
+        }
+    }
+    
+    /**
+     * 回退到文本API生成评论（当图片加载失败或没有图片时）
+     */
+    private func fallbackToTextAPI(
+        characterIDs: [String],
+        postId: String,
+        postContent: String,
+        postAuthor: String?,
+        backgroundTaskID: UIBackgroundTaskIdentifier
+    ) {
+        print("🔄 使用批量评论生成服务处理\(characterIDs.count)个角色")
         MultiCharacterCommentService.shared.generateMultiCharacterComments(
-            characterIDs: validCharacterIDs,
+            characterIDs: characterIDs,
             postId: postId,
             postContent: postContent,
-            postAuthor: finalPostAuthor,
+            postAuthor: postAuthor,
             userComment: "",  // 🔧 邀请评论模式：没有用户评论内容
             isInvited: true,  // 标记为邀请的角色评论
             completion: { [weak self] result in
@@ -855,6 +963,137 @@ class VirtualCharacterService {
                 print("❌ 角色评论生成后台任务失败")
             }
         })
+    }
+    
+    /**
+     * 添加视觉模型生成的评论到帖子
+     * @param commentsMap 角色ID到评论内容的映射
+     * @param characterIDs 角色ID列表
+     * @param postId 帖子ID
+     * @param postAuthor 帖子作者
+     * @param backgroundTaskID 后台任务ID
+     */
+    private func addVisionCommentsToPost(
+        commentsMap: [String: String],
+        characterIDs: [String],
+        postId: String,
+        postAuthor: String?,
+        backgroundTaskID: UIBackgroundTaskIdentifier
+    ) {
+        let viewModel = PostViewModel.shared
+        
+        guard let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) else {
+            print("❌ 未找到指定的帖子ID: \(postId)，无法添加视觉评论")
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            return
+        }
+        
+        var newComments: [DetailedCommentModel] = []
+        
+        // 为每个角色创建评论
+        for characterID in characterIDs {
+            guard let commentContent = commentsMap[characterID], !commentContent.isEmpty else {
+                print("⚠️ 角色 \(characterID) 没有生成评论内容")
+                continue
+            }
+            
+            let characterName = getCharacterName(for: characterID)
+            let characterAvatar = CharacterAvatarService.shared.getAvatarName(for: characterID)
+            
+            // 创建评论模型
+            let randomOffset = Double.random(in: 1...5)
+            let commentDate = Date().addingTimeInterval(randomOffset)
+            
+            let comment = DetailedCommentModel(
+                username: characterName,
+                userAvatar: characterAvatar,
+                content: commentContent,
+                datePosted: commentDate,
+                isVirtualCharacter: true,
+                characterID: characterID,
+                parentCommentId: nil,  // 邀请评论是顶级评论
+                replyToUsername: nil,
+                likes: 0
+            )
+            
+            newComments.append(comment)
+        }
+        
+        if newComments.isEmpty {
+            print("⚠️ 没有新评论需要添加")
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            return
+        }
+        
+        // 添加评论到帖子
+        DispatchQueue.main.async {
+            for comment in newComments {
+                viewModel.posts[postIndex].addComment(comment)
+            }
+            
+            // 处理角色点赞（视觉模型会判断是否点赞）
+            DoubaoVisionService.shared.processCharacterLikes(
+                for: postId,
+                postContent: viewModel.posts[postIndex].content
+            )
+            
+            // 去除重复评论
+            self.removeDuplicateComments(for: postIndex, in: viewModel)
+            
+            // 强制触发 objectWillChange 通知
+            viewModel.posts[postIndex].objectWillChange.send()
+            
+            // 创建一个临时副本并重新赋值，强制 SwiftUI 刷新
+            let tempPost = viewModel.posts[postIndex]
+            viewModel.posts[postIndex] = tempPost
+            
+            // 发送刷新通知
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ForceRefreshComments"),
+                object: nil,
+                userInfo: [
+                    "keepExpandState": true,
+                    "preventScroll": true,
+                    "immediateDisplay": true,
+                    "postID": postId
+                ]
+            )
+            
+            NotificationCenter.default.post(
+                name: NSNotification.Name("RefreshPostComments"),
+                object: nil,
+                userInfo: [
+                    "postID": postId,
+                    "immediateDisplay": true
+                ]
+            )
+            
+            NotificationCenter.default.post(
+                name: NSNotification.Name("CommentsGenerated"),
+                object: nil,
+                userInfo: [
+                    "postID": postId,
+                    "characterIDs": characterIDs
+                ]
+            )
+            
+            NotificationCenter.default.post(
+                name: NSNotification.Name("GlobalPostsRefresh"),
+                object: nil
+            )
+            
+            // 保存帖子数据
+            NotificationCenter.default.post(
+                name: NSNotification.Name("SavePostData"),
+                object: nil,
+                userInfo: ["postID": postId]
+            )
+            
+            print("✅ 已添加 \(newComments.count) 条视觉评论到帖子")
+        }
+        
+        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+        print("✅ 视觉评论生成后台任务完成")
     }
     
     /**

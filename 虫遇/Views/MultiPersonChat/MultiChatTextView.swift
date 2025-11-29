@@ -141,53 +141,19 @@ struct MultiChatTextView: UIViewRepresentable {
         func textViewDidBeginEditing(_ textView: UITextView) {
             print("MultiChatTextView - textViewDidBeginEditing")
             
-            // 使用动画过渡状态，但避免在视图更新期间直接修改状态
+            // 立即更新焦点状态，不使用动画，让系统键盘自然处理动画
             DispatchQueue.main.async {
-                UIView.animate(withDuration: 0.25) {
-                    self.parent.isFocused = true
-                }
-            
-                // 手动触发键盘通知，使用更平滑的动画
-            let keyboardHeight = UIScreen.main.bounds.height * 0.35
-            let keyboardFrame = CGRect(
-                x: 0,
-                y: UIScreen.main.bounds.height - keyboardHeight,
-                width: UIScreen.main.bounds.width,
-                height: keyboardHeight
-            )
-            
-            let userInfo: [AnyHashable: Any] = [
-                UIResponder.keyboardFrameEndUserInfoKey: keyboardFrame,
-                    UIResponder.keyboardAnimationDurationUserInfoKey: 0.3, // 增加动画时间
-                UIResponder.keyboardAnimationCurveUserInfoKey: UIView.AnimationCurve.easeInOut.rawValue
-            ]
-            
-            NotificationCenter.default.post(
-                name: UIResponder.keyboardWillShowNotification,
-                object: nil,
-                userInfo: userInfo
-            )
-            
-            // 延迟后再次发送通知，确保键盘显示
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                NotificationCenter.default.post(
-                    name: UIResponder.keyboardDidShowNotification,
-                    object: nil,
-                    userInfo: userInfo
-                )
-            }
-            
+                self.parent.isFocused = true
                 self.parent.calculateAndUpdateHeight(textView)
             }
+            // 不手动发送键盘通知，让系统自然发送，确保动画同步
         }
         
         func textViewDidEndEditing(_ textView: UITextView) {
             print("MultiChatTextView - textViewDidEndEditing")
-            // 使用动画过渡状态，但避免在视图更新期间直接修改状态
+            // 立即更新焦点状态，不使用动画，让系统键盘自然处理动画
             DispatchQueue.main.async {
-                UIView.animate(withDuration: 0.25) {
-                    self.parent.isFocused = false
-                }
+                self.parent.isFocused = false
             }
         }
     }

@@ -18,6 +18,7 @@ struct AccountManagementView: View {
     @State private var exportPayload: ExportPayload?
     @State private var copiedAccountIdentifier = false
     @State private var showingSignOutConfirmation = false
+    @State private var showingSwitchAccountConfirmation = false
     @State private var showingFirstBackupGuide = false
     
     // 优化的颜色系统
@@ -83,7 +84,16 @@ struct AccountManagementView: View {
             }
         } message: {
             if let conflict = appleSignInManager.accountConflict {
-                Text("检测到该 Apple ID 已绑定另一个账号。\n\n已绑定账号余额: \(conflict.existingBalance) 虫洞币\n\n请选择处理方式：\n• 切换到旧账号：保留余额，使用已绑定的账号\n• 用新账号替换：放弃旧账号，将 Apple ID 绑定到当前新账号")
+                Text("""
+检测到该 Apple ID 已绑定另一个账号。
+
+已绑定账号余额：\(formatBalance(conflict.existingBalance)) 虫洞币
+当前新账号余额：\(formatBalance(conflict.currentBalance)) 虫洞币
+
+请选择处理方式：
+• 切换到旧账号：保留余额，使用已绑定的账号
+• 用新账号替换：放弃旧账号，将 Apple ID 绑定到当前新账号
+""")
             }
         }
         .alert("开启自动备份", isPresented: $showingFirstBackupGuide) {
@@ -107,6 +117,25 @@ struct AccountManagementView: View {
         } message: {
             Text("退出登录后：\n\n✅ 保留内容：\n• 您的虫洞币余额\n• 您的帖子和创作\n• 您的自定义角色\n• 账号与 Apple ID 的绑定关系\n\n⚠️ 清除内容：\n• 本地登录状态\n\n💡 下次登录：\n• 可通过 Apple ID 重新登录\n• 自动恢复所有数据和余额")
         }
+        .alert("切换账号", isPresented: $showingSwitchAccountConfirmation) {
+            Button("确定", role: .destructive) {
+                // 1. 清除 Apple ID 登录状态
+                appleSignInManager.signOut()
+                // 2. 清除账号 token（会发送 userAccountLogout 通知，余额自动归零）
+                accountManager.logout { success in
+                    if success {
+                        // 3. 立即生成新 token（切换账号后应该使用新 token）
+                        accountManager.createNewAccount { newToken in
+                            print("✅ 切换账号：已清除旧账号，已生成新 token: \(String(newToken.prefix(8)))...")
+                            print("💰 余额已归零，等待用户登录后才会加载新账号余额")
+                        }
+                    }
+                }
+            }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("切换账号后：\n\n⚠️ 当前账号：\n• 将退出登录状态\n• 虫洞币余额会立即归零\n• 数据会保留在服务器\n• 可通过 Apple ID 找回\n\n💡 下一步：\n• 点击「通过 Apple 登录」重新登录\n• 如果登录新的 Apple ID，将创建新账号（新账号会赠送600虫洞币）\n• 如果登录之前绑定过的 Apple ID，将恢复原账号和虫洞币余额")
+        }
         .onAppear {
             appleSignInManager.checkAppleSignInStatus()
             // 检查是否需要显示首次备份引导
@@ -116,6 +145,11 @@ struct AccountManagementView: View {
             // 执行自动备份（在后台线程）
             performAutoBackupInBackground()
         }
+    }
+    
+    private func formatBalance(_ balance: Int?) -> String {
+        guard let balance = balance else { return "未知" }
+        return "\(balance)"
     }
     
     // MARK: - 账号信息区块
@@ -158,6 +192,20 @@ struct AccountManagementView: View {
                 subtitle: "Lv.\(profileManager.userLevel)",
                 iconColor: statusColors["info"]!
             )
+            
+            // 切换账号
+            Button(action: {
+                showingSwitchAccountConfirmation = true
+            }) {
+                AccountInfoRow(
+                    icon: "arrow.triangle.2.circlepath",
+                    title: "切换账号",
+                    value: nil,
+                    subtitle: "退出当前账号并登录新账号",
+                    iconColor: statusColors["info"]!
+                )
+            }
+            .foregroundColor(.primary)
         } header: {
             Text("账号信息")
                 .font(.caption)

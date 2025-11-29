@@ -15,14 +15,8 @@ import Foundation
 enum BackendURLProvider {
     private static var cachedURL: URL?
     
-    #if DEBUG
-    /// 调试环境默认使用直连服务器地址（HTTP），便于在备案/HTTPS 未完成前正常联调与截图
-    /// 注意：Release 构建仍然会强制使用 HTTPS 域名，确保上线安全合规
-    private static let fallbackURL = "http://121.40.184.29:3000"
-    #else
     /// 生产环境默认地址：通过 Caddy + HTTPS 反向代理的正式域名
     private static let fallbackURL = "https://api.chongyuai.com"
-    #endif
     
     static func resolvedURL() -> URL {
         if let cachedURL {

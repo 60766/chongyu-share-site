@@ -940,13 +940,13 @@ struct PublishPanelView: View {
             }
             
                 // 只有没有图片的帖子才需要异步生成AI评论
-                // 有图片的帖子已经通过豆包直接生成了评论
+                // 有图片的帖子已经通过通义千问直接生成了评论
                 if userPost.images.isEmpty {
             DispatchQueue.global(qos: .utility).async {
                 self.generateAICommentsForUserPost(userPost)
                     }
                 } else {
-                    print("🎭 图片帖子已通过豆包生成评论，跳过DeepSeek评论生成")
+                    print("🎭 图片帖子已通过通义千问生成评论，跳过DeepSeek评论生成")
                 }
             }
         }
@@ -1043,9 +1043,9 @@ struct PublishPanelView: View {
         print("📝 立即创建帖子对象，图片数量: \(postData.images.count)")
         createUserPostWithContent(postData, imageIdentifiers: imageIdentifiers, imageDescription: nil, comments: comments, completion: completion)
         
-        // 如果有图片，异步调用豆包视觉API生成评论，完成后动态更新
+        // 如果有图片，异步调用通义千问视觉API生成评论，完成后动态更新
         if !postData.images.isEmpty {
-            print("📸 检测到\(postData.images.count)张图片，异步调用豆包生成评论...")
+            print("📸 检测到\(postData.images.count)张图片，异步调用通义千问生成评论...")
             
             // 获取要评论的角色列表
             let selectedCharacterIDs = selectCharactersForResponse()
@@ -1061,7 +1061,7 @@ struct PublishPanelView: View {
             .sink(
                 receiveCompletion: { completionResult in
                     if case .failure(let error) = completionResult {
-                        print("❌ 豆包视觉API调用失败: \(error.localizedDescription)")
+                        print("❌ 通义千问视觉API调用失败: \(error.localizedDescription)")
                         print("❌ 错误详情: \(error)")
                         
                         // 在主线程显示错误提示
@@ -1074,11 +1074,11 @@ struct PublishPanelView: View {
                             )
                         }
                     } else {
-                        print("✅ 豆包视觉API调用完成")
+                        print("✅ 通义千问视觉API调用完成")
                     }
                 },
                 receiveValue: { commentsMap in
-                    print("✅ 豆包生成了\(commentsMap.count)条评论，准备更新帖子...")
+                    print("✅ 通义千问生成了\(commentsMap.count)条评论，准备更新帖子...")
                     
                     // 🎯 处理角色点赞（基于AI的点赞判断）
                     DoubaoVisionService.shared.processCharacterLikes(
@@ -1086,7 +1086,7 @@ struct PublishPanelView: View {
                         postContent: postData.content
                     )
                     
-                    // 将豆包生成的评论转换为DetailedCommentModel
+                    // 将通义千问生成的评论转换为DetailedCommentModel
                     var generatedComments: [DetailedCommentModel] = []
                     
                     for (characterID, commentContent) in commentsMap {

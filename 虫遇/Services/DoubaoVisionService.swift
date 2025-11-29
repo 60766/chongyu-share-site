@@ -12,8 +12,8 @@ struct CharacterVisionResponse {
 }
 
 /**
- * 豆包视觉服务
- * 专门用于调用豆包视觉模型分析图片内容
+ * 通义千问视觉服务
+ * 专门用于调用通义千问视觉模型分析图片内容
  */
 class DoubaoVisionService {
     // 单例实例
@@ -25,15 +25,15 @@ class DoubaoVisionService {
     // 用于存储Combine订阅
     private var cancellables = Set<AnyCancellable>()
     
-    // 豆包视觉API配置（通过后端代理）
+    // 通义千问视觉API配置（通过后端代理）
     private var baseURL: URL {
         BackendURLProvider.resolvedURL()
     }
     
-    private let model = "doubao-seed-1-6-vision-250815"
+    private let model = "qwen3-vl-flash"
     
-    // 🆕 豆包Vision API每次请求的最大图片数量限制
-    private let maxImagesPerRequest = 4
+    // 通义千问3-VL-Flash支持单次最多约15张图片（258,048 tokens ÷ 16,384 tokens/张）
+    // 我们的App最多上传9张图片，所以不需要分批处理
     
     // 私有初始化方法
     private init() {}
@@ -44,18 +44,18 @@ class DoubaoVisionService {
      * @param postContent 帖子内容（用于通知）
      */
     func processCharacterLikes(for postId: String, postContent: String) {
-        print("🎯 [豆包视觉] 开始处理角色点赞，帖子ID: \(postId)")
-        print("🎯 [豆包视觉] 当前点赞决策: \(characterLikeDecisions)")
+        print("🎯 [通义千问视觉] 开始处理角色点赞，帖子ID: \(postId)")
+        print("🎯 [通义千问视觉] 当前点赞决策: \(characterLikeDecisions)")
         
         // 遍历所有决定点赞的角色
         for (characterId, shouldLike) in characterLikeDecisions {
             if shouldLike {
-                print("❤️ [豆包视觉] 角色 \(characterId) 决定点赞")
+                print("❤️ [通义千问视觉] 角色 \(characterId) 决定点赞")
                 // 延迟2-8秒再进行点赞，模拟真实的点赞时机
                 let likeDelay = Double.random(in: 2...8)
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + likeDelay) {
-                    print("🕐 [豆包视觉] \(characterId)延迟\(String(format: "%.1f", likeDelay))秒后开始对帖子点赞")
+                    print("🕐 [通义千问视觉] \(characterId)延迟\(String(format: "%.1f", likeDelay))秒后开始对帖子点赞")
                     // 调用虚拟角色点赞服务
                     VirtualCharacterLikeService.shared.processPostLike(
                         characterId: characterId,
@@ -64,7 +64,7 @@ class DoubaoVisionService {
                     )
                 }
             } else {
-                print("💔 [豆包视觉] 角色 \(characterId) 决定不点赞")
+                print("💔 [通义千问视觉] 角色 \(characterId) 决定不点赞")
             }
         }
         
@@ -91,82 +91,26 @@ class DoubaoVisionService {
                 .eraseToAnyPublisher()
         }
         
-        // 🆕 分批处理逻辑
-        if images.count > maxImagesPerRequest {
-            print("📦 图片数量(\(images.count))超过单次限制(\(maxImagesPerRequest))，启动分批处理...")
-            return analyzeImagesInBatches(images, postContent: postContent, characters: characters)
-        } else {
-            // 图片数量在限制内，直接处理
-            return analyzeImagesBatch(images, postContent: postContent, characters: characters, batchIndex: 0, totalBatches: 1)
-        }
+        // 直接处理所有图片（通义千问支持最多约15张，我们的App最多9张，不需要分批）
+        print("📸 处理\(images.count)张图片，一次性发送到视觉API")
+        return analyzeImagesBatch(
+            images,
+            postContent: postContent,
+            characters: characters
+        )
     }
     
     /**
-     * 🆕 分批分析图片并生成评论
-     * @param images 所有图片
+     * 处理图片并生成评论
+     * @param images 所有图片（最多9张，一次性处理）
      * @param postContent 帖子文本内容
      * @param characters 要生成评论的角色列表
-     * @return 返回合并后的角色评论
-     */
-    private func analyzeImagesInBatches(
-        _ images: [UIImage],
-        postContent: String,
-        characters: [String]
-    ) -> AnyPublisher<[String: String], AINetworkError> {
-        // 将图片分批
-        var batches: [[UIImage]] = []
-        var currentIndex = 0
-        
-        while currentIndex < images.count {
-            let endIndex = min(currentIndex + maxImagesPerRequest, images.count)
-            let batch = Array(images[currentIndex..<endIndex])
-            batches.append(batch)
-            currentIndex = endIndex
-        }
-        
-        print("📦 将\(images.count)张图片分为\(batches.count)批处理（每批最多\(maxImagesPerRequest)张）")
-        
-        // 使用Combine依次处理每批图片
-        let totalBatches = batches.count
-        let publishers = batches.enumerated().map { (index, batch) -> AnyPublisher<[String: String], AINetworkError> in
-            return analyzeImagesBatch(batch, postContent: postContent, characters: characters, batchIndex: index, totalBatches: totalBatches)
-        }
-        
-        // 串行处理所有批次
-        return publishers.reduce(
-            Just([:]).setFailureType(to: AINetworkError.self).eraseToAnyPublisher()
-        ) { combinedPublisher, batchPublisher in
-            return combinedPublisher
-                .flatMap { accumulatedComments -> AnyPublisher<[String: String], AINetworkError> in
-                    return batchPublisher
-                        .map { newComments -> [String: String] in
-                            // 合并评论（新评论会覆盖旧评论）
-                            var merged = accumulatedComments
-                            merged.merge(newComments) { _, new in new }
-                            return merged
-                        }
-                        .eraseToAnyPublisher()
-                }
-                .eraseToAnyPublisher()
-        }
-        .eraseToAnyPublisher()
-    }
-    
-    /**
-     * 🆕 处理单批图片
-     * @param images 当前批次的图片（<=4张）
-     * @param postContent 帖子文本内容
-     * @param characters 要生成评论的角色列表
-     * @param batchIndex 当前批次索引
-     * @param totalBatches 总批次数
      * @return 返回角色评论的Publisher
      */
     private func analyzeImagesBatch(
         _ images: [UIImage],
         postContent: String,
-        characters: [String],
-        batchIndex: Int,
-        totalBatches: Int
+        characters: [String]
     ) -> AnyPublisher<[String: String], AINetworkError> {
         return Future<[String: String], AINetworkError> { promise in
             // 如果没有图片，直接返回空结果
@@ -175,13 +119,12 @@ class DoubaoVisionService {
                 return
             }
             
-            // 🆕 打印批次信息
-            if totalBatches > 1 {
-                print("🔄 处理第\(batchIndex + 1)/\(totalBatches)批，包含\(images.count)张图片")
-            }
-            
-            // 构建包含角色信息的提示词（传入图片数量以优化多图场景）
-            let prompt = self.buildCharacterCommentPrompt(postContent: postContent, characters: characters, imageCount: images.count)
+            // 构建包含角色信息的提示词
+            let prompt = self.buildCharacterCommentPrompt(
+                postContent: postContent,
+                characters: characters,
+                imageCount: images.count
+            )
             
             // 构建请求体
             let requestBody = self.buildVisionRequestBody(images: images, prompt: prompt)
@@ -190,11 +133,9 @@ class DoubaoVisionService {
             let url = self.baseURL.appendingPathComponent("api/vision")
             
 #if DEBUG
-            print("🌐 豆包视觉API请求URL: \(url.absoluteString)")
+            print("🌐 通义千问视觉API请求URL: \(url.absoluteString)")
             print("🔑 使用Token: \(AppAccountManager.shared.appAccountToken)")
-            if totalBatches > 1 {
-                print("📊 当前批次: \(batchIndex + 1)/\(totalBatches), 图片数量: \(images.count)")
-            }
+            print("📊 图片数量: \(images.count)张")
 #endif
             
             var request = URLRequest(url: url)
@@ -206,6 +147,7 @@ class DoubaoVisionService {
             // 使用应用Token而不是直接的API Key
             let token = AppAccountManager.shared.appAccountToken
             request.addValue(token, forHTTPHeaderField: "X-App-Account-Token")
+            request.addValue(AppAccountManager.shared.deviceIdentifier, forHTTPHeaderField: "X-Device-Id")
             
             do {
                 request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
@@ -223,7 +165,7 @@ class DoubaoVisionService {
             let session = URLSession(configuration: sessionConfig)
             session.dataTask(with: request) { data, response, error in
                 if let error = error {
-                    print("❌ 豆包视觉API网络错误详情: \(error)")
+                    print("❌ 通义千问视觉API网络错误详情: \(error)")
                     print("❌ 错误类型: \(type(of: error))")
                     if let urlError = error as? URLError {
                         print("❌ URLError代码: \(urlError.code.rawValue)")
@@ -239,7 +181,7 @@ class DoubaoVisionService {
                 }
                 
                 if httpResponse.statusCode != 200 {
-                    print("❌ 豆包视觉API HTTP错误: \(httpResponse.statusCode)")
+                    print("❌ 通义千问视觉API HTTP错误: \(httpResponse.statusCode)")
                     promise(.failure(.httpError(httpResponse.statusCode)))
                     return
                 }
@@ -257,13 +199,9 @@ class DoubaoVisionService {
                        let message = firstChoice["message"] as? [String: Any],
                        let content = message["content"] as? String {
                         
-                        if totalBatches > 1 {
-                            print("✅ 第\(batchIndex + 1)/\(totalBatches)批分析成功")
-                        } else {
-                            print("✅ 豆包视觉分析成功")
-                        }
+                        print("✅ 通义千问视觉分析成功")
 #if DEBUG
-                        print("📄 豆包AI原始响应（前500字符）:")
+                        print("📄 通义千问AI原始响应（前500字符）:")
                         print("---")
                         print(String(content.prefix(500)))
                         print("---")
@@ -312,6 +250,7 @@ class DoubaoVisionService {
             // 使用应用Token而不是直接的API Key
             let token = AppAccountManager.shared.appAccountToken
             request.addValue(token, forHTTPHeaderField: "X-App-Account-Token")
+            request.addValue(AppAccountManager.shared.deviceIdentifier, forHTTPHeaderField: "X-Device-Id")
             
             do {
                 request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
@@ -356,7 +295,7 @@ class DoubaoVisionService {
                        let message = firstChoice["message"] as? [String: Any],
                        let content = message["content"] as? String {
                         
-                        print("✅ 豆包视觉分析成功: \(content.prefix(100))...")
+                        print("✅ 通义千问视觉分析成功: \(content.prefix(100))...")
                         promise(.success(content))
                     } else {
                         promise(.failure(.decodingError(NSError(domain: "DoubaoVisionService", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法解析响应数据"]))))
@@ -490,7 +429,11 @@ class DoubaoVisionService {
      * @param imageCount 图片数量
      * @return 提示词字符串
      */
-    private func buildCharacterCommentPrompt(postContent: String, characters: [String], imageCount: Int = 1) -> String {
+    private func buildCharacterCommentPrompt(
+        postContent: String,
+        characters: [String],
+        imageCount: Int = 1
+    ) -> String {
         // 获取角色详细信息
         let characterDataManager = CharacterDataManager.shared
         let characterInfo = characters.map { id -> String in
@@ -499,49 +442,37 @@ class DoubaoVisionService {
             let field = characterDataManager.getAttribute(id: id, attribute: "primaryField") ?? ""
             let era = characterDataManager.getAttribute(id: id, attribute: "era") ?? ""
             
-            // 构建详细的角色信息
-            var info = "- **\(name)** (ID: \(id))"
-            if !era.isEmpty {
-                info += "\n  时代：\(era)"
-            }
-            if !field.isEmpty {
-                info += "\n  领域：\(field)"
+            // 构建角色描述（与纯文字提示词格式一致）
+            var description = "\(name)"
+            if !era.isEmpty && !field.isEmpty {
+                description += "，\(era)的\(field)专家"
+            } else if !field.isEmpty {
+                description += "，专长领域是\(field)"
             }
             if !briefDesc.isEmpty {
-                info += "\n  简介：\(briefDesc)"
+                description += "。\(briefDesc)"
             }
-            return info
+            
+            return "- **\(name)** (ID: \(id))\n  特点：\(description)"
         }.joined(separator: "\n\n")
-        
-        // 获取当前时间戳作为随机因子
-        let currentTime = Date().timeIntervalSince1970
-        
-        // 生成随机情绪状态
-        let emotions = ["积极", "平静", "专注", "好奇", "温和", "愉悦", "深思", "轻松"]
-        let randomEmotion = emotions.randomElement() ?? "平静"
-        
-        // 生成互动深度
-        let interactionLevels = ["初次相遇", "熟悉朋友", "知己", "老友"]
-        let interactionDepth = interactionLevels.randomElement() ?? "熟悉朋友"
         
         // 🎯 根据图片数量动态调整提示词
         let imageDescription: String
         let multiImageStrategy: String
         
         if imageCount > 1 {
-            imageDescription = "图片：本帖子包含\(imageCount)张不同的图片，请仔细观察每一张"
+            imageDescription = "本帖子包含\(imageCount)张不同的图片，请仔细观察每一张图片的内容、细节和风格。"
             multiImageStrategy = """
             
-            【多图片评论策略】⚠️ 重要
-            本帖子有\(imageCount)张不同的图片，每个角色必须：
-            1. 选择不同的图片作为评论重点（比如第1张、第\(min(imageCount/2, imageCount))张、第\(imageCount)张等）
-            2. 或者对同一张图片选择完全不同的细节和角度（一个看构图，一个看色彩，一个看情绪）
-            3. 🚫 严禁所有角色都评论同一个元素或特征（比如都说某个符号、都说某个物体）
-            4. 展现图片的多样性和丰富性，让用户感受到每张图片都被关注到
-            5. 如果图片风格差异很大（比如有风景、人物、物品），每个角色应该选择符合自己专业领域的图片
+            【多图片评论策略】
+            本帖子有\(imageCount)张不同的图片，每个角色应该：
+            - 自然地关注不同的图片或不同的细节（不要明确说"第几张"，直接评论图片内容）
+            - 或者对同一张图片从不同角度观察（构图、色彩、情绪、内容等）
+            - 避免所有角色都评论同一个元素或特征
+            - 让每张图片都能得到关注，展现图片的多样性
             """
         } else {
-            imageDescription = "图片：请仔细观察上传的图片"
+            imageDescription = "本帖子包含一张图片，请仔细观察图片的内容、细节、构图、色彩和情绪。"
             multiImageStrategy = ""
         }
         
@@ -552,51 +483,41 @@ class DoubaoVisionService {
         帖子内容："\(postContent)"
         \(imageDescription)\(multiImageStrategy)
         
-        【评论任务】
-        请为每个角色以其独特视角和个性评论这条帖子，创造让用户感到"这评论真有意思"的效果。
+        重要任务：以你的身份和经历，感同身受地理解图片和文字，然后自然地表达你的真实感受。
         
-        1. 建立连接点：
-           - 找到图片/帖子内容与角色的经历、知识或价值观的联系
-           - 从角色的时代背景和专业角度提供独特见解
-           - 与帖子作者建立思想上的对话
+        1. 感同身受地理解：
+           - 图片中的内容、情绪、细节让你想到了什么？
+           - 这与你的经历、知识或价值观有什么共鸣？
+           - 如果你处在类似情境，会有什么感受或反应？
+           - 图片和文字触发了你什么样的真实感受？
         
-        2. 展现个性：
-           - 使用符合角色身份的表达方式
-           - 体现角色的思维特点和价值观
-           - 避免刻板印象，展现真实个性
+        2. 自然地表达你的感受：
+           - 以你的身份和视角，真实地表达对图片和文字的感受
+           - 可以是你看到图片后的第一反应、联想、回忆或思考
+           - 结合图片的具体细节（你注意到的构图、色彩、情绪、内容等）
+           - 让评论像真人看到图片后的自然反应，不要刻意表现
+           - 可以是简单的观察、联想、感受，不一定要"深刻"或"有趣"
+           - 可以在适当情况下直接称呼作者，增加真实感
         
-        3. 创造价值：
-           - 提供用户没想到的角度或观点
-           - 分享相关的个人经历或感悟
-           - 引发用户进一步思考
-        
-        【表达要求】
-        • 评论长度：25-50字，简短有力
-        • 语言风格：自然流畅，像朋友间真诚交流
-        • 避免固定句式，如"作为[角色]"、"看到这图"
-        • 不要重复引用帖子内容
-        • 可以在适当情况下直接称呼"你"
-        • 使用通俗易懂的现代语言
-        
-        【风格指导】
-        • 保持克制：避免过度情绪化或戏剧化表达
-        • 真实自然：像真人评论一样，有个性但不刻意
-        • 有温度：让用户感受到被理解和关注
-        • 有惊喜：提供意想不到但又合理的观点
-        
-        【避免事项】
-        • 不要使用模板化的礼貌用语
-        • 避免空洞的赞美或泛泛而谈
-        • 不要过度解释或说教
-        • 严禁添加注释、括号说明、"注："、"PS："等
-        • 严禁使用过于专业或学术的词汇
-        • 严禁@其他角色
+        表达要求：
+        1. 保持自然真实，像真人看到图片后的第一反应
+        2. 不要用固定句式开头，如"作为[角色]"、"看到这图"、"这张图片"
+        3. 不要重复引用帖子内容，直接表达你的感受
+        4. 以你的身份感同身受，但不要刻意"表现"角色身份
+        5. 评论长度控制在25-50字之间，简短自然
+        6. 可以是简单的观察、联想、感受，不一定要"深刻"或"有趣"
+        7. 使用通俗易懂的现代语言，像朋友间的自然交流
+        8. 不要使用专业术语或高深理论
+        9. 严格禁止添加任何形式的注释、解释或分析
+        10. 绝对禁止使用括号中的内容，如"(微笑)"、"(思考中)"等
+        11. 禁止添加"注："、"PS："等补充说明
+        12. 不要明确说"第几张图片"，直接评论图片内容即可
         
         【多角色差异化】
         如果有多个角色，确保：
-        - 每个角色选择不同的切入点或图片
-        - 展现完全不同的视角和情感基调
-        - 避免所有人都评论同一个元素
+        - 每个角色自然地关注不同的图片或不同的细节（多图时）
+        - 展现不同的视角和感受，避免所有人都说同一个东西
+        - 让每个角色的评论都有独特性，但保持自然真实
         
         【输出格式】
         [角色英文ID]
@@ -613,10 +534,21 @@ class DoubaoVisionService {
         点赞：是
         
         [darwin]
-        左下角那纹理，跟我在加拉帕戈斯观察到的惊人相似。
+        这纹理跟我在加拉帕戈斯观察到的惊人相似。
         点赞：是
         
-        随机因子：\(currentTime)_\(randomEmotion)_\(interactionDepth)
+        注意：示例中的评论都是角色基于图片内容的真实感受和联想，自然地流露了角色身份，而不是刻意表现。
+        
+        额外重要提示：
+        1. 以你的身份感同身受，但用通俗易懂的现代语言表达
+        2. 像真人看到图片后的第一反应，自然真实，不要刻意
+        3. 可以是简单的观察、联想、感受，不一定要"深刻"或"有趣"
+        4. 像在与朋友日常对话一样自然，但要有你的身份视角
+        5. 严格禁止添加任何形式的注释、解释或分析
+        6. 评论必须是纯粹的、自然的表达，不包含任何元解释
+        7. 绝对不要使用括号内的内容，如"(思考中)"、"(引用某理论)"等
+        8. 不要明确说"第几张图片"，直接评论图片内容即可
+        9. 禁止添加"注："、"PS："等补充说明
         """
         
         return prompt
@@ -690,10 +622,10 @@ class DoubaoVisionService {
                 // 提取点赞判断
                 if lowerLine.contains("是") || lowerLine.contains("yes") || lowerLine.contains("true") {
                     currentShouldLike = true
-                    print("📝 [豆包] 解析点赞判断: 原文='\(trimmedLine)', 结果=✅是")
+                    print("📝 [通义千问] 解析点赞判断: 原文='\(trimmedLine)', 结果=✅是")
                 } else if lowerLine.contains("否") || lowerLine.contains("no") || lowerLine.contains("false") {
                     currentShouldLike = false
-                    print("📝 [豆包] 解析点赞判断: 原文='\(trimmedLine)', 结果=❌否")
+                    print("📝 [通义千问] 解析点赞判断: 原文='\(trimmedLine)', 结果=❌否")
                 }
                 continue
             }

@@ -34,48 +34,85 @@ struct MultiChatKeyboardAdaptive: ViewModifier {
         ZStack {
             content
                 .padding(.bottom, enabled && adjustLayout ? keyboardHeight : 0)
-                .onReceive(MultiChatKeyboardHeightPublisher()) { height in
-                    print("MultiChatKeyboardAdaptive - 收到键盘高度: \(height)")
-                    
-                    withAnimation(animation) {
-                        previousKeyboardHeight = keyboardHeight
-                        
-                        // 只在模拟器环境下使用默认高度，真机直接使用系统提供的高度
-                        #if targetEnvironment(simulator)
-                        // 如果收到的高度为0且之前键盘是显示的，使用默认高度（仅模拟器）
-                        if height == 0 && previousKeyboardHeight > 0 && !hasManuallySetKeyboardHeight {
-                            print("MultiChatKeyboardAdaptive - 模拟器环境，键盘高度为0，使用默认高度")
-                            keyboardHeight = UIScreen.main.bounds.height * 0.35
-                            hasManuallySetKeyboardHeight = true
-                        } else {
-                            keyboardHeight = height
-                            hasManuallySetKeyboardHeight = false
-                        }
-                        #else
-                        // 真机环境直接使用系统提供的键盘高度
-                        keyboardHeight = height
-                        hasManuallySetKeyboardHeight = false
-                        #endif
+                // 直接监听键盘通知，获取系统动画参数，确保与键盘动画完全同步
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+                    guard let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+                        return
                     }
+                    
+                    // 获取系统键盘的动画参数
+                    let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval ?? 0.25
+                    let curveValue = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt ?? 7
+                    
+                    // 计算键盘高度
+                    let screenHeight = UIScreen.main.bounds.height
+                    let height: CGFloat
+                    if endFrame.origin.y >= screenHeight {
+                        height = 0
+                    } else {
+                        height = max(0, screenHeight - endFrame.origin.y)
+                    }
+                    
+                    print("MultiChatKeyboardAdaptive - 键盘 frame 变化，高度: \(height), 动画时长: \(duration)")
+                    
+                    previousKeyboardHeight = keyboardHeight
+                    
+                    // 将 UIView 动画曲线转换为 SwiftUI Animation
+                    // UIView.AnimationCurve 7 = easeInOut
+                    let swiftUIAnimation: Animation
+                    switch curveValue {
+                    case 6: // easeIn
+                        swiftUIAnimation = .easeIn(duration: duration)
+                    case 7: // easeInOut
+                        swiftUIAnimation = .easeInOut(duration: duration)
+                    case 8: // easeOut
+                        swiftUIAnimation = .easeOut(duration: duration)
+                    default:
+                        swiftUIAnimation = .easeInOut(duration: duration)
+                    }
+                    
+                    // 只在模拟器环境下使用默认高度，真机直接使用系统提供的高度
+                    #if targetEnvironment(simulator)
+                    // 如果收到的高度为0且之前键盘是显示的，使用默认高度（仅模拟器）
+                    if height == 0 && previousKeyboardHeight > 0 && !hasManuallySetKeyboardHeight {
+                        print("MultiChatKeyboardAdaptive - 模拟器环境，键盘高度为0，使用默认高度")
+                        withAnimation(swiftUIAnimation) {
+                            keyboardHeight = UIScreen.main.bounds.height * 0.35
+                        }
+                        hasManuallySetKeyboardHeight = true
+                    } else {
+                        // 使用系统键盘的动画参数更新高度，确保完全同步
+                        withAnimation(swiftUIAnimation) {
+                            keyboardHeight = height
+                        }
+                        hasManuallySetKeyboardHeight = false
+                    }
+                    #else
+                    // 真机环境直接使用系统提供的键盘高度，使用系统键盘的动画参数确保完全同步
+                    withAnimation(swiftUIAnimation) {
+                        keyboardHeight = height
+                    }
+                    hasManuallySetKeyboardHeight = false
+                    #endif
                 }
                 .onAppear {
+                    print("MultiChatKeyboardAdaptive - 视图出现，准备监听键盘通知")
+                    
                     // 监听自定义通知
                     NotificationCenter.default.addObserver(forName: Notification.Name("MultiChatForceShowKeyboard"), object: nil, queue: .main) { notification in
                         if let height = notification.userInfo?["height"] as? CGFloat {
                             print("MultiChatKeyboardAdaptive - 收到强制显示键盘通知，高度: \(height)")
-                            withAnimation(animation) {
-                                keyboardHeight = height
-                                hasManuallySetKeyboardHeight = true
-                            }
+                            // 立即更新，不使用动画，确保第一次打开时也能正确贴合
+                            keyboardHeight = height
+                            hasManuallySetKeyboardHeight = true
                         }
                     }
                     
                     NotificationCenter.default.addObserver(forName: Notification.Name("MultiChatForceHideKeyboard"), object: nil, queue: .main) { _ in
                         print("MultiChatKeyboardAdaptive - 收到强制隐藏键盘通知")
-                        withAnimation(animation) {
-                            keyboardHeight = 0
-                            hasManuallySetKeyboardHeight = false
-                        }
+                        // 立即更新，不使用动画
+                        keyboardHeight = 0
+                        hasManuallySetKeyboardHeight = false
                     }
                 }
                 .onDisappear {
@@ -147,16 +184,27 @@ class MultiChatKeyboardHeightSubscription<S: Subscriber>: Subscription where S.I
     init(subscriber: S) {
         self.subscriber = subscriber
         
-        // 监听键盘显示通知
+        // 监听键盘 frame 变化，兼容 iOS 16+ 的"下滑收起键盘"等交互，更可靠
+        // 使用 keyboardWillChangeFrameNotification 确保第一次打开时也能立即获取高度
         NotificationCenter.default
-            .publisher(for: UIResponder.keyboardWillShowNotification)
+            .publisher(for: UIResponder.keyboardWillChangeFrameNotification)
             .compactMap { notification -> CGFloat? in
-                print("MultiChatKeyboardHeightSubscription - 收到键盘显示通知")
-                let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
-                let height = keyboardFrame?.height ?? 0
+                guard let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+                    return nil
+                }
                 
-                // 如果高度为0，使用默认高度
-                return height > 0 ? height : UIScreen.main.bounds.height * 0.35
+                // keyboard frame 是屏幕坐标系，y >= 屏幕高度表示完全隐藏
+                let screenHeight = UIScreen.main.bounds.height
+                let height: CGFloat
+                if endFrame.origin.y >= screenHeight {
+                    height = 0
+                } else {
+                    // 键盘高度 = 屏幕底部到键盘顶端的距离
+                    height = max(0, screenHeight - endFrame.origin.y)
+                }
+                
+                print("MultiChatKeyboardHeightSubscription - 键盘 frame 变化，高度: \(height)")
+                return height
             }
             .sink { [weak self] height in
                 print("MultiChatKeyboardHeightSubscription - 发送键盘高度: \(height)")

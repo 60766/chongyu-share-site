@@ -1785,14 +1785,17 @@ struct PostCardView: View {
                                         .foregroundColor(DesignSystem.Colors.commentPrimaryText)
                                     
                                     if featuredComment.isVirtualCharacter {
+                                        let tagColor = CharacterAvatarService.shared.getCharacterTagColor(for: featuredComment.characterID ?? "")
                                         Text(CharacterAvatarService.shared.getCharacterCategoryTag(for: featuredComment.characterID ?? ""))
-                                            .font(.system(size: 10))
-                                            .padding(.horizontal, 4)
-                                            .padding(.vertical, 1)
-                                            .background(CharacterAvatarService.shared.getCharacterTagColor(for: featuredComment.characterID ?? "").opacity(0.12))
-                                            .foregroundColor(CharacterAvatarService.shared.getCharacterTagColor(for: featuredComment.characterID ?? ""))
-                                            .cornerRadius(4)
+                                            .font(.system(size: 10.0, weight: .regular))  // 与作者标签一致
+                                            .padding(.horizontal, 6.0)  // 与作者标签一致
+                                            .padding(.vertical, 3.0)    // 与作者标签一致
+                                            .background(tagColor.opacity(0.08))  // 与作者标签一致
+                                            .foregroundColor(tagColor.opacity(0.7))  // 与作者标签一致
+                                            .cornerRadius(5.0)  // 与作者标签一致
                                     }
+                                    
+                                    Spacer() // 确保用户名区域占满宽度
                                 }
                                 
                                 // 评论内容
@@ -1801,14 +1804,18 @@ struct PostCardView: View {
                                     .foregroundColor(DesignSystem.Colors.primaryText)
                                     .kerning(0.3) // 添加字符间距，提升数字和字母的可读性
                                     .lineLimit(2)
+                                    .lineSpacing(4) // 增加行间距，使两行文字之间的间距更宽松
                                     .multilineTextAlignment(.leading)
                                     .fixedSize(horizontal: false, vertical: true)
                                     .padding(.vertical, 4) // 增加垂直间距，使短评论看起来更美观
+                                    .frame(maxWidth: .infinity, alignment: .leading) // 确保评论内容占满宽度
                                 
+                                Spacer() // 确保VStack占满高度
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading) // 确保VStack占满宽度
                         }
                         .padding(10)
-                        .frame(minHeight: 90) // 设置最小高度确保短评论也有足够的高度
+                        .frame(maxWidth: .infinity, minHeight: 90, alignment: .leading) // 设置最大宽度和最小高度，确保短评论也占满宽度
                         .background(
                             RoundedRectangle(cornerRadius: 16)
                                 .fill(DesignSystem.Colors.warmNestedBackground.opacity(0.6))
@@ -2150,13 +2157,14 @@ struct PostCardView: View {
                             .foregroundColor(DesignSystem.Colors.commentPrimaryText)
                         
                         if comment.characterID != nil {
+                            let tagColor = CharacterAvatarService.shared.getCharacterTagColor(for: comment.characterID ?? "")
                             Text(CharacterAvatarService.shared.getCharacterCategoryTag(for: comment.characterID ?? ""))
-                                .font(.system(size: 12.0, weight: .regular))
-                                .padding(.horizontal, 6.0)
-                                .padding(.vertical, 2.0)
-                                .background(CharacterAvatarService.shared.getCharacterTagColor(for: comment.characterID ?? "").opacity(0.1))
-                                .foregroundColor(CharacterAvatarService.shared.getCharacterTagColor(for: comment.characterID ?? ""))
-                                .cornerRadius(6.0)
+                                .font(.system(size: 10.0, weight: .regular))  // 与作者标签一致
+                                .padding(.horizontal, 6.0)  // 与作者标签一致
+                                .padding(.vertical, 3.0)    // 与作者标签一致
+                                .background(tagColor.opacity(0.08))  // 与作者标签一致
+                                .foregroundColor(tagColor.opacity(0.7))  // 与作者标签一致
+                                .cornerRadius(5.0)  // 与作者标签一致
                         }
                     }
                     
@@ -2528,6 +2536,7 @@ struct PostCardView: View {
                             feedbackGenerator.impactOccurred(intensity: 0.3)
                         }
                 }
+                .frame(maxWidth: .infinity) // 始终占据最大可用宽度
                 .padding(.vertical, 4.0)
                 .padding(.horizontal, 8.0)
                 .background(Color(.systemGray6))
@@ -2612,13 +2621,14 @@ struct PostCardView: View {
     
     // 添加统一的角色标签视图
     private func characterTagView(for characterID: String) -> some View {
-        Text(getCharacterCategory(for: characterID))
-            .font(.system(size: 12.0, weight: .regular))
-            .padding(.horizontal, 8.0)  // 统一水平内边距
-            .padding(.vertical, 4.0)    // 统一垂直内边距
-            .background(getCharacterColor(for: characterID).opacity(0.1))
-            .foregroundColor(getCharacterColor(for: characterID))
-            .cornerRadius(6.0)          // 统一圆角大小
+        let tagColor = CharacterAvatarService.shared.getCharacterTagColor(for: characterID)
+        return Text(getCharacterCategory(for: characterID))
+            .font(.system(size: 10.0, weight: .regular))  // 减小字体
+            .padding(.horizontal, 6.0)  // 减小水平内边距
+            .padding(.vertical, 3.0)    // 减小垂直内边距
+            .background(tagColor.opacity(0.08))  // 降低背景不透明度，使颜色更柔和
+            .foregroundColor(tagColor.opacity(0.7))  // 降低文字不透明度，使颜色更柔和
+            .cornerRadius(5.0)          // 稍微减小圆角
     }
     
     

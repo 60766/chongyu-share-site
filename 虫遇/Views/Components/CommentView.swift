@@ -75,13 +75,14 @@ struct CommentView: View {
                         
                         // 虚拟角色标签
                         if comment.isVirtualCharacter {
+                            let tagColor = getCategoryTagColor(for: comment.characterID ?? "")
                             Text(getCategoryTag(for: comment.characterID ?? ""))
-                                .font(DesignSystem.Typography.caption)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(getCategoryTagColor(for: comment.characterID ?? "").opacity(0.15))
-                                .foregroundColor(getCategoryTagColor(for: comment.characterID ?? ""))
-                                .cornerRadius(4)
+                                .font(.system(size: 10.0, weight: .regular))  // 与主页面标签一致
+                                .padding(.horizontal, 6.0)  // 与主页面标签一致
+                                .padding(.vertical, 3.0)    // 与主页面标签一致
+                                .background(tagColor.opacity(0.08))  // 与主页面标签一致
+                                .foregroundColor(tagColor.opacity(0.7))  // 与主页面标签一致
+                                .cornerRadius(5.0)  // 与主页面标签一致
                         }
                         
                         Spacer()

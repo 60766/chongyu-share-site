@@ -69,13 +69,21 @@ class ThoughtJourneyService: ObservableObject {
         let startDate = timeRange.startDate
         let endDate = timeRange.endDate
         
+        // 当前用户用户名（用于区分“自己”和“别人”）
+        let currentUsername = UserProfileManager.shared.getCurrentUsername()
+        
         // 收集用户帖子（需要排除虚拟角色发布的帖子）
         let allCharacterNames = CharacterDataManager.shared.getAllCharactersInfo().map { $0.name }
         let allUserPosts = PostViewModel.shared.posts.filter { post in
             // 时间过滤
             let isInTimeRange = post.datePosted >= startDate && post.datePosted <= endDate
-            // 排除虚拟角色的帖子 - 通过username判断
-            let isUserPost = !allCharacterNames.contains(post.username) && post.username != "AI助手"
+            // 使用多重条件识别“用户自己的动态”：
+            // 1. 明确来源为用户发布（source == "user" 或 contentType == "user_post"）
+            // 2. 或者用户名不是任何虚拟角色名，且不是系统账号
+            // 这样可以避免把用户的动态当成“别人”的内容来评价
+            let isExplicitUserSource = (post.source == "user" || post.contentType == "user_post")
+            let isNonCharacterName = !allCharacterNames.contains(post.username) && post.username != "AI助手"
+            let isUserPost = isExplicitUserSource || isNonCharacterName
             return isInTimeRange && isUserPost
         }
         
@@ -219,6 +227,9 @@ class ThoughtJourneyService: ObservableObject {
                         .map { $0.username }
                 }
                 
+                // 判断这条评论是否发生在“自己的动态”下
+                let isOwnPost = (targetPost.username == currentUsername)
+                
                 return UserDataDigest.CommentData(
                     id: comment.id.uuidString,
                     content: comment.content,
@@ -227,6 +238,7 @@ class ThoughtJourneyService: ObservableObject {
                     targetPostId: targetPost.id.uuidString,
                     targetPostContent: String(targetPost.content.prefix(50)),
                     targetPostAuthor: targetPost.username,
+                    isOwnPost: isOwnPost,
                     repliedCharacters: Array(Set(repliedCharacters))
                 )
             },
@@ -360,7 +372,12 @@ class ThoughtJourneyService: ObservableObject {
         let commentsContent = limitedComments.map { comment in
             var commentInfo = "• \(comment.content)"
             if let targetAuthor = comment.targetPostAuthor, let targetContent = comment.targetPostContent {
-                commentInfo += "（回复\(targetAuthor)的动态：\(String(targetContent.prefix(20)))...）"
+                if comment.isOwnPost {
+                    // 自己给自己的动态留言，用更贴心的描述
+                    commentInfo += "（在自己的动态下留言：\(String(targetContent.prefix(20)))...）"
+                } else {
+                    commentInfo += "（回复\(targetAuthor)的动态：\(String(targetContent.prefix(20)))...）"
+                }
             }
             if !comment.repliedCharacters.isEmpty {
                 commentInfo += "（\(comment.repliedCharacters.joined(separator: "、"))回复了此评论）"
@@ -371,7 +388,7 @@ class ThoughtJourneyService: ObservableObject {
         let chatContent = buildOptimizedChatContexts(userData: userData, allChatMessages: allChatMessages, timeRange: timeRange)
         
         return """
-        写一份用户的虫遇回忆，参考网易云年度总结的风格。
+        写一份用户的虫遇回忆。这是好闺蜜/好哥们在观察和总结你，要用亲密朋友的视角和语气，要懂你，要有趣，要简洁。
         
         用户过去\(timeRange.description)的数据：
         - \(emotionalExperiences)
@@ -386,28 +403,81 @@ class ThoughtJourneyService: ObservableObject {
         【具体对话内容】
         \(chatContent)
         
-                 要求：
-         1. 用简单直白的话，不要文艺腔
-         2. 重点说用户做了什么，和哪个角色发生了什么有趣的事
-         3. 从对话中挑选最有意思或最能代表用户性格的瞬间
-         4. 语调轻松自然，像朋友在聊天
-         5. 让用户看完觉得"哈哈，确实是我"
-         6. 不要编造时间，不要说"周一、周二"等具体时间
-         7. 严格禁用所有科技词汇：二进制、量子、算法、数据流、虚拟现实、加密、解码、程序、代码、系统等
-         8. 绝对禁止编造对话：不能写"你回他xxx"、"你说xxx"等用户没有实际说过的话
+        🎯 核心要求（非常重要）：
+         1. 🚨 视角要用好闺蜜/好哥们！不要用"我们"、"我发现"，要用"你"、"你在这里"、"我发现你"、"我发现你有个特点"、"你知不知道"、"你知道吗"、"我发现你..."、"你在这里..."、"看起来你..."、"你是不是..."这样的亲密朋友视角
+         2. 🚨 要有趣！不要平淡，要有吸引力，让人想读下去。可以用调侃、幽默、惊喜、共鸣等不同语气，让文字有生命力
+         3. 🚨 要简洁精炼！总字数控制在200-350字，不要超过400字。每个段落2-3行，不要啰嗦，要一针见血
+         4. 🚨 要懂用户！不只是描述行为，要理解用户的心理、动机、性格特点。从行为中看出用户的个性、习惯、偏好，让用户觉得"这说的就是我"
+         5. 🚨 要有洞察力！发现用户的行为模式、性格特点、有趣的习惯，比如"你在这里很活跃，但动态却很安静"、"你评论直率，但群聊引发风暴"、"你私聊时很轻松，但群聊时喜欢观察"
+         6. 🚨 要有共鸣感！用"你是不是..."、"看起来你..."、"我发现你..."、"你知不知道"、"你知道吗"这样的方式，让用户觉得被理解了，有"原来如此"的感觉
+         7. 🚨 语气要自然真实！不要过度夸张、不要"中二"、不要戏精，要像好闺蜜/好哥们在观察你，用轻松、真实、有温度、有趣的语气
+         8. 🚨 要有吸引力但不要尬！让人想读下去，但不要用"杀气"、"恶魔风脚"、"小王八"这种过于夸张的词，要自然有趣
+         9. 🚨 不要用模板化的词！避免"这\(timeRange.description)你..."、"最有意思的是..."、"还记得你和XX..."等预设句式，要自然、有创意
+         10. 🚨 表达要流畅易读！用简单直白的短句，避免过长的句子和复杂的句式，让人读起来轻松
+         11. 用简单直白的话，但要有画面感，让人能想象出当时的场景
+         12. 重点说用户做了什么，和哪个角色发生了什么有趣的事，突出互动中的火花
+         13. 语调轻松自然，像好闺蜜/好哥们在聊天，但要比普通聊天更有趣
+         14. 让用户看完觉得"哈哈，确实是我"、"这个太真实了"、"原来我这么有趣"、"没想到我这么有意思"、"这说的就是我"
+         15. 不要编造时间，不要说"周一、周二"等具体时间
+         16. 严格禁用所有科技词汇：二进制、量子、算法、数据流、虚拟现实、加密、解码、程序、代码、系统等
+         17. 绝对禁止编造对话：不能写"你回他xxx"、"你说xxx"等用户没有实际说过的话
          
-         参考格式：
-         - "这\(timeRange.description)你..."
-         - "最有意思的是..."
-         - "还记得你和XX..."
-         - "看来你..."
-         
-         重点：
-         - 用户要能看懂，要有记忆感，不要过度包装
+         💡 表达技巧（让内容自然有趣且易读，更懂用户）：
+          - 用短句！一句话说清楚一件事，避免长句堆砌
+          - 🚨 必须用好闺蜜/好哥们的视角："我发现你..."、"我发现你有个特点..."、"你在这里..."、"看起来你..."、"你是不是..."、"你知不知道"、"你知道吗"、"我发现你在这里..."、"我发现你有个习惯..."、"我发现你..."，不要用"我们"、"我发现"
+          - 可以用理解用户的语气："你是不是..."、"看起来你..."、"我发现你有个特点..."、"你在这里..."、"你知不知道"、"你知道吗"
+          - 可以用轻松的反问："是不是没想到？"、"猜猜发生了什么？"、"没想到吧？"、"你知不知道"
+          - 可以用自然的感叹："有意思！"、"这个不错！"、"真有趣！"、"哈哈！"
+          - 可以用对比："平时...但这次..."、"别人...你却..."、"一个...另一个..."，制造反差和惊喜
+          - 可以用细节："当时你..."、"那一刻..."、"你在这里..."，让画面更生动
+          - 可以引用对话中的金句，让文字更生动
+          - 可以描述角色的反应，但要真实自然，不要过度夸张
+          - 可以捕捉用户的情绪变化，让回忆更有层次
+          - 可以挖掘用户可能没注意到的细节、行为模式、性格特点，比如"你在这里很活跃，但动态却很安静"、"你评论直率，但群聊引发风暴"、"你私聊时很轻松，但群聊时喜欢观察"
+          - 可以用调侃的语气，让内容更有趣，比如"你是不是..."、"我发现你..."、"看起来你..."
+          - 适当使用换行和空行，让内容有呼吸感
+          - 可以用小标题来分隔不同主题，但不要太多，1-2个就够了
+          
+         📐 排版要求（非常重要）：
+          - 🚨 总字数控制在200-350字，不要超过400字
+          - 每个段落控制在2-3行，不要超过4行
+          - 段落之间必须有空行（至少一个空行）
+          - 重要内容可以用**加粗**或特殊标记突出
+          - 可以用小标题（###）来分隔不同主题，但不要太多，1-2个就够了
+          - 列表项要简洁，每项1-2行
+          - 对话引用要清晰，可以用引号或特殊格式
+          - 避免大段文字堆砌，要有视觉层次
+          
+         ⚠️ 禁止事项（非常重要）：
+         - 🚨 不要用"我们"！必须用好闺蜜/好哥们的视角（"我发现你"、"我发现你有个特点"、"你在这里"等）或直接用"你"
+         - 🚨 不要用"杀气"、"恶魔风脚"、"小王八"、"急刹"等过于夸张、中二的词
+         - 🚨 不要像写小说一样描述，要像好闺蜜/好哥们在观察和总结
+         - 🚨 不要过度戏剧化，要自然真实
+         - 🚨 不要太平淡！要有趣、有吸引力，让人想读下去
+         - 🚨 不要写太长！总字数控制在200-350字，不要超过400字
+         - 不要用"这\(timeRange.description)你..."、"最有意思的是..."、"还记得你和XX..."、"看来你..."等模板句式
+         - 不要写流水账，要有重点、有亮点、有洞察
+         - 不要全是正面评价，可以有一些有趣的"吐槽"或"自嘲"
+         - 不要过度包装，但也不要太平淡
+         - 不要编造用户没说过的话
+         - 不要使用科技词汇
+         - 不要写超长段落，要适当分段
+         - 不要堆砌复杂句式，要简洁流畅
+          
+         ✅ 重点：
+         - 这是好闺蜜/好哥们在观察和总结你，要用亲密朋友的视角和语气，不要用"我们"
+         - 要有趣！不要平淡，要有吸引力，让人想读下去
+         - 要简洁！总字数控制在200-350字，不要超过400字
+         - 要懂用户！不只是描述行为，要理解用户的心理、动机、性格特点
+         - 要有洞察力！发现用户的行为模式、性格特点、有趣的习惯
+         - 要有共鸣感！让用户觉得被理解了，有"原来如此"的感觉
+         - 语气要自然真实，不要过度夸张，不要"中二"，不要戏精
+         - 用户要能看懂，要有记忆感，但表达要生动有趣
          - 只写用户真实做过的事，绝对不能编造用户没说过的话
-         - 直接引用对话内容，不要加自己的理解
+         - 直接引用对话内容，但可以用有趣的方式呈现
          - 如果用户没有回复某个话题，就不要写用户回复了什么
          - 严格按照提供的对话记录，不能添加任何虚构内容
+         - 🎯 最重要的是：让人想看完，觉得有趣、真实、有共鸣，读起来流畅舒服，不要尬，要懂用户，要有趣，要简洁！
         """
     }
     
@@ -1243,6 +1313,7 @@ struct UserDataDigest {
         let targetPostId: String?
         let targetPostContent: String?
         let targetPostAuthor: String?
+        let isOwnPost: Bool      // 是否在“自己的动态”下的评论
         let repliedCharacters: [String] // 回复了此评论的角色
     }
     

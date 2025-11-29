@@ -16,8 +16,9 @@ class AppleSignInManager: NSObject, ObservableObject {
     
     struct AccountConflict {
         let existingToken: String  // 已绑定的旧账号 token
-        let currentToken: String  // 当前新账号 token
-        let existingBalance: Int  // 旧账号余额（用于提示用户）
+        let currentToken: String   // 当前新账号 token
+        let existingBalance: Int?  // 旧账号余额，nil 表示未知
+        let currentBalance: Int?   // 当前账号余额，nil 表示未知
     }
     
     private let serviceIdentifier = "com.虫遇.applesignin"
@@ -261,35 +262,32 @@ class AppleSignInManager: NSObject, ObservableObject {
                         print("   已绑定的账号: \(String(serverToken.prefix(8)))...")
                         print("   当前新账号: \(String(currentToken.prefix(8)))...")
                         
-                        // 获取旧账号的余额信息（用于提示用户）
-                        let existingBalance = await getAccountBalance(token: serverToken)
-                        print("💰 [Apple ID] 已绑定账号的余额: \(existingBalance) 虫洞币")
+                        async let existingBalanceTask = getAccountBalance(token: serverToken)
+                        async let currentBalanceTask = getAccountBalance(token: currentToken)
+                        let existingBalance = await existingBalanceTask
+                        let currentBalance = await currentBalanceTask
                         
-                        // 获取当前账号的余额
-                        let currentBalance = await getAccountBalance(token: currentToken)
-                        print("💰 [Apple ID] 当前账号的余额: \(currentBalance) 虫洞币")
-                        
-                        // 如果旧账号有余额，触发冲突处理让用户选择
-                        if existingBalance > 0 {
-                            print("💡 [Apple ID] 检测到旧账号有余额，触发冲突处理...")
-                            await MainActor.run {
-                                self.accountConflict = AccountConflict(
-                                    existingToken: serverToken,
-                                    currentToken: currentToken,
-                                    existingBalance: existingBalance
-                                )
-                            }
-                            print("💡 [Apple ID] 等待用户选择处理方式...")
-                            return // 不自动切换，等待用户选择
+                        if let existingBalance {
+                            print("💰 [Apple ID] 已绑定账号的余额: \(existingBalance) 虫洞币")
                         } else {
-                            // 如果旧账号没有余额，直接切换（因为新账号可能更"新"）
-                            print("💡 [Apple ID] 旧账号余额为0，直接切换到旧账号...")
-                        AppAccountManager.shared.replaceLocalAccountToken(serverToken)
-                            Task { @MainActor in
-                                await WalletManager.shared.refreshBalance()
-                                print("💰 [Apple ID] 余额刷新完成，当前余额: \(WalletManager.shared.balance)")
-                            }
+                            print("⚠️ [Apple ID] 未能获取旧账号余额")
                         }
+                        if let currentBalance {
+                            print("💰 [Apple ID] 当前账号的余额: \(currentBalance) 虫洞币")
+                        } else {
+                            print("⚠️ [Apple ID] 未能获取当前账号余额")
+                        }
+                        
+                        await MainActor.run {
+                            self.accountConflict = AccountConflict(
+                                existingToken: serverToken,
+                                currentToken: currentToken,
+                                existingBalance: existingBalance,
+                                currentBalance: currentBalance
+                            )
+                        }
+                        print("💡 [Apple ID] 已触发账号冲突提示，等待用户选择处理方式")
+                        return
                     } else {
                         print("✅ [Apple ID] 账号已匹配，无需切换")
                         // 即使 token 相同，也刷新一下余额（确保余额是最新的）
@@ -384,7 +382,8 @@ class AppleSignInManager: NSObject, ObservableObject {
                         self.accountConflict = AccountConflict(
                             existingToken: existingToken,
                             currentToken: currentToken,
-                            existingBalance: existingBalance
+                            existingBalance: existingBalance,
+                            currentBalance: nil
                         )
                     }
                     print("💡 [Apple ID] 等待用户选择处理方式...")
@@ -413,6 +412,7 @@ class AppleSignInManager: NSObject, ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(appAccountToken, forHTTPHeaderField: "X-App-Account-Token")
+        request.setValue(AppAccountManager.shared.deviceIdentifier, forHTTPHeaderField: "X-Device-Id")
         
         var payload: [String: Any] = [
             "appAccountToken": appAccountToken,
@@ -459,6 +459,7 @@ class AppleSignInManager: NSObject, ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(currentToken, forHTTPHeaderField: "X-App-Account-Token")
+        request.setValue(AppAccountManager.shared.deviceIdentifier, forHTTPHeaderField: "X-Device-Id")
         
         let payload = [
             "appAccountToken": currentToken,
@@ -561,7 +562,8 @@ class AppleSignInManager: NSObject, ObservableObject {
         }
         
         print("✅ [Apple ID] 用户选择用新账号替换旧账号的绑定")
-        print("⚠️ [Apple ID] 警告: 旧账号（\(String(conflict.existingToken.prefix(8)))...）将被解绑，余额: \(conflict.existingBalance) 虫洞币")
+        let existingBalanceText = conflict.existingBalance.map { "\($0) 虫洞币" } ?? "未知"
+        print("⚠️ [Apple ID] 警告: 旧账号（\(String(conflict.existingToken.prefix(8)))...）将被解绑，余额: \(existingBalanceText)")
         
         Task {
             do {
@@ -623,7 +625,7 @@ class AppleSignInManager: NSObject, ObservableObject {
     }
     
     /// 获取账号余额（用于显示在冲突提示中）
-    private func getAccountBalance(token: String) async -> Int {
+    private func getAccountBalance(token: String) async -> Int? {
         // 直接查询指定 token 的余额，不切换当前 token
         do {
             let balance = try await WalletService.shared.getBalance(for: token)
@@ -631,7 +633,7 @@ class AppleSignInManager: NSObject, ObservableObject {
             return balance
         } catch {
             print("⚠️ [Apple ID] 查询账号余额失败: \(error)")
-            return 0
+            return nil
         }
     }
 }
