@@ -1,0 +1,382 @@
+[
+  {
+    "id": "hermione",
+    "name": "赫敏·格兰杰",
+    "avatarName": "hermione"
+  },
+  {
+    "id": "gollum",
+    "name": "咕噜",
+    "avatarName": "gollum"
+  },
+  {
+    "id": "ayuwang",
+    "name": "阿育王",
+    "avatarName": "ayuwang"
+  },
+  {
+    "id": "don_quixote",
+    "name": "堂·吉诃德",
+    "avatarName": "don_quixote"
+  },
+  {
+    "id": "hamlet",
+    "name": "哈姆雷特",
+    "avatarName": "hamlet"
+  },
+  {
+    "id": "jean_valjean",
+    "name": "冉·阿让",
+    "avatarName": "jean_valjean"
+  },
+  {
+    "id": "anna_karenina",
+    "name": "安娜·卡列尼娜",
+    "avatarName": "anna_karenina"
+  },
+  {
+    "id": "gatsby",
+    "name": "杰伊·盖茨比",
+    "avatarName": "gatsby"
+  },
+  {
+    "id": "ahq",
+    "name": "阿Q",
+    "avatarName": "ahq"
+  },
+  {
+    "id": "scarlett",
+    "name": "郝思嘉",
+    "avatarName": "scarlett"
+  },
+  {
+    "id": "raskolnikov",
+    "name": "拉斯科尔尼科夫",
+    "avatarName": "raskolnikov"
+  },
+  {
+    "id": "macbeth",
+    "name": "麦克白",
+    "avatarName": "macbeth"
+  },
+  {
+    "id": "mikasa",
+    "name": "三笠·阿克曼",
+    "avatarName": "mikasa"
+  },
+  {
+    "id": "armin",
+    "name": "阿明·阿诺德",
+    "avatarName": "armin"
+  },
+  {
+    "id": "jean",
+    "name": "让·基尔希斯坦",
+    "avatarName": "jean"
+  },
+  {
+    "id": "hange",
+    "name": "韩吉·佐耶",
+    "avatarName": "hange"
+  },
+  {
+    "id": "zenitsu",
+    "name": "我妻善逸",
+    "avatarName": "zenitsu"
+  },
+  {
+    "id": "giyuu",
+    "name": "富冈义勇",
+    "avatarName": "giyuu"
+  },
+  {
+    "id": "rengoku",
+    "name": "炼狱杏寿郎",
+    "avatarName": "rengoku"
+  },
+  {
+    "id": "tokito",
+    "name": "时透无一郎",
+    "avatarName": "tokito"
+  },
+  {
+    "id": "yuji_itadori",
+    "name": "虎杖悠仁",
+    "avatarName": "yuji_itadori"
+  },
+  {
+    "id": "megumi_fushiguro",
+    "name": "伏黑惠",
+    "avatarName": "megumi_fushiguro"
+  },
+  {
+    "id": "gojo_satoru",
+    "name": "五条悟",
+    "avatarName": "gojo_satoru"
+  },
+  {
+    "id": "nobara_kugisaki",
+    "name": "钉崎野蔷薇",
+    "avatarName": "nobara_kugisaki"
+  },
+  {
+    "id": "geto_suguru",
+    "name": "夏油杰",
+    "avatarName": "geto_suguru"
+  },
+  {
+    "id": "izuku_midoriya",
+    "name": "绿谷出久",
+    "avatarName": "izuku_midoriya"
+  },
+  {
+    "id": "katsuki_bakugo",
+    "name": "爆豪胜己",
+    "avatarName": "katsuki_bakugo"
+  },
+  {
+    "id": "shoto_todoroki",
+    "name": "轰焦冻",
+    "avatarName": "shoto_todoroki"
+  },
+  {
+    "id": "all_might",
+    "name": "欧尔麦特",
+    "avatarName": "all_might"
+  },
+  {
+    "id": "jotaro_kujo",
+    "name": "空条承太郎",
+    "avatarName": "jotaro_kujo"
+  },
+  {
+    "id": "jonathan_joestar",
+    "name": "乔纳森·乔斯达",
+    "avatarName": "jonathan_joestar"
+  },
+  {
+    "id": "dio_brando",
+    "name": "迪奥·布兰度",
+    "avatarName": "dio_brando"
+  },
+  {
+    "id": "gintoki_sakata",
+    "name": "坂田银时",
+    "avatarName": "gintoki_sakata"
+  },
+  {
+    "id": "kagura",
+    "name": "神乐",
+    "avatarName": "kagura"
+  },
+  {
+    "id": "toshiro_hijikata",
+    "name": "土方十四郎",
+    "avatarName": "toshiro_hijikata"
+  },
+  {
+    "id": "ichigo_kurosaki",
+    "name": "黑崎一护",
+    "avatarName": "ichigo_kurosaki"
+  },
+  {
+    "id": "rukia_kuchiki",
+    "name": "朽木露琪亚",
+    "avatarName": "rukia_kuchiki"
+  },
+  {
+    "id": "aizen_sosuke",
+    "name": "蓝染惣右介",
+    "avatarName": "aizen_sosuke"
+  },
+  {
+    "id": "gon_freecss",
+    "name": "小杰·富力士",
+    "avatarName": "gon_freecss"
+  },
+  {
+    "id": "killua_zoldyck",
+    "name": "奇犽·揍敌客",
+    "avatarName": "killua_zoldyck"
+  },
+  {
+    "id": "kurapika",
+    "name": "酷拉皮卡",
+    "avatarName": "kurapika"
+  },
+  {
+    "id": "hisoka",
+    "name": "西索",
+    "avatarName": "hisoka"
+  },
+  {
+    "id": "roy_mustang",
+    "name": "罗伊·马斯坦",
+    "avatarName": "roy_mustang"
+  },
+  {
+    "id": "winry_rockbell",
+    "name": "温莉·洛克贝尔",
+    "avatarName": "winry_rockbell"
+  },
+  {
+    "id": "scar",
+    "name": "斯卡",
+    "avatarName": "scar"
+  },
+  {
+    "id": "klee",
+    "name": "可莉",
+    "avatarName": "klee"
+  },
+  {
+    "id": "hu_tao",
+    "name": "胡桃",
+    "avatarName": "hu_tao"
+  },
+  {
+    "id": "ganyu",
+    "name": "甘雨",
+    "avatarName": "ganyu"
+  },
+  {
+    "id": "raiden_shogun",
+    "name": "雷电将军",
+    "avatarName": "raiden_shogun"
+  },
+  {
+    "id": "ayaka",
+    "name": "神里绫华",
+    "avatarName": "ayaka"
+  },
+  {
+    "id": "keqing",
+    "name": "刻晴",
+    "avatarName": "keqing"
+  },
+  {
+    "id": "nahida",
+    "name": "纳西妲",
+    "avatarName": "nahida"
+  },
+  {
+    "id": "furina",
+    "name": "芙宁娜",
+    "avatarName": "furina"
+  },
+  {
+    "id": "yasuo",
+    "name": "亚索",
+    "avatarName": "yasuo"
+  },
+  {
+    "id": "zed",
+    "name": "劫",
+    "avatarName": "zed"
+  },
+  {
+    "id": "akali",
+    "name": "阿卡丽",
+    "avatarName": "akali"
+  },
+  {
+    "id": "ekko",
+    "name": "艾克",
+    "avatarName": "ekko"
+  },
+  {
+    "id": "zoe",
+    "name": "佐伊",
+    "avatarName": "zoe"
+  },
+  {
+    "id": "ahri",
+    "name": "阿狸",
+    "avatarName": "ahri"
+  },
+  {
+    "id": "tifa_lockhart",
+    "name": "蒂法·洛克哈特",
+    "avatarName": "tifa_lockhart"
+  },
+  {
+    "id": "aerith_gainsborough",
+    "name": "爱丽丝·盖恩斯巴勒",
+    "avatarName": "aerith_gainsborough"
+  },
+  {
+    "id": "sephiroth",
+    "name": "萨菲罗斯",
+    "avatarName": "sephiroth"
+  },
+  {
+    "id": "zelda",
+    "name": "塞尔达",
+    "avatarName": "zelda"
+  },
+  {
+    "id": "ganon",
+    "name": "加农",
+    "avatarName": "ganon"
+  },
+  {
+    "id": "mipha",
+    "name": "米法",
+    "avatarName": "mipha"
+  },
+  {
+    "id": "9s",
+    "name": "9S",
+    "avatarName": "9s"
+  },
+  {
+    "id": "a2",
+    "name": "A2",
+    "avatarName": "a2"
+  },
+  {
+    "id": "wolf",
+    "name": "只狼",
+    "avatarName": "wolf"
+  },
+  {
+    "id": "isshin",
+    "name": "苇名一心",
+    "avatarName": "isshin"
+  },
+  {
+    "id": "tarnished",
+    "name": "褪色者",
+    "avatarName": "tarnished"
+  },
+  {
+    "id": "melina",
+    "name": "梅琳娜",
+    "avatarName": "melina"
+  },
+  {
+    "id": "radagon",
+    "name": "拉达冈",
+    "avatarName": "radagon"
+  },
+  {
+    "id": "trailblazer",
+    "name": "开拓者",
+    "avatarName": "trailblazer"
+  },
+  {
+    "id": "march_7th",
+    "name": "三月七",
+    "avatarName": "march_7th"
+  },
+  {
+    "id": "dan_heng",
+    "name": "丹恒",
+    "avatarName": "dan_heng"
+  },
+  {
+    "id": "himeko",
+    "name": "姬子",
+    "avatarName": "himeko"
+  }
+]

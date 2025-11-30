@@ -42,7 +42,7 @@ class PublishPanelFixTester {
                 era: "未知", // 从元组中无法获取，使用默认值
                 profession: "未知", // 从元组中无法获取，使用默认值
                 bio: "暂无描述", // 从元组中无法获取，使用默认值
-                category: .scientist, // 从元组中无法获取，使用默认值
+                category: .historical, // 从元组中无法获取，使用默认值
                 famousQuotes: [], // 从元组中无法获取，使用默认值
                 characterID: characterInfo.id
             )

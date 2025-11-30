@@ -52,7 +52,10 @@ enum PolicyDocument {
     
     ## 6. 联系方式
     邮箱：support@chongyuai.com  
-    地址：上海市浦东新区张东路 1158 号 A 座
+    地址：中国·杭州
+    
+    ## 7. 备案信息
+    网站备案号：冀ICP备2025136339号-1
     """
     
     static let userAgreement = """

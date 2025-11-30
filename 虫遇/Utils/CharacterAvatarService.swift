@@ -521,7 +521,7 @@ class CharacterAvatarService {
             return ("paintbrush.fill", .orange)
         case "political", "politics", "leader": 
             return ("building.columns.fill", .gray)
-        case "anime", "fictional", "fiction": 
+        case "anime", "fiction": 
             return ("sparkles", .yellow)
         case "superhero", "hero": 
             return ("bolt.fill", .red)

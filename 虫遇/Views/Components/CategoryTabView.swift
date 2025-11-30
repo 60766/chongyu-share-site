@@ -63,6 +63,6 @@ struct CategoryTabView: View {
         
         Divider()
         
-        CategoryTabView(selectedCategory: .constant(.scientist), isRoundedStyle: false)
+        CategoryTabView(selectedCategory: .constant(.historical), isRoundedStyle: false)
     }
 } 

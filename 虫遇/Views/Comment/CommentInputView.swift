@@ -660,19 +660,19 @@ struct CommentInputView: View {
         commentManager.commentText = ""
         
         // 发送消息后重置输入框状态（参考ChatView的实现）
-        textFieldFocused = false
+            textFieldFocused = false
         isInputFocused = false
         
         // 发送消息后隐藏键盘（参考ChatView的实现）
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         
         // 重置所有输入框状态（不使用动画，同步执行）
-        isExpanded = false
-        textViewHeight = 36 // 重置输入框高度
-        keyboardVisible = false
-        keyboardHeight = 0
-        viewOffset = 0
-        bottomPadding = 0
+            isExpanded = false
+            textViewHeight = 36 // 重置输入框高度
+            keyboardVisible = false
+            keyboardHeight = 0
+            viewOffset = 0
+            bottomPadding = 0
     }
     
     // 重置键盘和视图偏移（不使用动画）
@@ -840,12 +840,12 @@ struct CommentInputView: View {
     
     // 虚拟人物数据
     private let characters = [
-        CommentCharacter(id: "einstein", name: "爱因斯坦", category: .scientist),
+        CommentCharacter(id: "einstein", name: "爱因斯坦", category: .historical),
         CommentCharacter(id: "shakespeare", name: "莎士比亚", category: .writer),
-        CommentCharacter(id: "davinci", name: "达芬奇", category: .artist),
+        CommentCharacter(id: "davinci", name: "达芬奇", category: .historical),
         CommentCharacter(id: "kongzi", name: "孔子", category: .philosopher),
-        CommentCharacter(id: "curie", name: "居里夫人", category: .scientist),
-        CommentCharacter(id: "newton", name: "牛顿", category: .scientist),
+        CommentCharacter(id: "curie", name: "居里夫人", category: .historical),
+        CommentCharacter(id: "newton", name: "牛顿", category: .historical),
         CommentCharacter(id: "socrates", name: "苏格拉底", category: .philosopher),
         CommentCharacter(id: "mozart", name: "莫扎特", category: .writer),
         CommentCharacter(id: "libai", name: "李白", category: .writer)

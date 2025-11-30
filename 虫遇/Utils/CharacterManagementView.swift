@@ -58,7 +58,7 @@ struct CharacterManagementView_Previews: PreviewProvider {
                     era: "现代",
                     profession: "程序员",
                     bio: "这是一个自定义角色",
-                    category: .fictionCharacter
+                    category: .animeCharacter
                 ),
                 isUserCreated: true,
                 onDeleteOrHide: {}
@@ -75,7 +75,7 @@ struct CharacterManagementView_Previews: PreviewProvider {
                     era: "文艺复兴",
                     profession: "艺术家",
                     bio: "这是一个预设角色",
-                    category: .artist
+                    category: .historical
                 ),
                 isUserCreated: false,
                 onDeleteOrHide: {}

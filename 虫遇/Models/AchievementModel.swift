@@ -927,11 +927,9 @@ class AchievementEvaluator: ObservableObject {
             // 历史人物根据subtype进一步细分
             return mapHistoricalSubtype(character)
         case .literary:
-            return .fictionCharacter // 文学角色
-        case .movie:
-            return .movieCharacter // 电影角色
-        case .tv:
-            return .tvCharacter // 电视剧角色
+            return .writer // 文学角色归为文学世界
+        case .movie, .tv:
+            return .filmCharacter // 电影和电视剧角色归为影视角色
         case .anime:
             return .animeCharacter // 动漫角色
         case .game:
@@ -940,12 +938,8 @@ class AchievementEvaluator: ObservableObject {
             return .mythCharacter // 神话角色
         case .entrepreneur:
             return .historical // 企业家归类为历史人物
-        case .scifi:
-            return .fictionCharacter // 科幻角色归为虚构人物
-        case .fantasy:
-            return .fictionCharacter // 奇幻角色归为虚构人物
-        case .custom:
-            return .fictionCharacter // 自定义角色归为虚构人物
+        case .scifi, .fantasy, .custom:
+            return .animeCharacter // 科幻、奇幻、自定义角色归为动漫角色
         case .unknown:
             return .historical // 未知类型默认归为历史人物
         }
@@ -960,16 +954,16 @@ class AchievementEvaluator: ObservableObject {
         // 根据primaryField内容判断具体分类
         if field.contains("科学") || field.contains("物理") || field.contains("数学") || 
            field.contains("化学") || field.contains("生物") || field.contains("医学") ||
-           field.contains("发明") || field.contains("scientist") {
-            return .scientist
+           field.contains("发明") || field.contains("scientist") ||
+           field.contains("艺术") || field.contains("画") || field.contains("音乐") || 
+           field.contains("雕塑") || field.contains("artist") || field.contains("painter") {
+            // 科学家和艺术家合并到历史人物
+            return .historical
         } else if field.contains("哲学") || field.contains("思想") || field.contains("philosopher") {
             return .philosopher
         } else if field.contains("文学") || field.contains("诗") || field.contains("作家") || 
                  field.contains("戏剧") || field.contains("writer") || field.contains("poet") {
             return .writer
-        } else if field.contains("艺术") || field.contains("画") || field.contains("音乐") || 
-                 field.contains("雕塑") || field.contains("artist") || field.contains("painter") {
-            return .artist
         } else {
             return .historical // 其他历史人物
         }

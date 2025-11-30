@@ -132,12 +132,12 @@ class CharacterDataManager {
      */
     private func mapToCharacterCategory(type: String, subtype: String) -> CharacterCategory {
         switch (type, subtype) {
-        case ("historical", "scientist"), ("literary", "scientist"), ("movie", "scientist"), ("anime", "scientist"):
-            return .scientist
+        case ("historical", "scientist"), ("literary", "scientist"), ("movie", "scientist"), ("anime", "scientist"),
+             ("historical", "artist"), ("literary", "artist"), ("movie", "artist"), ("anime", "artist"):
+            // 科学家和艺术家合并到历史人物
+            return .historical
         case ("historical", "writer"), ("literary", "writer"), ("movie", "writer"), ("anime", "writer"):
             return .writer
-        case ("historical", "artist"), ("literary", "artist"), ("movie", "artist"), ("anime", "artist"):
-            return .artist
         case ("historical", "philosopher"), ("literary", "philosopher"), ("movie", "philosopher"), ("anime", "philosopher"):
             return .philosopher
         case ("historical", "politician"), ("literary", "politician"), ("movie", "politician"), ("anime", "politician"):
@@ -146,10 +146,10 @@ class CharacterDataManager {
             return .historical
         case ("historical", "explorer"), ("literary", "explorer"), ("movie", "explorer"), ("anime", "explorer"):
             return .historical
-        case ("historical", "inventor"), ("literary", "inventor"), ("movie", "inventor"), ("anime", "inventor"):
-            return .scientist
-        case ("historical", "musician"), ("literary", "musician"), ("movie", "musician"), ("anime", "musician"):
-            return .artist
+        case ("historical", "inventor"), ("literary", "inventor"), ("movie", "inventor"), ("anime", "inventor"),
+             ("historical", "musician"), ("literary", "musician"), ("movie", "musician"), ("anime", "musician"):
+            // 发明家和音乐家合并到历史人物
+            return .historical
         case ("historical", "athlete"), ("literary", "athlete"), ("movie", "athlete"), ("anime", "athlete"):
             return .historical
         case ("historical", "business"), ("literary", "business"), ("movie", "business"), ("anime", "business"):
@@ -159,22 +159,22 @@ class CharacterDataManager {
         case ("historical", "mythological"), ("literary", "mythological"), ("movie", "mythological"), ("anime", "mythological"):
             return .mythCharacter
         case ("historical", "fictional"), ("literary", "fictional"), ("movie", "fictional"), ("anime", "fictional"):
-            return .fictionCharacter
+            return .animeCharacter  // 虚构角色归为动漫角色
         default:
             // 根据type进行默认分类
             switch type {
             case "historical":
-                return .scientist
+                return .historical
             case "literary":
                 return .writer
-            case "movie":
-                return .movieCharacter
+            case "movie", "tv":
+                return .filmCharacter
             case "anime":
                 return .animeCharacter
             case "game":
                 return .gameCharacter
             default:
-                return .scientist
+                return .historical
             }
         }
     }
@@ -783,10 +783,10 @@ class VirtualCharacterService {
                 print("❌ 所有图片加载失败，回退到文本API")
                 // 回退到文本API
                 self.fallbackToTextAPI(
-                    characterIDs: validCharacterIDs,
-                    postId: postId,
-                    postContent: postContent,
-                    postAuthor: finalPostAuthor,
+            characterIDs: validCharacterIDs,
+            postId: postId,
+            postContent: postContent,
+            postAuthor: finalPostAuthor,
                     backgroundTaskID: backgroundTaskID
                 )
                 return

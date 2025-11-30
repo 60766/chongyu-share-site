@@ -87,32 +87,26 @@ struct NotificationModel: Identifiable, Codable {
         var isVirtual: Bool {
             return [CharacterCategory.animeCharacter, 
                    CharacterCategory.gameCharacter, 
-                   CharacterCategory.fictionCharacter].contains(category)
+                   CharacterCategory.filmCharacter].contains(category)
         }
         
         // 判断是否为历史人物
         var isHistorical: Bool {
-            return [CharacterCategory.scientist, 
+            return [CharacterCategory.historical,
                    CharacterCategory.philosopher, 
-                   CharacterCategory.writer, 
-                   CharacterCategory.artist].contains(category)
+                   CharacterCategory.writer].contains(category)
         }
         
         // 根据角色类别获取背景纹理
         var backgroundPattern: String {
             switch category {
-            case .scientist: return "pattern_science"
-            case .artist: return "pattern_art"
+            case .historical: return "pattern_history"
             case .philosopher: return "pattern_philosophy"
             case .writer: return "pattern_literary"
             case .animeCharacter: return "pattern_anime"
             case .gameCharacter: return "pattern_game"
-            case .fictionCharacter: return "pattern_fiction"
-            case .historical: return "pattern_history"
-            case .movieCharacter: return "pattern_movie"
-            case .tvCharacter: return "pattern_tv"
+            case .filmCharacter: return "pattern_movie"
             case .mythCharacter: return "pattern_myth"
-            case .vtuber: return "pattern_vtuber"
             case .all: return "pattern_default"
             }
         }
@@ -120,17 +114,13 @@ struct NotificationModel: Identifiable, Codable {
         // 角色专属字体格式 - 参考主页帖子正文样式
         var fontStyle: Font {
             switch category {
-            case .scientist: return .system(size: 16, weight: .regular, design: .serif)
+            case .historical: return .system(size: 16, weight: .regular, design: .serif)
             case .philosopher: return .system(size: 16, weight: .regular, design: .serif)
             case .writer: return .system(size: 16, weight: .regular, design: .serif)
-            case .artist: return .system(size: 16, weight: .regular, design: .rounded)
             case .animeCharacter: return .system(size: 16, weight: .regular, design: .rounded)
             case .gameCharacter: return .system(size: 16, weight: .regular, design: .rounded)
-            case .fictionCharacter: return .system(size: 16, weight: .regular, design: .rounded)
-            case .movieCharacter: return .system(size: 16, weight: .regular, design: .rounded)
-            case .tvCharacter: return .system(size: 16, weight: .regular, design: .rounded)
+            case .filmCharacter: return .system(size: 16, weight: .regular, design: .rounded)
             case .mythCharacter: return .system(size: 16, weight: .regular, design: .serif)
-            case .vtuber: return .system(size: 16, weight: .regular, design: .rounded)
             default: return .system(size: 16, weight: .regular, design: .rounded)
             }
         }
@@ -138,17 +128,13 @@ struct NotificationModel: Identifiable, Codable {
         // 角色专属字体格式（支持自定义字重）
         func fontStyle(weight: Font.Weight = .regular) -> Font {
             switch category {
-            case .scientist: return .system(size: 16, weight: weight, design: .serif)
+            case .historical: return .system(size: 16, weight: weight, design: .serif)
             case .philosopher: return .system(size: 16, weight: weight, design: .serif)
             case .writer: return .system(size: 16, weight: weight, design: .serif)
-            case .artist: return .system(size: 16, weight: weight, design: .rounded)
             case .animeCharacter: return .system(size: 16, weight: weight, design: .rounded)
             case .gameCharacter: return .system(size: 16, weight: weight, design: .rounded)
-            case .fictionCharacter: return .system(size: 16, weight: weight, design: .rounded)
-            case .movieCharacter: return .system(size: 16, weight: weight, design: .rounded)
-            case .tvCharacter: return .system(size: 16, weight: weight, design: .rounded)
+            case .filmCharacter: return .system(size: 16, weight: weight, design: .rounded)
             case .mythCharacter: return .system(size: 16, weight: weight, design: .serif)
-            case .vtuber: return .system(size: 16, weight: weight, design: .rounded)
             default: return .system(size: 16, weight: weight, design: .rounded)
             }
         }
@@ -156,10 +142,9 @@ struct NotificationModel: Identifiable, Codable {
         // 角色语言风格
         var speechStyle: String {
             switch category {
-            case .scientist: return "以科学严谨的态度"
+            case .historical: return "以历史的角度"
             case .philosopher: return "以哲学思辨的视角"
-            case .writer: return "以文学家的笔触"
-            case .artist: return "以艺术家的眼光"
+            case .writer: return "以文学世界的笔触"
             default: return ""
             }
         }
@@ -229,7 +214,7 @@ struct NotificationModel: Identifiable, Codable {
             character: CharacterInfo(
                 name: "爱因斯坦",
                 era: "20世纪",
-                category: .scientist,
+                category: .historical,
                 image: "einstein"
             ),
             previewContent: nil,
@@ -281,7 +266,7 @@ struct NotificationModel: Identifiable, Codable {
             character: CharacterInfo(
                 name: "达芬奇",
                 era: "文艺复兴",
-                category: .artist,
+                category: .historical,
                 image: "davinci"
             ),
             previewContent: nil,

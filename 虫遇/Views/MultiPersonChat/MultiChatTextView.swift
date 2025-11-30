@@ -143,7 +143,7 @@ struct MultiChatTextView: UIViewRepresentable {
             
             // 立即更新焦点状态，不使用动画，让系统键盘自然处理动画
             DispatchQueue.main.async {
-                self.parent.isFocused = true
+                    self.parent.isFocused = true
                 self.parent.calculateAndUpdateHeight(textView)
             }
             // 不手动发送键盘通知，让系统自然发送，确保动画同步
@@ -153,7 +153,7 @@ struct MultiChatTextView: UIViewRepresentable {
             print("MultiChatTextView - textViewDidEndEditing")
             // 立即更新焦点状态，不使用动画，让系统键盘自然处理动画
             DispatchQueue.main.async {
-                self.parent.isFocused = false
+                    self.parent.isFocused = false
             }
         }
     }

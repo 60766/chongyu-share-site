@@ -2059,81 +2059,17 @@ class PostViewModel: ObservableObject {
                 userPosts.append(userPost)
             }
             
-            // 如果没有生成任何帖子，返回备用帖子
+            // 如果没有生成任何帖子，抛出错误
             if userPosts.isEmpty {
-                print("⚠️ 警告：生成虫洞共鸣帖子失败，使用备用帖子")
-                return createBackupResonancePosts(situation: situation, expectation: expectation, keyword: keyword, count: count)
+                print("⚠️ 警告：生成虫洞共鸣帖子失败，没有生成任何内容")
+                throw PostGenerationError.failedToGeneratePosts
             }
             
             return userPosts
         } catch {
             print("❌ 生成虫洞共鸣帖子时出错: \(error.localizedDescription)")
-            return createBackupResonancePosts(situation: situation, expectation: expectation, keyword: keyword, count: count)
+            throw error
         }
-    }
-    
-    /**
-     * 创建备用虫洞共鸣帖子
-     * 当API生成失败时使用
-     */
-    private func createBackupResonancePosts(
-        situation: String,
-        expectation: String,
-        keyword: String? = nil,
-        count: Int = 1
-    ) -> [UserPostModel] {
-        print("📝 创建备用虫洞共鸣帖子，数量: \(count)")
-        
-        var backupPosts: [UserPostModel] = []
-        let historicalFigures = [
-            ("爱因斯坦", "atom"),
-            ("莎士比亚", "book.fill"),
-            ("孔子", "person.bust"),
-            ("达芬奇", "paintpalette"),
-            ("居里夫人", "testtube.2"),
-            ("牛顿", "function")
-        ]
-        
-        // 根据请求的count创建相应数量的备用帖子
-        for _ in 0..<min(count, historicalFigures.count) {
-            // 随机选择一个历史人物
-            let figureIndex = Int.random(in: 0..<historicalFigures.count)
-            let (figureName, figureAvatar) = historicalFigures[figureIndex]
-            
-            // 创建一个评论
-            let emergencyComment = DetailedCommentModel(
-                id: UUID(),
-                username: "爱因斯坦",
-                userAvatar: "atom",
-                content: "在思考\(situation)这个问题时，我认为最重要的是保持开放的心态。我们需要超越常规思维，从\(expectation)的角度寻找新的可能性。",
-                datePosted: Date().addingTimeInterval(-1800),
-                isVirtualCharacter: true,
-                characterID: "einstein",
-                parentCommentId: nil,
-                replyToUsername: nil,
-                likes: 15
-            )
-            
-            let keywordText = keyword != nil ? "关于'\(keyword!)'，" : ""
-            let emergencyPost = UserPostModel(
-                id: UUID(),
-                username: figureName,
-                userAvatar: figureAvatar,
-                content: "在人生的舞台上，我们常常面临\(situation)的困境。正如我在作品中所探讨的，每个人都在寻找自己的答案和意义。\(keywordText)我想分享一些思考：生活的本质不在于寻找确定的答案，而在于享受探索的过程。",
-                images: [],
-                datePosted: Date().addingTimeInterval(-Double(backupPosts.count) * 300), // 设置不同的时间
-                likes: 25,
-                comments: [emergencyComment],
-                isLikedByCurrentUser: false,
-                isBookmarkedByCurrentUser: false,
-                contentType: ContentGeneratorService.ContentType.resonance.rawValue,
-                source: "wormhole" // 添加来源标识，表示来自虫洞探索
-            )
-            
-            backupPosts.append(emergencyPost)
-        }
-            
-        return backupPosts
     }
     
     /**
@@ -2191,11 +2127,10 @@ class PostViewModel: ObservableObject {
                             userPosts.append(userPost)
                         }
                         
-                        // 如果没有生成任何帖子，返回备用帖子
+                        // 如果没有生成任何帖子，抛出错误
                         if userPosts.isEmpty {
-                            print("⚠️ 警告：生成\(contentType.rawValue)帖子失败，使用备用帖子")
-                            let backupPosts = self.createBackupPosts(for: contentType)
-                            continuation.resume(returning: backupPosts)
+                            print("⚠️ 警告：生成\(contentType.rawValue)帖子失败，没有生成任何内容")
+                            continuation.resume(throwing: PostGenerationError.failedToGeneratePosts)
                         } else {
                             continuation.resume(returning: userPosts)
                         }
@@ -2308,72 +2243,6 @@ class PostViewModel: ObservableObject {
         }
         
         return comments
-    }
-    
-    /**
-     * 创建备用帖子
-     */
-    private func createBackupPosts(for contentType: ContentGeneratorService.ContentType) -> [UserPostModel] {
-        print("📝 创建备用帖子")
-        
-        // 创建一个备用帖子
-        var username = "历史人物"
-        var avatar = "person.circle.fill" // 使用系统图标作为默认头像
-        var content = "思考是人类最伟大的能力，无论在哪个时代。"
-        
-        switch contentType {
-        case .mood:
-            username = "李白"
-            avatar = "libai"
-            content = "【日常心情】今日小酌，独坐山亭。云卷云舒，月上树梢，倒影入酒杯。一生漂泊，竟是为了此刻的宁静与美好。自斟自饮之间，写下几句不成形的诗。大概这就是所谓的人生吧，孤独中寻找内心的欢喜。🌙"
-        case .ancient2modern:
-            username = "爱因斯坦"
-            avatar = "einstein"
-            content = "如果我生活在今天的社会，我会对信息技术的发展感到惊叹。量子计算与量子力学有着深刻联系，但更令我着迷的是，普通人获取知识的门槛如此之低，使科学民主化成为可能。我的相对论需要数年才能被少数专家理解，而现在，知识可以瞬间传遍全球。（现代解读：科技使知识传播速度加快，但理解深度仍需时间）"
-        case .creativeIdea:
-            username = "达芬奇"
-            avatar = "davinci"
-            content = "设计灵感：观察鸟翼与气流互动，我设想一种可收缩的翼型装置，能根据气流强度自动调整形态。或许人类飞行器不该模仿鸟的形态，而应理解飞行的原理。相似地，绘画也不是复制视觉，而是理解光影本质。自然是最伟大的设计师。"
-        case .timelineEvent:
-            username = "莎士比亚"
-            avatar = "shakespeare"
-            content = "【1601年，伦敦环球剧院】今日《哈姆雷特》首演，观众反应超出预期。扮演主角的伯贝奇出色诠释了王子的内心挣扎，特别是「生存还是毁灭」的独白，让全场屏息。看着观众被戏剧感染的面庞，我意识到：人类渴望在艺术中看见自己的影子，而好的戏剧正是映照灵魂的镜子。这部作品或许会比我想象的更加长久。"
-        default:
-            username = "历史人物"
-            avatar = "person.circle.fill" // 确保默认头像是系统图标
-            content = "在人生的旅途中，我们常常需要面对困境和挑战。保持学习的热情与乐趣，才能找到真正的解决之道。困难只是暂时的，而智慧的追求则是永恒的。"
-        }
-        
-        // 创建一个评论
-        let comment = DetailedCommentModel(
-            id: UUID(),
-            username: "尤达大师",
-            userAvatar: "yoda", // 尤达大师有自己的头像
-            content: "有见地，你的想法是。思考更深，我们必须。",
-            datePosted: Date().addingTimeInterval(-1800),
-            isVirtualCharacter: true,
-            characterID: "yoda",
-            parentCommentId: nil,
-            replyToUsername: nil,
-            likes: 15
-        )
-        
-        let emergencyPost = UserPostModel(
-            id: UUID(),
-            username: username,
-            userAvatar: avatar,
-            content: content,
-            images: [],
-            datePosted: Date(),
-            likes: 25,
-            comments: [comment],
-            isLikedByCurrentUser: false,
-            isBookmarkedByCurrentUser: false,
-            contentType: ContentGeneratorService.ContentType.resonance.rawValue,
-            source: "wormhole" // 添加来源标识，表示来自虫洞探索
-        )
-        
-        return [emergencyPost]
     }
     
     /**
@@ -2652,17 +2521,10 @@ class PostViewModel: ObservableObject {
                             userPosts.append(userPost)
                         }
                         
-                        // 如果没有生成任何帖子，返回备用帖子
+                        // 如果没有生成任何帖子，抛出错误
                         if userPosts.isEmpty {
-                            print("⚠️ 警告：生成\(contentType.rawValue)帖子失败，使用备用帖子")
-                            let backupPosts = self.createBackupPosts(for: contentType)
-                            
-                            // 为备用帖子添加来源标识
-                            for i in 0..<backupPosts.count {
-                                backupPosts[i].source = source
-                            }
-                            
-                            continuation.resume(returning: backupPosts)
+                            print("⚠️ 警告：生成\(contentType.rawValue)帖子失败，没有生成任何内容")
+                            continuation.resume(throwing: PostGenerationError.failedToGeneratePosts)
                         } else {
                             continuation.resume(returning: userPosts)
                         }
@@ -2892,16 +2754,16 @@ class PostViewModel: ObservableObject {
                 userPosts.append(userPost)
             }
             
-            // 如果没有生成任何帖子，返回备用帖子
+            // 如果没有生成任何帖子，抛出错误
             if userPosts.isEmpty {
-                print("⚠️ 警告：生成历史对话帖子失败，使用备用帖子")
-                return createBackupPosts(for: .resonance) // 使用虫洞共鸣备用帖子
+                print("⚠️ 警告：生成历史对话帖子失败，没有生成任何内容")
+                throw PostGenerationError.failedToGeneratePosts
             }
             
             return userPosts
         } catch {
             print("❌ 生成历史对话帖子时出错: \(error)")
-            return createBackupPosts(for: .resonance) // 使用虫洞共鸣备用帖子
+            throw error
         }
     }
     
@@ -3098,6 +2960,152 @@ class PostViewModel: ObservableObject {
                 object: self,
                 userInfo: userInfo
             )
+        }
+    }
+    
+    /**
+     * 删除帖子（永久删除，不可恢复）
+     * @param postId 要删除的帖子ID
+     */
+    func deletePost(_ postId: UUID) {
+        // 查找帖子索引
+        guard let index = posts.firstIndex(where: { $0.id == postId }) else {
+            print("⚠️ 未找到要删除的帖子: \(postId)")
+            return
+        }
+        
+        let deletedPost = posts[index]
+        
+        // 从内存列表中移除
+        posts.remove(at: index)
+        
+        print("✅ 已从内存删除帖子: \(deletedPost.id), 作者: \(deletedPost.username)")
+        
+        // 🗑️ 从持久化存储中永久删除
+        // 根据帖子来源，从对应的 UserDefaults 键中删除
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            
+            // 判断帖子类型并删除
+            if deletedPost.source == "user" {
+                // 用户帖子：从 UserPosts_v1 中删除
+                self.removePostFromUserDefaults(postId: postId, key: self.userPostsKey)
+            } else {
+                // AI帖子：从 AIPosts_v1 中删除
+                self.removePostFromUserDefaults(postId: postId, key: self.aiPostsKey)
+            }
+            
+            // 同时从存根数据中删除
+            self.removePostFromStub(postId: postId)
+            
+            print("🗑️ 已从持久化存储永久删除帖子: \(postId)")
+        }
+        
+        // 🎯 关键节点：删除帖子后立即保存（确保其他帖子数据同步）
+        saveAtCriticalPoint(reason: "删除帖子")
+        
+        // 发送删除通知
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            let userInfo: [String: Any] = [
+                "deletedPostId": postId.uuidString,
+                "timestamp": Date().timeIntervalSince1970,
+                "updateType": "postDeleted"
+            ]
+            
+            NotificationCenter.default.post(
+                name: NSNotification.Name("PostDeleted"),
+                object: self,
+                userInfo: userInfo
+            )
+        }
+    }
+    
+    /**
+     * 从 UserDefaults 中删除指定帖子
+     * @param postId 要删除的帖子ID
+     * @param key UserDefaults 存储键
+     */
+    private func removePostFromUserDefaults(postId: UUID, key: String) {
+        // 读取当前存储的帖子数据
+        guard let data = UserDefaults.standard.data(forKey: key) else {
+            // 如果数据不存在，尝试使用旧的数组格式
+            if let postsData = UserDefaults.standard.array(forKey: key) as? [[String: Any]] {
+                // 过滤掉要删除的帖子
+                let filteredPosts = postsData.filter { dict in
+                    if let idString = dict["id"] as? String,
+                       let uuid = UUID(uuidString: idString) {
+                        return uuid != postId
+                    }
+                    return true
+                }
+                UserDefaults.standard.set(filteredPosts, forKey: key)
+                print("🗑️ 已从 \(key) 删除帖子（旧格式），剩余 \(filteredPosts.count) 条")
+            }
+            return
+        }
+        
+        // 尝试解码为 UserPostModel 数组
+        let decoder = JSONDecoder()
+        guard var posts = try? decoder.decode([UserPostModel].self, from: data) else {
+            print("⚠️ 无法解码 \(key) 的数据，尝试其他方法")
+            // 尝试使用旧的数组格式
+            if let postsData = UserDefaults.standard.array(forKey: key) as? [[String: Any]] {
+                let filteredPosts = postsData.filter { dict in
+                    if let idString = dict["id"] as? String,
+                       let uuid = UUID(uuidString: idString) {
+                        return uuid != postId
+                    }
+                    return true
+                }
+                UserDefaults.standard.set(filteredPosts, forKey: key)
+                print("🗑️ 已从 \(key) 删除帖子（备用方法），剩余 \(filteredPosts.count) 条")
+            }
+            return
+        }
+        
+        // 过滤掉要删除的帖子
+        posts = posts.filter { $0.id != postId }
+        
+        // 保存更新后的数据
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(posts) {
+            UserDefaults.standard.set(encoded, forKey: key)
+            print("🗑️ 已从 \(key) 永久删除帖子，剩余 \(posts.count) 条")
+        } else {
+            print("⚠️ 无法编码帖子数据到 \(key)")
+        }
+    }
+    
+    /**
+     * 从存根数据中删除帖子
+     * @param postId 要删除的帖子ID
+     */
+    private func removePostFromStub(postId: UUID) {
+        guard let data = UserDefaults.standard.data(forKey: postsStubKey) else {
+            return
+        }
+        
+        // 尝试解码为字典
+        if let stub = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           var postsArray = stub["posts"] as? [[String: Any]] {
+            // 过滤掉要删除的帖子
+            postsArray = postsArray.filter { dict in
+                if let idString = dict["id"] as? String,
+                   let uuid = UUID(uuidString: idString) {
+                    return uuid != postId
+                }
+                return true
+            }
+            
+            var updatedStub = stub
+            updatedStub["posts"] = postsArray
+            
+            if let encoded = try? JSONSerialization.data(withJSONObject: updatedStub) {
+                UserDefaults.standard.set(encoded, forKey: postsStubKey)
+                print("🗑️ 已从存根数据删除帖子")
+            }
         }
     }
     

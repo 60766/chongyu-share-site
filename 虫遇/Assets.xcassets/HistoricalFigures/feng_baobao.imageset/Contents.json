@@ -1,0 +1,23 @@
+{
+  "images": [
+    {
+      "filename": "feng_baobao.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "feng_baobao.png",
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "filename": "feng_baobao.png",
+      "idiom": "universal",
+      "scale": "3x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

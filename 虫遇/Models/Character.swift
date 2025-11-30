@@ -232,7 +232,6 @@ extension Character {
     enum CharacterType {
         case historical   // 历史人物
         case anime        // 动漫角色
-        case fictional    // 虚构人物
         case animal       // 动物角色
         case futuristic   // 未来人
         case ai           // AI角色
@@ -270,7 +269,7 @@ extension Character {
         } else if nameAndIntro.contains("虚构") || 
                  nameAndIntro.contains("fictional") || 
                  nameAndIntro.contains("fiction") {
-            return .fictional
+            return .anime  // 虚构角色归类为动漫角色
         } else if nameAndIntro.contains("未来") || 
                  nameAndIntro.contains("future") {
             return .futuristic
@@ -324,8 +323,6 @@ extension Character {
             return "历史人物"
         case .anime:
             return "动漫角色"
-        case .fictional:
-            return "虚构人物"
         case .animal:
             return "动物角色"
         case .futuristic:
@@ -350,7 +347,6 @@ extension UICharacter {
     enum CharacterType {
         case historical   // 历史人物
         case anime        // 动漫角色
-        case fictional    // 虚构人物
         case animal       // 动物角色
         case futuristic   // 未来人
         case ai           // AI角色
@@ -388,7 +384,7 @@ extension UICharacter {
         } else if nameAndIntro.contains("虚构") || 
                  nameAndIntro.contains("fictional") || 
                  nameAndIntro.contains("fiction") {
-            return .fictional
+            return .anime  // 虚构角色归类为动漫角色
         } else if nameAndIntro.contains("未来") || 
                  nameAndIntro.contains("future") {
             return .futuristic
@@ -442,8 +438,6 @@ extension UICharacter {
             return "历史人物"
         case .anime:
             return "动漫角色"
-        case .fictional:
-            return "虚构人物"
         case .animal:
             return "动物角色"
         case .futuristic:

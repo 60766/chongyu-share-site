@@ -5,6 +5,7 @@ struct CustomPostOptionsButton: View {
     var post: UserPostModel? // 添加post参数
     var onDislikeCharacter: () -> Void
     var onFollowCharacter: ((Bool) -> Void)? = nil // 添加关注回调
+    var onDeletePost: (() -> Void)? = nil // 添加删除帖子回调
     var isOneKeyGeneration: Bool = false // 添加是否为一键生成模式的标志
     
     @State private var isPressed: Bool = false
@@ -395,6 +396,44 @@ struct CustomPostOptionsButton: View {
                         // 确保显示菜单时加载当前数量设置
                         loadCurrentCount()
                     }
+                }
+                
+                // 删除帖子按钮
+                if let onDeletePost = onDeletePost {
+                    Divider()
+                        .frame(width: 110)
+                        .padding(.vertical, 4)
+                    
+                    Button(action: {
+                        showMenu = false
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            HapticFeedbackManager.shared.menuSelection()
+                            onDeletePost()
+                            
+                            // 显示操作反馈
+                            ToastManager.shared.showToast(message: "已删除帖子")
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 12))
+                                .foregroundColor(.red.opacity(0.8))
+                                .frame(width: 16, alignment: .center)
+                            
+                            Spacer()
+                            
+                            Text("删除帖子")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(.red.opacity(0.8))
+                                .padding(.trailing, 4)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 12)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
             .frame(width: 170)

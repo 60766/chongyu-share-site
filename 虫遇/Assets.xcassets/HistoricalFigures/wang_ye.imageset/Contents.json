@@ -1,0 +1,23 @@
+{
+  "images": [
+    {
+      "filename": "wang_ye.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "wang_ye.png",
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "filename": "wang_ye.png",
+      "idiom": "universal",
+      "scale": "3x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

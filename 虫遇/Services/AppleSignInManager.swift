@@ -268,20 +268,20 @@ class AppleSignInManager: NSObject, ObservableObject {
                         let currentBalance = await currentBalanceTask
                         
                         if let existingBalance {
-                            print("💰 [Apple ID] 已绑定账号的余额: \(existingBalance) 虫洞币")
+                        print("💰 [Apple ID] 已绑定账号的余额: \(existingBalance) 虫洞币")
                         } else {
                             print("⚠️ [Apple ID] 未能获取旧账号余额")
                         }
                         if let currentBalance {
-                            print("💰 [Apple ID] 当前账号的余额: \(currentBalance) 虫洞币")
+                        print("💰 [Apple ID] 当前账号的余额: \(currentBalance) 虫洞币")
                         } else {
                             print("⚠️ [Apple ID] 未能获取当前账号余额")
                         }
                         
-                        await MainActor.run {
-                            self.accountConflict = AccountConflict(
-                                existingToken: serverToken,
-                                currentToken: currentToken,
+                            await MainActor.run {
+                                self.accountConflict = AccountConflict(
+                                    existingToken: serverToken,
+                                    currentToken: currentToken,
                                 existingBalance: existingBalance,
                                 currentBalance: currentBalance
                             )

@@ -295,37 +295,9 @@ struct ExploreView: View {
                                             }
                                         }
                                         
-                                    // 我的角色按钮 (交换位置)
-                                        Button(action: {
-                                        handleUserCharactersTap()
-                                        }) {
-                                            VStack(spacing: 8) {
-                                                ZStack {
-                                                    Circle()
-                                                    .fill(Color(red: 95/255, green: 158/255, blue: 225/255).opacity(showingUserCharacters ? 0.9 : 0.15))
-                                                        .frame(width: 56, height: 56)
-                                                    
-                                                Image(systemName: "person.crop.circle")
-                                                        .font(.system(size: 22))
-                                                    .foregroundColor(showingUserCharacters ? .white : Color(red: 95/255, green: 158/255, blue: 225/255))
-                                                }
-                                                .shadow(
-                                                color: Color(red: 95/255, green: 158/255, blue: 225/255).opacity(showingUserCharacters ? 0.2 : 0), 
-                                                radius: 5,
-                                                    x: 0,
-                                                y: 2
-                                                )
-                                                
-                                            Text("我的角色")
-                                                    .font(.system(size: 11))
-                                                .foregroundColor(showingUserCharacters ? .primary : Color(.secondaryLabel))
-                                                    .lineLimit(1)
-                                                    .minimumScaleFactor(0.8)
-                                            }
-                                        }
-                                        
-                                    // 显示历史人物和文学家分类按钮（固定在第一排）
-                                    let firstRowCategories: [CharacterCategory] = [.historical, .writer]
+                                    // 显示热门分类按钮（固定在第一排）
+                                    // 第一排：最近互动 | 我的关注 | 动漫角色 | 历史人物 | 影视角色
+                                    let firstRowCategories: [CharacterCategory] = [.animeCharacter, .historical, .filmCharacter]
                                     ForEach(firstRowCategories, id: \.self) { category in
                                         Button(action: {
                                             withAnimation(.easeInOut) {
@@ -349,37 +321,17 @@ struct ExploreView: View {
                                     .padding(.top, 2) // 减小顶部内边距
                                 }
                                 
-                                // 第二排分类按钮 - 显示剩余的排序分类
+                                // 第二排分类按钮 - 显示中低频分类和我的角色
+                                // 第二排：游戏角色 | 文学世界 | 哲学家 | 神话角色 | 我的角色
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 20) {
-                                    // 显示电影角色分类按钮和其他剩余分类
-                                    let movieCategory: CharacterCategory = .movieCharacter
-                                            Button(action: {
-                                                withAnimation(.easeInOut) {
-                                            // 设置选中的分类
-                                            selectedCategory = movieCategory
-                                            
-                                            // 重置特殊显示模式，确保包括我的角色模式
-                                            showingRecentInteractions = false
-                                            showingFavorites = false
-                                            showingUserCharacters = false
-                                            
-                                            // 打印调试信息
-                                            print("选中分类: \(movieCategory.displayName)")
-                                        }
-                                    }) {
-                                        categoryView(for: movieCategory)
-                                    }
-                                    
-                                    // 显示其他剩余的排序分类（除了历史人物、文学家和电影角色）
-                                    let otherCategories = sortedCategories.filter { 
-                                        $0 != .historical && $0 != .writer && $0 != .movieCharacter 
-                                    }
-                                    ForEach(otherCategories, id: \.self) { category in
+                                    // 显示第二排的分类按钮（按推荐顺序）
+                                    let secondRowCategories: [CharacterCategory] = [.gameCharacter, .writer, .philosopher, .mythCharacter]
+                                    ForEach(secondRowCategories, id: \.self) { category in
                                         Button(action: {
                                             withAnimation(.easeInOut) {
                                                 // 设置选中的分类
-                                                    selectedCategory = category
+                                                selectedCategory = category
                                                 
                                                 // 重置特殊显示模式，确保包括我的角色模式
                                                 showingRecentInteractions = false
@@ -388,11 +340,40 @@ struct ExploreView: View {
                                                 
                                                 // 打印调试信息
                                                 print("选中分类: \(category.displayName)")
-                                                }
-                                            }) {
-                                                categoryView(for: category)
                                             }
+                                        }) {
+                                            categoryView(for: category)
                                         }
+                                    }
+                                    
+                                    // 我的角色按钮（放在第二排末尾）
+                                    Button(action: {
+                                        handleUserCharactersTap()
+                                    }) {
+                                        VStack(spacing: 8) {
+                                            ZStack {
+                                                Circle()
+                                                .fill(Color(red: 95/255, green: 158/255, blue: 225/255).opacity(showingUserCharacters ? 0.9 : 0.15))
+                                                    .frame(width: 56, height: 56)
+                                                
+                                            Image(systemName: "person.crop.circle")
+                                                    .font(.system(size: 22))
+                                                .foregroundColor(showingUserCharacters ? .white : Color(red: 95/255, green: 158/255, blue: 225/255))
+                                            }
+                                            .shadow(
+                                            color: Color(red: 95/255, green: 158/255, blue: 225/255).opacity(showingUserCharacters ? 0.2 : 0), 
+                                            radius: 5,
+                                                x: 0,
+                                            y: 2
+                                            )
+                                            
+                                        Text("我的角色")
+                                                .font(.system(size: 11))
+                                            .foregroundColor(showingUserCharacters ? .primary : Color(.secondaryLabel))
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.8)
+                                        }
+                                    }
                                     }
                                     .padding(.horizontal, 16)
                             }
@@ -701,14 +682,26 @@ struct ExploreView: View {
     
     /// 同步版本的加载所有角色（向后兼容）
     private func loadAllCharactersSync() {
-        // 加载预定义角色
-        var allCharacters = CharacterModel.getAllCharacters()
+        // 🔧 修复：探索页面应该显示所有角色，不应用分类过滤
+        // 加载预定义角色（不应用BlockedCategoriesManager过滤）
+        var allCharacters = CharacterModel.loadAllCharactersWithoutFilter()
         
         // 加载用户创建的角色
         loadUserCharacters()
         
         // 将用户创建的角色也添加到主角色列表中
         allCharacters.append(contentsOf: userCharacters)
+        
+        // 去重：根据角色ID去重，保留第一个出现的角色
+        var seenIds = Set<String>()
+        allCharacters = allCharacters.filter { character in
+            if seenIds.contains(character.id) {
+                return false
+            } else {
+                seenIds.insert(character.id)
+                return true
+            }
+        }
         
         // 更新角色列表
         self.characters = allCharacters
@@ -998,12 +991,20 @@ struct ExploreView: View {
     
     // 按角色数量排序的分类列表
     private var sortedCategories: [CharacterCategory] {
-        // 获取所有分类
-        let allCategories = CharacterCategory.allCases.filter { $0 != .all }
+        // 明确指定要显示的分类（排除"全部"和已删除的"科学家"、"艺术家"）
+        let availableCategories: [CharacterCategory] = [
+            .historical,    // 历史人物（包含科学家、艺术家）
+            .philosopher,   // 哲学家
+            .writer,        // 文学世界
+            .animeCharacter, // 动漫角色
+            .gameCharacter,  // 游戏角色
+            .filmCharacter,  // 影视角色
+            .mythCharacter   // 神话角色
+        ]
         
         // 获取每个分类的角色数量
         var categoryCounts: [(category: CharacterCategory, count: Int)] = []
-        for category in allCategories {
+        for category in availableCategories {
             let count = characters.filter { $0.category == category }.count
             categoryCounts.append((category, count))
         }
@@ -1217,7 +1218,7 @@ struct ExploreView: View {
                        let categoryRawValue = dict["category"] as? String,
                        let era = dict["era"] as? String {
                         
-                        let category = CharacterCategory(rawValue: categoryRawValue) ?? .fictionCharacter
+                        let category = CharacterCategory(rawValue: categoryRawValue) ?? .filmCharacter
                         
                         let character = CharacterModel(
                             id: id,
@@ -1365,8 +1366,8 @@ struct ExploreView: View {
         // 在后台线程加载角色数据
         let loadedCharacters = await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
-                // 保持原有的加载逻辑
-                var allCharacters = CharacterModel.getAllCharacters()
+                // 🔧 修复：探索页面应该显示所有角色，不应用分类过滤
+                var allCharacters = CharacterModel.loadAllCharactersWithoutFilter()
                 
                 // 加载用户创建的角色
                 let userChars = self.loadUserCharactersSync()
@@ -1436,7 +1437,7 @@ struct ExploreView: View {
                        let categoryRawValue = dict["category"] as? String,
                        let era = dict["era"] as? String {
                         
-                        let category = CharacterCategory(rawValue: categoryRawValue) ?? .fictionCharacter
+                        let category = CharacterCategory(rawValue: categoryRawValue) ?? .filmCharacter
                         
                         let character = CharacterModel(
                             id: id,
@@ -1800,7 +1801,7 @@ struct MyCharactersView: View {
                        let categoryRawValue = dict["category"] as? String,
                        let era = dict["era"] as? String {
                         
-                        let category = CharacterCategory(rawValue: categoryRawValue) ?? .fictionCharacter
+                        let category = CharacterCategory(rawValue: categoryRawValue) ?? .filmCharacter
                         
                         let character = CharacterModel(
                             id: id,

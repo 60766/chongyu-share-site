@@ -170,31 +170,29 @@ fileprivate func mapFieldToCategory(field: String) -> CharacterCategory {
         return .animeCharacter
     } else if lowercaseField.contains("电影") || lowercaseField.contains("movie") ||
               lowercaseField.contains("影片") || lowercaseField.contains("电影角色") ||
-              lowercaseField.contains("film") || lowercaseField.contains("cinema") {
-        return .movieCharacter
-    } else if lowercaseField.contains("电视") || lowercaseField.contains("电视剧") ||
+              lowercaseField.contains("film") || lowercaseField.contains("cinema") ||
+              lowercaseField.contains("电视") || lowercaseField.contains("电视剧") ||
               lowercaseField.contains("tv") || lowercaseField.contains("剧集") ||
               lowercaseField.contains("连续剧") || lowercaseField.contains("series") {
-        return .tvCharacter
+        return .filmCharacter  // 合并电影和电视剧为影视角色
     } else if lowercaseField.contains("神话") || lowercaseField.contains("mythology") ||
               lowercaseField.contains("传说") || lowercaseField.contains("神明") ||
               lowercaseField.contains("仙人") || lowercaseField.contains("神仙") ||
               lowercaseField.contains("legend") || lowercaseField.contains("myth") {
         return .mythCharacter
-    } else if lowercaseField.contains("虚拟主播") || lowercaseField.contains("vtuber") ||
-              lowercaseField.contains("vtb") || lowercaseField.contains("virtual youtuber") {
-        return .vtuber
-    } else if lowercaseField.contains("虚构") || lowercaseField.contains("fiction") ||
-              lowercaseField.contains("小说角色") || lowercaseField.contains("文学角色") {
-        return .fictionCharacter
     }
     
     // 历史人物分类
     else if lowercaseField.contains("科学") || lowercaseField.contains("物理") || 
             lowercaseField.contains("化学") || lowercaseField.contains("数学") ||
             lowercaseField.contains("生物") || lowercaseField.contains("医学") ||
-            lowercaseField.contains("scientist") || lowercaseField.contains("science") {
-        return .scientist
+            lowercaseField.contains("scientist") || lowercaseField.contains("science") ||
+            lowercaseField.contains("艺术") || lowercaseField.contains("画家") ||
+            lowercaseField.contains("雕塑") || lowercaseField.contains("音乐") ||
+            lowercaseField.contains("artist") || lowercaseField.contains("painter") ||
+            lowercaseField.contains("musician") || lowercaseField.contains("art") {
+        // 科学家和艺术家合并到历史人物
+        return .historical
     } else if lowercaseField.contains("哲学") || lowercaseField.contains("思想") ||
               lowercaseField.contains("philosopher") || lowercaseField.contains("philosophy") {
         return .philosopher
@@ -203,11 +201,6 @@ fileprivate func mapFieldToCategory(field: String) -> CharacterCategory {
               lowercaseField.contains("writer") || lowercaseField.contains("author") ||
               lowercaseField.contains("poet") || lowercaseField.contains("literature") {
         return .writer
-    } else if lowercaseField.contains("艺术") || lowercaseField.contains("画家") ||
-              lowercaseField.contains("雕塑") || lowercaseField.contains("音乐") ||
-              lowercaseField.contains("artist") || lowercaseField.contains("painter") ||
-              lowercaseField.contains("musician") || lowercaseField.contains("art") {
-        return .artist
     } else {
         return .historical
     }
@@ -3029,7 +3022,7 @@ extension CharacterDetailView {
         } else if field.contains("哲学") || field.contains("思想") {
             tags.append("哲学家")
         } else if field.contains("文学") || field.contains("作家") || field.contains("诗人") || field.contains("戏剧") {
-            tags.append("文学家")
+            tags.append("文学世界")
         } else if field.contains("艺术") || field.contains("画家") || field.contains("音乐") {
             tags.append("艺术家")
         } else if field.contains("政治") || field.contains("皇帝") || field.contains("国王") || field.contains("总统") {
@@ -3083,7 +3076,7 @@ extension CharacterDetailView {
             return Color(red: 52/255, green: 152/255, blue: 219/255)  // 蓝色
         case "哲学家":
             return Color(red: 155/255, green: 89/255, blue: 182/255)  // 紫色
-        case "文学家":
+        case "文学世界":
             return Color(red: 46/255, green: 204/255, blue: 113/255)  // 绿色
         case "艺术家":
             return Color(red: 230/255, green: 126/255, blue: 34/255)  // 橙色

@@ -321,6 +321,11 @@ public struct WormholeExplorationView: View {
                     onFollowCharacter: { isFollowed in
                         print("\(isFollowed ? "关注" : "取消关注")角色: \(post.username)")
                     },
+                    onDeletePost: {
+                        // 删除帖子
+                        PostViewModel.shared.deletePost(post.id)
+                        print("删除帖子: \(post.id)")
+                    },
                     feedbackGenerator: UIImpactFeedbackGenerator(style: .light)
                 )
             }
@@ -474,103 +479,6 @@ public struct WormholeExplorationView: View {
     }
     
     /**
-     * 创建备用帖子，当API生成失败时使用
-     */
-    private func createBackupPosts() async -> [UserPostModel] {
-        // 尝试使用异步方法生成帖子
-        var posts: [UserPostModel] = []
-        do {
-            posts = try await postViewModel.generatePostsByCreationType(typeIndex: 0)
-
-        } catch {
-            print("❌ 生成备用帖子失败: \(error.localizedDescription)")
-        }
-        
-        if !posts.isEmpty {
-            return posts
-        }
-        
-        print("⚠️ 备用帖子生成失败，创建本地备用内容")
-        
-        // 如果异步生成失败，创建本地备用帖子
-        let historicalFigures = [
-            ("苏格拉底", "person.fill.questionmark"),
-            ("孔子", "person.bust"),
-            ("莎士比亚", "theatermasks"),
-            ("爱因斯坦", "atom"),
-            ("达芬奇", "paintpalette"),
-            ("居里夫人", "testtube.2")
-        ]
-        
-        let postCount = Int.random(in: 2...4) // 随机生成2-4个帖子
-        var backupPosts = [UserPostModel]()
-        
-        for _ in 0..<postCount {
-            let randomFigureIndex = Int.random(in: 0..<historicalFigures.count)
-            let (authorName, authorAvatar) = historicalFigures[randomFigureIndex]
-            
-            // 创建一个简单的帖子
-            let post = UserPostModel(
-                id: UUID(),
-                username: authorName,
-                userAvatar: authorAvatar,
-                content: "思考是灵魂与自己的对话。",
-                images: [],
-                datePosted: Date(),
-                likes: Int.random(in: 5...50),
-                comments: [],
-                isLikedByCurrentUser: false,
-                isBookmarkedByCurrentUser: false,
-                source: "wormhole" // 添加来源标识，表示来自虫洞探索
-            )
-            
-            // 为帖子添加随机数量的评论
-            let commentCount = Int.random(in: 1...3)
-            for _ in 0..<commentCount {
-                // 确保评论者不是帖子作者
-                var commenterIndex: Int
-                repeat {
-                    commenterIndex = Int.random(in: 0..<historicalFigures.count)
-                } while commenterIndex == randomFigureIndex
-                
-                let (commenterName, commenterAvatar) = historicalFigures[commenterIndex]
-                
-                let comment = DetailedCommentModel(
-                    id: UUID(),
-                    username: commenterName,
-                    userAvatar: commenterAvatar,
-                    content: "这是一个深刻的思考。",
-                    datePosted: Date(),
-                    likes: Int.random(in: 1...10)
-                )
-                
-                post.comments.append(comment)
-            }
-            
-            backupPosts.append(post)
-        }
-        
-        // 如果没有生成任何帖子，创建一个紧急帖子
-        if backupPosts.isEmpty {
-            backupPosts.append(UserPostModel(
-                id: UUID(),
-                username: "虫遇小助手",
-                userAvatar: "assistant_avatar",
-                content: "虫洞探索遇到了一些小问题，但我们仍在继续前进。",
-                images: [],
-                datePosted: Date(),
-                likes: 1,
-                comments: [],
-                isLikedByCurrentUser: false,
-                isBookmarkedByCurrentUser: false,
-                source: "wormhole" // 添加来源标识，表示来自虫洞探索
-            ))
-        }
-        
-        return backupPosts
-    }
-    
-    /**
      * 生成并添加帖子
      * 基于当前选择的内容类型，生成指定数量的帖子
      */
@@ -650,28 +558,6 @@ public struct WormholeExplorationView: View {
                         self.showErrorToast = false
                     }
                 }
-                
-                // 尝试创建备用帖子
-                if let backupPosts = createBackupPosts(for: typeManager.selectedIndex) {
-                    posts += backupPosts
-                
-                // 将备用帖子也添加到PostViewModel中以实现持久化
-                DispatchQueue.main.async {
-                    PostViewModel.shared.addAIPosts(backupPosts)
-                }
-                    
-                    // 将备用帖子也添加到PostViewModel中以实现持久化
-                    DispatchQueue.main.async {
-                        PostViewModel.shared.addAIPosts(backupPosts)
-                    }
-                    
-                    // 更新已生成类型的状态
-                    var updatedGeneratedTypes = generatedTypes
-                    updatedGeneratedTypes.insert(typeManager.selectedIndex)
-                    generatedTypes = updatedGeneratedTypes
-                    
-                    print("🔄 使用了\(backupPosts.count)个备用帖子")
-                }
             }
         } catch {
             print("❌ 生成帖子失败: \(error)")
@@ -685,18 +571,6 @@ public struct WormholeExplorationView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                     self.showErrorToast = false
                 }
-            }
-            
-            // 尝试创建备用帖子
-            if let backupPosts = createBackupPosts(for: typeManager.selectedIndex) {
-                posts += backupPosts
-                
-                // 更新已生成类型的状态
-                var updatedGeneratedTypes = generatedTypes
-                updatedGeneratedTypes.insert(typeManager.selectedIndex)
-                generatedTypes = updatedGeneratedTypes
-                
-                print("🔄 使用了\(backupPosts.count)个备用帖子")
             }
         }
         
@@ -735,108 +609,6 @@ public struct WormholeExplorationView: View {
         }
     }
     
-    /**
-     * 创建指定类型的备用帖子
-     */
-    private func createBackupPosts(for typeIndex: Int) -> [UserPostModel]? {
-        let contentType = convertIndexToType(typeIndex)
-        print("🆘 为类型[\(getTypeNameForIndex(typeIndex))]创建备用帖子")
-        
-        // 创建本地备用帖子
-        let historicalFigures = [
-            ("苏格拉底", "person.fill.questionmark"),
-            ("孔子", "person.bust"),
-            ("莎士比亚", "theatermasks"),
-            ("爱因斯坦", "atom"),
-            ("达芬奇", "paintpalette"),
-            ("居里夫人", "testtube.2")
-        ]
-        
-        // 获取该类型配置的生成数量
-        let count = ExplorationCountManager.shared.getCount(for: contentType)
-        var backupPosts = [UserPostModel]()
-        
-        for i in 0..<count {
-            let randomFigureIndex = Int.random(in: 0..<historicalFigures.count)
-            let (authorName, authorAvatar) = historicalFigures[randomFigureIndex]
-            
-            // 根据内容类型生成不同的备用内容
-            var content = ""
-            switch contentType {
-            case .resonance:
-                content = "在人生的旅途中，我们总是需要思考自己的道路和方向。"
-            case .ancient2modern:
-                content = "古人云：'吾日三省吾身'，放在现代社会依然有其价值。"
-            case .creativeIdea:
-                content = "如果穿越到现代，我一定会对智能手机这个神奇的发明感到惊叹。"
-            case .mood:
-                content = "今天心情不错，发现了一个有趣的思想，值得分享。"
-            case .timelineEvent:
-                content = "我们是否应该更多地思考生活的本质，而非追逐外在的物质？"
-            }
-            
-            // 创建一个备用帖子
-            let post = UserPostModel(
-                id: UUID(),
-                username: authorName,
-                userAvatar: authorAvatar,
-                content: content,
-                images: [],
-                datePosted: Date().addingTimeInterval(-Double(i * 300)), // 设置不同的时间
-                likes: Int.random(in: 5...50),
-                comments: [],
-                isLikedByCurrentUser: false,
-                isBookmarkedByCurrentUser: false,
-                contentType: contentType.rawValue,
-                source: "wormhole" // 添加来源标识，表示来自虫洞探索
-            )
-            
-            // 为帖子添加评论
-            let commentCount = Int.random(in: 1...2)
-            for _ in 0..<commentCount {
-                // 确保评论者不是帖子作者
-                var commenterIndex: Int
-                repeat {
-                    commenterIndex = Int.random(in: 0..<historicalFigures.count)
-                } while commenterIndex == randomFigureIndex
-                
-                let (commenterName, commenterAvatar) = historicalFigures[commenterIndex]
-                
-                // 根据内容类型生成不同的评论
-                var commentContent = ""
-                switch contentType {
-                case .resonance:
-                    commentContent = "这确实是一个值得思考的问题，自我认知是人生的重要课题。"
-                case .ancient2modern:
-                    commentContent = "古代智慧永远不会过时，只是需要我们用现代视角重新理解。"
-                case .creativeIdea:
-                    commentContent = "我也很好奇现代科技，它彻底改变了人类的生活方式。"
-                case .mood:
-                    commentContent = "分享是一种美德，感谢你的思考。"
-                case .timelineEvent:
-                    commentContent = "这个问题引发了我深刻的思考，物质与精神确实需要平衡。"
-                }
-                
-                let comment = DetailedCommentModel(
-                    id: UUID(),
-                    username: commenterName,
-                    userAvatar: commenterAvatar,
-                    content: commentContent,
-                    datePosted: Date().addingTimeInterval(-Double(i * 300 + Int.random(in: 60...180))),
-                    isVirtualCharacter: true,
-                    characterID: UUID().uuidString,
-                    likes: Int.random(in: 1...10),
-                    isLikedByCurrentUser: false
-                )
-                
-                post.comments.append(comment)
-            }
-            
-            backupPosts.append(post)
-        }
-        
-        return backupPosts.isEmpty ? nil : backupPosts
-    }
 }
 
 /**

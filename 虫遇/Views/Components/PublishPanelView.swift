@@ -798,12 +798,14 @@ struct PublishPanelView: View {
      */
     private func mapToCharacterCategory(type: String, subtype: String) -> CharacterCategory {
         switch (type, subtype) {
-        case ("historical", "scientist"), ("literary", "scientist"), ("movie", "scientist"), ("anime", "scientist"):
-            return .scientist
+        case ("historical", "scientist"), ("literary", "scientist"), ("movie", "scientist"), ("anime", "scientist"),
+             ("historical", "artist"), ("literary", "artist"), ("movie", "artist"), ("anime", "artist"),
+             ("historical", "inventor"), ("literary", "inventor"), ("movie", "inventor"), ("anime", "inventor"),
+             ("historical", "musician"), ("literary", "musician"), ("movie", "musician"), ("anime", "musician"):
+            // 科学家、艺术家、发明家、音乐家合并到历史人物
+            return .historical
         case ("historical", "writer"), ("literary", "writer"), ("movie", "writer"), ("anime", "writer"):
             return .writer
-        case ("historical", "artist"), ("literary", "artist"), ("movie", "artist"), ("anime", "artist"):
-            return .artist
         case ("historical", "philosopher"), ("literary", "philosopher"), ("movie", "philosopher"), ("anime", "philosopher"):
             return .philosopher
         case ("historical", "politician"), ("literary", "politician"), ("movie", "politician"), ("anime", "politician"):
@@ -812,10 +814,6 @@ struct PublishPanelView: View {
             return .historical
         case ("historical", "explorer"), ("literary", "explorer"), ("movie", "explorer"), ("anime", "explorer"):
             return .historical
-        case ("historical", "inventor"), ("literary", "inventor"), ("movie", "inventor"), ("anime", "inventor"):
-            return .scientist
-        case ("historical", "musician"), ("literary", "musician"), ("movie", "musician"), ("anime", "musician"):
-            return .artist
         case ("historical", "athlete"), ("literary", "athlete"), ("movie", "athlete"), ("anime", "athlete"):
             return .historical
         case ("historical", "business"), ("literary", "business"), ("movie", "business"), ("anime", "business"):
@@ -825,22 +823,22 @@ struct PublishPanelView: View {
         case ("historical", "mythological"), ("literary", "mythological"), ("movie", "mythological"), ("anime", "mythological"):
             return .mythCharacter
         case ("historical", "fictional"), ("literary", "fictional"), ("movie", "fictional"), ("anime", "fictional"):
-            return .fictionCharacter
+            return .animeCharacter
         default:
             // 根据type进行默认分类
             switch type {
             case "historical":
-                return .scientist
+                return .historical
             case "literary":
                 return .writer
             case "movie":
-                return .movieCharacter
+                return .filmCharacter
             case "anime":
                 return .animeCharacter
             case "game":
                 return .gameCharacter
             default:
-                return .scientist
+                return .historical
             }
         }
     }
@@ -2174,8 +2172,6 @@ struct CharacterSelectorView: View {
                 
                 // 历史人物分类
                 Group {
-                    compactCategoryButton(category: .scientist)
-                    compactCategoryButton(category: .artist)
                     compactCategoryButton(category: .philosopher)
                     compactCategoryButton(category: .writer)
                 }
@@ -2185,7 +2181,7 @@ struct CharacterSelectorView: View {
                     Group {
                         compactCategoryButton(category: .animeCharacter)
                         compactCategoryButton(category: .gameCharacter)
-                        compactCategoryButton(category: .fictionCharacter)
+                        compactCategoryButton(category: .filmCharacter)
                     }
                 }
             }
@@ -2322,12 +2318,14 @@ struct CharacterSelectorView: View {
      */
     private func mapToCharacterCategory(type: String, subtype: String) -> CharacterCategory {
         switch (type, subtype) {
-        case ("historical", "scientist"), ("literary", "scientist"), ("movie", "scientist"), ("anime", "scientist"):
-            return .scientist
+        case ("historical", "scientist"), ("literary", "scientist"), ("movie", "scientist"), ("anime", "scientist"),
+             ("historical", "artist"), ("literary", "artist"), ("movie", "artist"), ("anime", "artist"),
+             ("historical", "inventor"), ("literary", "inventor"), ("movie", "inventor"), ("anime", "inventor"),
+             ("historical", "musician"), ("literary", "musician"), ("movie", "musician"), ("anime", "musician"):
+            // 科学家、艺术家、发明家、音乐家合并到历史人物
+            return .historical
         case ("historical", "writer"), ("literary", "writer"), ("movie", "writer"), ("anime", "writer"):
             return .writer
-        case ("historical", "artist"), ("literary", "artist"), ("movie", "artist"), ("anime", "artist"):
-            return .artist
         case ("historical", "philosopher"), ("literary", "philosopher"), ("movie", "philosopher"), ("anime", "philosopher"):
             return .philosopher
         case ("historical", "politician"), ("literary", "politician"), ("movie", "politician"), ("anime", "politician"):
@@ -2336,10 +2334,6 @@ struct CharacterSelectorView: View {
             return .historical
         case ("historical", "explorer"), ("literary", "explorer"), ("movie", "explorer"), ("anime", "explorer"):
             return .historical
-        case ("historical", "inventor"), ("literary", "inventor"), ("movie", "inventor"), ("anime", "inventor"):
-            return .scientist
-        case ("historical", "musician"), ("literary", "musician"), ("movie", "musician"), ("anime", "musician"):
-            return .artist
         case ("historical", "athlete"), ("literary", "athlete"), ("movie", "athlete"), ("anime", "athlete"):
             return .historical
         case ("historical", "business"), ("literary", "business"), ("movie", "business"), ("anime", "business"):
@@ -2349,22 +2343,22 @@ struct CharacterSelectorView: View {
         case ("historical", "mythological"), ("literary", "mythological"), ("movie", "mythological"), ("anime", "mythological"):
             return .mythCharacter
         case ("historical", "fictional"), ("literary", "fictional"), ("movie", "fictional"), ("anime", "fictional"):
-            return .fictionCharacter
+            return .animeCharacter
         default:
             // 根据type进行默认分类
             switch type {
             case "historical":
-                return .scientist
+                return .historical
             case "literary":
                 return .writer
             case "movie":
-                return .movieCharacter
+                return .filmCharacter
             case "anime":
                 return .animeCharacter
             case "game":
                 return .gameCharacter
             default:
-                return .scientist
+                return .historical
             }
         }
     }

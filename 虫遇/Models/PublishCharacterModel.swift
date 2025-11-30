@@ -74,14 +74,13 @@ extension PHCharacterModel {
     var bio: String { return introduction }
     var category: CharacterCategory {
         switch field.lowercased() {
-        case "物理学家":
-            return .scientist
+        case "物理学家", "科学家", "艺术家":
+            // 科学家和艺术家合并到历史人物
+            return .historical
         case "哲学家":
             return .philosopher
         case "文艺", "剧作家", "诗人":
             return .writer
-        case "艺术家":
-            return .artist
         default:
             return .all
         }

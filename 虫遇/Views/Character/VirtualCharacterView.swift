@@ -22,14 +22,13 @@ struct VirtualCharacterView: View {
         // 根据分类过滤
         if selectedCategory != .all {
             result = result.filter { character in
-                if selectedCategory == .scientist {
-                    return character.field.contains("科学") || character.field.contains("物理") || character.field.contains("化学")
+                if selectedCategory == .historical {
+                    return character.field.contains("科学") || character.field.contains("物理") || character.field.contains("化学") ||
+                           character.field.contains("艺术") || character.field.contains("画家") || character.field.contains("音乐")
                 } else if selectedCategory == .philosopher {
                     return character.field.contains("哲学") || character.field.contains("思想家")
                 } else if selectedCategory == .writer {
                     return character.field.contains("文学") || character.field.contains("作家") || character.field.contains("诗人")
-                } else if selectedCategory == .artist {
-                    return character.field.contains("艺术") || character.field.contains("画家") || character.field.contains("音乐")
                 }
                 return false
             }
@@ -47,7 +46,7 @@ struct VirtualCharacterView: View {
     }
     
     // 所有可用的分类
-    private let categories: [CharacterCategory] = [.all, .scientist, .philosopher, .writer, .artist]
+    private let categories: [CharacterCategory] = [.all, .historical, .philosopher, .writer]
     
     var body: some View {
         NavigationStack {
@@ -485,14 +484,13 @@ struct CharacterCardView: View {
     
     // 根据角色领域获取对应的分类颜色
     private func getCategoryColor(from field: String) -> Color {
-        if field.contains("科学") || field.contains("物理") || field.contains("化学") {
-            return CharacterCategory.scientist.color
+        if field.contains("科学") || field.contains("物理") || field.contains("化学") ||
+           field.contains("艺术") || field.contains("画家") || field.contains("音乐") {
+            return CharacterCategory.historical.color
         } else if field.contains("哲学") || field.contains("思想家") {
             return CharacterCategory.philosopher.color
         } else if field.contains("文学") || field.contains("作家") || field.contains("诗人") {
             return CharacterCategory.writer.color
-        } else if field.contains("艺术") || field.contains("画家") || field.contains("音乐") {
-            return CharacterCategory.artist.color
         } else {
             return .gray
         }

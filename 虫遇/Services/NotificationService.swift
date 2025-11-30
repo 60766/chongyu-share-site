@@ -639,17 +639,21 @@ class NotificationService: ObservableObject {
             switch character.type {
             case .historical:
                 // 根据领域进一步分类
-                if character.primaryField.contains("科学") || character.primaryField.contains("物理") || character.primaryField.contains("数学") {
-                    return .scientist
+                if character.primaryField.contains("科学") || character.primaryField.contains("物理") || character.primaryField.contains("数学") ||
+                   character.primaryField.contains("艺术") || character.primaryField.contains("画") {
+                    // 科学家和艺术家合并到历史人物
+                    return .historical
                 } else if character.primaryField.contains("诗") || character.primaryField.contains("文学") || character.primaryField.contains("作家") {
                     return .writer
-                } else if character.primaryField.contains("艺术") || character.primaryField.contains("画") {
-                    return .artist
                 } else {
                     return .historical
                 }
-            case .literary, .movie, .anime, .game, .scifi, .fantasy:
-                return .fictionCharacter
+            case .literary:
+                return .writer
+            case .movie, .tv:
+                return .filmCharacter
+            case .anime, .game, .scifi, .fantasy:
+                return .animeCharacter
             case .mythological:
                 return .mythCharacter
             default:

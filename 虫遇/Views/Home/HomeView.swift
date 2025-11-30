@@ -340,18 +340,13 @@ struct VirtualCharacterPickerView: View {
         // 定义固定的类别顺序
         let fixedCategoryOrder: [CharacterCategory] = [
             .all,           // 全部
-            .historical,    // 历史人物
-            .scientist,     // 科学家
+            .historical,    // 历史人物（包含科学家、艺术家）
             .philosopher,   // 哲学家
-            .writer,        // 文学家
-            .artist,        // 艺术家
+            .writer,        // 文学世界
             .mythCharacter, // 神话角色
-            .movieCharacter, // 电影角色
-            .tvCharacter,   // 电视剧角色
+            .filmCharacter, // 影视角色（合并电影和电视剧）
             .animeCharacter, // 动漫角色
-            .gameCharacter, // 游戏角色
-            .fictionCharacter, // 虚构人物
-            .vtuber         // 虚拟主播
+            .gameCharacter  // 游戏角色
         ]
         
         // 从所有角色中提取唯一的类型
@@ -1148,7 +1143,7 @@ showCharacterPicker = true
                                         }
                                         AppleSignInManager.shared.signInWithApple()
                                     } else {
-                                        showPurchaseView = true
+                                    showPurchaseView = true
                                     }
                                 }) {
                                     Text(showServiceBusy ? "稍后再试" :

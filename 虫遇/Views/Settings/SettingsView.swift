@@ -120,6 +120,17 @@ struct SettingsView: View {
                         )
                     }
                     
+                    // 屏蔽角色分类
+                    NavigationLink(destination: BlockedCategoriesView()) {
+                        SettingRowView(
+                            icon: "rectangle.stack.badge.minus",
+                            title: "屏蔽角色分类",
+                            subtitle: getBlockedCategoriesCount().map { "已屏蔽\($0)个分类" },
+                            iconColor: iconColors["character"]!,
+                            subtitleColor: .orange
+                        )
+                    }
+                    
                     // 内容偏好设置
                     NavigationLink(destination: ContentPreferencesView()) {
                         SettingRowView(
@@ -198,7 +209,7 @@ struct SettingsView: View {
             .alert(isPresented: $showingAbout) {
                 Alert(
                     title: Text("关于虫遇"),
-                    message: Text("虫遇 \(AppVersionHelper.fullVersion)\n一款让你与历史人物进行对话的应用\n\n© 2024 虫遇团队\n技术支持: li2410669277@gmail.com"),
+                    message: Text("虫遇 \(AppVersionHelper.fullVersion)\n一款让你与历史人物进行对话的应用\n\n© 2024 虫遇团队\n技术支持: li2410669277@gmail.com\n\n备案号：冀ICP备2025136339号-1"),
                     dismissButton: .default(Text("确定"))
                 )
             }
@@ -238,6 +249,18 @@ struct SettingsView: View {
             return nil
         }
         return blockedCharacters.count
+    }
+    
+    /**
+     * 获取已屏蔽分类的数量
+     * @return 已屏蔽分类的数量，如果没有则返回nil
+     */
+    private func getBlockedCategoriesCount() -> Int? {
+        let count = BlockedCategoriesManager.shared.getBlockedCategoriesCount()
+        if count == 0 {
+            return nil
+        }
+        return count
     }
     
 }

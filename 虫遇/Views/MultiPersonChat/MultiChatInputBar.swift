@@ -58,7 +58,7 @@ struct MultiChatInputBar: View {
                         print("MultiChatInputBar - 组件已出现，准备获得焦点")
                         // 使用非常短的延迟，确保 MultiChatKeyboardAdaptive 的监听已准备好
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-                            if !textFieldFocused {
+                        if !textFieldFocused {
                                 print("MultiChatInputBar - 设置焦点，触发键盘")
                                 // 立即设置焦点，不使用动画，让键盘立即弹出
                                 // 键盘高度更新会使用系统键盘的动画参数，自动同步

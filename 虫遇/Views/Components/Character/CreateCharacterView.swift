@@ -44,15 +44,14 @@ struct CreateCharacterView: View {
     @State private var showingQuickCreateHelp = false
     
     // 分类选择
-    @State private var selectedCategory: CharacterCategory = .fictionCharacter
+    @State private var selectedCategory: CharacterCategory = .animeCharacter
     
     // 可选择的角色分类
     private let selectableCategories: [CharacterCategory] = [
         // 历史人物分类
-        .historical, .scientist, .artist, .philosopher, .writer,
+        .historical, .philosopher, .writer,
         // 虚构角色分类
-        .fictionCharacter, .animeCharacter, .gameCharacter, 
-        .movieCharacter, .tvCharacter, .mythCharacter, .vtuber
+        .animeCharacter, .gameCharacter, .filmCharacter, .mythCharacter
     ]
     
     // 时代选项
@@ -511,7 +510,7 @@ struct CreateCharacterView: View {
         4. 简短介绍（100字以内）
         5. 主要成就（用逗号分隔）
         6. 主要作品（用逗号分隔）
-        7. 所属分类（必须是以下之一：历史人物、科学家、艺术家、哲学家、文学家、虚构人物、动漫角色、游戏角色、电影角色、电视剧角色、神话角色、虚拟主播）
+        7. 所属分类（必须是以下之一：历史人物、科学家、艺术家、哲学家、文学世界、虚构人物、动漫角色、游戏角色、电影角色、电视剧角色、神话角色、虚拟主播）
         8. 时代背景（古代、近代、现代、未来、架空世界、动漫世界）
         
         以JSON格式返回，格式如下：
@@ -649,19 +648,14 @@ struct CreateCharacterView: View {
     // 将字符串映射到角色分类
     private func mapStringToCategory(_ categoryString: String) -> CharacterCategory? {
         switch categoryString.lowercased() {
-        case "历史人物": return .historical
-        case "科学家": return .scientist
-        case "艺术家": return .artist
+        case "历史人物", "科学家", "艺术家": return .historical
         case "哲学家": return .philosopher
-        case "文学家": return .writer
-        case "虚构人物": return .fictionCharacter
+        case "文学世界": return .writer
         case "动漫角色": return .animeCharacter
         case "游戏角色": return .gameCharacter
-        case "电影角色": return .movieCharacter
-        case "电视剧角色": return .tvCharacter
+        case "电影角色", "电视剧角色", "影视角色": return .filmCharacter
         case "神话角色": return .mythCharacter
-        case "虚拟主播": return .vtuber
-        default: return .fictionCharacter
+        default: return .animeCharacter
         }
     }
     

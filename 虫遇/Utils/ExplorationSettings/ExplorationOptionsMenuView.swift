@@ -11,6 +11,7 @@ struct ExplorationOptionsMenuView: View {
     var onDislikeCharacter: () -> Void
     var onReport: () -> Void
     var onFollowCharacter: ((Bool) -> Void)? = nil
+    var onDeletePost: (() -> Void)? = nil
     var feedbackGenerator: UIImpactFeedbackGenerator
     
     @State private var isFollowed: Bool = false
@@ -196,6 +197,46 @@ struct ExplorationOptionsMenuView: View {
                             .padding(.bottom, 12)
                         }
                         .contentShape(Rectangle())
+                        
+                        Divider()
+                            .frame(width: 110)
+                            .padding(.vertical, 4)
+                        
+                        // 删除帖子按钮
+                        if let onDeletePost = onDeletePost {
+                            Button(action: {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    isShowing = false
+                                }
+                                
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                    HapticFeedbackManager.shared.menuSelection()
+                                    onDeletePost()
+                                    
+                                    // 显示操作反馈
+                                    ToastManager.shared.showToast(message: "已删除帖子")
+                                }
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.red.opacity(0.8))
+                                        .frame(width: 16, alignment: .center)
+                                    
+                                    Spacer()
+                                    
+                                    Text("删除帖子")
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(.red.opacity(0.8))
+                                        .padding(.trailing, 4)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 12)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
                     }
                     .frame(width: 150)
                     .background(

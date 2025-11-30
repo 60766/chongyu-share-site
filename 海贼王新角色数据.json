@@ -1,0 +1,640 @@
+[
+  {
+    "id": "zoro",
+    "name": "罗罗诺亚·索隆",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，草帽海贼团剑士，三刀流剑客，梦想成为世界第一剑豪",
+    "avatarName": "zoro",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "nami",
+    "name": "娜美",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，草帽海贼团航海士，擅长绘制海图和天气预测",
+    "avatarName": "nami",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "usopp",
+    "name": "乌索普",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，草帽海贼团狙击手，擅长撒谎和狙击，梦想成为勇敢的海上战士",
+    "avatarName": "usopp",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "chopper",
+    "name": "托尼托尼·乔巴",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，草帽海贼团船医，吃了人人果实的驯鹿，梦想成为能治愈所有疾病的医生",
+    "avatarName": "chopper",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "robin",
+    "name": "妮可·罗宾",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，草帽海贼团考古学家，花花果实能力者，梦想找到真正的历史正文",
+    "avatarName": "robin",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "franky",
+    "name": "弗兰奇",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，草帽海贼团船匠，改造人，梦想建造出能到达世界尽头的船",
+    "avatarName": "franky",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "brook",
+    "name": "布鲁克",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，草帽海贼团音乐家，黄泉果实能力者，骷髅，梦想与拉布重逢",
+    "avatarName": "brook",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "jinbe",
+    "name": "甚平",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，草帽海贼团舵手，鱼人族，原七武海，梦想实现鱼人族与人类的和平",
+    "avatarName": "jinbe",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "shanks",
+    "name": "香克斯",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，四皇之一，红发海贼团船长，路飞的引路人，拥有强大的霸王色霸气",
+    "avatarName": "shanks",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "kaido",
+    "name": "凯多",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，原四皇之一，百兽海贼团总督，被称为\"最强生物\"，鱼鱼果实·幻兽种能力者",
+    "avatarName": "kaido",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "big_mom",
+    "name": "夏洛特·玲玲",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，原四皇之一，BIG MOM海贼团船长，魂魂果实能力者",
+    "avatarName": "big_mom",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "whitebeard",
+    "name": "爱德华·纽盖特",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，原四皇之一，白胡子海贼团船长，被称为\"世界最强男人\"，震震果实能力者",
+    "avatarName": "whitebeard",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "blackbeard",
+    "name": "马歇尔·D·蒂奇",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，四皇之一，黑胡子海贼团船长，拥有双果实能力（暗暗果实、震震果实）",
+    "avatarName": "blackbeard",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "mihawk",
+    "name": "乔拉可尔·米霍克",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，原七武海，世界第一剑豪，索隆的最终目标",
+    "avatarName": "mihawk",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "doflamingo",
+    "name": "唐吉诃德·多弗朗明哥",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，原七武海，线线果实能力者，原德雷斯罗萨国王",
+    "avatarName": "doflamingo",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "crocodile",
+    "name": "沙·克洛克达尔",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，原七武海，沙沙果实能力者，原巴洛克工作社社长",
+    "avatarName": "crocodile",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "boa_hancock",
+    "name": "波雅·汉库克",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，原七武海，九蛇海贼团船长，甜甜果实能力者，被称为\"海贼女帝\"",
+    "avatarName": "boa_hancock",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "kuma",
+    "name": "巴索罗米·熊",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，原七武海，肉球果实能力者，革命军干部，后被改造成和平主义者",
+    "avatarName": "kuma",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "law",
+    "name": "特拉法尔加·罗",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，超新星之一，手术果实能力者，心脏海贼团船长，与路飞结盟",
+    "avatarName": "law",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "kid",
+    "name": "尤斯塔斯·基德",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，超新星之一，磁磁果实能力者，基德海贼团船长",
+    "avatarName": "kid",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "akainu",
+    "name": "萨卡斯基",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，海军元帅，赤犬，岩浆果实能力者，坚持\"绝对正义\"",
+    "avatarName": "akainu",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "garp",
+    "name": "蒙奇·D·卡普",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，海军英雄，路飞的爷爷，拥有强大的武装色霸气",
+    "avatarName": "garp",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "ace",
+    "name": "波特卡斯·D·艾斯",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，路飞的义兄，白胡子海贼团二番队队长，烧烧果实能力者",
+    "avatarName": "ace",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "sabo",
+    "name": "萨博",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，路飞的义兄，革命军总参谋长，烧烧果实能力者",
+    "avatarName": "sabo",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "roger",
+    "name": "哥尔·D·罗杰",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，海贼王，罗杰海贼团船长，唯一到达拉夫德鲁的人，开启了大海贼时代",
+    "avatarName": "roger",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "shanks_young",
+    "name": "夏姆洛克",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，红发海贼团副船长，本·贝克曼，拥有强大的见闻色霸气",
+    "avatarName": "shanks_young",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "imu",
+    "name": "伊姆",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，世界政府的最高统治者，虚空王座的主人，拥有决定世界命运的权力",
+    "avatarName": "imu",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "rocks",
+    "name": "洛克斯·D·吉贝克",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，洛克斯海贼团船长，38年前的最强海贼，被罗杰和卡普联手击败",
+    "avatarName": "rocks",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  },
+  {
+    "id": "dragon",
+    "name": "蒙奇·D·龙",
+    "type": "anime",
+    "subtype": "shounen",
+    "era": "现代",
+    "primaryField": "海贼",
+    "briefDescription": "《海贼王》中的角色，革命军首领，路飞的父亲，被称为\"世界最凶恶的罪犯\"，拥有风风果实能力",
+    "avatarName": "dragon",
+    "region": "伟大航路",
+    "contentAffinities": {
+      "古潮新语": 0.7,
+      "穿越吐槽": 0.85,
+      "日常心情": 0.8,
+      "虫洞共鸣": 0.8,
+      "时空记事": 0.75
+    },
+    "relatedCharacterIds": [
+      "luffy",
+      "sanji"
+    ]
+  }
+]

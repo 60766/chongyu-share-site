@@ -376,7 +376,7 @@ class ThoughtJourneyService: ObservableObject {
                     // 自己给自己的动态留言，用更贴心的描述
                     commentInfo += "（在自己的动态下留言：\(String(targetContent.prefix(20)))...）"
                 } else {
-                    commentInfo += "（回复\(targetAuthor)的动态：\(String(targetContent.prefix(20)))...）"
+                commentInfo += "（回复\(targetAuthor)的动态：\(String(targetContent.prefix(20)))...）"
                 }
             }
             if !comment.repliedCharacters.isEmpty {

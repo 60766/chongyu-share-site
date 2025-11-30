@@ -939,28 +939,20 @@ struct MultiChatMergedCardView: View {
     // 获取角色主题色
     private func getCharacterColor(for character: CharacterModel) -> Color {
         switch character.category {
-        case .scientist:
-            return Color(hex: "4A90E2")
+        case .historical:
+            return Color(hex: "4A90E2")  // 历史人物（包含科学家、艺术家）
         case .philosopher:
             return Color(hex: "9A8BB0")
-        case .artist:
-            return Color(hex: "F5A623")
         case .writer:
             return Color(hex: "50E3C2")
         case .animeCharacter:
             return Color(hex: "BD10E0")
         case .gameCharacter:
             return Color(hex: "B8E986")
-        case .movieCharacter:
+        case .filmCharacter:
             return Color(hex: "7ED321")
-        case .tvCharacter:
-            return Color(hex: "F8E71C")
         case .mythCharacter:
             return Color(hex: "417505")
-        case .fictionCharacter:
-            return Color(hex: "9013FE")
-        case .vtuber:
-            return Color(hex: "FF6B9D")
         case .historical:
             return Color(hex: "8B4513")
         case .all:
@@ -1337,28 +1329,20 @@ struct MultiChatShareCardView: View {
     private func getCharacterColor() -> Color {
         // 根据角色类别返回不同的主题色
         switch character.category {
-        case .scientist:
-            return Color(hex: "4A90E2")
+        case .historical:
+            return Color(hex: "4A90E2")  // 历史人物（包含科学家、艺术家）
         case .philosopher:
             return Color(hex: "9A8BB0")
-        case .artist:
-            return Color(hex: "F5A623")
         case .writer:
             return Color(hex: "50E3C2")
         case .animeCharacter:
             return Color(hex: "BD10E0")
         case .gameCharacter:
             return Color(hex: "B8E986")
-        case .movieCharacter:
+        case .filmCharacter:
             return Color(hex: "7ED321")
-        case .tvCharacter:
-            return Color(hex: "F8E71C")
         case .mythCharacter:
             return Color(hex: "417505")
-        case .fictionCharacter:
-            return Color(hex: "9013FE")
-        case .vtuber:
-            return Color(hex: "FF6B9D")
         case .historical:
             return Color(hex: "8B4513")
         case .all:

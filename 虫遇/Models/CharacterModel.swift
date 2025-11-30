@@ -48,42 +48,36 @@ struct CharacterModel: Identifiable, Hashable {
         switch appCharacter.type {
         case "historical":
             switch appCharacter.subtype {
-            case "scientist":
-                self.category = .scientist
+            case "scientist", "artist":
+                // 科学家和艺术家合并到历史人物
+                self.category = .historical
             case "philosopher":
                 self.category = .philosopher
             case "writer":
                 self.category = .writer
-            case "artist":
-                self.category = .artist
             default:
                 self.category = .historical
             }
         case "literary":
             self.category = .writer
-        case "movie":
-            self.category = .movieCharacter
+        case "movie", "tv":
+            self.category = .filmCharacter  // 电影和电视剧都归为影视角色
         case "anime":
             self.category = .animeCharacter
         case "mythological":
             self.category = .mythCharacter
-        case "tv":
-            self.category = .tvCharacter
         case "game":
             self.category = .gameCharacter
-        case "vtuber":
-            self.category = .vtuber
         default:
             // 如果type未知，尝试通过subtype判断
             switch appCharacter.subtype {
-            case "scientist":
-                self.category = .scientist
+            case "scientist", "artist":
+                // 科学家和艺术家合并到历史人物
+                self.category = .historical
             case "philosopher":
                 self.category = .philosopher
             case "writer":
                 self.category = .writer
-            case "artist":
-                self.category = .artist
             default:
                 self.category = .historical
             }
@@ -119,7 +113,7 @@ struct CharacterModel: Identifiable, Hashable {
             era: "1879-1955",
             profession: "物理学家",
             bio: "相对论创始人，诺贝尔物理学奖获得者，20世纪最伟大的物理学家之一。",
-            category: .scientist,
+            category: .historical,
             famousQuotes: ["想象力比知识更重要", "我们不能用制造问题的思维方式来解决问题"],
             characterID: "einstein"
         ),
@@ -141,7 +135,7 @@ struct CharacterModel: Identifiable, Hashable {
             era: "1452-1519",
             profession: "艺术家、科学家",
             bio: "文艺复兴时期的天才，在绘画、雕塑、建筑、科学、音乐、数学等多个领域都有卓越成就。",
-            category: .artist,
+            category: .historical,
             famousQuotes: ["简单是最终的复杂", "艺术永远不会完成，只会被放弃"],
             characterID: "davinci"
         ),
@@ -163,7 +157,7 @@ struct CharacterModel: Identifiable, Hashable {
             era: "1867-1934",
             profession: "物理学家、化学家",
             bio: "首位获得诺贝尔奖的女性，也是唯一一位在两个不同领域获得诺贝尔奖的女性科学家。",
-            category: .scientist,
+            category: .historical,
             famousQuotes: ["我们不应该害怕任何事，只应该去理解", "你永远不会意识到自己的强大，直到强大成为唯一的选择"],
             characterID: "curie"
         )
@@ -228,7 +222,7 @@ struct CharacterModel: Identifiable, Hashable {
             era: "维多利亚时代",
             profession: "咨询侦探",
             bio: "世界上最著名的侦探，以敏锐的观察力和推理能力解决各种复杂案件。",
-            category: .fictionCharacter,
+            category: .filmCharacter,
             universe: "福尔摩斯系列",
             famousQuotes: ["基本的，我亲爱的华生", "排除所有不可能的，剩下的无论多么难以置信，那就是真相"]
         ),
@@ -239,7 +233,7 @@ struct CharacterModel: Identifiable, Hashable {
             era: "现代",
             profession: "天才发明家/超级英雄",
             bio: "托尼·斯塔克，斯塔克工业的CEO，凭借自己的天才头脑和钢铁战衣成为超级英雄。",
-            category: .fictionCharacter,
+            category: .filmCharacter,
             universe: "漫威电影宇宙",
             famousQuotes: ["我就是钢铁侠", "有时候，你得先跑起来，才知道自己要去哪"]
         )
@@ -250,8 +244,20 @@ struct CharacterModel: Identifiable, Hashable {
         return sampleCharacters + virtualCharacters
     }
     
-    // 从JSON文件加载所有角色
+    // 从JSON文件加载所有角色（应用分类过滤，用于帖子生成）
     static func getAllCharacters() -> [CharacterModel] {
+        // 应用分类过滤（如果用户屏蔽了某些分类）
+        let allCharacters = loadAllCharactersFromJSON()
+        return BlockedCategoriesManager.shared.filterCharacters(allCharacters)
+    }
+    
+    // 从JSON文件加载所有角色（不应用过滤，用于探索页面显示）
+    static func loadAllCharactersWithoutFilter() -> [CharacterModel] {
+        return loadAllCharactersFromJSON()
+    }
+    
+    // 从JSON文件加载所有角色（不应用过滤）
+    private static func loadAllCharactersFromJSON() -> [CharacterModel] {
 
         
         // 尝试加载characters.json

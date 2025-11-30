@@ -137,6 +137,28 @@ struct PrivacySettingsView: View {
     }
                 .font(.footnote.weight(.semibold))
             }
+            
+            // 备案信息
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "checkmark.shield.fill")
+                        .foregroundColor(.blue)
+                        .frame(width: 24)
+                    Text("备案信息")
+                        .foregroundColor(.primary)
+                }
+                
+                HStack {
+                    Spacer().frame(width: 32)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Link("冀ICP备2025136339号-1", destination: URL(string: "https://beian.miit.gov.cn/")!)
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
+                    Spacer()
+                }
+            }
+            .padding(.vertical, 4)
         }
     }
 }

@@ -187,6 +187,18 @@ class VirtualCharacterLikeService {
      * @param userComment 用户评论内容
      */
     private func sendLikeNotification(characterId: String, postId: String, userComment: String? = nil) {
+        // 🔧 检查帖子是否是虚拟角色发布的
+        // 如果是虚拟角色发布的帖子，且是邀请角色评论后的点赞，则不发送通知
+        if let post = PostViewModel.shared.posts.first(where: { $0.id.uuidString == postId }) {
+            // 判断帖子是否是虚拟角色发布的（characterID != nil 且 username 不是"当前用户"）
+            let isVirtualCharacterPost = post.characterID != nil && post.username != "当前用户"
+            
+            if isVirtualCharacterPost {
+                print("🚫 帖子\(postId)是虚拟角色发布的，邀请角色评论后的点赞不发送通知")
+                return
+            }
+        }
+        
         // 获取角色信息
         guard let characterName = CharacterDataManager.shared.getName(for: characterId) else {
             print("❌ 无法获取角色\(characterId)的名称")
@@ -201,7 +213,7 @@ class VirtualCharacterLikeService {
             postTitle = String(post.content.prefix(42))
         }
         
-        // 创建点赞通知
+        // 创建点赞通知（只有用户自己的帖子被点赞才通知）
         NotificationService.shared.createLikeNotification(
             characterId: characterId,
             characterName: characterName,
@@ -265,6 +277,18 @@ class VirtualCharacterLikeService {
      * @param userPostContent 用户帖子内容
      */
     private func sendPostLikeNotification(characterId: String, postId: String, userPostContent: String? = nil) {
+        // 🔧 检查帖子是否是虚拟角色发布的
+        // 只有用户自己的帖子被点赞才通知，虚拟角色发布的帖子被点赞不通知
+        if let post = PostViewModel.shared.posts.first(where: { $0.id.uuidString == postId }) {
+            // 判断帖子是否是虚拟角色发布的（characterID != nil 且 username 不是"当前用户"）
+            let isVirtualCharacterPost = post.characterID != nil && post.username != "当前用户"
+            
+            if isVirtualCharacterPost {
+                print("🚫 帖子\(postId)是虚拟角色发布的，虚拟角色点赞不发送通知")
+                return
+            }
+        }
+        
         // 获取角色信息
         guard let characterName = CharacterDataManager.shared.getName(for: characterId) else {
             print("❌ 无法获取角色\(characterId)的名称")
@@ -281,7 +305,7 @@ class VirtualCharacterLikeService {
             postTitle = String(post.content.prefix(42))
         }
         
-        // 创建帖子点赞通知
+        // 创建帖子点赞通知（只有用户自己的帖子被点赞才通知）
         NotificationService.shared.createLikeNotification(
             characterId: characterId,
             characterName: characterName,

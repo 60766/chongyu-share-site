@@ -84,11 +84,11 @@ struct ExploreCharacterCardView: View {
                         ForEach([character.category.rawValue], id: \.self) { tag in
                             Text(tag)
                                 .font(.system(size: 12))
-                                .foregroundColor(character.category == .scientist ? .green : .primaryColor)
+                                .foregroundColor(.primaryColor)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                                 .background(
-                                    (character.category == .scientist ? Color.green : Color.primaryColor)
+                                    Color.primaryColor
                                         .opacity(0.1)
                                 )
                                 .cornerRadius(12)
