@@ -643,7 +643,8 @@ struct MultiPersonChatSetupView: View {
     
     /// 加载所有角色
     private func loadCharacters() {
-        let characters = CharacterModel.getAllCharacters() // 改为let
+        // 多人聊天不受分类屏蔽影响，使用不过滤的版本
+        let characters = CharacterModel.loadAllCharactersWithoutFilter()
         // 后续支持加载用户创建的角色
         self.allCharacters = characters
     }
@@ -990,8 +991,9 @@ struct HistoricalChatView: View {
             historicalSession = session
             
             // 根据 participantIds 加载角色信息
+            // 多人聊天不受分类屏蔽影响，使用不过滤的版本
             sessionCharacters = session.participantIds.compactMap { characterId in
-                CharacterModel.getAllCharacters().first { $0.id == characterId }
+                CharacterModel.loadAllCharactersWithoutFilter().first { $0.id == characterId }
             }
             
             print("✅ 加载历史会话信息：")

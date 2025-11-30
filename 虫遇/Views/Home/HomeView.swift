@@ -605,8 +605,8 @@ struct VirtualCharacterPickerView: View {
     private func loadAllCharacters() {
         isLoading = true
         
-        // 使用CharacterModel的静态方法加载所有角色
-        allCharacters = CharacterModel.getAllCharacters()
+        // 私聊功能不受分类屏蔽影响，使用不过滤的版本
+        allCharacters = CharacterModel.loadAllCharactersWithoutFilter()
         isLoading = false
     }
 }
@@ -2120,8 +2120,8 @@ showCharacterPicker = true
                 return conversation.characterId
             }
             
-            // 🚀 使用与探索页面相同的数据源（静默缓存）
-            let allCharacters = CharacterModel.getAllCharacters()
+            // 🚀 私聊功能不受分类屏蔽影响，使用不过滤的版本
+            let allCharacters = CharacterModel.loadAllCharactersWithoutFilter()
             
             let recentCharacters = uniqueCharacterIds.compactMap { characterId -> CharacterModel? in
                 // 第一性原理：尝试多种匹配方式，找到就返回

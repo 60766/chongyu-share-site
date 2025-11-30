@@ -108,7 +108,8 @@ struct CommentsContainerView: View {
                 CommentsListView(
                     comments: commentsWithReplies,
                     onReply: onReply,
-                    onLike: onLike
+                    onLike: onLike,
+                    onAvatarTap: { _ in }
                 )
                 .padding(.vertical, 8)
                 

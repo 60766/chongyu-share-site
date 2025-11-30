@@ -2218,20 +2218,58 @@ class PostViewModel: ObservableObject {
      * 为内容项生成评论
      */
     func generateCommentsForContentItem(item: ContentItem, count: Int) async throws -> [DetailedCommentModel] {
-        // 获取随机角色来做评论
-        let characters = CharacterSystem.shared.getRandomCharacters(count: count, excludeID: item.characterID)
+        // 获取随机角色来做评论（使用CharacterModel以应用分类过滤）
+        let allCharacters = CharacterModel.getAllCharacters() // 已应用分类过滤
+        var availableCharacters = allCharacters.filter { $0.id != item.characterID }
+        availableCharacters = Array(availableCharacters.shuffled().prefix(count))
         
         var comments: [DetailedCommentModel] = []
-        for character in characters {
+        for character in availableCharacters {
+            // 将CharacterCategory映射到CharacterType
+            let characterType: CharacterSystem.CharacterType = {
+                switch character.category {
+                case .historical:
+                    return .historical
+                case .philosopher:
+                    return .historical // CharacterType没有philosopher，使用historical
+                case .writer:
+                    return .literary
+                case .animeCharacter:
+                    return .anime
+                case .gameCharacter:
+                    return .game
+                case .filmCharacter:
+                    return .movie // CharacterType没有filmCharacter，使用movie
+                case .mythCharacter:
+                    return .mythological
+                case .all:
+                    return .historical
+                }
+            }()
+            
+            // 将CharacterModel转换为CharacterIdentity用于API调用
+            let characterIdentity = CharacterSystem.CharacterIdentity(
+                id: character.id,
+                name: character.name,
+                type: characterType,
+                era: character.era,
+                primaryField: character.profession,
+                briefDescription: character.bio,
+                avatarName: character.avatar,
+                region: "",
+                contentAffinities: [:],
+                subtype: nil
+            )
+            
             let commentText = await ContentGeneratorService.shared.generateQuickComment(
                 forContent: item.content,
-                byCharacter: character
+                byCharacter: characterIdentity
             )
             
             let comment = DetailedCommentModel(
                 id: UUID(),
                 username: character.name,
-                userAvatar: character.avatarName,
+                userAvatar: character.avatar,
                 content: commentText,
                 datePosted: Date().addingTimeInterval(-Double.random(in: 600...3600)),
                 isVirtualCharacter: true,

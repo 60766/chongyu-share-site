@@ -44,6 +44,7 @@ struct CommentsListView: View {
     // 回调函数
     let onReply: ((DetailedCommentModel) -> Void)?
     let onLike: ((DetailedCommentModel) -> Void)?
+    let onAvatarTap: ((DetailedCommentModel) -> Void)? // 头像点击回调
     
     // 状态变量
     @State private var likedComments = Set<UUID>()
@@ -131,6 +132,9 @@ struct CommentsListView: View {
                                 expandedComments: $expandedComments,
                                 replyAction: handleReply,
                                 onLike: handleLike,
+                                onAvatarTap: { comment in
+                                    onAvatarTap?(comment)
+                                },
                                 commentsWithWaveAnimation: $commentsWithWaveAnimation
                             )
                             .id(comment.id)
@@ -1054,6 +1058,7 @@ struct CommentThreadView: View {
     @Binding var expandedComments: Set<UUID> // 接收绑定的展开状态
     let replyAction: (UUID) -> Void
     let onLike: (UUID) -> Void
+    let onAvatarTap: ((DetailedCommentModel) -> Void)? // 头像点击回调
     
     // 添加对动画状态的绑定
     @Binding var commentsWithWaveAnimation: Set<UUID>
@@ -1081,6 +1086,9 @@ struct CommentThreadView: View {
                 },
                 onLike: {
                     toggleLike(for: comment.id)
+                },
+                onAvatarTap: {
+                    onAvatarTap?(comment)
                 }
             )
             
@@ -1124,6 +1132,9 @@ struct CommentThreadView: View {
                             onToggleExpand: nil,
                             onLike: {
                                 toggleLike(for: reply.id)
+                            },
+                            onAvatarTap: {
+                                onAvatarTap?(reply)
                             }
                         )
                         .transition(.opacity) // 添加过渡动画
@@ -1307,6 +1318,7 @@ struct CommentItemView: View {
     var isExpanded: Bool = false
     var onToggleExpand: (() -> Void)? = nil
     var onLike: (() -> Void)? = nil
+    var onAvatarTap: (() -> Void)? = nil // 头像点击回调
     
     // 修改判断是否是当前用户的评论的方式
     private var isCurrentUserComment: Bool {
@@ -1327,32 +1339,46 @@ struct CommentItemView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 14) { // 增加水平间距
                 // 用户头像 - 根据评论类型使用不同数据源
-                Avatar(url: {
-                    if comment.isVirtualCharacter {
-                        return comment.characterID ?? comment.userAvatar
-                    } else if comment.isCurrentUser {
-                        return UserProfileManager.shared.getCurrentAvatarURL()
-                    } else {
-                        return comment.userAvatar
+                // 如果是虚拟角色，头像可点击进入角色详情页
+                if comment.isVirtualCharacter, let characterID = comment.characterID {
+                    Button(action: {
+                        onAvatarTap?()
+                    }) {
+                        Avatar(url: {
+                            return comment.characterID ?? comment.userAvatar
+                        }(), 
+                        name: {
+                            return comment.username
+                        }(),
+                              category: getCharacterTag(for: characterID),
+                              size: 38)
+                            .frame(width: 38, height: 38)
                     }
-                }(), 
-                name: {
-                    if comment.isCurrentUser {
-                        return UserProfileManager.shared.getCurrentUsername()
-                    } else {
-                        return comment.username
-                    }
-                }(),
-                      category: comment.characterID != nil ? getCharacterTag(for: comment.characterID!) : "",
-                      size: 38)
-                    .frame(width: 38, height: 38)
-                    .onAppear {
-                        if comment.isVirtualCharacter {
-                            print("📱 评论头像 - 角色ID: \(comment.characterID ?? "nil"), 传递给Avatar的URL: \(comment.characterID ?? comment.userAvatar)")
-                        } else if comment.isCurrentUser {
-                            print("📱 评论头像 - 当前用户: \(UserProfileManager.shared.getCurrentUsername())")
+                    .buttonStyle(PlainButtonStyle())
+                } else {
+                    Avatar(url: {
+                        if comment.isCurrentUser {
+                            return UserProfileManager.shared.getCurrentAvatarURL()
+                        } else {
+                            return comment.userAvatar
                         }
-                    }
+                    }(), 
+                    name: {
+                        if comment.isCurrentUser {
+                            return UserProfileManager.shared.getCurrentUsername()
+                        } else {
+                            return comment.username
+                        }
+                    }(),
+                          category: comment.characterID != nil ? getCharacterTag(for: comment.characterID!) : "",
+                          size: 38)
+                        .frame(width: 38, height: 38)
+                        .onAppear {
+                            if comment.isCurrentUser {
+                                print("📱 评论头像 - 当前用户: \(UserProfileManager.shared.getCurrentUsername())")
+                            }
+                        }
+                }
                 
                 VStack(alignment: .leading, spacing: 6) { // 增加垂直间距
                     // 用户信息行
@@ -1638,7 +1664,8 @@ struct CommentsListView_Previews: PreviewProvider {
         return CommentsListView(
             comments: [commentWithReplies],
             onReply: { _ in },
-            onLike: { _ in }
+            onLike: { _ in },
+            onAvatarTap: { _ in }
         )
         .padding()
         .previewLayout(.fixed(width: 375, height: 600))
@@ -1663,6 +1690,7 @@ struct CommentThreadView_Previews: PreviewProvider {
             expandedComments: .constant(Set<UUID>()),  // 添加展开状态绑定
             replyAction: { _ in },
             onLike: { _ in },
+            onAvatarTap: { _ in },
             commentsWithWaveAnimation: .constant(Set<UUID>())  // 添加动画状态绑定
         )
         .padding()

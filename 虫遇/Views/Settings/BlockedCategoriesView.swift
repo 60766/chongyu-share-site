@@ -182,7 +182,8 @@ struct BlockedCategoriesView: View {
      * 获取分类的角色数量
      */
     private func getCharacterCount(for category: CharacterCategory) -> Int {
-        let allCharacters = CharacterModel.getAllCharacters()
+        // 显示所有角色数量，不受分类屏蔽影响
+        let allCharacters = CharacterModel.loadAllCharactersWithoutFilter()
         return allCharacters.filter { $0.category == category }.count
     }
 }

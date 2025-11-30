@@ -216,6 +216,9 @@ struct FullscreenPostDetailView: View {
     // 黑洞中心位置状态
     @State private var blackHoleCenterPosition: CGPoint? = nil
     
+    // 角色详情页导航状态
+    @State private var navigateToCharacterDetail: CharacterModel? = nil
+    
     // 添加虫洞共鸣的状态变量
     @State private var selectedSituation: String = "寻找答案"
     @State private var selectedExpectation: String = "新视角"
@@ -681,9 +684,10 @@ struct FullscreenPostDetailView: View {
             )
             
             // 添加水平滑动手势 - 使用高优先级手势以减少冲突
-            .gesture(
+            // 使用 simultaneousGesture 而不是 gesture，避免拦截按钮点击
+            .simultaneousGesture(
                 // 优化最小滑动距离，提高水平滑动识别精度
-                DragGesture(minimumDistance: 8)
+                DragGesture(minimumDistance: 20) // 增加 minimumDistance，避免拦截点击事件
                     .onChanged { value in
                         // 如果正在过渡动画中，忽略所有手势
                         guard !isTransitioning else { return }
@@ -694,7 +698,7 @@ struct FullscreenPostDetailView: View {
                         // 增强水平滑动识别条件，减少与垂直滚动和图片点击的冲突
                         let horizontalDistance = abs(value.translation.width)
                         let verticalDistance = abs(value.translation.height)
-                        let isHorizontalSwipe = horizontalDistance > verticalDistance * 1.2 && horizontalDistance > 12
+                        let isHorizontalSwipe = horizontalDistance > verticalDistance * 1.2 && horizontalDistance > 20 // 增加阈值，避免拦截点击
                         
                         if isHorizontalSwipe {
                             // 使用平滑函数计算拖动偏移量，边缘阻尼效应
@@ -1796,6 +1800,86 @@ struct FullscreenPostDetailView: View {
                 }
             }
         }
+        // 添加角色详情页导航
+        .fullScreenCover(item: $navigateToCharacterDetail) { character in
+            NavigationView {
+                CharacterDetailView(character: convertToCharacter(character))
+            }
+            .onAppear {
+                // 隐藏返回按钮
+                systemBackButtonWindow?.isHidden = true
+            }
+            .onDisappear {
+                // 显示返回按钮
+                systemBackButtonWindow?.isHidden = false
+            }
+        }
+        .onChange(of: navigateToCharacterDetail) { oldValue, newValue in
+            // 当角色详情页状态变化时，控制返回按钮的显示/隐藏
+            if newValue != nil {
+                // 正在显示角色详情页，隐藏返回按钮
+                systemBackButtonWindow?.isHidden = true
+            } else {
+                // 角色详情页已关闭，显示返回按钮
+                systemBackButtonWindow?.isHidden = false
+            }
+        }
+    }
+    
+    // MARK: - 角色详情页导航辅助函数
+    
+    /// 根据角色ID或用户名查找角色
+    private func findCharacterModel(characterID: String?, username: String?) -> CharacterModel? {
+        let allCharacters = CharacterModel.loadAllCharactersWithoutFilter()
+        
+        // 优先使用 characterID 查找
+        if let characterID = characterID {
+            if let character = allCharacters.first(where: { $0.id == characterID || $0.characterID == characterID }) {
+                return character
+            }
+        }
+        
+        // 如果 characterID 找不到，使用 username 查找
+        if let username = username {
+            if let character = allCharacters.first(where: { $0.name == username }) {
+                return character
+            }
+        }
+        
+        return nil
+    }
+    
+    /// 转换 CharacterModel 为 Character（用于详情页）
+    private func convertToCharacter(_ characterModel: CharacterModel) -> Character {
+        let followManager = FollowManager.shared
+        return Character(
+            id: characterModel.id,
+            name: characterModel.name,
+            introduction: characterModel.bio,
+            field: characterModel.category.rawValue,
+            birthYear: characterModel.era,
+            deathYear: "",
+            avatarUrl: characterModel.avatar,
+            eraTag: characterModel.era,
+            achievements: [characterModel.profession],
+            mainWorks: [],
+            keyThoughts: [],
+            followerCount: Int.random(in: 1000...5000),
+            interactionCount: Int.random(in: 5000...15000),
+            rating: Double.random(in: 4.0...5.0),
+            isFavorited: followManager.isFollowing(characterModel.name)
+        )
+    }
+    
+    /// 检查帖子是否是虚拟角色发布的
+    private var isPostByVirtualCharacter: Bool {
+        let post = viewModel.post
+        // 判断帖子是否是虚拟角色发布的（characterID != nil 且 username 不是"当前用户"）
+        // 简化判断：只要有 characterID 就认为是虚拟角色
+        if let characterID = post.characterID, !characterID.isEmpty {
+            return post.username != "当前用户"
+        }
+        return false
     }
     
     // MARK: - 子视图组件
@@ -1990,6 +2074,7 @@ struct FullscreenPostDetailView: View {
         VStack(spacing: 0) {
             // 用户头像和信息区域
             makeUserInfoSection()
+                .zIndex(10) // 确保用户信息区域在最上层，不被其他手势拦截
             
             // 帖子内容区域
             makePostContentSection()
@@ -2000,9 +2085,31 @@ struct FullscreenPostDetailView: View {
     
     // 用户头像和信息区域
     private func makeUserInfoSection() -> some View {
-        HStack(spacing: 12) {
+        // 计算是否是虚拟角色
+        // 即使 characterID 是 nil，也尝试通过 username 查找角色
+        let isNotCurrentUser = viewModel.post.username != "当前用户"
+        
+        // 尝试通过 username 查找角色（即使 characterID 是 nil）
+        let allCharacters = CharacterModel.loadAllCharactersWithoutFilter()
+        let foundCharacter = allCharacters.first { $0.name == viewModel.post.username }
+        let isVirtualCharacter = isNotCurrentUser && foundCharacter != nil
+        
+        return HStack(spacing: 12) {
             // 头像 - 使用我们统一的Avatar组件
-            Avatar(url: viewModel.post.userAvatar, size: 40)
+            // 如果是虚拟角色发布的帖子，头像可点击进入角色详情页
+            // 使用与评论中完全相同的方式：Button + PlainButtonStyle + frame
+            if isVirtualCharacter, let character = foundCharacter {
+                Button(action: {
+                    // 直接使用找到的角色
+                    navigateToCharacterDetail = character
+                }) {
+                    Avatar(url: viewModel.post.userAvatar, size: 40)
+                        .frame(width: 40, height: 40)
+                }
+                .buttonStyle(PlainButtonStyle())
+            } else {
+                Avatar(url: viewModel.post.userAvatar, size: 40)
+            }
             
             // 用户名和时间
             VStack(alignment: .leading, spacing: 4) {
@@ -2487,6 +2594,17 @@ struct FullscreenPostDetailView: View {
                         name: NSNotification.Name("MaintainScrollPosition"),
                         object: nil
                     )
+                },
+                onAvatarTap: { comment in
+                    // 如果是虚拟角色，查找角色并导航到详情页
+                    if comment.isVirtualCharacter, let characterID = comment.characterID {
+                        if let characterModel = findCharacterModel(
+                            characterID: characterID,
+                            username: comment.username
+                        ) {
+                            navigateToCharacterDetail = characterModel
+                        }
+                    }
                 }
             )
             // .id("comments-list-\(viewModel.commentsRefreshTrigger)") // 已移除，使用SwiftUI的自然更新机制
@@ -4207,6 +4325,4 @@ private struct SparkleIconView: View {
             }
         }
     }
-    
-
 }

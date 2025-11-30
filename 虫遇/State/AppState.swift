@@ -70,7 +70,8 @@ class AppState: ObservableObject {
     func loadCharacters(force: Bool = false) {
         if shouldLoadData(forKey: "characters", force: force) {
             print("🎭 AppState 正在加载角色数据...")
-            self.characters = CharacterModel.getAllCharacters()
+            // AppState用于全局状态，不受分类屏蔽影响，使用不过滤的版本
+            self.characters = CharacterModel.loadAllCharactersWithoutFilter()
             self.lastLoadTime["characters"] = Date()
             print("✅ AppState 角色数据加载完成，共 \(self.characters.count) 个角色。")
         }

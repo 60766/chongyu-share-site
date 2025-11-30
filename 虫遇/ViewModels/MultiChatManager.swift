@@ -517,8 +517,9 @@ class MultiChatManager: ObservableObject {
             // 🔧 设置角色数据 - 从参与者ID加载角色信息
             if characters.isEmpty {
                 // 如果没有传入角色数据，从会话的participantIds重建角色列表
+                // 多人聊天不受分类屏蔽影响，使用不过滤的版本
                 self.characters = session.participantIds.compactMap { characterId in
-                    CharacterModel.getAllCharacters().first { $0.id == characterId }
+                    CharacterModel.loadAllCharactersWithoutFilter().first { $0.id == characterId }
                 }
                 print("✅ 从会话重建角色列表：\(self.characters.map { $0.name }.joined(separator: ", "))")
             } else {

@@ -61,7 +61,8 @@ struct CommentManagerView: View {
                         }
                         // 调用管理器的点赞方法（如果有）
                         manager.currentPost.likeComment(commentId: comment.id)
-                    }
+                    },
+                    onAvatarTap: { _ in }
                 )
                 
                 // 添加底部空间，避免评论被输入框遮挡

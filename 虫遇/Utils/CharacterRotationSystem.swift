@@ -104,15 +104,57 @@ class CharacterRotationSystem {
     /**
      * 刷新全部角色ID缓存
      * 当角色库更新时调用此方法
+     * 注意：帖子生成应该应用分类过滤，所以使用CharacterModel.getAllCharacters()
      */
     func refreshAllCharacterIds() {
-        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        // 使用CharacterModel以应用分类过滤（用于帖子生成）
+        let allCharacters = CharacterModel.getAllCharacters()
         allCharacterIds = Set(allCharacters.map { $0.id })
         
         // 如果发现之前未记录的角色，在严格轮换模式下需要重置周期
         if currentMode == .strictRotation && !allCharacterIds.isSubset(of: currentCycleUsedIds) {
             startNewCycle()
         }
+    }
+    
+    /**
+     * 将CharacterModel转换为CharacterIdentity
+     */
+    private func convertToCharacterIdentity(_ model: CharacterModel) -> CharacterSystem.CharacterIdentity {
+        // 将CharacterCategory映射到CharacterType
+        let characterType: CharacterSystem.CharacterType = {
+            switch model.category {
+            case .historical:
+                return .historical
+            case .philosopher:
+                return .historical // CharacterType没有philosopher，使用historical
+            case .writer:
+                return .literary
+            case .animeCharacter:
+                return .anime
+            case .gameCharacter:
+                return .game
+            case .filmCharacter:
+                return .movie // CharacterType没有filmCharacter，使用movie
+            case .mythCharacter:
+                return .mythological
+            case .all:
+                return .historical
+            }
+        }()
+        
+        return CharacterSystem.CharacterIdentity(
+            id: model.id,
+            name: model.name,
+            type: characterType,
+            era: model.era,
+            primaryField: model.profession,
+            briefDescription: model.bio,
+            avatarName: model.avatar,
+            region: "",
+            contentAffinities: [:],
+            subtype: nil
+        )
     }
     
     /**
@@ -218,7 +260,9 @@ class CharacterRotationSystem {
      * 确保所有角色获得平等的曝光机会，同时考虑角色类型的均衡性
      */
     func getBalancedCharacters(count: Int) -> [CharacterSystem.CharacterIdentity] {
-        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        // 使用CharacterModel以应用分类过滤（用于帖子生成）
+        let allCharacterModels = CharacterModel.getAllCharacters()
+        let allCharacters = allCharacterModels.map { convertToCharacterIdentity($0) }
         var result: [CharacterSystem.CharacterIdentity] = []
         
         // 如果是一个新的生成会话，清除当前选择
