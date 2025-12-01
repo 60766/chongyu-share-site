@@ -1193,7 +1193,7 @@ struct ChatMessageBubbleView: View {
                 HStack(alignment: .top, spacing: 8) {
                     Spacer()
                     
-                    // 用户消息气泡
+                    // 用户消息气泡（支持长按复制）
                     Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                         .font(.system(size: 15))
                         .lineSpacing(5)
@@ -1228,6 +1228,17 @@ struct ChatMessageBubbleView: View {
                         )
                         .shadow(color: Color(hex: "C7C4FF").opacity(0.25), radius: 4, x: 0, y: 2)
                         .padding(.top, 8)
+                        .contentShape(Rectangle())
+                        .onLongPressGesture {
+                            UIPasteboard.general.string = message.content
+                            let generator = UINotificationFeedbackGenerator()
+                            generator.notificationOccurred(.success)
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ShowToast"),
+                                object: nil,
+                                userInfo: ["message": "已复制消息内容"]
+                            )
+                        }
                     
                     // 用户头像
                     ZStack {
@@ -1341,6 +1352,19 @@ struct ChatMessageBubbleView: View {
                                 )
                         )
                         .shadow(color: Color(hex: "E8E3F8").opacity(0.15), radius: 2, x: 0, y: 1)
+                        .contentShape(Rectangle())
+                        .onLongPressGesture {
+                            // 仅在非等待消息时允许复制
+                            guard !isWaitingMessage else { return }
+                            UIPasteboard.general.string = message.content
+                            let generator = UINotificationFeedbackGenerator()
+                            generator.notificationOccurred(.success)
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ShowToast"),
+                                object: nil,
+                                userInfo: ["message": "已复制消息内容"]
+                            )
+                        }
                     }
                     .padding(.leading, 4)
                     .padding(.top, 8)

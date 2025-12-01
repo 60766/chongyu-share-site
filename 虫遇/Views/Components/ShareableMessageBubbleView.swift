@@ -58,7 +58,7 @@ struct ShareableMessageBubbleView: View {
                 HStack(alignment: .top, spacing: 8) {
                     Spacer()
                     
-                    // 用户消息气泡
+                    // 用户消息气泡（仅文本区域支持长按复制）
                     Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                         .font(.system(size: 15))
                         .lineSpacing(5)
@@ -94,6 +94,21 @@ struct ShareableMessageBubbleView: View {
                                     )
                                 )
                         )
+                        .contentShape(Rectangle())
+                        .contextMenu {
+                            Button {
+                                UIPasteboard.general.string = message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                                let generator = UINotificationFeedbackGenerator()
+                                generator.notificationOccurred(.success)
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("ShowToast"),
+                                    object: nil,
+                                    userInfo: ["message": "已复制消息内容"]
+                                )
+                            } label: {
+                                Label("复制消息内容", systemImage: "doc.on.doc")
+                            }
+                        }
                     
                     // 用户头像 - 使用统一的Avatar组件和UserProfileManager数据
                     Avatar(
@@ -167,6 +182,20 @@ struct ShareableMessageBubbleView: View {
                                     .padding(.horizontal, 15)
                                     .padding(.vertical, 8)
                                     .foregroundColor(.primary)
+                                    .contextMenu {
+                                        Button {
+                                            UIPasteboard.general.string = message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                                            let generator = UINotificationFeedbackGenerator()
+                                            generator.notificationOccurred(.success)
+                                            NotificationCenter.default.post(
+                                                name: NSNotification.Name("ShowToast"),
+                                                object: nil,
+                                                userInfo: ["message": "已复制消息内容"]
+                                            )
+                                        } label: {
+                                            Label("复制消息内容", systemImage: "doc.on.doc")
+                                        }
+                                    }
                             }
                         }
                         .background(
@@ -178,6 +207,7 @@ struct ShareableMessageBubbleView: View {
                                 )
                                 .shadow(color: Color.black.opacity(0.04), radius: 1, x: 0, y: 0.5)
                         )
+                        .contentShape(Rectangle())
                         
                         // 消息状态指示器
                         if message.isFromUser {

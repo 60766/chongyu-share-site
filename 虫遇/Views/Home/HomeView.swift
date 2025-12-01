@@ -2216,12 +2216,12 @@ showCharacterPicker = true
     // 角色卡片按钮组件 - 使用正确的Avatar组件
     struct CharacterCardButton: View {
         let character: CharacterModel
-        @State private var showCharacterDetail: Bool = false
+        @State private var showChatView: Bool = false
         @ObservedObject private var tabBarManager = TabBarManager.shared
         
         var body: some View {
             Button(action: {
-                showCharacterDetail = true
+                showChatView = true
             }) {
                 VStack(spacing: 4) {
                     // 使用与PostCardView相同的Avatar组件
@@ -2243,25 +2243,28 @@ showCharacterPicker = true
                 .frame(width: 50)
             }
             .buttonStyle(PlainButtonStyle())
-            .fullScreenCover(isPresented: $showCharacterDetail) {
-                NavigationView {
-                    CharacterDetailView(character: convertToCharacter(character))
-                }
+            .fullScreenCover(isPresented: $showChatView) {
+                ChatView(character: convertToCYChatCharacter(character))
             }
         }
         
-        // 简化的角色转换
-        private func convertToCharacter(_ characterModel: CharacterModel) -> Character {
-            return Character(
-                id: characterModel.id,
+        // 将 CharacterModel 转换为 CYChatCharacter
+        private func convertToCYChatCharacter(_ characterModel: CharacterModel) -> CYChatCharacter {
+            return CYChatCharacter(
+                id: characterModel.characterID ?? characterModel.id,
                 name: characterModel.name,
                 introduction: characterModel.bio,
                 field: characterModel.profession,
                 birthYear: characterModel.era,
+                deathYear: "",
                 avatarUrl: characterModel.avatar,
-                achievements: [],
+                eraTag: characterModel.era,
+                achievements: characterModel.profession.components(separatedBy: CharacterSet(charactersIn: "，、")).filter { !$0.isEmpty },
                 mainWorks: [],
-                keyThoughts: []
+                keyThoughts: [],
+                followerCount: 0,
+                interactionCount: 0,
+                rating: 4.5
             )
         }
     }

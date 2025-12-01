@@ -531,7 +531,7 @@ struct MultiPersonChatView: View {
         }
     }
     
-    // 用户消息视图
+    // 用户消息视图（支持长按复制）
     private func userMessageView(message: ChatMessage) -> some View {
         HStack(alignment: .top, spacing: 8) { // 减小间距从10到8
             Spacer()
@@ -552,6 +552,21 @@ struct MultiPersonChatView: View {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .fill(Color(hex: "A78DC7")) // 使用更淡的紫色
                     )
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let generator = UINotificationFeedbackGenerator()
+                            generator.notificationOccurred(.success)
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ShowToast"),
+                                object: nil,
+                                userInfo: ["message": "已复制消息内容"]
+                            )
+                        } label: {
+                            Label("复制消息内容", systemImage: "doc.on.doc")
+                        }
+                    }
             }
             
             Image(systemName: "person.circle.fill")

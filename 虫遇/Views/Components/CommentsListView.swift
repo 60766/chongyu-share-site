@@ -1415,15 +1415,16 @@ struct CommentItemView: View {
                         .padding(.top, 2)
                     }
                     
-                    // 评论内容
+                    // 评论内容（支持长按复制，视觉与帖子正文保持一致）
                     Text(comment.content)
                         .font(.system(size: 15))
                         .foregroundColor(DesignSystem.Colors.primaryText)
                         .kerning(0.3) // 添加字符间距，提升数字和字母的可读性
                         .lineSpacing(5)
                         .padding(.top, 8)
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 4)
                         .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading) // 确保文本正确布局
                         .id("comment_content_\(comment.id)") // 只用 comment.id，避免 refreshID 作用域错误
                     
                     // 交互按钮
@@ -1511,6 +1512,19 @@ struct CommentItemView: View {
         .background(Color.clear)
         .contentShape(Rectangle())
         .frame(maxWidth: .infinity) // 确保整个评论视图占满宽度
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.35, maximumDistance: 12)
+                .onEnded { _ in
+                    copyCommentContent()
+                }
+        )
+        .contextMenu {
+            Button {
+                copyCommentContent()
+            } label: {
+                Label("复制评论内容", systemImage: "doc.on.doc")
+            }
+        }
     }
     
     /**
@@ -1534,6 +1548,24 @@ struct CommentItemView: View {
         }
         
         return comment.username
+    }
+}
+
+private extension CommentItemView {
+    /// 复制当前评论内容并给出反馈
+    func copyCommentContent() {
+        UIPasteboard.general.string = comment.content
+        
+        // 触觉反馈
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        
+        // 显示复制提示
+        NotificationCenter.default.post(
+            name: NSNotification.Name("ShowToast"),
+            object: nil,
+            userInfo: ["message": "已复制评论内容"]
+        )
     }
 }
 

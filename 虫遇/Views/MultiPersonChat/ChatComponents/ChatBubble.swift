@@ -101,6 +101,20 @@ struct ChatBubble: View {
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)) // 参考单人聊天的圆角大小
                         .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1) // 添加微妙阴影
+                        .contextMenu {
+                            Button {
+                                UIPasteboard.general.string = message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                                let generator = UINotificationFeedbackGenerator()
+                                generator.notificationOccurred(.success)
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("ShowToast"),
+                                    object: nil,
+                                    userInfo: ["message": "已复制消息内容"]
+                                )
+                            } label: {
+                                Label("复制消息内容", systemImage: "doc.on.doc")
+                            }
+                        }
                 }
             }
             
@@ -183,7 +197,7 @@ struct UserMessageBubble: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 4) {
-                // 消息内容
+                // 消息内容（仅文本区域支持长按复制）
                 Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.system(size: 15))
                     .lineSpacing(5)
@@ -202,6 +216,20 @@ struct UserMessageBubble: View {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .shadow(color: Color(hex: "C7C4FF").opacity(0.25), radius: 4, x: 0, y: 2)
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let generator = UINotificationFeedbackGenerator()
+                            generator.notificationOccurred(.success)
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ShowToast"),
+                                object: nil,
+                                userInfo: ["message": "已复制消息内容"]
+                            )
+                        } label: {
+                            Label("复制消息内容", systemImage: "doc.on.doc")
+                        }
+                    }
                 
                 // 时间戳
                 Text(formatTime(message.timestamp))
@@ -250,7 +278,7 @@ struct UserRolePlayingBubble: View {
                         .foregroundColor(Color(hex: "A78DC7"))
                 }
                 
-                // 消息内容
+                // 消息内容（仅文本区域支持长按复制）
                 Text(message.content.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.system(size: 15))
                     .lineSpacing(5)
@@ -269,6 +297,20 @@ struct UserRolePlayingBubble: View {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .shadow(color: Color(hex: "A78DC7").opacity(0.25), radius: 4, x: 0, y: 2)
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let generator = UINotificationFeedbackGenerator()
+                            generator.notificationOccurred(.success)
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ShowToast"),
+                                object: nil,
+                                userInfo: ["message": "已复制消息内容"]
+                            )
+                        } label: {
+                            Label("复制消息内容", systemImage: "doc.on.doc")
+                        }
+                    }
             }
             .frame(maxWidth: UIScreen.main.bounds.width * 0.7, alignment: .trailing)
             

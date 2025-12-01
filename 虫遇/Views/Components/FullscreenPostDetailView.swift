@@ -171,6 +171,7 @@ struct FullscreenPostDetailView: View {
     // 状态变量
     @State private var hasNextPost: Bool = true
     @State private var hasPrevPost: Bool = true
+    @GestureState private var isPostContentPressed: Bool = false
     
     // 其他状态
     @State private var selectedImageIndex: Int = 0
@@ -1848,6 +1849,22 @@ struct FullscreenPostDetailView: View {
         
         return nil
     }
+
+    /// 复制帖子内容
+    private func copyPostContent() {
+        UIPasteboard.general.string = viewModel.post.content
+        
+        // 触觉反馈
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        
+        // 显示复制提示
+        NotificationCenter.default.post(
+            name: NSNotification.Name("ShowToast"),
+            object: nil,
+            userInfo: ["message": "已复制内容"]
+        )
+    }
     
     /// 转换 CharacterModel 为 Character（用于详情页）
     private func convertToCharacter(_ characterModel: CharacterModel) -> Character {
@@ -2177,16 +2194,28 @@ struct FullscreenPostDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             // 帖子文字内容
             if !viewModel.post.content.isEmpty {
+                let textLeadingPadding = calculateDynamicPadding(text: viewModel.post.content)
+                
                 Text(viewModel.post.content)
                     .font(DesignSystem.Typography.postContent)
                     .foregroundColor(DesignSystem.Colors.primaryText)
                     .lineSpacing(6.0)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, calculateDynamicPadding(text: viewModel.post.content))
+                    .padding(.leading, textLeadingPadding)
                     .padding(.trailing, 16)
-                    .padding(.bottom, viewModel.post.images.isEmpty ? 0 : 10) // 如果有图片，增加底部间距
+                    .padding(.vertical, 12)
                     .id("post_text_content_\(viewModel.post.id.uuidString)")
-                    .frame(maxWidth: .infinity, alignment: .leading) // 确保文本始终左对齐
+                    .contentShape(Rectangle())
+                    .onLongPressGesture(minimumDuration: 0.35, maximumDistance: 12) {
+                        copyPostContent()
+                    }
+                    .contextMenu {
+                        Button {
+                            copyPostContent()
+                        } label: {
+                            Label("复制内容", systemImage: "doc.on.doc")
+                        }
+                    }
             }
             
             // 图片内容区域 - 微信朋友圈风格
