@@ -37,20 +37,113 @@ struct MultiPersonChatSetupView: View {
     /// 数据服务
     private let dataService = MultiPersonChatDataService.shared
     
-    /// 推荐组合的示例数据
+    /// 推荐组合的示例数据（按吸引力优先排序）
     private let recommendedCombinations: [RecommendedCombination] = [
-        .init(name: "科学思想家", characterNames: ["爱因斯坦", "尼古拉·特斯拉", "牛顿"], gradientColors: [Color(hex: "C2E9FB"), Color(hex: "A1C4FD")]),
-        .init(name: "文学大师", characterNames: ["莎士比亚", "李白", "鲁迅"], gradientColors: [Color(hex: "D4C1EC"), Color(hex: "A890B8")]),
-        .init(name: "超级英雄大会", characterNames: ["托尼·史塔克", "蜘蛛侠", "黑寡妇"], gradientColors: [Color(hex: "FFB6C1"), Color(hex: "FF69B4")]),
-        .init(name: "古代哲学家", characterNames: ["孔子", "苏格拉底", "亚里士多德"], gradientColors: [Color(hex: "DDD6FE"), Color(hex: "C084FC")]),
-        .init(name: "奇幻冒险团", characterNames: ["林克", "弗罗多·巴金斯", "赫敏·格兰杰"], gradientColors: [Color(hex: "A7F3D0"), Color(hex: "10B981")]),
-        .init(name: "科幻未来", characterNames: ["尼奥", "T-800终结者", "詹姆斯·柯克"], gradientColors: [Color(hex: "DBEAFE"), Color(hex: "3B82F6")]),
-        .init(name: "动漫英雄", characterNames: ["漩涡鸣人", "孙悟空", "马里奥"], gradientColors: [Color(hex: "FED7AA"), Color(hex: "F97316")]),
-        .init(name: "神话传说", characterNames: ["孙悟空", "阿努比斯", "雅典娜"], gradientColors: [Color(hex: "E0E7FF"), Color(hex: "6366F1")]),
-        .init(name: "侦探推理", characterNames: ["夏洛克·福尔摩斯", "豪斯医生", "江户川柯南"], gradientColors: [Color(hex: "F3E8FF"), Color(hex: "8B5CF6")]),
-        .init(name: "历史女杰", characterNames: ["花木兰", "武则天", "艾莎女王"], gradientColors: [Color(hex: "FCE7F3"), Color(hex: "EC4899")]),
-        .init(name: "心理大师", characterNames: ["弗洛伊德", "荣格", "苏格拉底"], gradientColors: [Color(hex: "F0F9FF"), Color(hex: "0EA5E9")]),
-        .init(name: "游戏世界", characterNames: ["马里奥", "林克", "劳拉·克罗夫特"], gradientColors: [Color(hex: "ECFCCB"), Color(hex: "65A30D")])
+        // 冲突感极强的历史+ACG组合
+        .init(
+            name: "信仰与背叛临界点",
+            characterNames: ["荆轲", "秦始皇", "杨过", "五条悟"],
+            // 柔和一点的紫粉系，兼顾冲突感和观感
+            gradientColors: [Color(hex: "E8E3FF"), Color(hex: "C8B3FF")]
+        ),
+        .init(
+            name: "权谋天花板辩论",
+            characterNames: ["刘邦", "项羽", "司马懿", "诸葛亮"],
+            gradientColors: [Color(hex: "D3E6FB"), Color(hex: "8ABCF6")]
+        ),
+        .init(
+            name: "爱情要自由吗？",
+            characterNames: ["祝英台", "梁山伯", "罗密欧", "朱丽叶"],
+            gradientColors: [Color(hex: "FFD7EB"), Color(hex: "F48BA8")]
+        ),
+        .init(
+            name: "魔鬼交易互助会",
+            characterNames: ["浮士德", "梅菲斯特", "道林·格雷", "唐璜"],
+            gradientColors: [Color(hex: "D2D6EE"), Color(hex: "A974FF")]
+        ),
+        // 二次元与热血少年向
+        .init(
+            name: "二次元主角怎么解决问题？",
+            characterNames: ["漩涡鸣人", "蒙奇·D·路飞", "竈门炭治郎", "虎杖悠仁"],
+            gradientColors: [Color(hex: "C4F0F4"), Color(hex: "4FD0DF")]
+        ),
+        .init(
+            name: "最强外挂要付出什么？",
+            characterNames: ["五条悟", "埼玉", "孙悟空", "欧尔麦特"],
+            gradientColors: [Color(hex: "FFE7C4"), Color(hex: "FFB85E")]
+        ),
+        // 价值观对撞与身份讨论
+        .init(
+            name: "女权 vs 男权法庭",
+            characterNames: ["武则天", "花木兰", "猪八戒", "法海"],
+            gradientColors: [Color(hex: "FFD0E0"), Color(hex: "F08BAE")]
+        ),
+        .init(
+            name: "反叛者的自白",
+            characterNames: ["罗宾汉", "杨过", "苏轼", "小王子"],
+            gradientColors: [Color(hex: "C4F0F4"), Color(hex: "6FD6E4")]
+        ),
+        .init(
+            name: "最强社畜互助会",
+            characterNames: ["孙悟空", "五条悟", "司马懿", "岳飞"],
+            gradientColors: [Color(hex: "D5ECD6"), Color(hex: "81C688")]
+        ),
+        .init(
+            name: "毁掉旧世界可以吗？",
+            characterNames: ["秦始皇", "德古拉", "孙悟空（大圣归来）", "江户川柯南"],
+            gradientColors: [Color(hex: "E8CBED"), Color(hex: "B96BC7")]
+        ),
+        .init(
+            name: "命运俱乐部",
+            characterNames: ["俄狄浦斯", "祝英台", "竈门炭治郎", "道林·格雷"],
+            gradientColors: [Color(hex: "D2D6EE"), Color(hex: "939FD5")]
+        ),
+        .init(
+            name: "真·宫斗复盘",
+            characterNames: ["甄嬛", "慈禧太后", "杨贵妃", "武则天"],
+            gradientColors: [Color(hex: "FFF0C5"), Color(hex: "FFD65C")]
+        ),
+        .init(
+            name: "反派都有自己的道理吗？",
+            characterNames: ["迪奥·布兰度", "蓝染惣右介", "夜神月", "灭霸"],
+            gradientColors: [Color(hex: "E8CBED"), Color(hex: "C57CCF")]
+        ),
+        // 游戏与开放世界
+        .init(
+            name: "开放世界主角吐槽任务设计",
+            characterNames: ["林克", "劳拉·克罗夫特", "杰洛特", "旅行者"],
+            gradientColors: [Color(hex: "CDE5FC"), Color(hex: "8ABCF6")]
+        ),
+        // 侦探与推理
+        .init(
+            name: "跨宇宙侦探联盟",
+            characterNames: ["江户川柯南", "福尔摩斯", "豪斯医生", "夏洛克·福尔摩斯"],
+            gradientColors: [Color(hex: "D5ECD6"), Color(hex: "97D19A")]
+        ),
+        // 超级英雄心理咨询室
+        .init(
+            name: "超级英雄的心理咨询室",
+            characterNames: ["托尼·史塔克", "蝙蝠侠", "蜘蛛侠", "神奇女侠"],
+            gradientColors: [Color(hex: "D2D6EE"), Color(hex: "939FD5")]
+        ),
+        // 海贼王专属组合
+        .init(
+            name: "海贼王草帽团夜聊会",
+            characterNames: ["蒙奇·D·路飞", "罗罗诺亚·索隆", "山治", "娜美"],
+            gradientColors: [Color(hex: "FFE7C4"), Color(hex: "FFB85E")]
+        ),
+        // 哲学家组合（去掉孔子，保留更“反思向”的视角）
+        .init(
+            name: "人生意义终极讨论会",
+            characterNames: ["庄子", "尼采", "加缪"],
+            gradientColors: [Color(hex: "D2D6EE"), Color(hex: "A6B1DE")]
+        ),
+        // 文学家组合
+        .init(
+            name: "文学改变命运吗？",
+            characterNames: ["鲁迅", "托尔斯泰", "马尔克斯", "三毛"],
+            gradientColors: [Color(hex: "FFE7C4"), Color(hex: "FFD65C")]
+        )
     ]
     
     // MARK: - Computed Properties
@@ -606,18 +699,18 @@ struct MultiPersonChatSetupView: View {
     
     /// 单个推荐组合的卡片视图
     private func combinationCard(for combo: RecommendedCombination) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // 组合名称
-            Text(combo.name)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
-            
-            // 角色名称列表
+        VStack(alignment: .leading, spacing: 8) {
+            // 角色名称列表（信息主体，优先展示）
             Text(combo.characterNames.joined(separator: "、"))
-                .font(.system(size: 14))
-                .foregroundColor(.white.opacity(0.8))
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(Color.white.opacity(0.96))
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
+            
+            // 组合名称（作为补充说明，弱化处理）
+            Text(combo.name)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(Color.white.opacity(0.8))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)

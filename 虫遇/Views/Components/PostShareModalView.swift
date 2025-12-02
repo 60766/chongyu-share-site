@@ -289,6 +289,9 @@ struct PostShareModalView: View {
             // 保存成功反馈
             generator.notificationOccurred(.success)
             
+            // 显示保存成功提示
+            showImageSaveSuccessHint()
+            
             // 延迟关闭界面，让用户感受到反馈
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 isPresented = false
@@ -297,6 +300,38 @@ struct PostShareModalView: View {
             // 保存失败反馈
             generator.notificationOccurred(.error)
             isPresented = false
+        }
+    }
+    
+    /// 显示"图片已保存到相册"的轻量提示
+    private func showImageSaveSuccessHint() {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = windowScene.windows.first?.rootViewController else {
+            return
+        }
+        
+        // 递归找到当前最顶层的视图控制器，避免被其他模态覆盖
+        func findTopViewController(_ controller: UIViewController) -> UIViewController {
+            if let presented = controller.presentedViewController {
+                return findTopViewController(presented)
+            }
+            if let nav = controller as? UINavigationController {
+                return findTopViewController(nav.visibleViewController ?? nav)
+            }
+            if let tab = controller as? UITabBarController {
+                return findTopViewController(tab.selectedViewController ?? tab)
+            }
+            return controller
+        }
+        
+        let topVC = findTopViewController(rootViewController)
+        
+        let alert = UIAlertController(title: nil, message: "图片已保存到相册", preferredStyle: .alert)
+        
+        // 轻量提示，不需要按钮，1.2 秒后自动消失
+        topVC.present(alert, animated: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            alert.dismiss(animated: true, completion: nil)
         }
     }
     

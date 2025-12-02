@@ -23,6 +23,13 @@ class CharacterAvatarService {
     private var avatarViewCache: [String: AnyView] = [:]
     private let cacheQueue = DispatchQueue(label: "avatar.cache", attributes: .concurrent)
     
+    /// 某些角色ID与实际头像资源名不一致时的覆盖映射
+    /// key 为 CharacterModel.id（小写），value 为 Asset 中的图片名
+    private let avatarIdOverrides: [String: String] = [
+        // 江户川柯南：角色id是 edogawa_conan，头像资源名是 conan
+        "edogawa_conan": "conan"
+    ]
+    
     // 私有初始化方法
     private init() {
         // 初始化时检查常用角色头像
@@ -73,19 +80,23 @@ class CharacterAvatarService {
         
         let avatarType: AvatarType
         
-        // 1. 尝试直接加载本地图片
-        if let image = UIImage(named: characterId), image.size.width > 0, image.cgImage != nil {
-            avatarType = .image(characterId)
+        // 处理可能存在的ID与图片名不一致的情况
+        let normalizedId = characterId.lowercased()
+        let imageId = avatarIdOverrides[normalizedId] ?? normalizedId
+        
+        // 1. 尝试直接加载本地图片（使用覆盖后的imageId）
+        if let image = UIImage(named: imageId), image.size.width > 0, image.cgImage != nil {
+            avatarType = .image(imageId)
         } else {
             // 2. 尝试加载HistoricalFigures目录下的图片
-            let historicalPath = "HistoricalFigures/\(characterId)"
+            let historicalPath = "HistoricalFigures/\(imageId)"
             if let image = UIImage(named: historicalPath), image.size.width > 0, image.cgImage != nil {
                 avatarType = .image(historicalPath)
             } else {
                 // 3. 没有图片资源，使用字母头像
                 // 获取有效名称 (优先使用中文名称)
-                let chineseName = getCharacterChineseName(for: characterId)
-                let effectiveName = !chineseName.isEmpty ? chineseName : (!name.isEmpty ? name : characterId)
+                let chineseName = getCharacterChineseName(for: imageId)
+                let effectiveName = !chineseName.isEmpty ? chineseName : (!name.isEmpty ? name : imageId)
                 
                 // 生成字母头像
                 let initialLetter = getInitialLetter(from: effectiveName)
@@ -664,8 +675,10 @@ class CharacterAvatarService {
      * @return 是否有自定义头像
      */
     func hasCustomAvatar(for characterId: String) -> Bool {
-        return UIImage(named: characterId) != nil || 
-               UIImage(named: "HistoricalFigures/\(characterId)") != nil
+        let normalizedId = characterId.lowercased()
+        let imageId = avatarIdOverrides[normalizedId] ?? normalizedId
+        return UIImage(named: imageId) != nil ||
+               UIImage(named: "HistoricalFigures/\(imageId)") != nil
     }
     
     /**

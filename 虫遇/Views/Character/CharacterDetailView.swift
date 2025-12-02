@@ -2904,39 +2904,35 @@ fileprivate struct FullScreenShareView: View {
                                 icon: "message.fill",
                                 iconColor: Color(hex: "09B83E"),
                                 action: {
+                                    if let image = generateShareCardImage(character: character, theme: theme, conversations: conversations) {
+                                        shareCharacterCardViaSystemSheet(image: image)
+                                    }
                                     isPresented = false
                                 }
                             )
                             
-                            // 朋友圈分享
+                            // 朋友圈分享（与微信同样走系统分享面板）
                             shareButton(
                                 title: "朋友圈",
                                 icon: "person.2.circle.fill",
                                 iconColor: Color(hex: "09B83E"),
                                 action: {
+                                    if let image = generateShareCardImage(character: character, theme: theme, conversations: conversations) {
+                                        shareCharacterCardViaSystemSheet(image: image)
+                                    }
                                     isPresented = false
                                 }
                             )
                             
-                            // 图片分享
+                            // 图片分享（保存到相册）
                             shareButton(
                                 title: "图片",
                                 icon: "photo.fill",
                                 iconColor: Color(hex: "F5A623"),
                                 action: {
-                                    isPresented = false
-                                }
-                            )
-                            
-                            // 链接分享
-                            shareButton(
-                                title: "链接",
-                                icon: "link",
-                                iconColor: Color(hex: "007AFF"),
-                                action: {
-                                    UIPasteboard.general.string = "https://chongyu.app/character/\(character.id)"
-                                    let generator = UINotificationFeedbackGenerator()
-                                    generator.notificationOccurred(.success)
+                                    if let image = generateShareCardImage(character: character, theme: theme, conversations: conversations) {
+                                        saveCharacterCardToPhotos(image: image)
+                                    }
                                     isPresented = false
                                 }
                             )
@@ -2974,6 +2970,145 @@ fileprivate struct FullScreenShareView: View {
             }
         }
         .buttonStyle(ScaleFeedbackButtonStyle())
+    }
+    
+    // MARK: - 分享卡片图片生成与系统分享
+    
+    /// 生成当前角色分享卡片对应的图片，用于系统分享/保存
+    private func generateShareCardImage(character: Character, theme: CharacterTheme, conversations: [DisplayConversation]) -> UIImage? {
+        // 固定卡片尺寸 + 四周统一留白，保证上下左右白边一致
+        let innerWidth: CGFloat = 340
+        // 固定卡片高度略大一些，避免内容被裁剪
+        let innerHeight: CGFloat = 600
+        let horizontalPadding: CGFloat = 14
+        // 大幅减少上下白边，让卡片更紧凑
+        let topPadding: CGFloat = 2
+        let bottomPadding: CGFloat = 0
+        
+        let canvasWidth: CGFloat = innerWidth + horizontalPadding * 2
+        let canvasHeight: CGFloat = innerHeight + topPadding + bottomPadding
+        
+        let cardView = ShareCardView(character: character, theme: theme, conversations: conversations)
+        
+        let container = ZStack {
+            Color.white
+            VStack {
+                Spacer(minLength: topPadding)
+                cardView
+                    .frame(width: innerWidth, height: innerHeight)
+                    .offset(y: -30)  // 向上偏移30pt，大幅减少顶部白边
+                Spacer(minLength: bottomPadding)
+            }
+            .padding(.horizontal, horizontalPadding)
+        }
+        
+        return container.asUIImage(size: CGSize(width: canvasWidth, height: canvasHeight))
+    }
+    
+    /// 通过系统分享面板分享角色卡片图片（用于微信/朋友圈等）
+    private func shareCharacterCardViaSystemSheet(image: UIImage) {
+        // 轻微触觉反馈
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        
+        presentSystemShareSheet(with: image)
+    }
+    
+    /// 将角色卡片图片保存到相册
+    private func saveCharacterCardToPhotos(image: UIImage) {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        
+        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+        generator.notificationOccurred(.success)
+        
+        // 显示轻量级“已保存”提示
+        showImageSaveSuccessHint()
+    }
+    
+    /// 调用系统分享面板分享图片
+    private func presentSystemShareSheet(with image: UIImage) {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = windowScene.windows.first?.rootViewController else {
+            return
+        }
+        
+        // 递归查找最顶层控制器
+        func findTopViewController(_ controller: UIViewController) -> UIViewController {
+            if let presented = controller.presentedViewController {
+                return findTopViewController(presented)
+            }
+            if let nav = controller as? UINavigationController {
+                return findTopViewController(nav.visibleViewController ?? nav)
+            }
+            if let tab = controller as? UITabBarController {
+                return findTopViewController(tab.selectedViewController ?? tab)
+            }
+            return controller
+        }
+        
+        let topVC = findTopViewController(rootViewController)
+        
+        // 如果当前已有其它模态界面，先关闭再弹出分享面板
+        if topVC.presentedViewController != nil {
+            topVC.dismiss(animated: false) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.showActivityViewController(image: image, from: topVC)
+                }
+            }
+        } else {
+            showActivityViewController(image: image, from: topVC)
+        }
+    }
+    
+    /// 实际展示 UIActivityViewController
+    private func showActivityViewController(image: UIImage, from viewController: UIViewController) {
+        let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+        
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = viewController.view
+            popover.sourceRect = CGRect(
+                x: UIScreen.main.bounds.midX,
+                y: UIScreen.main.bounds.midY,
+                width: 0,
+                height: 0
+            )
+            popover.permittedArrowDirections = []
+        }
+        
+        viewController.present(activityVC, animated: true)
+    }
+    
+    /// 显示“图片已保存到相册”的轻量提示
+    private func showImageSaveSuccessHint() {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = windowScene.windows.first?.rootViewController else {
+            return
+        }
+        
+        // 递归找到当前最顶层的视图控制器，避免被其他模态覆盖
+        func findTopViewController(_ controller: UIViewController) -> UIViewController {
+            if let presented = controller.presentedViewController {
+                return findTopViewController(presented)
+            }
+            if let nav = controller as? UINavigationController {
+                return findTopViewController(nav.visibleViewController ?? nav)
+            }
+            if let tab = controller as? UITabBarController {
+                return findTopViewController(tab.selectedViewController ?? tab)
+            }
+            return controller
+        }
+        
+        let topVC = findTopViewController(rootViewController)
+        
+        let alert = UIAlertController(title: nil, message: "图片已保存到相册", preferredStyle: .alert)
+        
+        // 轻量提示，不需要按钮，1.2 秒后自动消失
+        topVC.present(alert, animated: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            alert.dismiss(animated: true, completion: nil)
+        }
     }
 } 
 
