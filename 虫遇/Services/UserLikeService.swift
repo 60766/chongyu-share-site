@@ -230,11 +230,22 @@ class UserLikeService: ObservableObject {
     
     // MARK: - 持久化
     
+    /**
+     * 重新加载点赞数据（公共方法，用于视图刷新时调用）
+     */
+    func reloadLikes() {
+        loadLikes()
+        print("🔄 UserLikeService: 重新加载点赞记录，共 \(userLikes.count) 条")
+    }
+    
     private func saveLikes() {
         do {
             let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(userLikes)
             UserDefaults.standard.set(data, forKey: userLikesKey)
+            // 确保数据立即同步到磁盘
+            UserDefaults.standard.synchronize()
             print("💾 保存了 \(userLikes.count) 条点赞记录")
         } catch {
             print("❌ 保存点赞记录失败: \(error)")

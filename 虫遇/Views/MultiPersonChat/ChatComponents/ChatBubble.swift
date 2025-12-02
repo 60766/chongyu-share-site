@@ -109,10 +109,10 @@ struct ChatBubble: View {
                                 NotificationCenter.default.post(
                                     name: NSNotification.Name("ShowToast"),
                                     object: nil,
-                                    userInfo: ["message": "已复制消息内容"]
+                                    userInfo: ["message": "已复制文字"]
                                 )
                             } label: {
-                                Label("复制消息内容", systemImage: "doc.on.doc")
+                                Label("复制文字", systemImage: "doc.on.doc")
                             }
                         }
                 }
@@ -224,10 +224,10 @@ struct UserMessageBubble: View {
                             NotificationCenter.default.post(
                                 name: NSNotification.Name("ShowToast"),
                                 object: nil,
-                                userInfo: ["message": "已复制消息内容"]
+                                userInfo: ["message": "已复制文字"]
                             )
                         } label: {
-                            Label("复制消息内容", systemImage: "doc.on.doc")
+                            Label("复制文字", systemImage: "doc.on.doc")
                         }
                     }
                 
@@ -305,10 +305,10 @@ struct UserRolePlayingBubble: View {
                             NotificationCenter.default.post(
                                 name: NSNotification.Name("ShowToast"),
                                 object: nil,
-                                userInfo: ["message": "已复制消息内容"]
+                                userInfo: ["message": "已复制文字"]
                             )
                         } label: {
-                            Label("复制消息内容", systemImage: "doc.on.doc")
+                            Label("复制文字", systemImage: "doc.on.doc")
                         }
                     }
             }

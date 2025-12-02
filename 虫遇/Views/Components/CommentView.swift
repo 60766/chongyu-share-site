@@ -120,33 +120,33 @@ struct CommentView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 12)
-                    .contentShape(Rectangle())
-                    .contextMenu {
-                        // 点赞选项
-                        Button(action: {
-                            toggleLike()
-                        }) {
-                            Label(
-                                isLiked ? "取消点赞" : "点赞",
-                                systemImage: isLiked ? "heart.slash" : "heart"
-                            )
-                        }
-                        
-                        // 回复选项
-                        Button(action: {
-                            onReply(comment)
-                        }) {
-                            Label("回复评论", systemImage: "arrowshape.turn.up.left")
-                        }
-                        
-                        // 复制选项
-                        Button(action: {
-                            UIPasteboard.general.string = comment.content
-                            hapticFeedback(style: .medium)
-                        }) {
-                            Label("复制内容", systemImage: "doc.on.doc")
-                        }
-                    }
+        .contentShape(Rectangle())
+        .contextMenu {
+            // 点赞选项
+            Button(action: {
+                toggleLike()
+            }) {
+                Label(
+                    isLiked ? "取消点赞" : "点赞",
+                    systemImage: isLiked ? "heart.slash" : "heart"
+                )
+            }
+            
+            // 回复选项
+            Button(action: {
+                onReply(comment)
+            }) {
+                Label("回复评论", systemImage: "arrowshape.turn.up.left")
+            }
+            
+            // 复制选项
+            Button(action: {
+                UIPasteboard.general.string = comment.content
+                hapticFeedback(style: .medium)
+            }) {
+                Label("复制内容", systemImage: "doc.on.doc")
+            }
+        }
                 
             }
             .background(

@@ -328,26 +328,26 @@ struct ExploreView: View {
                                     // 显示第二排的分类按钮（按推荐顺序）
                                     let secondRowCategories: [CharacterCategory] = [.gameCharacter, .writer, .philosopher, .mythCharacter]
                                     ForEach(secondRowCategories, id: \.self) { category in
-                                        Button(action: {
-                                            withAnimation(.easeInOut) {
-                                                // 设置选中的分类
+                                            Button(action: {
+                                                withAnimation(.easeInOut) {
+                                            // 设置选中的分类
                                                 selectedCategory = category
-                                                
-                                                // 重置特殊显示模式，确保包括我的角色模式
-                                                showingRecentInteractions = false
-                                                showingFavorites = false
-                                                showingUserCharacters = false
-                                                
-                                                // 打印调试信息
+                                            
+                                            // 重置特殊显示模式，确保包括我的角色模式
+                                            showingRecentInteractions = false
+                                            showingFavorites = false
+                                            showingUserCharacters = false
+                                            
+                                            // 打印调试信息
                                                 print("选中分类: \(category.displayName)")
-                                            }
-                                        }) {
-                                            categoryView(for: category)
                                         }
+                                    }) {
+                                            categoryView(for: category)
+                                    }
                                     }
                                     
                                     // 我的角色按钮（放在第二排末尾）
-                                    Button(action: {
+                                        Button(action: {
                                         handleUserCharactersTap()
                                     }) {
                                         VStack(spacing: 8) {
@@ -372,8 +372,8 @@ struct ExploreView: View {
                                             .foregroundColor(showingUserCharacters ? .primary : Color(.secondaryLabel))
                                                 .lineLimit(1)
                                                 .minimumScaleFactor(0.8)
+                                            }
                                         }
-                                    }
                                     }
                                     .padding(.horizontal, 16)
                             }

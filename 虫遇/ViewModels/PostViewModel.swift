@@ -237,7 +237,7 @@ class PostViewModel: ObservableObject {
     /**
      * 保存用户帖子到持久化存储
      */
-    private func saveUserPosts() {
+    func saveUserPosts() {
         let userPosts = posts.filter { $0.source == "user" }
         // 确保按时间排序（最新的在前）
         let sortedUserPosts = userPosts.sorted { $0.datePosted > $1.datePosted }
@@ -255,7 +255,7 @@ class PostViewModel: ObservableObject {
     /**
      * 保存AI生成的帖子到持久化存储
      */
-    private func saveAIPosts() {
+    func saveAIPosts() {
         // AI生成的帖子包括：wormhole, onekey, virtual, ai等来源
         let aiPosts = posts.filter { post in
             guard let source = post.source else { return false }
@@ -507,15 +507,8 @@ class PostViewModel: ObservableObject {
         if let index = posts.firstIndex(where: { $0.id == post.id }) {
             // 切换点赞状态
             let isLiked = !posts[index].isLikedByCurrentUser
-            // 更新点赞状态和点赞数
-            var updatedPost = posts[index].toggleLike(isLiked: isLiked)
-            
-            // 更新点赞数（点赞+1，取消点赞-1）
-            if isLiked {
-                updatedPost = updatedPost.updateLikes(delta: 1)
-            } else {
-                updatedPost = updatedPost.updateLikes(delta: -1)
-            }
+            // toggleLike 方法已经包含了点赞数的更新逻辑，不需要再调用 updateLikes
+            let updatedPost = posts[index].toggleLike(isLiked: isLiked)
             
             posts[index] = updatedPost
             
@@ -528,6 +521,10 @@ class PostViewModel: ObservableObject {
                     "isLiked": isLiked
                 ]
             )
+            
+            // 保存更新后的点赞数到持久化存储
+            saveUserPosts()
+            saveAIPosts()
             
             // 模拟网络请求更新点赞状态
             // 在实际应用中，应该调用API更新服务器数据
@@ -1028,9 +1025,8 @@ class PostViewModel: ObservableObject {
     func likeComment(in post: UserPostModel, comment: DetailedCommentModel) {
         if let postIndex = posts.firstIndex(where: { $0.id == post.id }),
            let commentIndex = posts[postIndex].comments.firstIndex(where: { $0.id == comment.id }) {
-            // 更新评论点赞数
-            // 在实际应用中，应该实现切换点赞状态的逻辑
-            let updatedComment = posts[postIndex].comments[commentIndex].updatedLikes()
+            // 使用 toggleLike 方法切换点赞状态，它会正确处理点赞数的增减
+            let updatedComment = posts[postIndex].comments[commentIndex].toggleLike()
             
             // 创建新的评论数组
             var newComments = posts[postIndex].comments
@@ -1063,6 +1059,10 @@ class PostViewModel: ObservableObject {
                     "isLiked": updatedComment.isLikedByCurrentUser
                 ]
             )
+            
+            // 保存更新后的评论点赞数到持久化存储
+            saveUserPosts()
+            saveAIPosts()
         }
     }
     

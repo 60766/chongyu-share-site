@@ -353,12 +353,20 @@ struct ChatView: View {
             .edgesIgnoringSafeArea(.top)
         }
         .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle(character.name)
+        .navigationBarBackButtonHidden(true)
         // 自定义导航栏样式，但不显示返回按钮
         .toolbarColorScheme(.light, for: .navigationBar)
         // 让导航栏背景透明以露出页面渐变
         .toolbarBackground(.hidden, for: .navigationBar)
-        .navigationBarBackButtonHidden(true)
+        // 自定义标题位置，使其与返回按钮对齐
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(character.name)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundColor(.primary)
+                    .offset(y: 6) // 向下偏移6点，使其与返回按钮中心对齐
+            }
+        }
         // 移除导航栏内置的分享按钮，改为系统级覆盖按钮以保持与角色详情一致
         .edgesIgnoringSafeArea(.bottom) // 忽略底部安全区域，确保输入框贴合屏幕底部
         .fullScreenCover(isPresented: $showShareModal) {
@@ -956,8 +964,15 @@ struct ChatView: View {
         
         // 添加按钮点击事件
         backButton.addAction(UIAction { _ in
-            // 立即隐藏按钮窗口
+            // 立即隐藏返回按钮窗口
             buttonWindow.isHidden = true
+            
+            // 立即隐藏分享按钮窗口，确保没有延迟
+            if let shareWindow = systemShareButtonWindow {
+                shareWindow.isHidden = true
+                shareWindow.rootViewController = nil
+                systemShareButtonWindow = nil
+            }
             
             // 触发轻柔触觉反馈
             let generator = UIImpactFeedbackGenerator(style: .light)
@@ -1008,9 +1023,10 @@ struct ChatView: View {
             viewController.view.backgroundColor = .clear
             buttonWindow.rootViewController = viewController
             
-            // 配置分享按钮（与角色详情相同尺寸与字重）
+            // 配置分享按钮（与返回按钮统一高度，符合苹果设计规范）
+            // 26x26的按钮在44点高的导航栏中垂直居中：(44 - 26) / 2 = 9，加上视觉平衡调整为10
             let shareButton = UIButton(type: .system)
-            shareButton.frame = CGRect(x: 16, y: topPadding + 11, width: 26, height: 26)
+            shareButton.frame = CGRect(x: 16, y: topPadding + 10, width: 26, height: 26)
             let imageConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
             let image = UIImage(systemName: "square.and.arrow.up", withConfiguration: imageConfig)
             shareButton.setImage(image, for: .normal)
@@ -1236,7 +1252,7 @@ struct ChatMessageBubbleView: View {
                             NotificationCenter.default.post(
                                 name: NSNotification.Name("ShowToast"),
                                 object: nil,
-                                userInfo: ["message": "已复制消息内容"]
+                                userInfo: ["message": "已复制文字"]
                             )
                         }
                     
@@ -1362,7 +1378,7 @@ struct ChatMessageBubbleView: View {
                             NotificationCenter.default.post(
                                 name: NSNotification.Name("ShowToast"),
                                 object: nil,
-                                userInfo: ["message": "已复制消息内容"]
+                                userInfo: ["message": "已复制文字"]
                             )
                         }
                     }

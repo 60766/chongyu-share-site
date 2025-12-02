@@ -24,6 +24,11 @@ struct MultiPersonChatView: View {
     @State private var keyboardHeight: CGFloat = 0
     @State private var textViewHeight: CGFloat = 36 // 添加文本框高度状态
     @State private var viewOffset: CGFloat = 0 // 添加视图偏移状态
+    @State private var isUserNearBottom: Bool = true // 跟踪用户是否在底部附近（只有真正在底部时才自动滚动）
+
+    // 系统级按钮窗口
+    @State private var systemBackButtonWindow: UIWindow?
+    @State private var systemShareButtonWindow: UIWindow?
 
     @Environment(\.presentationMode) var presentationMode
     @Environment(\.modelContext) private var modelContext
@@ -203,6 +208,18 @@ struct MultiPersonChatView: View {
                                     .id("conversationEndIndicator")
                             }
                             
+                            // 底部检测视图 - 用于检测用户是否在底部附近
+                            // 放在底部占位区域之前，这样当它可见时说明用户在底部附近
+                            GeometryReader { geometry in
+                                Color.clear
+                                    .preference(
+                                        key: BottomDetectionPreferenceKey.self,
+                                        value: geometry.frame(in: .named("scrollView")).minY
+                                    )
+                            }
+                            .frame(height: 1)
+                            .id("bottomDetection")
+                            
                             // 底部占位区域 - 动态调整高度确保内容能滚动到合适位置
                             Color.clear
                                 .frame(height: keyboardVisible ? 300 : 180)
@@ -212,18 +229,51 @@ struct MultiPersonChatView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, keyboardVisible ? 80 : 30)
                     }
-                    // 监听滚动到底部的通知
+                    .coordinateSpace(name: "scrollView")
+                    .onPreferenceChange(BottomDetectionPreferenceKey.self) { minY in
+                        // 检测用户是否在底部附近
+                        // minY 是检测视图距离滚动视图顶部的距离
+                        // 当用户滚动到底部时，检测视图应该在屏幕可见区域内
+                        // 使用屏幕高度作为参考，如果检测视图在屏幕底部300pt内，认为用户在底部
+                        let screenHeight = UIScreen.main.bounds.height
+                        let threshold: CGFloat = screenHeight + 300 // 允许一些误差，包括安全区域等
+                        // 当 minY 小于阈值时，说明检测视图在屏幕内或接近屏幕，用户在底部附近
+                        let isNear = minY < threshold
+                        
+                        DispatchQueue.main.async {
+                            // 如果用户滚动到底部附近，允许自动滚动
+                            // 否则，新消息会静默出现在底部，不触发滚动
+                            let oldValue = isUserNearBottom
+                            isUserNearBottom = isNear
+                            if oldValue != isNear {
+                                print("📍 底部检测状态变化: minY=\(minY), threshold=\(threshold), isNear=\(isNear)")
+                            }
+                        }
+                    }
+                    // 监听滚动到底部的通知（用户主动触发，如点击继续对话按钮）
                     .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ScrollToBottom"))) { notification in
                         let anchor: UnitPoint = (notification.userInfo?["anchor"] as? String == "center") ? .center : .bottom
-                                withAnimation(.easeInOut(duration: 0.25)) {
+                        withAnimation(.easeInOut(duration: 0.25)) {
                             proxy.scrollTo("bottomId", anchor: anchor)
-                                }
-                            }
+                        }
+                        // 用户主动滚动到底部，标记为在底部附近
+                        isUserNearBottom = true
+                    }
                     .onChange(of: chatManager.messages.count) {
-                        // 滚动到最新消息，使用center锚点让消息显示在更合适的位置
+                        // 只在用户明确在底部附近时才自动滚动
+                        // 如果用户不在底部，新消息应该静默出现在底部，不触发滚动
                         if !chatManager.messages.isEmpty {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                proxy.scrollTo("bottomId", anchor: .center)
+                            if isUserNearBottom {
+                                // 用户在底部，自动滚动显示新消息
+                                print("✅ 用户在底部，自动滚动到新消息")
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        proxy.scrollTo("bottomId", anchor: .center)
+                                    }
+                                }
+                            } else {
+                                // 用户不在底部，新消息静默出现在底部，不触发滚动
+                                print("⏸️ 用户不在底部，新消息静默出现，不滚动")
                             }
                         }
                     }
@@ -292,6 +342,114 @@ struct MultiPersonChatView: View {
                 chatTheme: chatTheme
             )
         }
+        // 在分享卡片页面打开/关闭时，隐藏/恢复系统级返回与分享按钮
+        .onChange(of: showShareModal) { oldValue, newValue in
+            if newValue {
+                // 打开分享卡片：彻底隐藏系统级按钮避免遮挡
+                // 使用异步延迟确保在 fullScreenCover 完全显示后再隐藏
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    // 方法1：通过引用隐藏
+                    if let backWindow = self.systemBackButtonWindow { 
+                        backWindow.isHidden = true
+                        backWindow.windowLevel = .normal // 降低窗口层级
+                        backWindow.isUserInteractionEnabled = false // 禁用交互
+                        // 确保窗口不是 key window
+                        if backWindow.isKeyWindow {
+                            backWindow.resignKey()
+                        }
+                    }
+                    if let shareWindow = self.systemShareButtonWindow { 
+                        shareWindow.isHidden = true
+                        shareWindow.windowLevel = .normal // 降低窗口层级
+                        shareWindow.isUserInteractionEnabled = false // 禁用交互
+                        // 确保窗口不是 key window
+                        if shareWindow.isKeyWindow {
+                            shareWindow.resignKey()
+                        }
+                    }
+                    
+                    // 方法2：通过 tag 查找并隐藏所有相关窗口（更可靠，防止引用丢失）
+                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                        for window in windowScene.windows {
+                            // 返回按钮窗口 tag = 9997
+                            if window.tag == 9997 {
+                                window.isHidden = true
+                                window.windowLevel = .normal
+                                window.isUserInteractionEnabled = false
+                                if window.isKeyWindow {
+                                    window.resignKey()
+                                }
+                            }
+                            // 分享按钮窗口 tag = 9998
+                            if window.tag == 9998 {
+                                window.isHidden = true
+                                window.windowLevel = .normal
+                                window.isUserInteractionEnabled = false
+                                if window.isKeyWindow {
+                                    window.resignKey()
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // 关闭分享卡片：恢复系统级按钮
+                DispatchQueue.main.async {
+                    var backWindowFound = false
+                    var shareWindowFound = false
+                    
+                    // 方法1：通过引用恢复
+                    if let backWindow = self.systemBackButtonWindow {
+                        backWindow.windowLevel = .alert + 1 // 恢复窗口层级
+                        backWindow.isUserInteractionEnabled = true // 恢复交互
+                        backWindow.isHidden = false
+                        backWindow.makeKeyAndVisible()
+                        backWindowFound = true
+                    }
+                    if let shareWindow = self.systemShareButtonWindow {
+                        shareWindow.windowLevel = .alert + 1 // 恢复窗口层级
+                        shareWindow.isUserInteractionEnabled = true // 恢复交互
+                        shareWindow.isHidden = false
+                        shareWindow.makeKeyAndVisible()
+                        shareWindowFound = true
+                    }
+                    
+                    // 方法2：通过 tag 查找并恢复窗口（防止引用丢失）
+                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                        for window in windowScene.windows {
+                            // 返回按钮窗口 tag = 9997
+                            if window.tag == 9997 {
+                                window.windowLevel = .alert + 1 // 恢复窗口层级
+                                window.isUserInteractionEnabled = true // 恢复交互
+                                window.isHidden = false
+                                window.makeKeyAndVisible()
+                                // 更新引用
+                                self.systemBackButtonWindow = window
+                                backWindowFound = true
+                            }
+                            // 分享按钮窗口 tag = 9998
+                            if window.tag == 9998 {
+                                window.windowLevel = .alert + 1 // 恢复窗口层级
+                                window.isUserInteractionEnabled = true // 恢复交互
+                                window.isHidden = false
+                                window.makeKeyAndVisible()
+                                // 更新引用
+                                self.systemShareButtonWindow = window
+                                shareWindowFound = true
+                            }
+                        }
+                    }
+                    
+                    // 如果通过引用和 tag 都没找到，重新创建
+                    if !backWindowFound {
+                        self.addSystemLevelBackButton()
+                    }
+                    if !shareWindowFound {
+                        self.addSystemLevelShareButton()
+                    }
+                }
+            }
+        }
         .onAppear {
             // 根据是否有历史会话ID决定是新对话还是加载历史对话
             if let sessionId = historicalSessionId {
@@ -316,11 +474,26 @@ struct MultiPersonChatView: View {
             NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { notification in
                 handleKeyboardNotification(notification, isShowing: false)
             }
+            
+            // 添加系统级按钮（仅在分享卡片未显示时创建）
+            if !showShareModal {
+            addSystemLevelBackButton()
+            addSystemLevelShareButton()
+            }
         }
         .onDisappear {
             // 移除键盘通知监听
             NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
             NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
+            
+            // 移除系统级按钮
+            systemBackButtonWindow?.isHidden = true
+            systemBackButtonWindow?.rootViewController = nil
+            systemBackButtonWindow = nil
+            
+            systemShareButtonWindow?.isHidden = true
+            systemShareButtonWindow?.rootViewController = nil
+            systemShareButtonWindow = nil
         }
         // 修改键盘状态变化处理
         .onChange(of: keyboardVisible) { _, newValue in
@@ -561,10 +734,10 @@ struct MultiPersonChatView: View {
                             NotificationCenter.default.post(
                                 name: NSNotification.Name("ShowToast"),
                                 object: nil,
-                                userInfo: ["message": "已复制消息内容"]
+                                userInfo: ["message": "已复制文字"]
                             )
                         } label: {
-                            Label("复制消息内容", systemImage: "doc.on.doc")
+                            Label("复制文字", systemImage: "doc.on.doc")
                         }
                     }
             }
@@ -868,6 +1041,149 @@ struct MultiPersonChatView: View {
         .padding(.horizontal, 16)
     }
     
+    // MARK: - 系统级按钮
+    
+    /**
+     * 创建一个覆盖在左上角的系统级返回按钮
+     * 与私聊页面完全一致，确保视觉统一
+     */
+    private func addSystemLevelBackButton() {
+        // 计算顶部安全区域高度
+        let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+        let topPadding = windowScene?.windows.first?.safeAreaInsets.top ?? 44
+        
+        // 先移除旧窗口（如果存在）
+        systemBackButtonWindow?.isHidden = true
+        systemBackButtonWindow = nil
+        
+        // 创建新窗口 - 只覆盖左上角返回按钮区域
+        if let windowScene = windowScene {
+            let buttonWindow = UIWindow(windowScene: windowScene)
+            buttonWindow.frame = CGRect(
+                x: 0,
+                y: 0,
+                width: 50,
+                height: topPadding + 44
+            )
+            buttonWindow.tag = 9997
+            buttonWindow.isUserInteractionEnabled = true
+            buttonWindow.windowLevel = .alert + 1
+            buttonWindow.backgroundColor = .clear
+            
+            // 设置根视图控制器
+            let viewController = UIViewController()
+            viewController.view.backgroundColor = .clear
+            buttonWindow.rootViewController = viewController
+            
+            // 配置返回按钮 - 与私聊页面完全一致
+            let backButton = UIButton(type: .system)
+            backButton.frame = CGRect(x: 16, y: topPadding + 10, width: 30, height: 30)
+            
+            // 设置按钮图标 - 与私聊页面完全一致
+            let imageConfig = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+            let image = UIImage(systemName: "chevron.left", withConfiguration: imageConfig)
+            backButton.setImage(image, for: .normal)
+            
+            // 使用主题色作为按钮颜色 - 与私聊页面完全一致
+            let themeColor = UIColor(characterThemeColor)
+            backButton.tintColor = themeColor
+            
+            // 添加按钮点击事件
+            backButton.addAction(UIAction { _ in
+                // 立即隐藏返回按钮窗口
+                buttonWindow.isHidden = true
+                
+                // 立即隐藏分享按钮窗口，确保没有延迟
+                if let shareWindow = systemShareButtonWindow {
+                    shareWindow.isHidden = true
+                    shareWindow.rootViewController = nil
+                    systemShareButtonWindow = nil
+                }
+                
+                // 触发轻柔触觉反馈
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                
+                // 返回操作
+                presentationMode.wrappedValue.dismiss()
+            }, for: .touchUpInside)
+            
+            // 添加到视图控制器的视图
+            viewController.view.addSubview(backButton)
+            
+            // 保存窗口引用并显示
+            systemBackButtonWindow = buttonWindow
+            buttonWindow.makeKeyAndVisible()
+        }
+    }
+    
+    /**
+     * 创建一个覆盖在右上角的系统级分享按钮
+     * 与私聊页面完全一致，确保视觉统一
+     */
+    private func addSystemLevelShareButton() {
+        // 计算顶部安全区域高度
+        let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+        let topPadding = windowScene?.windows.first?.safeAreaInsets.top ?? 44
+        let screenWidth = UIScreen.main.bounds.width
+        
+        // 先移除旧窗口（如果存在）
+        systemShareButtonWindow?.isHidden = true
+        systemShareButtonWindow = nil
+        
+        // 创建新窗口 - 只覆盖右上角分享按钮区域
+        if let windowScene = windowScene {
+            let buttonWindow = UIWindow(windowScene: windowScene)
+            buttonWindow.frame = CGRect(
+                x: screenWidth - 55,
+                y: 0,
+                width: 55,
+                height: topPadding + 44
+            )
+            buttonWindow.tag = 9998
+            buttonWindow.isUserInteractionEnabled = true
+            buttonWindow.windowLevel = .alert + 1
+            buttonWindow.backgroundColor = .clear
+            
+            // 设置根视图控制器
+            let viewController = UIViewController()
+            viewController.view.backgroundColor = .clear
+            buttonWindow.rootViewController = viewController
+            
+            // 配置分享按钮 - 与私聊页面完全一致
+            // 按钮在窗口内的位置：窗口宽度55，按钮宽度26，右对齐，所以x = 55 - 26 - 13 = 16（与私聊页面一致）
+            let shareButton = UIButton(type: .system)
+            shareButton.frame = CGRect(x: 16, y: topPadding + 10, width: 26, height: 26)
+            
+            // 设置按钮图标 - 与私聊页面完全一致
+            let imageConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+            let image = UIImage(systemName: "square.and.arrow.up", withConfiguration: imageConfig)
+            shareButton.setImage(image, for: .normal)
+            
+            // 使用主题色作为按钮颜色 - 与私聊页面完全一致
+            let themeColor = UIColor(characterThemeColor)
+            shareButton.tintColor = themeColor
+            
+            // 添加按钮点击事件
+            shareButton.addAction(UIAction { _ in
+                // 触发轻触反馈
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
+                
+                shareConversation()
+            }, for: .touchUpInside)
+            
+            // 添加到视图控制器的视图
+            viewController.view.addSubview(shareButton)
+            
+            // 保存窗口引用并显示 - 使用异步确保正确显示
+            systemShareButtonWindow = buttonWindow
+            DispatchQueue.main.async {
+                buttonWindow.isHidden = false
+            buttonWindow.makeKeyAndVisible()
+            }
+        }
+    }
 
 }
 
@@ -935,6 +1251,14 @@ struct ConversationEndIndicator: View {
             Spacer()
         }
         .padding(.horizontal, 16)
+    }
+}
+
+// MARK: - 底部检测 PreferenceKey
+struct BottomDetectionPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = .infinity
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = min(value, nextValue())
     }
 }
 

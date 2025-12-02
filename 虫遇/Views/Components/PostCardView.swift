@@ -1018,15 +1018,15 @@ struct PostCardView: View {
                         CustomPostOptionsButton(
                             post: post,
                             onDislikeCharacter: dislikeCharacter,
-                            onFollowCharacter: { isFollowed in
-                                // 关注角色的逻辑
-                                feedbackGenerator.impactOccurred(intensity: 0.4)
+                        onFollowCharacter: { isFollowed in
+                            // 关注角色的逻辑
+                            feedbackGenerator.impactOccurred(intensity: 0.4)
                             },
                             onDeletePost: {
                                 // 删除帖子
                                 PostViewModel.shared.deletePost(post.id)
-                            }
-                        )
+                        }
+                    )
                     }
                 }
                 .frame(height: 24)  // 固定用户名行高度，确保有无标签时高度一致

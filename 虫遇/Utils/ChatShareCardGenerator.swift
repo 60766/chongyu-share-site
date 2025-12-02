@@ -581,20 +581,20 @@ struct ChatShareCardView: View {
         // 1. 固定高度部分
         let headerHeight: CGFloat = 36  // 顶部固定高度
         let footerHeight: CGFloat = 70  // 底部固定高度
-        let contentVerticalPadding: CGFloat = 16 // 内容区域上下padding
+        let contentVerticalPadding: CGFloat = 24 // 内容区域上下padding（从16增加到24）
         
         // 2. 单条消息的精确高度计算
-        let avatarHeight: CGFloat = 35 // 头像高度
-        let nameHeight: CGFloat = 16   // 名称标签高度
+        let avatarHeight: CGFloat = 42 // 头像高度（从35增加到42）
+        let nameHeight: CGFloat = 18   // 名称标签高度（从16增加到18，适配14pt字体）
         
         // 3. 估算文本高度
         let textLength = message.content.count
-        let charactersPerLine: CGFloat = 20 // 每行约20个字符（考虑中文）
+        let charactersPerLine: CGFloat = 18 // 每行约18个字符（字体变大后每行字符数减少）
         let estimatedLines = max(2, ceil(CGFloat(textLength) / charactersPerLine))
-        let textHeight = estimatedLines * 17 + 12 // 17 = 13pt字体 + 2pt行间距 + 2pt额外空间，+12为文本padding
+        let textHeight = estimatedLines * 20 + 14 // 20 = 15pt字体 + 4pt行间距 + 1pt额外空间，+14为文本padding（从12增加到14）
         
         // 4. VStack间距（名称和文本之间）
-        let vStackSpacing: CGFloat = 5 // 实际代码中的spacing
+        let vStackSpacing: CGFloat = 6 // 实际代码中的spacing（从5增加到6）
         
         // 5. 消息内容区域高度（取头像和内容的最大值）
         let contentHeight = nameHeight + vStackSpacing + textHeight
@@ -729,13 +729,13 @@ struct ChatShareCardView: View {
     
     // 主要内容区域（与MultiChatShareCardView保持一致）
     private var contentSection: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 12) {
             if !message.isFromUser {
                 // 角色头像 - 使用CharacterAvatarService确保头像正确渲染
                 CharacterAvatarService.shared.getAvatarView(
                     for: character.id,
                     name: character.name,
-                    size: 35,
+                    size: 42,  // 从35增加到42
                     useCaching: true
                 )
                 .overlay(
@@ -747,11 +747,11 @@ struct ChatShareCardView: View {
                 Spacer()
             }
             
-            VStack(alignment: message.isFromUser ? .trailing : .leading, spacing: 5) {
+            VStack(alignment: message.isFromUser ? .trailing : .leading, spacing: 6) {
                 // 发送者名称
                 if !message.isFromUser {
                     Text(character.name)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))  // 从12增加到14
                         .foregroundColor(characterThemeColor)
                         .padding(.bottom, 2)
                 } else {
@@ -759,7 +759,7 @@ struct ChatShareCardView: View {
                     HStack {
                         Spacer()
                         Text(UserProfileManager.shared.getCurrentUsername())
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))  // 从12增加到14
                             .foregroundColor(Color(hex: "B8B5FF"))
                             .padding(.bottom, 2)
                     }
@@ -767,10 +767,10 @@ struct ChatShareCardView: View {
                 
                 // 消息内容
                 Text(formatMessageContent(message.content))
-                    .font(.system(size: 13, weight: .medium))
-                    .lineSpacing(3)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .font(.system(size: 15, weight: .medium))  // 从13增加到15
+                    .lineSpacing(4)  // 从3增加到4
+                    .padding(.horizontal, 14)  // 从12增加到14
+                    .padding(.vertical, 10)  // 从8增加到10
                     .background(
                         ZStack {
                             // 主背景
@@ -839,7 +839,7 @@ struct ChatShareCardView: View {
                         Image(uiImage: userAvatar)
                             .resizable()
                             .scaledToFill()
-                            .frame(width: 35, height: 35)
+                            .frame(width: 42, height: 42)  // 从35增加到42
                             .clipShape(Circle())
                     } else {
                         // 如果没有自定义头像，尝试加载默认头像
@@ -848,16 +848,16 @@ struct ChatShareCardView: View {
                             Image(uiImage: defaultAvatar)
                                 .resizable()
                                 .scaledToFill()
-                                .frame(width: 35, height: 35)
+                                .frame(width: 42, height: 42)  // 从35增加到42
                                 .clipShape(Circle())
                         } else {
                             // 如果都没有，显示默认图标
                             Circle()
                                 .fill(Color(hex: "B8B5FF"))
-                                .frame(width: 35, height: 35)
+                                .frame(width: 42, height: 42)  // 从35增加到42
                                 .overlay(
                                     Image(systemName: "person.fill")
-                                        .font(.system(size: 16))
+                                        .font(.system(size: 18))  // 从16增加到18
                                         .foregroundColor(.white)
                                 )
                         }
@@ -872,7 +872,7 @@ struct ChatShareCardView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 8)  // 减少上下padding，让卡片更紧凑
+        .padding(.vertical, 12)  // 从8增加到12，让内容更宽松
     }
     
     // 底部信息区域（与MultiChatShareCardView保持一致）

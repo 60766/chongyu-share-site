@@ -9,41 +9,38 @@ struct ChatHeader: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 导航栏
+            // 导航栏 - 添加顶部安全区域padding，与其他页面统一
             ZStack {
-                // 中间标题 - 绝对居中
+                // 中间标题 - 与返回按钮绝对位置高度一致（返回按钮中心在 topPadding + 25）
                 Text(chatTheme.isEmpty ? "自由对话" : chatTheme)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: .medium))
                     .foregroundColor(.primary)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .offset(y: -10) // 增大offset，使标题中心与返回按钮中心绝对对齐（topPadding + 25）
                 
-                HStack {
-                    // 左侧返回按钮
-                    Button(action: onBackTapped) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(Color.warmAccent)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
+                // 按钮已移至系统级UIWindow，这里只保留占位空间
+                HStack(spacing: 0) {
+                    // 左侧占位 - 系统级返回按钮会覆盖这里
+                    Color.clear
+                        .frame(width: 50, height: 44)
+                        .padding(.leading, 16)
                     
                     Spacer()
                     
-                    // 右侧分享按钮
-                    Button(action: onShareTapped) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 16))
-                            .foregroundColor(Color.warmAccent)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
+                    // 右侧占位 - 系统级分享按钮会覆盖这里
+                    Color.clear
+                        .frame(width: 55, height: 44)
+                        .padding(.trailing, 16)
                 }
             }
             .frame(height: 44)
+            .padding(.top) // 添加顶部安全区域padding，与其他页面统一
             
-            // 参与者指示器 - 更紧凑的布局
+            // 参与者指示器 - 紧贴标题下方
             participantsView
+                .offset(y: -8) // 向上移动，紧紧靠着标题下方
         }
         .background(Color.clear)
         .overlay(
@@ -92,7 +89,8 @@ struct ChatHeader: View {
                 }
             }
             .padding(.horizontal)
-            .padding(.vertical, 6)
+            .padding(.top, 0) // 移除顶部padding，让头像紧贴标题
+            .padding(.bottom, 0) // 底部间距为0
         }
     }
 }

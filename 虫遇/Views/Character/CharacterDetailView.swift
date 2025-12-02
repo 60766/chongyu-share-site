@@ -1264,9 +1264,10 @@ struct CharacterDetailView: View {
         viewController.view.backgroundColor = .clear
         buttonWindow.rootViewController = viewController
         
-        // 配置分享按钮（恢复较小尺寸与边距）
+        // 配置分享按钮（与返回按钮统一高度，符合苹果设计规范）
+        // 26x26的按钮在44点高的导航栏中垂直居中：(44 - 26) / 2 = 9，加上视觉平衡调整为10
         let shareButton = UIButton(type: .system)
-        shareButton.frame = CGRect(x: 16, y: topPadding + 11, width: 26, height: 26)
+        shareButton.frame = CGRect(x: 16, y: topPadding + 10, width: 26, height: 26)
         
         // 设置按钮图标
         let imageConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)

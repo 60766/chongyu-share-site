@@ -1344,8 +1344,8 @@ struct CommentItemView: View {
                     Button(action: {
                         onAvatarTap?()
                     }) {
-                        Avatar(url: {
-                            return comment.characterID ?? comment.userAvatar
+                Avatar(url: {
+                        return comment.characterID ?? comment.userAvatar
                         }(), 
                         name: {
                             return comment.username
@@ -1358,27 +1358,27 @@ struct CommentItemView: View {
                 } else {
                     Avatar(url: {
                         if comment.isCurrentUser {
-                            return UserProfileManager.shared.getCurrentAvatarURL()
-                        } else {
-                            return comment.userAvatar
-                        }
-                    }(), 
-                    name: {
-                        if comment.isCurrentUser {
-                            return UserProfileManager.shared.getCurrentUsername()
-                        } else {
-                            return comment.username
-                        }
-                    }(),
-                          category: comment.characterID != nil ? getCharacterTag(for: comment.characterID!) : "",
-                          size: 38)
-                        .frame(width: 38, height: 38)
-                        .onAppear {
+                        return UserProfileManager.shared.getCurrentAvatarURL()
+                    } else {
+                        return comment.userAvatar
+                    }
+                }(), 
+                name: {
+                    if comment.isCurrentUser {
+                        return UserProfileManager.shared.getCurrentUsername()
+                    } else {
+                        return comment.username
+                    }
+                }(),
+                      category: comment.characterID != nil ? getCharacterTag(for: comment.characterID!) : "",
+                      size: 38)
+                    .frame(width: 38, height: 38)
+                    .onAppear {
                             if comment.isCurrentUser {
-                                print("📱 评论头像 - 当前用户: \(UserProfileManager.shared.getCurrentUsername())")
+                            print("📱 评论头像 - 当前用户: \(UserProfileManager.shared.getCurrentUsername())")
                             }
                         }
-                }
+                    }
                 
                 VStack(alignment: .leading, spacing: 6) { // 增加垂直间距
                     // 用户信息行
@@ -1522,7 +1522,7 @@ struct CommentItemView: View {
             Button {
                 copyCommentContent()
             } label: {
-                Label("复制评论内容", systemImage: "doc.on.doc")
+                Label("复制文字", systemImage: "doc.on.doc")
             }
         }
     }
@@ -1564,7 +1564,7 @@ private extension CommentItemView {
         NotificationCenter.default.post(
             name: NSNotification.Name("ShowToast"),
             object: nil,
-            userInfo: ["message": "已复制评论内容"]
+            userInfo: ["message": "已复制文字"]
         )
     }
 }

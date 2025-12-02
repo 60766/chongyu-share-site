@@ -421,5 +421,20 @@ struct ExpandableTextView: View {
         .padding(.horizontal, 20)
         .padding(.top, 16)
         .padding(.bottom, 8)  // 减少底部边距，让按钮下方空白更少
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button {
+                UIPasteboard.general.string = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ShowToast"),
+                    object: nil,
+                    userInfo: ["message": "已复制文字"]
+                )
+            } label: {
+                Label("复制文字", systemImage: "doc.on.doc")
+            }
+        }
     }
 } 

@@ -1678,11 +1678,8 @@ showCharacterPicker = true
     
     // 处理帖子点赞
     private func handlePostLike(post: UserPostModel, isLiked: Bool) {
-        if let index = postViewModel.posts.firstIndex(where: { $0.id == post.id }) {
-            var updatedPost = postViewModel.posts[index].toggleLike(isLiked: isLiked)
-            updatedPost = updatedPost.updateLikes(delta: isLiked ? 1 : -1)
-            postViewModel.posts[index] = updatedPost
-        }
+        // 使用 PostViewModel 的方法，确保点赞数被保存
+        postViewModel.likePost(post)
     }
     
     // 处理评论切换
@@ -2039,14 +2036,13 @@ showCharacterPicker = true
      * 处理评论点赞
      */
     private func handleLikeComment(post: UserPostModel, comment: DetailedCommentModel) {
-        // 查找评论所属的帖子
-        if let postIndex = postViewModel.posts.firstIndex(where: { $0.id == post.id }) {
-            // 更新点赞状态
-            postViewModel.posts[postIndex].likeComment(commentId: comment.id)
-            
-            // 如果是当前选中的帖子，也更新selectedPost
-            if selectedPost?.id == post.id {
-                selectedPost = postViewModel.posts[postIndex]
+        // 使用 PostViewModel 的方法，确保评论点赞数被保存
+        postViewModel.likeComment(in: post, comment: comment)
+        
+        // 如果是当前选中的帖子，也更新selectedPost
+        if selectedPost?.id == post.id {
+            if let updatedPost = postViewModel.posts.first(where: { $0.id == post.id }) {
+                selectedPost = updatedPost
             }
         }
     }
@@ -2244,27 +2240,43 @@ showCharacterPicker = true
             }
             .buttonStyle(PlainButtonStyle())
             .fullScreenCover(isPresented: $showChatView) {
-                ChatView(character: convertToCYChatCharacter(character))
+                // 使用与探索页面相同的NavigationView包装，确保一致的体验
+                ZStack {
+                    NavigationView {
+                        ChatView(character: convertToCYChatCharacter(character))
+                    }
+                    .ignoresSafeArea(.all, edges: .bottom)
+                    
+                    // 添加一个透明视图，确保底部导航栏区域不被覆盖
+                    VStack {
+                        Spacer()
+                        Rectangle()
+                            .fill(Color.clear)
+                            .frame(height: tabBarManager.fullBottomAreaHeight)
+                    }
+                    .ignoresSafeArea(.all, edges: .bottom)
+                }
             }
         }
         
         // 将 CharacterModel 转换为 CYChatCharacter
+        // 使用与探索页面相同的转换逻辑，确保一致性
         private func convertToCYChatCharacter(_ characterModel: CharacterModel) -> CYChatCharacter {
             return CYChatCharacter(
-                id: characterModel.characterID ?? characterModel.id,
+                id: characterModel.id,
                 name: characterModel.name,
                 introduction: characterModel.bio,
-                field: characterModel.profession,
+                field: characterModel.category.rawValue,
                 birthYear: characterModel.era,
                 deathYear: "",
                 avatarUrl: characterModel.avatar,
                 eraTag: characterModel.era,
-                achievements: characterModel.profession.components(separatedBy: CharacterSet(charactersIn: "，、")).filter { !$0.isEmpty },
+                achievements: [characterModel.profession],
                 mainWorks: [],
                 keyThoughts: [],
-                followerCount: 0,
-                interactionCount: 0,
-                rating: 4.5
+                followerCount: Int.random(in: 1000...5000),
+                interactionCount: Int.random(in: 5000...15000),
+                rating: Double.random(in: 4.0...5.0)
             )
         }
     }

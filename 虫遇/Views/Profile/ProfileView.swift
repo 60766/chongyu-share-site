@@ -606,6 +606,8 @@ struct ProfileView: View {
                     await MainActor.run {
                         setupDataUpdateListeners()
                         resetExpandedStates()
+                        // 显式重新加载点赞数据，确保数据同步
+                        likeService.reloadLikes()
                     }
                     
                     // 异步更新用户等级（不阻塞界面显示）
@@ -1204,9 +1206,13 @@ struct ProfileView: View {
                 LazyVStack(spacing: 12) {
                     ForEach(userPosts) { post in
                         UserPostRowView(post: post)
+                            .onAppear {
+                                print("🔵 [myPostsDetailView] UserPostRowView 出现，内容: \(post.content.prefix(20))...")
+                            }
                     }
                 }
                 .padding(.horizontal, 20)
+                .allowsHitTesting(true)
             }
         }
     }
@@ -2336,11 +2342,17 @@ struct ProfileView: View {
                     .foregroundColor(.secondary)
             }
             
-            Text(post.content)
+            // 我的动态正文支持长按复制（完全按照私聊实现）
+            Text(post.content.trimmingCharacters(in: .whitespacesAndNewlines))
                 .font(.system(size: 14))
+                .lineSpacing(4)
+                .padding(.horizontal, 0)
+                .padding(.vertical, 8)
                 .foregroundColor(.primary)
                 .lineLimit(3)
-                .multilineTextAlignment(.leading)
+                .onTapGesture {
+                    print("🔵 [UserPostRowView private] Text 被点击")
+                }
             
             HStack {
                                  HStack(spacing: 4) {
@@ -2363,6 +2375,27 @@ struct ProfileView: View {
                 
                 Spacer()
                 }
+            }
+            .contextMenu {
+                Button {
+                    print("🔵 [UserPostRowView private] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
+                    UIPasteboard.general.string = post.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("ShowToast"),
+                        object: nil,
+                        userInfo: ["message": "已复制动态内容"]
+                    )
+                } label: {
+                    Label("复制动态内容", systemImage: "doc.on.doc")
+                }
+            }
+            .onTapGesture {
+                print("🔵 [UserPostRowView private] VStack 被点击")
+            }
+            .onLongPressGesture {
+                print("🔵 [UserPostRowView private] VStack 被长按")
             }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -3261,6 +3294,10 @@ struct UserPostRowView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
                 )
+                .onTapGesture {
+                    print("🔵 [UserPostRowView struct] 头像被点击")
+                }
+                .allowsHitTesting(true)
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -3275,10 +3312,44 @@ struct UserPostRowView: View {
                         .foregroundColor(.secondary)
                 }
                 
-                Text(post.content)
+                // 文本内容区域 - 支持长按复制（完全按照私聊实现）
+                Text(post.content.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.system(size: 13))
+                    .lineSpacing(4)
+                    .padding(.horizontal, 0)
+                    .padding(.vertical, 8)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .allowsHitTesting(true)
+                    .onTapGesture {
+                        print("🔵 [UserPostRowView struct] Text 被点击")
+                    }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .allowsHitTesting(true)
+            .contextMenu {
+                Button {
+                    print("🔵 [UserPostRowView struct] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
+                    UIPasteboard.general.string = post.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("ShowToast"),
+                        object: nil,
+                        userInfo: ["message": "已复制动态内容"]
+                    )
+                } label: {
+                    Label("复制动态内容", systemImage: "doc.on.doc")
+                }
+            }
+            .onTapGesture {
+                print("🔵 [UserPostRowView struct] VStack 被点击")
+            }
+            .onLongPressGesture {
+                print("🔵 [UserPostRowView struct] VStack 被长按")
             }
             
             // 显示图片缩略图（如果有图片）
@@ -3287,10 +3358,22 @@ struct UserPostRowView: View {
                     .onAppear {
                         print("🖼️ 显示图片缩略图: 数量 = \(post.images.count), IDs = \(post.images)")
                     }
+                    .onTapGesture {
+                        print("🔵 [UserPostRowView struct] 图片缩略图被点击")
+                    }
+                    .allowsHitTesting(true) // 图片可以点击，但不应该拦截文本区域
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .allowsHitTesting(true)
+        .onTapGesture {
+            print("🔵 [UserPostRowView struct] HStack 被点击")
+        }
+        .onLongPressGesture {
+            print("🔵 [UserPostRowView struct] HStack 被长按")
+        }
         .fullScreenCover(isPresented: $showImageViewer) {
             if !post.images.isEmpty {
                 WeChatStyleImageViewer(
@@ -3454,7 +3537,7 @@ struct AppleStyleLikeRecordCard: View {
     @State private var showingCancelAlert = false
     var onRemove: (() -> Void)?
     
-    private let collapsedContentLength = 120
+    private let collapsedContentLength = 150 // 与 UserPostCard 保持一致
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -3496,8 +3579,10 @@ struct AppleStyleLikeRecordCard: View {
                     .lineSpacing(3)
                     .animation(.easeInOut(duration: 0.25), value: isExpanded)
                 
-                // 展开/收起按钮 - 苹果式
+                // 展开/收起按钮 - 苹果式（右侧对齐，紫色，与次元回放一致）
                 if shouldShowExpandButton {
+                    HStack {
+                        Spacer()
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             isExpanded.toggle()
@@ -3505,7 +3590,8 @@ struct AppleStyleLikeRecordCard: View {
                     }) {
                         Text(isExpanded ? "收起" : "展开")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9))
+                                .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9)) // 梦幻紫，与次元回放一致
+                        }
                     }
                 }
             }
@@ -3549,6 +3635,21 @@ struct AppleStyleLikeRecordCard: View {
         )
         .shadow(color: Color(hex: "FFB6D9").opacity(0.18), radius: 6, x: 0, y: 2)
         .shadow(color: Color(hex: "FFA3C7").opacity(0.12), radius: 2, x: 0, y: 1)
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button {
+                UIPasteboard.general.string = record.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ShowToast"),
+                    object: nil,
+                    userInfo: ["message": "已复制文字"]
+                )
+            } label: {
+                Label("复制文字", systemImage: "doc.on.doc")
+            }
+        }
         .alert("取消点赞", isPresented: $showingCancelAlert) {
             Button("取消", role: .cancel) { }
             Button("确认", role: .destructive) {
@@ -3609,10 +3710,17 @@ struct AppleStyleLikeRecordCard: View {
         .buttonStyle(PlainButtonStyle())
     }
     
-    // 显示内容
+    // 显示内容（参考 UserPostCard 的智能截断逻辑）
     private var displayContent: String {
         if record.content.count > collapsedContentLength && !isExpanded {
-            return String(record.content.prefix(collapsedContentLength)) + "..."
+            // 智能截断 - 找到最后一个完整句子或词语
+            let truncated = String(record.content.prefix(collapsedContentLength))
+            if let lastPunctuation = truncated.lastIndex(where: { "。！？.!?".contains($0) }) {
+                return String(truncated[...lastPunctuation])
+            } else if let lastSpace = truncated.lastIndex(of: " ") {
+                return String(truncated[..<lastSpace]) + "…"
+            }
+            return truncated + "…"
         }
         return record.content
     }
@@ -4077,6 +4185,7 @@ struct UserPostCard: View {
                     .lineSpacing(3)
                     .multilineTextAlignment(.leading)
                     .animation(.easeInOut(duration: 0.25), value: isExpanded)
+                    .padding(.vertical, 4)
                 
                 // 图片网格显示
                 if !post.images.isEmpty {
@@ -4087,8 +4196,10 @@ struct UserPostCard: View {
                     .padding(.top, 4)
                 }
                 
-                                 // 展开/收起按钮 - 苹果式
+                                 // 展开/收起按钮 - 苹果式（右侧对齐，紫色）
                  if shouldShowExpandButton {
+                     HStack {
+                         Spacer()
                      Button(action: {
                          withAnimation(.easeInOut(duration: 0.25)) {
                              isExpanded.toggle()
@@ -4096,7 +4207,8 @@ struct UserPostCard: View {
                      }) {
                          Text(isExpanded ? "收起" : "展开")
                              .font(.system(size: 13, weight: .medium))
-                             .foregroundColor(Color(red: 0.3, green: 0.5, blue: 0.8))
+                                 .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9)) // 梦幻紫，与次元回放一致
+                         }
                      }
                  }
             }
@@ -4146,6 +4258,22 @@ struct UserPostCard: View {
         )
         .shadow(color: Color.blue.opacity(0.08), radius: 3, x: 0, y: 2)
         .shadow(color: Color.purple.opacity(0.05), radius: 1, x: 0, y: 0.5)
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button {
+                print("🔵 [UserPostCard] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
+                UIPasteboard.general.string = post.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ShowToast"),
+                    object: nil,
+                    userInfo: ["message": "已复制文字"]
+                )
+            } label: {
+                Label("复制文字", systemImage: "doc.on.doc")
+            }
+        }
         .fullScreenCover(isPresented: $showImageViewer) {
             WeChatStyleImageViewer(
                 images: post.images,

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// 对话设置数据，用于导航传递
 struct ChatSettings: Hashable {
@@ -41,6 +42,9 @@ struct SetChatThemeView: View {
     @State private var scrollOffset2: CGFloat = -50  // 第二行偏移不同起始位置
     @State private var scrollOffset3: CGFloat = -100 // 第三行偏移不同起始位置  
     @State private var scrollOffset4: CGFloat = -150 // 第四行偏移不同起始位置
+    
+    /// 系统级按钮窗口
+    @State private var systemBackButtonWindow: UIWindow?
     
     /// 用户的角色选择 - 固定为旁观者
     private let userRole: UserRole = .observer
@@ -164,6 +168,14 @@ struct SetChatThemeView: View {
         .onAppear {
             // 启动自动滑动动画
             startAutoScroll()
+            // 添加系统级返回按钮
+            addSystemLevelBackButton()
+        }
+        .onDisappear {
+            // 移除系统级返回按钮
+            systemBackButtonWindow?.isHidden = true
+            systemBackButtonWindow?.rootViewController = nil
+            systemBackButtonWindow = nil
         }
     }
     
@@ -172,30 +184,98 @@ struct SetChatThemeView: View {
     /// 自定义顶部标题栏
     private var headerView: some View {
         ZStack {
-            // 中间标题
+            // 中间标题 - 与返回按钮绝对位置高度一致（返回按钮中心在 topPadding + 25）
+            // 使用与ChatHeader相同的实现方式，但需要更大的offset来对齐返回按钮
             Text("设定对话场景")
                 .font(.system(size: 17, weight: .medium))
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity)
+                .frame(height: 44) // 与ChatHeader一致，不使用alignment参数
+                .offset(y: -10) // 增大offset，使标题中心与返回按钮中心绝对对齐（topPadding + 25）
             
-            HStack {
-                // 返回按钮
-                Button(action: {
-                    presentationMode.wrappedValue.dismiss()
-                }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(Color.warmAccent)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
+            // 按钮已移至系统级UIWindow，这里只保留占位空间
+            HStack(spacing: 0) {
+                // 左侧占位 - 系统级返回按钮会覆盖这里
+                Color.clear
+                    .frame(width: 50, height: 44)
+                    .padding(.leading, 16)
                 
                 Spacer()
             }
         }
         .frame(height: 44)
+        .padding(.top) // 添加顶部安全区域padding，与ChatHeader一致
         .background(DesignSystem.Colors.background)
         .shadow(color: Color.black.opacity(0.05), radius: 0.5, x: 0, y: 0.5)
+    }
+    
+    // MARK: - 系统级按钮
+    
+    /**
+     * 创建一个覆盖在左上角的系统级返回按钮
+     * 与实际聊天页面完全一致，确保视觉统一
+     */
+    private func addSystemLevelBackButton() {
+        // 计算顶部安全区域高度
+        let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+        let topPadding = windowScene?.windows.first?.safeAreaInsets.top ?? 44
+        
+        // 先移除旧窗口（如果存在）
+        systemBackButtonWindow?.isHidden = true
+        systemBackButtonWindow = nil
+        
+        // 创建新窗口 - 只覆盖左上角返回按钮区域
+        if let windowScene = windowScene {
+            let buttonWindow = UIWindow(windowScene: windowScene)
+            buttonWindow.frame = CGRect(
+                x: 0,
+                y: 0,
+                width: 50,
+                height: topPadding + 44
+            )
+            buttonWindow.tag = 9997
+            buttonWindow.isUserInteractionEnabled = true
+            buttonWindow.windowLevel = .alert + 1
+            buttonWindow.backgroundColor = .clear
+            
+            // 设置根视图控制器
+            let viewController = UIViewController()
+            viewController.view.backgroundColor = .clear
+            buttonWindow.rootViewController = viewController
+            
+            // 配置返回按钮 - 与实际聊天页面完全一致
+            let backButton = UIButton(type: .system)
+            backButton.frame = CGRect(x: 16, y: topPadding + 10, width: 30, height: 30)
+            
+            // 设置按钮图标 - 与实际聊天页面完全一致
+            let imageConfig = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+            let image = UIImage(systemName: "chevron.left", withConfiguration: imageConfig)
+            backButton.setImage(image, for: .normal)
+            
+            // 使用主题色作为按钮颜色 - 与实际聊天页面完全一致
+            let themeColor = UIColor(Color(hex: "9A8BB0"))
+            backButton.tintColor = themeColor
+            
+            // 添加按钮点击事件
+            backButton.addAction(UIAction { _ in
+                // 立即隐藏返回按钮窗口
+                buttonWindow.isHidden = true
+                
+                // 触发轻柔触觉反馈
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                
+                // 返回操作
+                presentationMode.wrappedValue.dismiss()
+            }, for: .touchUpInside)
+            
+            // 添加到视图控制器的视图
+            viewController.view.addSubview(backButton)
+            
+            // 保存窗口引用并显示
+            systemBackButtonWindow = buttonWindow
+            buttonWindow.makeKeyAndVisible()
+        }
     }
     
     /// 参与者预览区域

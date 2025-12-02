@@ -1862,7 +1862,7 @@ struct FullscreenPostDetailView: View {
         NotificationCenter.default.post(
             name: NSNotification.Name("ShowToast"),
             object: nil,
-            userInfo: ["message": "已复制内容"]
+            userInfo: ["message": "已复制文字"]
         )
     }
     
@@ -1933,11 +1933,12 @@ struct FullscreenPostDetailView: View {
         
         // 配置返回按钮
         let backButton = UIButton(type: .system)
-        // 调整按钮高度与"动态详情"文字高度一致（17号字体约22像素高度）
-        backButton.frame = CGRect(x: 16, y: topPadding + 6, width: 28, height: 22)
+        // 使用与私聊页面一致的按钮位置和尺寸，符合苹果设计规范
+        // 按钮垂直居中在44点高的导航栏中：(44 - 30) / 2 = 7，加上视觉平衡调整为10
+        backButton.frame = CGRect(x: 16, y: topPadding + 10, width: 30, height: 30)
         
-        // 设置按钮图标 - 调整大小以匹配文字高度
-        let imageConfig = UIImage.SymbolConfiguration(pointSize: 15, weight: .medium)
+        // 设置按钮图标 - 使用与私聊页面一致的尺寸
+        let imageConfig = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
         let image = UIImage(systemName: "chevron.left", withConfiguration: imageConfig)
         backButton.setImage(image, for: .normal)
         
@@ -2048,25 +2049,27 @@ struct FullscreenPostDetailView: View {
     // 顶部导航栏 - 优化版本 (UI优化项#1)
     private func makeTopBar() -> some View {
         HStack(spacing: 16) {
-            // 占位区域，保持布局平衡
+            // 占位区域，保持布局平衡（与返回按钮宽度一致）
             Color.clear
-                .frame(width: 33, height: 33)
+                .frame(width: 50, height: 44)
                              
             Spacer()
                              
-            // 标题 - 居中
+            // 标题 - 居中，在44点高的导航栏中垂直居中
+            // 17号字体高度约22点，在44点高的导航栏中垂直居中
             Text("动态详情")
                 .font(.system(size: 17, weight: .medium))
                 .foregroundColor(.primary)
+                .frame(height: 44, alignment: .center)  // 设置固定高度并垂直居中
              
             Spacer()
                              
-            // 占位区域，保持布局平衡
+            // 占位区域，保持布局平衡（与分享按钮宽度一致）
             Color.clear
-                .frame(width: 33, height: 33)
+                .frame(width: 55, height: 44)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 0)  // 完全移除垂直内边距，让标题紧贴顶部
+        .frame(height: 44)  // 导航栏固定高度44点
         .padding(.top, getSafeAreaTop())
         .background(
             // 背景 - 根据滚动状态改变透明度
@@ -2213,7 +2216,7 @@ struct FullscreenPostDetailView: View {
                         Button {
                             copyPostContent()
                         } label: {
-                            Label("复制内容", systemImage: "doc.on.doc")
+                            Label("复制文字", systemImage: "doc.on.doc")
                         }
                     }
             }
@@ -2615,8 +2618,13 @@ struct FullscreenPostDetailView: View {
                     )
                 },
                 onLike: { comment in
-                    // 处理点赞逻辑
-                    viewModel.post.likeComment(commentId: comment.id)
+                    // 处理点赞逻辑 - 使用 PostViewModel 的方法确保保存
+                    PostViewModel.shared.likeComment(in: viewModel.post, comment: comment)
+                    
+                    // 更新本地视图模型的帖子数据
+                    if let updatedPost = PostViewModel.shared.posts.first(where: { $0.id == viewModel.post.id }) {
+                        viewModel.post = updatedPost
+                    }
                     
                     // 添加通知，防止页面滚动
                     NotificationCenter.default.post(
@@ -3295,6 +3303,14 @@ class FullscreenPostDetailViewModel: ObservableObject {
         // 更新帖子数据
         let updatedPost = post.toggleLike(isLiked: newLikedState)
         post = updatedPost
+        
+        // 更新 PostViewModel 中的帖子数据并保存
+        if let index = PostViewModel.shared.posts.firstIndex(where: { $0.id == updatedPost.id }) {
+            PostViewModel.shared.posts[index] = updatedPost
+            // 保存点赞数到持久化存储
+            PostViewModel.shared.saveUserPosts()
+            PostViewModel.shared.saveAIPosts()
+        }
         
         // 发送通知给UserLikeService记录点赞行为
         NotificationCenter.default.post(
