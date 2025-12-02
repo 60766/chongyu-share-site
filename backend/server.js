@@ -74,11 +74,25 @@ function serializeState() {
 
 function saveToDisk() {
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(serializeState(), null, 2))
+    // 使用原子写入：先写入临时文件，然后重命名，避免写入过程中崩溃导致文件损坏
+    const tempFile = DATA_FILE + '.tmp'
+    const data = JSON.stringify(serializeState(), null, 2)
+    fs.writeFileSync(tempFile, data)
+    // 原子性重命名（在大多数文件系统上是原子操作）
+    fs.renameSync(tempFile, DATA_FILE)
     // eslint-disable-next-line no-console
     console.log('[Persist] saved to', DATA_FILE)
   } catch (err) {
     console.error('[Persist] save failed:', err?.message || err)
+    // 如果临时文件存在，尝试清理
+    try {
+      const tempFile = DATA_FILE + '.tmp'
+      if (fs.existsSync(tempFile)) {
+        fs.unlinkSync(tempFile)
+      }
+    } catch (cleanupErr) {
+      // 忽略清理错误
+    }
   } finally {
     saveTimer = null
   }
@@ -479,6 +493,21 @@ app.post('/account/restore-by-backup', (req, res) => {
   res.json({ appAccountToken: token })
 })
 
+// 通过token恢复账号（验证token是否存在）
+app.post('/account/restore-by-token', (req, res) => {
+  const { appAccountToken } = req.body || {}
+  if (!appAccountToken) {
+    return res.status(400).json({ error: 'missing appAccountToken' })
+  }
+  // 检查token是否存在（通过检查钱包是否存在）
+  // 如果不存在，getWallet会创建新钱包，所以我们需要先检查
+  if (!wallets.has(appAccountToken)) {
+    return res.status(404).json({ error: 'token_not_found' })
+  }
+  // token存在，返回它
+  res.json({ appAccountToken })
+})
+
 // 充值端点（用于处理应用内购买充值）
 app.post('/recharge', (req, res) => {
   const appAccountToken = req.body?.appAccountToken || req.header('X-App-Account-Token')
@@ -754,6 +783,7 @@ const server = app.listen(port, () => {
   console.log(`[Config] CREDITS_PER_1K_TOKENS = ${CREDITS_PER_1K_TOKENS}`)
   console.log(`[Config] CREDITS_TEXT_PER_1K_TOKENS = ${CREDITS_TEXT_PER_1K_TOKENS}`)
   console.log(`[Config] CREDITS_VISION_PER_1K_TOKENS = ${CREDITS_VISION_PER_1K_TOKENS}`)
+  console.log(`[Config] INITIAL_WELCOME_CREDITS = ${INITIAL_WELCOME_CREDITS}`)
   console.log(`[Config] PROVIDER_MODEL = ${PROVIDER_MODEL}`)
   console.log(`[Config] NODE_ENV = ${process.env.NODE_ENV || 'development'}`)
 }) 

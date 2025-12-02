@@ -29,38 +29,49 @@ class ToastManager: ObservableObject {
      * @param message 要显示的消息
      */
     func showToast(message: String) {
+        print("🔔 [ToastManager] showToast被调用，消息: \(message)")
         // 取消之前的计时器
         workItem?.cancel()
         
         // 在主线程更新UI
         DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
+            guard let self = self else { 
+                print("⚠️ [ToastManager] self为nil，无法显示Toast")
+                return 
+            }
             
+            print("🔔 [ToastManager] 更新消息和显示状态")
             // 更新消息和显示状态
             self.currentMessage = message
             
             // 如果当前可见，先隐藏再显示，创造刷新效果
             if self.isVisible {
+                print("🔔 [ToastManager] Toast当前可见，先隐藏再显示")
                 withAnimation {
                     self.isVisible = false
                 }
                 
                 // 100ms后重新显示
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    print("🔔 [ToastManager] 重新显示Toast")
                     withAnimation {
                         self.isVisible = true
                     }
+                    print("🔔 [ToastManager] isVisible = \(self.isVisible)")
                 }
             } else {
                 // 直接显示
+                print("🔔 [ToastManager] 直接显示Toast")
                 withAnimation {
                     self.isVisible = true
                 }
+                print("🔔 [ToastManager] isVisible = \(self.isVisible)")
             }
             
             // 设置自动隐藏
             let workItem = DispatchWorkItem { [weak self] in
                 guard let self = self else { return }
+                print("🔔 [ToastManager] 自动隐藏Toast")
                 withAnimation {
                     self.isVisible = false
                 }
@@ -109,11 +120,16 @@ struct ToastView: View {
                             Capsule()
                                 .fill(Color.black.opacity(0.7))
                         )
-                        .padding(.bottom, 50)
+                        .padding(.bottom, 100) // 增加底部间距，避免被TabBar遮挡
                         .transition(.move(edge: .bottom))
+                        .allowsHitTesting(false) // 不拦截点击事件
                 }
             }
         }
+        .allowsHitTesting(false) // 整个ToastView不拦截点击事件
         .animation(.easeInOut(duration: 0.3), value: toastManager.isVisible)
+        .onChange(of: toastManager.isVisible) { oldValue, newValue in
+            print("🔔 [ToastView] isVisible变化: \(oldValue) -> \(newValue), message: \(toastManager.currentMessage)")
+        }
     }
 } 

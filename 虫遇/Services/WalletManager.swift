@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 @MainActor
 class WalletManager: ObservableObject {
@@ -11,21 +12,54 @@ class WalletManager: ObservableObject {
     @Published var showingPurchaseSheet: Bool = false
     
     private var notificationObservers: [NSObjectProtocol] = []
+    private var cancellables = Set<AnyCancellable>()
+    private var hasLoadedBalance = false // 标记是否已经加载过余额
     
     private init() {
-        loadBalance()
         setupAccountObservers()
+        setupAppleSignInObserver()
+        // 延迟加载余额，等待AppleSignInManager初始化完成
+        // 因为AppleSignInManager的checkAppleSignInStatus是异步的
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.loadBalanceIfNeeded()
+        }
+    }
+    
+    /// 设置Apple ID登录状态监听
+    /// 当Apple ID登录时，刷新余额（确保显示最新数据）
+    private func setupAppleSignInObserver() {
+        // 使用Combine监听AppleSignInManager的isSignedIn变化
+        // 当用户登录Apple ID时，刷新余额（确保显示最新数据）
+        AppleSignInManager.shared.$isSignedIn
+            .dropFirst() // 跳过初始值
+            .sink { [weak self] isSignedIn in
+                print("💰 [WalletManager] Apple ID登录状态变化: \(isSignedIn)")
+                if isSignedIn {
+                    // 如果登录了，刷新余额（确保显示最新数据）
+                    print("💰 [WalletManager] Apple ID已登录，刷新余额")
+                    self?.loadBalance()
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    /// 如果需要，加载余额（检查登录状态）
+    private func loadBalanceIfNeeded() {
+        // 如果已经加载过，不再重复加载
+        if hasLoadedBalance {
+            return
+        }
+        
+        // 直接加载余额，不检查Apple ID登录状态
+        // 因为后端不要求Apple ID登录，只要有appAccountToken就可以查询余额
+        print("💰 [WalletManager] 延迟检查：加载余额（不要求Apple ID登录）")
+        loadBalance()
     }
     
     func loadBalance() {
-        // 如果未登录 Apple ID，不加载余额（切换账号后的新 token 不应该自动加载余额）
-        // 这样可以避免后端为新账号自动创建账户并赠送币
-        if !AppleSignInManager.shared.isSignedIn {
-            print("💰 [WalletManager] 未登录 Apple ID，不加载余额，保持为0")
-            isLoading = false
-            balance = 0
-            return
-        }
+        // 允许未登录Apple ID的用户也能使用虫洞币
+        // 后端不要求Apple ID登录，只要有appAccountToken就可以查询余额
+        // Apple ID登录主要用于账号恢复功能，不是使用虫洞币的前提条件
         
         isLoading = true
         Task {
@@ -48,6 +82,8 @@ class WalletManager: ObservableObject {
                     self.balance = walletBalance.balance
                     self.currency = walletBalance.currency
                     self.isLoading = false
+                    self.hasLoadedBalance = true // 标记已加载
+                    print("💰 [WalletManager] 余额加载成功: \(walletBalance.balance) 虫洞币")
                 }
             } catch {
                 // 保留错误日志，对生产环境很重要
@@ -70,6 +106,42 @@ class WalletManager: ObservableObject {
         loadBalance()
     }
     
+    /// 强制加载余额（不检查Apple ID登录状态，用于账号恢复场景）
+    private func forceLoadBalance() {
+        isLoading = true
+        Task {
+            do {
+                #if DEBUG
+                print("💰 [WalletManager] 强制加载余额（账号恢复）...")
+                // 测试模式：如果设置了测试余额，直接使用测试余额
+                if let testBalance = UserDefaults.standard.object(forKey: "DEBUG_TEST_BALANCE") as? Int {
+                    await MainActor.run {
+                        self.balance = testBalance
+                        self.currency = "虫洞币"
+                        self.isLoading = false
+                    }
+                    print("🧪 [测试模式] 使用测试余额: \(testBalance)")
+                    return
+                }
+                #endif
+                let walletBalance = try await WalletService.shared.fetchBalance()
+                await MainActor.run {
+                    self.balance = walletBalance.balance
+                    self.currency = walletBalance.currency
+                    self.isLoading = false
+                    self.hasLoadedBalance = true // 标记已加载
+                }
+                print("💰 [WalletManager] 账号恢复后余额加载成功: \(walletBalance.balance) 虫洞币")
+            } catch {
+                print("❌ [WalletManager] 账号恢复后余额加载失败: \(error)")
+                await MainActor.run {
+                    self.isLoading = false
+                    // 保持余额为 0，不更新
+                }
+            }
+        }
+    }
+    
     func showPurchaseSheet() {
         showingPurchaseSheet = true
     }
@@ -82,15 +154,9 @@ class WalletManager: ObservableObject {
         return "\(balance) \(currency)"
     }
     
-    /// 更新余额（内部方法，会检查测试模式和登录状态）
-    /// 如果设置了测试余额，或未登录 Apple ID，则不会更新
+    /// 更新余额（内部方法，会检查测试模式）
+    /// 如果设置了测试余额，则不会更新
     func updateBalance(_ newBalance: Int, currency: String? = nil) {
-        // 如果未登录 Apple ID，不更新余额（切换账号后的新 token 不应该更新余额）
-        if !AppleSignInManager.shared.isSignedIn {
-            print("💰 [WalletManager] 未登录 Apple ID，忽略余额更新，保持为0")
-            return
-        }
-        
         #if DEBUG
         // 如果设置了测试余额，不更新
         if UserDefaults.standard.object(forKey: "DEBUG_TEST_BALANCE") as? Int != nil {
@@ -124,30 +190,31 @@ class WalletManager: ObservableObject {
     private func setupAccountObservers() {
         let center = NotificationCenter.default
         
-        // 账号变更：刷新余额（但需要检查是否已登录）
-        let activeNames: [Notification.Name] = [.userAccountRestored, .userAccountTokenReplaced]
-        activeNames.forEach { name in
-            let token = center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+        // 账号恢复：恢复账号时应该加载余额（即使未登录Apple ID，因为这是用户主动恢复的账号）
+        let accountRestored = center.addObserver(forName: .userAccountRestored, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                // 账号恢复时，强制加载余额（不检查Apple ID登录状态）
+                // 因为这是用户主动恢复的账号，应该显示余额
+                self?.forceLoadBalance()
+            }
+        }
+        notificationObservers.append(accountRestored)
+        
+        // 账号切换：刷新余额（但需要检查是否已登录）
+        let accountReplaced = center.addObserver(forName: .userAccountTokenReplaced, object: nil, queue: .main) { [weak self] _ in
                 Task { @MainActor in
                 self?.loadBalance()
                 }
             }
-            notificationObservers.append(token)
-        }
+        notificationObservers.append(accountReplaced)
         
-        // 新账号创建：只有在已登录 Apple ID 时才加载余额
+        // 新账号创建：加载余额（不要求Apple ID登录）
         let accountCreated = center.addObserver(forName: .userAccountCreated, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
-                // 检查是否已登录 Apple ID，只有登录后才加载余额
-                // 如果是切换账号后的新 token（未登录），不加载余额
-                if AppleSignInManager.shared.isSignedIn {
+                // 新账号创建时，加载余额（不要求Apple ID登录）
+                // 后端会根据deviceId判断是否赠送新用户虫洞币
+                print("💰 [WalletManager] 新账号创建，加载余额")
                     self?.loadBalance()
-                } else {
-                    // 未登录，保持余额为0
-                    self?.balance = 0
-                    self?.isLoading = false
-                    print("💰 [WalletManager] 新账号创建但未登录，余额保持为0")
-                }
             }
         }
         notificationObservers.append(accountCreated)
@@ -162,6 +229,19 @@ class WalletManager: ObservableObject {
             }
         }
         notificationObservers.append(logout)
+        
+        // 监听Apple ID登录状态变化（使用KVO或Combine）
+        // 当Apple ID登录状态变为true时，自动刷新余额
+        // 注意：由于AppleSignInManager的isSignedIn是@Published，我们需要通过其他方式监听
+        // 这里我们监听应用进入前台时刷新余额
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            print("💰 [WalletManager] 应用进入前台，刷新余额")
+            self?.loadBalance()
+        }
     }
     
     deinit {

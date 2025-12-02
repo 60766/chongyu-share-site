@@ -502,6 +502,28 @@ class ContentGeneratorService: ObservableObject {
                             receiveCompletion: { completion in
                                 if case .failure(let error) = completion {
                                     print("❌ AI生成内容和评论失败: \(error.localizedDescription)")
+                                    
+                                    // 显示友好的错误提示给用户
+                                    // 注意：403错误已经在AINetworkService中显示Toast，这里避免重复显示
+                                    Task { @MainActor in
+                                        if let aiError = error as? AINetworkError {
+                                            // 检查是否是403错误（已在AINetworkService中显示Toast）
+                                            var is403Error = false
+                                            if case .httpError(let code) = aiError {
+                                                is403Error = (code == 403)
+                                            }
+                                            
+                                            // 403错误已在AINetworkService中显示Toast，跳过
+                                            // 其他错误显示友好提示
+                                            if !is403Error {
+                                                ToastManager.shared.showToast(message: aiError.localizedDescription)
+                                            }
+                                        } else {
+                                            // 对于其他错误，显示通用提示
+                                            ToastManager.shared.showToast(message: "生成失败，请稍后重试")
+                                        }
+                                    }
+                                    
                                     promise(.failure(error))
                                 }
                             },

@@ -79,6 +79,8 @@ enum AINetworkError: Error {
         case .httpError(let code):
             if code == 402 {
                 return "余额不足，请先充值"
+            } else if code == 403 {
+                return "API服务暂时不可用，请联系客服或稍后重试"
             }
             return "HTTP错误: \(code)"
         case .partialDataAvailable(let error):
@@ -144,9 +146,23 @@ class AINetworkService: ObservableObject {
                 
                 if httpResponse.statusCode != 200 {
                     print("❌ Non-200 status: \(httpResponse.statusCode)")
+                    
+                    // 403错误：API额度不足或服务不可用
+                    if httpResponse.statusCode == 403 {
+                        Task { @MainActor in
+                            ContentGeneratorService.shared.markBackendBusy(true)
+                            // 显示友好的错误提示
+                            let errorMessage = "API服务暂时不可用，请联系客服或稍后重试"
+                            print("🔔 [Toast] 准备显示403错误提示: \(errorMessage)")
+                            ToastManager.shared.showToast(message: errorMessage)
+                            print("🔔 [Toast] Toast已调用，isVisible应该为true")
+                        }
+                    } else {
                     Task { @MainActor in
                         ContentGeneratorService.shared.markBackendBusy(true)
+                        }
                     }
+                    
                     promise(.failure(.httpError(httpResponse.statusCode)))
                     return
                 }

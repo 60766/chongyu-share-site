@@ -1324,6 +1324,11 @@ showCharacterPicker = true
                 // 立即触发内容出现状态，无需动画延迟
                 contentAppeared = true
                 
+                // 刷新虫洞币余额（确保显示最新余额）
+                Task {
+                    await WalletManager.shared.refreshBalance()
+                }
+                
                 // 延迟执行重型操作，不阻塞页面切换
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     // 二次确认数据存在（过滤掉已看过的欢迎帖子）
@@ -1440,6 +1445,10 @@ showCharacterPicker = true
                 // 应用进入前台，恢复数据加载
                 if postViewModel.posts.isEmpty {
                     postViewModel.ensureDataExists()
+                }
+                // 刷新虫洞币余额（确保显示最新余额）
+                Task {
+                    await WalletManager.shared.refreshBalance()
                 }
                 
             case .inactive, .background:

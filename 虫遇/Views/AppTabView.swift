@@ -155,6 +155,11 @@ struct AppTabView: View {
                     .zIndex(1000)
             }
         }
+        // 全局Toast视图（用于显示错误提示等）
+        .overlay(alignment: .bottom) {
+            ToastView()
+                .zIndex(1001) // 确保Toast显示在最上层
+        }
         // 统一的安全区域设置 - 只设置一次，移除所有重复设置
         .ignoresSafeArea(.all, edges: .bottom)
         .environmentObject(tabBarManager) // 确保TabBarManager在所有子视图中可用
