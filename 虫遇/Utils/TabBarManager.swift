@@ -14,8 +14,8 @@ class TabBarManager: ObservableObject {
     /// 是否显示底部浮动按钮（包括非导航栏的其他浮动按钮）
     @Published var showFloatingButtons: Bool = true
     
-    /// TabBar的高度 (不包含安全区域) - 从49减小到42
-    @Published private(set) var tabBarHeight: CGFloat = 42
+    /// TabBar的高度 (不包含安全区域) - 从49减小到42，再微调到38让整体更轻薄
+    @Published private(set) var tabBarHeight: CGFloat = 38
     
     /// 底部安全区域高度，由系统计算并在AppTabView中设置
     @Published private(set) var bottomSafeAreaHeight: CGFloat = 34

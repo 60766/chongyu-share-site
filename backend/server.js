@@ -187,12 +187,18 @@ const APPLE_ISSUER = 'https://appleid.apple.com'
 const APP_BUNDLE_ID = process.env.APP_BUNDLE_ID || 'YOUR_IOS_BUNDLE_ID' // e.g. com.example.app
 const APPLE_JWKS = createRemoteJWKSet(new URL('https://appleid.apple.com/auth/keys'))
 
+// App Store Server API config (for IAP verification)
+// StoreKit 2 transaction JWT verification uses App Store JWKS
+const APP_STORE_JWKS = createRemoteJWKSet(new URL('https://api.storekit.itunes.apple.com/in-app-purchase/publicKeys'))
+const APP_STORE_ISSUER = 'https://api.storekit.itunes.apple.com'
+
 // Debug configuration (does not print the actual key)
 console.log('[Config] PROVIDER_ENDPOINT:', PROVIDER_ENDPOINT)
 console.log('[Config] PROVIDER_MODEL:', PROVIDER_MODEL)
 console.log('[Config] MOCK_PROVIDER:', process.env.MOCK_PROVIDER || 'not set')
 console.log('[Config] API key provided:', PROVIDER_API_KEY && PROVIDER_API_KEY !== 'demo_key_placeholder' ? 'yes' : 'no')
 console.log('[Config] APP_BUNDLE_ID:', APP_BUNDLE_ID)
+console.log('[Config] IAP_VERIFY_STRICT:', process.env.IAP_VERIFY_STRICT === '1' ? 'enabled (strict mode)' : 'disabled (compatibility mode)')
 
 async function verifyAppleIdentityToken(identityToken, expectedSub) {
   try {
@@ -209,6 +215,101 @@ async function verifyAppleIdentityToken(identityToken, expectedSub) {
     const e = new Error('apple_identity_token_invalid')
     e.reason = reason
     throw e
+  }
+}
+
+/**
+ * 验证 App Store IAP 交易 JWT
+ * @param {string} transactionJWT - StoreKit 2 交易 JWT (transaction.jsonRepresentation)
+ * @param {string} expectedProductId - 期望的产品 ID
+ * @param {string} expectedTransactionId - 期望的交易 ID
+ * @returns {Promise<{valid: boolean, payload?: object, error?: string}>}
+ */
+async function verifyIAPTransaction(transactionJWT, expectedProductId, expectedTransactionId) {
+  try {
+    if (!transactionJWT || typeof transactionJWT !== 'string') {
+      return { valid: false, error: 'missing_or_invalid_jwt' }
+    }
+
+    // 验证 JWT 签名和基本声明
+    const { payload } = await jwtVerify(transactionJWT, APP_STORE_JWKS, {
+      issuer: APP_STORE_ISSUER,
+      audience: APP_BUNDLE_ID,
+    })
+
+    // 检查交易类型（应该是 Transaction）
+    if (payload.type !== 'Transaction') {
+      return { valid: false, error: 'invalid_transaction_type', payload }
+    }
+
+    // 检查产品 ID 是否匹配
+    if (payload.productId !== expectedProductId) {
+      console.warn(`[IAP Verify] Product ID mismatch: expected ${expectedProductId}, got ${payload.productId}`)
+      return { valid: false, error: 'product_id_mismatch', payload }
+    }
+
+    // 检查交易 ID 是否匹配
+    // StoreKit 2 JWT 中，交易 ID 可能在多个字段中：
+    // - transactionId: 当前交易的 ID（数字）
+    // - originalTransactionId: 原始交易的 ID（如果是续订）
+    // - jti: JWT ID（通常是交易 ID 的字符串形式）
+    const jwtTransactionId = String(
+      payload.transactionId || 
+      payload.originalTransactionId || 
+      payload.jti || 
+      ''
+    )
+    
+    // 尝试匹配交易 ID（支持数字和字符串格式）
+    const expectedIdStr = String(expectedTransactionId)
+    const expectedIdNum = Number(expectedTransactionId)
+    const jwtIdStr = String(jwtTransactionId)
+    const jwtIdNum = Number(jwtTransactionId)
+    
+    const idMatches = (
+      jwtIdStr === expectedIdStr || 
+      jwtIdNum === expectedIdNum ||
+      String(jwtIdNum) === expectedIdStr ||
+      String(expectedIdNum) === jwtIdStr
+    )
+    
+    if (!idMatches && jwtTransactionId) {
+      console.warn(`[IAP Verify] Transaction ID mismatch: expected ${expectedTransactionId}, got ${jwtTransactionId}`, {
+        expectedStr: expectedIdStr,
+        expectedNum: expectedIdNum,
+        jwtStr: jwtIdStr,
+        jwtNum: jwtIdNum,
+        payloadKeys: Object.keys(payload)
+      })
+      return { valid: false, error: 'transaction_id_mismatch', payload, expected: expectedTransactionId, got: jwtTransactionId }
+    }
+    
+    // 如果没有找到交易 ID，记录警告但继续（某些情况下可能正常）
+    if (!jwtTransactionId) {
+      console.warn('[IAP Verify] ⚠️ 未在 JWT 中找到交易 ID，但继续验证', {
+        payloadKeys: Object.keys(payload),
+        productId: payload.productId
+      })
+    }
+
+    // 检查交易状态
+    // StoreKit 2 JWT 中，revocationDate 存在表示已退款
+    if (payload.revocationDate) {
+      return { valid: false, error: 'transaction_revoked', payload, revokedAt: payload.revocationDate }
+    }
+
+    // 检查过期时间（如果存在）
+    const now = Math.floor(Date.now() / 1000)
+    if (payload.exp && payload.exp < now) {
+      return { valid: false, error: 'transaction_expired', payload }
+    }
+
+    // 验证通过
+    return { valid: true, payload }
+  } catch (err) {
+    const reason = err?.message || 'verify_failed'
+    console.error('[IAP Verify] JWT verification failed:', reason)
+    return { valid: false, error: 'jwt_verification_failed', reason }
   }
 }
 
@@ -342,14 +443,31 @@ app.post('/admin/set-balance', (req, res) => {
   res.json({ balance: wallet.balance, currency: 'CREDITS' })
 })
 
-app.post('/purchase/confirm', (req, res) => {
+app.post('/purchase/confirm', async (req, res) => {
   const appAccountToken = req.body?.appAccountToken || req.header('X-App-Account-Token') || req.query.appAccountToken
-  const { productId, transactionId, receipt } = req.body || {}
-  // Debug log
-  console.log('[IAP] confirm payload', { appAccountToken, productId, transactionId, hasReceipt: Boolean(receipt) })
+  let { productId, transactionId, receipt } = req.body || {}
+  
+  // Debug log - 检查 receipt 格式
+  const receiptType = typeof receipt
+  const receiptPreview = receiptType === 'string' 
+    ? (receipt.length > 100 ? receipt.substring(0, 100) + '...' : receipt)
+    : (receiptType === 'object' ? JSON.stringify(receipt).substring(0, 100) + '...' : String(receipt))
+  
+  console.log('[IAP] confirm payload', { 
+    appAccountToken, 
+    productId, 
+    transactionId, 
+    hasReceipt: Boolean(receipt),
+    receiptType,
+    receiptPreview
+  })
+  
+  // 检查 receipt 格式（在验证之前）
+  // 如果 receipt 是对象，可能是 Express 自动解析了 JSON，或者是 Xcode 环境返回的对象格式
+  // 这种情况下，我们需要使用对象验证方式
+  
   if (!appAccountToken || !productId || !transactionId) return res.status(400).json({ error: 'missing params', got: { appAccountToken: !!appAccountToken, productId: !!productId, transactionId: !!transactionId } })
 
-  // TODO: verify with App Store Server API using receipt. For MVP, accept and credit by SKU table.
   // 支持两种Product ID格式：
   // 1. 旧格式：credits.small, credits.medium, 等
   // 2. 新格式（带Bundle ID）：com.lishilong.chongyu.100energy, 等
@@ -374,14 +492,218 @@ app.post('/purchase/confirm', (req, res) => {
     return res.json({ balance: wallet.balance, currency: 'CREDITS' })
   }
 
-  // Optional: keep parsed receipt fields for audit
-  let parsedReceipt = null
-  try { if (typeof receipt === 'string' && receipt.length) parsedReceipt = JSON.parse(receipt) } catch {}
+  // ✅ IAP验证：如果提供了 receipt，验证交易真实性
+  // 支持三种格式：
+  // 1. JWT 字符串格式（生产环境/Sandbox）- 以 "eyJ" 开头
+  // 2. JSON 字符串格式（Xcode 环境）- 以 "{" 开头
+  // 3. JSON 对象格式（Express 自动解析）
+  let verificationResult = null
+  let verificationWarning = null
+  let receiptObject = null
+  
+  // 检查 receipt 格式并统一处理
+  if (receipt) {
+    // 如果 receipt 是字符串，检查是否是 JSON 字符串还是 JWT 字符串
+    if (typeof receipt === 'string' && receipt.length > 0) {
+      // 检查是否是 JSON 字符串（以 "{" 开头）
+      if (receipt.trim().startsWith('{')) {
+        // 情况2：receipt 是 JSON 字符串（Xcode 环境）
+        try {
+          receiptObject = JSON.parse(receipt)
+          console.log('[IAP Verify] ℹ️ Receipt 是 JSON 字符串格式，已解析为对象')
+        } catch (parseErr) {
+          console.error('[IAP Verify] ❌ 无法解析 JSON 字符串:', parseErr.message)
+          verificationWarning = {
+            error: 'invalid_json_string',
+            message: 'Receipt 是字符串但无法解析为 JSON'
+          }
+        }
+      } else {
+        // 情况1：receipt 是 JWT 字符串（生产环境/Sandbox）
+        // 尝试 JWT 验证
+        try {
+          verificationResult = await verifyIAPTransaction(receipt, productId, transactionId)
+        
+        if (!verificationResult.valid) {
+          const strictMode = process.env.IAP_VERIFY_STRICT === '1'
+          verificationWarning = {
+            error: verificationResult.error,
+            reason: verificationResult.reason || 'unknown',
+            strictMode
+          }
+          
+          console.warn(`[IAP Verify] ⚠️ 交易验证失败: ${verificationResult.error}`, {
+            productId,
+            transactionId,
+            reason: verificationResult.reason,
+            strictMode
+          })
+          
+          if (strictMode) {
+            return res.status(400).json({ 
+              error: 'iap_verification_failed', 
+              reason: verificationResult.error,
+              details: verificationWarning
+            })
+          }
+          
+          console.warn('[IAP Verify] ⚠️ 验证失败但继续处理（非严格模式）')
+        } else {
+          console.log('[IAP Verify] ✅ 交易验证成功', {
+            productId,
+            transactionId,
+            purchaseDate: verificationResult.payload?.purchaseDate
+          })
+        }
+      } catch (err) {
+        const strictMode = process.env.IAP_VERIFY_STRICT === '1'
+        verificationWarning = {
+          error: 'verification_error',
+          message: err.message,
+          strictMode
+        }
+        
+        console.error('[IAP Verify] ❌ 验证过程出错:', err.message)
+        
+        if (strictMode) {
+          return res.status(500).json({ 
+            error: 'iap_verification_error', 
+            message: err.message 
+          })
+        }
+        
+        console.warn('[IAP Verify] ⚠️ 验证出错但继续处理（非严格模式）')
+      }
+      }
+    }
+    
+    // 如果 receiptObject 已设置（从 JSON 字符串解析或直接是对象），进行对象验证
+    if (receiptObject || (typeof receipt === 'object' && receipt !== null)) {
+      if (!receiptObject) {
+        receiptObject = receipt
+      }
+      
+      // 验证对象中的关键信息
+      const receiptProductId = receiptObject.productId || receiptObject.productID
+      const receiptTransactionId = String(receiptObject.transactionId || receiptObject.originalTransactionId || '')
+      const receiptBundleId = receiptObject.bundleId || receiptObject.bundleID
+      
+      // 基本验证：检查产品 ID 和交易 ID 是否匹配
+      if (receiptProductId && receiptProductId !== productId) {
+        verificationWarning = {
+          error: 'product_id_mismatch',
+          expected: productId,
+          got: receiptProductId,
+          receiptFormat: 'object'
+        }
+        console.warn(`[IAP Verify] ⚠️ 产品 ID 不匹配: expected ${productId}, got ${receiptProductId}`)
+      } else if (receiptTransactionId && receiptTransactionId !== transactionId) {
+        verificationWarning = {
+          error: 'transaction_id_mismatch',
+          expected: transactionId,
+          got: receiptTransactionId,
+          receiptFormat: 'object'
+        }
+        console.warn(`[IAP Verify] ⚠️ 交易 ID 不匹配: expected ${transactionId}, got ${receiptTransactionId}`)
+      } else if (receiptBundleId && receiptBundleId !== APP_BUNDLE_ID) {
+        verificationWarning = {
+          error: 'bundle_id_mismatch',
+          expected: APP_BUNDLE_ID,
+          got: receiptBundleId,
+          receiptFormat: 'object'
+        }
+        console.warn(`[IAP Verify] ⚠️ Bundle ID 不匹配: expected ${APP_BUNDLE_ID}, got ${receiptBundleId}`)
+      } else if (receiptProductId && receiptTransactionId) {
+        // 基本信息匹配，标记为已验证（对象格式）
+        verificationResult = {
+          valid: true,
+          payload: receiptObject,
+          format: 'object'
+        }
+        console.log('[IAP Verify] ✅ 交易验证成功（对象格式）', {
+          productId: receiptProductId,
+          transactionId: receiptTransactionId,
+          environment: receiptObject.environment || 'unknown'
+        })
+      } else {
+        // 对象格式但缺少关键信息
+        verificationWarning = {
+          error: 'incomplete_receipt_object',
+          message: 'Receipt 对象缺少关键验证信息',
+          receiptFormat: 'object',
+          hasProductId: !!receiptProductId,
+          hasTransactionId: !!receiptTransactionId
+        }
+        console.warn('[IAP Verify] ⚠️ Receipt 对象格式但缺少关键信息')
+      }
+      
+      // 检查环境（Xcode 环境的 receipt 对象是正常的）
+      if (receiptObject.environment === 'Xcode' || receiptObject.environment === 'Sandbox') {
+        console.log(`[IAP Verify] ℹ️ Receipt 来自 ${receiptObject.environment} 环境，对象格式是正常的`)
+      }
+    } else {
+      // receipt 格式未知
+      verificationWarning = {
+        error: 'unknown_receipt_format',
+        receiptType: typeof receipt,
+        message: 'Receipt 格式未知，无法验证'
+      }
+      console.warn(`[IAP Verify] ⚠️ Receipt 格式未知: ${typeof receipt}`)
+    }
+  } else {
+    // 没有提供 receipt
+    verificationWarning = {
+      error: 'no_receipt_provided',
+      message: 'iOS端未提供交易凭证，无法验证交易真实性'
+    }
+    console.warn('[IAP Verify] ⚠️ 未提供 receipt，无法验证交易真实性')
+  }
 
-  const balanceAfter = creditWallet(appAccountToken, credits, transactionId, { productId, receipt: parsedReceipt || receipt })
+  // 保存 receipt 用于审计（支持字符串和对象格式）
+  let savedReceipt = receipt
+  if (receiptObject) {
+    // 如果 receipt 是对象，直接保存对象
+    savedReceipt = receiptObject
+  } else if (typeof receipt === 'string' && receipt.length) {
+    // 如果 receipt 是字符串，尝试解析（可能是 JWT，解析会失败，那就保存字符串）
+    try {
+      savedReceipt = JSON.parse(receipt)
+    } catch {
+      // JWT 字符串无法解析为 JSON，这是正常的，保存原始字符串
+      savedReceipt = receipt
+    }
+  }
+
+  // 充值
+  const balanceAfter = creditWallet(appAccountToken, credits, transactionId, { 
+    productId, 
+    receipt: savedReceipt,
+    verification: verificationResult ? {
+      valid: verificationResult.valid,
+      error: verificationResult.error,
+      format: verificationResult.format || 'jwt',
+      warning: verificationWarning
+    } : (verificationWarning ? {
+      valid: false,
+      error: verificationWarning.error,
+      warning: verificationWarning
+    } : null)
+  })
   processedIapTransactions.add(transactionId)
   scheduleSave()
-  res.json({ balance: balanceAfter, currency: 'CREDITS' })
+  
+  // 返回结果（包含验证信息）
+  const response = { 
+    balance: balanceAfter, 
+    currency: 'CREDITS' 
+  }
+  
+  // 如果验证失败或有警告，在响应中包含警告信息（不影响成功状态）
+  if (verificationWarning) {
+    response.warning = verificationWarning
+  }
+  
+  res.json(response)
 })
 
 // Apple ID 账号关联

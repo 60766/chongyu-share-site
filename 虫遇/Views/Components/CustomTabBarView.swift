@@ -2,6 +2,10 @@
 import SwiftUI
 import UIKit
 
+// 底部导航栏统一用的紫色体系（与发布页角色按钮 / 发布按钮保持同一色相）
+// 在角色按钮主紫的基础上稍微提亮、略增一点纯度，让底部四个按钮的高亮更明显但不过分荧光
+fileprivate let tabBarSelectedPurple = Color(red: 0.68, green: 0.56, blue: 0.90)   // 选中态：比发布主紫略亮一档
+
 /**
  * 自定义底部导航栏
  * 特点：
@@ -38,9 +42,9 @@ struct CustomTabBarView: View {
                 )
                 .frame(maxWidth: .infinity)
                 
-                // 中间空间 - 使用透明按钮而非Spacer，确保点击不会触发任何操作
+                // 中间空间 - 使用固定宽度的透明区域，保证与左右间距更均匀
                 Color.clear
-                    .frame(maxWidth: 80)
+                    .frame(width: 90)              // 调整为 90，略微收紧间距
                     .contentShape(Rectangle())
                     .allowsHitTesting(false)
                 
@@ -62,7 +66,9 @@ struct CustomTabBarView: View {
                 )
                 .frame(maxWidth: .infinity)
             }
-            .padding(.vertical, 5)
+            // 调整五个按钮在TabBar内部的垂直位置：整体稍微向下偏一点
+            .padding(.top, 8)
+            .padding(.bottom, 2)
         }
         .background(Color.clear)
     }
@@ -119,21 +125,34 @@ struct CustomTabButton<IconContent: View>: View {
     let action: () -> Void
     let icon: () -> IconContent
     
+    // 统一色系：选中态使用角色按钮同色的紫色，未选中态使用中性灰，保证可读性
+    private var selectedColor: Color {
+        tabBarSelectedPurple
+    }
+    
+    private var unselectedColor: Color {
+        Color.gray
+    }
+    
     var body: some View {
         Button(action: action) {
             VStack(spacing: 3) {
                 // 图标
                 icon()
                     .frame(height: 22)
-                    .brightness(isSelected ? 0.1 : 0)
+                    // 图标：选中用紫色，未选中用更亮一点的灰色
+                    .foregroundColor(isSelected ? selectedColor : unselectedColor.opacity(0.7))
                 
                 // 文本
                 Text(title)
                     .font(.system(size: 9, weight: isSelected ? .semibold : .medium))
-                    .foregroundColor(isSelected ? Color.primaryColor : Color.gray.opacity(0.8))
+                    // 文本：选中用紫色，未选中用略亮的灰色，保证清晰但不会抢眼
+                    .foregroundColor(isSelected ? selectedColor.opacity(0.98) : unselectedColor.opacity(0.8))
             }
-            .contentShape(Rectangle()) // 确保整个区域可点击
-            .padding(.vertical, 4)
+            // 扩大可点击区域，避免需要点得很准
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle()) // 整个格子都可点击
+            .padding(.vertical, 8)     // 垂直方向增加一些缓冲
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -241,19 +260,19 @@ struct TimePortalIcon: View {
             ZStack {
                 // 外层轮廓 - 宇宙空间边界
                 Circle()
-                    .stroke(isSelected ? Color.primaryColor : Color.gray, lineWidth: 2.0)
+                    .stroke(isSelected ? tabBarSelectedPurple : Color.gray, lineWidth: 2.0)
                     .frame(width: 22, height: 22)
                     .scaleEffect(isSelected ? orbitPulse : 1.0)
                 
                 // 轨道线 - 表示宇宙轨道
                 Circle()
-                    .stroke(isSelected ? Color.primaryColor.opacity(0.9) : Color.gray.opacity(0.7), lineWidth: 1.5)
+                    .stroke(isSelected ? tabBarSelectedPurple.opacity(0.95) : Color.gray.opacity(0.7), lineWidth: 1.5)
                     .frame(width: 14, height: 14)
                     .scaleEffect(isSelected ? orbitPulse * 0.95 : 1.0)
                 
                 // 中心恒星/行星
                 Circle()
-                    .fill(isSelected ? Color.primaryColor : Color.gray)
+                    .fill(isSelected ? tabBarSelectedPurple : Color.gray)
                     .frame(width: 5, height: 5)
                 
                 // 卫星/小行星轨道系统 - 使用GeometryReader确保相对于视图中心的精确定位
@@ -263,7 +282,7 @@ struct TimePortalIcon: View {
                     
                     // 卫星/小行星1 - 根据isReversed决定旋转方向
                     Circle()
-                        .fill(isSelected ? Color.primaryColor : Color.gray)
+                        .fill(isSelected ? tabBarSelectedPurple : Color.gray)
                         .frame(width: 3, height: 3)
                         .position(
                             x: center.x + radius * cos(CGFloat(currentAngle.truncatingRemainder(dividingBy: 360)) * .pi / 180),
@@ -272,7 +291,7 @@ struct TimePortalIcon: View {
                     
                     // 卫星/小行星2 - 始终与小行星1保持对称
                     Circle()
-                        .fill(isSelected ? Color.primaryColor : Color.gray)
+                        .fill(isSelected ? tabBarSelectedPurple : Color.gray)
                         .frame(width: 2, height: 2)
                         .position(
                             x: center.x + radius * cos(CGFloat((currentAngle + 180).truncatingRemainder(dividingBy: 360)) * .pi / 180),
@@ -347,7 +366,7 @@ struct ExploreIcon: View {
                 path.addLine(to: CGPoint(x: 8, y: 15))
                 path.addLine(to: CGPoint(x: 5, y: 5))
             }
-            .stroke(isSelected ? Color.primaryColor.opacity(isAnimating ? lineGlow : 0.6) : Color.gray.opacity(0.4), lineWidth: 1.2)
+            .stroke(isSelected ? tabBarSelectedPurple.opacity(isAnimating ? lineGlow : 0.6) : Color.gray.opacity(0.4), lineWidth: 1.2)
             
             // 星点 - 添加闪烁效果
             ForEach(0..<5) { index in
@@ -361,7 +380,7 @@ struct ExploreIcon: View {
                 let sizes: [CGFloat] = [3, 5, 3, 3, 3]
                 
                 Circle()
-                    .fill(isSelected ? Color.primaryColor : Color.gray)
+                    .fill(isSelected ? tabBarSelectedPurple : Color.gray)
                     .frame(width: sizes[index], height: sizes[index])
                     .position(points[index])
                     .opacity(isSelected && isAnimating ? starOpacity[index] : 1.0)
@@ -370,13 +389,13 @@ struct ExploreIcon: View {
             
             // 放大镜 - 添加轻微放大效果
             Circle()
-                .stroke(isSelected ? Color.primaryColor : Color.gray, lineWidth: 1.8)
+                .stroke(isSelected ? tabBarSelectedPurple : Color.gray, lineWidth: 1.8)
                 .frame(width: 10, height: 10)
                 .offset(x: 5, y: 5)
                 .scaleEffect(isSelected && isAnimating ? magnifierScale : 1.0)
             
             Rectangle()
-                .fill(isSelected ? Color.primaryColor : Color.gray)
+                .fill(isSelected ? tabBarSelectedPurple : Color.gray)
                 .frame(width: 1.8, height: 6)
                 .rotationEffect(.degrees(45))
                 .offset(x: 8, y: 8)
@@ -461,7 +480,7 @@ struct NotificationIcon: View {
         ZStack {
             // 辅助光晕效果 - 增加设计感和动态效果
             Circle()
-                .fill(isSelected ? Color.primaryColor.opacity(isAnimating ? glowOpacity : 0.15) : Color.gray.opacity(0.08))
+                .fill(isSelected ? tabBarSelectedPurple.opacity(isAnimating ? glowOpacity : 0.15) : Color.gray.opacity(0.08))
                 .frame(width: 16, height: 16)
                 .blur(radius: 3)
                 .position(x: 12, y: 12)
@@ -486,7 +505,7 @@ struct NotificationIcon: View {
                     path.move(to: CGPoint(x: 12, y: 12))
                     path.addLine(to: CGPoint(x: 17, y: 16))
                 }
-                .stroke(isSelected ? Color.primaryColor.opacity(isAnimating ? 0.3 : 0.25) : Color.gray.opacity(0.15), 
+                .stroke(isSelected ? tabBarSelectedPurple.opacity(isAnimating ? 0.3 : 0.25) : Color.gray.opacity(0.15), 
                        lineWidth: 2.5)
                 .blur(radius: 1)
                 
@@ -504,8 +523,8 @@ struct NotificationIcon: View {
                     GradientLine(
                         start: startPoint,
                         end: endpoints[index],
-                        startColor: isSelected ? Color.primaryColor.opacity(isAnimating ? linesOpacity[index] : 1.0) : Color.gray,
-                        endColor: isSelected ? Color.primaryColor.opacity(isAnimating ? linesOpacity[index] * 0.7 : 0.7) : Color.gray.opacity(0.7),
+                        startColor: isSelected ? tabBarSelectedPurple.opacity(isAnimating ? linesOpacity[index] : 1.0) : Color.gray,
+                        endColor: isSelected ? tabBarSelectedPurple.opacity(isAnimating ? linesOpacity[index] * 0.7 : 0.7) : Color.gray.opacity(0.7),
                         startWidth: 1.8,
                         endWidth: 0.8
                     )
@@ -516,7 +535,7 @@ struct NotificationIcon: View {
             ZStack {
                 // 光晕效果
                 Circle()
-                    .fill(isSelected ? Color.primaryColor.opacity(isAnimating ? 0.3 + (glowOpacity * 0.3) : 0.3) : Color.gray.opacity(0.2))
+                    .fill(isSelected ? tabBarSelectedPurple.opacity(isAnimating ? 0.3 + (glowOpacity * 0.3) : 0.3) : Color.gray.opacity(0.2))
                     .frame(width: 10, height: 10)
                     .scaleEffect(isAnimating && isSelected ? centerScale : 1.0)
                 
@@ -525,8 +544,8 @@ struct NotificationIcon: View {
                     .fill(
                         RadialGradient(
                             gradient: Gradient(colors: [
-                                isSelected ? Color.primaryColor : Color.gray,
-                                isSelected ? Color.primaryColor.opacity(0.9) : Color.gray.opacity(0.9)
+                                isSelected ? tabBarSelectedPurple : Color.gray,
+                                isSelected ? tabBarSelectedPurple.opacity(0.9) : Color.gray.opacity(0.9)
                             ]),
                             center: .center,
                             startRadius: 0,
@@ -557,7 +576,7 @@ struct NotificationIcon: View {
                 ZStack {
                     // 小圆点阴影
                     Circle()
-                        .fill(isSelected ? Color.primaryColor.opacity(0.2) : Color.gray.opacity(0.15))
+                        .fill(isSelected ? tabBarSelectedPurple.opacity(0.22) : Color.gray.opacity(0.15))
                         .frame(width: 5, height: 5)
                         .blur(radius: 1)
                         .scaleEffect(isAnimating && isSelected ? pointsPulse[index] : 1.0)
@@ -567,8 +586,8 @@ struct NotificationIcon: View {
                         .fill(
                             RadialGradient(
                                 gradient: Gradient(colors: [
-                                    isSelected ? Color.primaryColor.opacity(0.9) : Color.gray.opacity(0.9),
-                                    isSelected ? Color.primaryColor : Color.gray
+                                    isSelected ? tabBarSelectedPurple.opacity(0.9) : Color.gray.opacity(0.9),
+                                    isSelected ? tabBarSelectedPurple : Color.gray
                                 ]),
                                 center: .center,
                                 startRadius: 0,
@@ -714,7 +733,7 @@ struct SpaceIcon: View {
             // 基础圆形 - 添加脉冲呼吸效果
             Circle()
                 .stroke(
-                    isSelected ? Color.primaryColor : Color.gray.opacity(0.6),
+                    isSelected ? tabBarSelectedPurple : Color.gray.opacity(0.6),
                     lineWidth: 1.8
                 )
                 .frame(width: 22, height: 22)
@@ -722,14 +741,14 @@ struct SpaceIcon: View {
             
             // 内部结构 - 添加旋转和呼吸效果
             Circle()
-                .fill(isSelected ? Color.primaryColor.opacity(isAnimating ? innerCircleOpacity : 0.3) : Color.clear)
+                .fill(isSelected ? tabBarSelectedPurple.opacity(isAnimating ? innerCircleOpacity : 0.3) : Color.clear)
                 .frame(width: 12, height: 12)
                 .scaleEffect(isAnimating && isSelected ? innerCircleScale : 1.0)
                 .rotationEffect(.degrees(isSelected ? rotation : 0))
             
             // 中心点 - 添加缩放效果
             Circle()
-                .fill(isSelected ? Color.primaryColor : Color.gray)
+                .fill(isSelected ? tabBarSelectedPurple : Color.gray)
                 .frame(width: 5, height: 5)
                 .scaleEffect(isAnimating && isSelected ? centerDotScale : 1.0)
         }

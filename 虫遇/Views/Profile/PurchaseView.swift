@@ -13,6 +13,12 @@ struct PurchaseView: View {
     @State private var lastPurchaseDetails: PurchaseSuccessDetails?
     @State private var purchaseStatusPhase: PurchaseStatusPhase = .idle
     @State private var purchaseStatusTask: Task<Void, Never>?
+    @State private var showSandboxTip = false
+    @State private var useSandboxMode = false  // 是否使用 Sandbox 模式（强制弹出登录）
+    @State private var pendingProduct: Product?  // 待购买的产品（用于 Sandbox 模式）
+    @State private var showSandboxLogin = false  // 显示 Sandbox 登录输入界面
+    @State private var sandboxEmail = ""  // Sandbox 账号邮箱
+    @State private var sandboxPassword = ""  // Sandbox 账号密码
     
     var body: some View {
         NavigationStack {
@@ -64,8 +70,59 @@ struct PurchaseView: View {
             时间：\(PurchaseView.successDateFormatter.string(from: details.confirmation.purchasedAt))
             """)
         }
+        .onAppear {
+            // 加载保存的 Sandbox 账号信息
+            #if DEBUG
+            sandboxEmail = UserDefaults.standard.string(forKey: "sandbox_test_email") ?? ""
+            sandboxPassword = UserDefaults.standard.string(forKey: "sandbox_test_password") ?? ""
+            #endif
+        }
         .onDisappear {
             purchaseStatusTask?.cancel()
+        }
+        .sheet(isPresented: $showSandboxLogin) {
+            sandboxLoginSheet
+        }
+        .alert("使用 Sandbox 账号购买", isPresented: $showSandboxTip) {
+            Button("取消") { 
+                #if DEBUG
+                useSandboxMode = false
+                pendingProduct = nil
+                #endif
+            }
+            Button("打开设置退出 Apple ID") {
+                // 打开设置应用
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("已退出，继续购买") {
+                #if DEBUG
+                // 用户已退出 Apple ID，继续购买流程
+                useSandboxMode = false
+                if let product = pendingProduct {
+                    performPurchase(product: product)
+                }
+                #endif
+            }
+        } message: {
+            Text("""
+            要使用 Sandbox 账号购买，需要先退出设备上的 Apple ID：
+            
+            📱 操作步骤：
+            1. 点击"打开设置退出 Apple ID"
+            2. 在设置中：Apple ID → 退出登录
+            3. 返回应用，点击"已退出，继续购买"
+            4. 点击购买按钮，系统会弹出登录界面
+            5. 输入 Sandbox 账号：\(sandboxEmail.isEmpty ? "shilong@tester.com" : sandboxEmail)
+            6. 输入密码：\(sandboxPassword.isEmpty ? "（你设置的密码）" : "已保存")
+            7. 完成购买
+            
+            ⚠️ 注意：
+            - 退出 Apple ID 后，某些功能可能暂时不可用
+            - Sandbox 账号不会扣费
+            - 这是测试环境
+            """)
         }
     }
     
@@ -276,6 +333,37 @@ struct PurchaseView: View {
                 InfoRow(icon: "infinity", text: "虫洞币永久有效，支持设备间同步")
                 InfoRow(icon: "checkmark.shield", text: "支付异常时，可随时联系客服")
                 InfoRow(icon: "doc.text", text: "购买即表示同意《用户协议》与《隐私政策》")
+                
+                #if DEBUG
+                // 测试模式提示
+                VStack(alignment: .leading, spacing: 8) {
+                    Button {
+                        showSandboxLogin = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "person.badge.key.fill")
+                                .font(.caption)
+                            Text(sandboxEmail.isEmpty ? "输入 Sandbox 测试账号" : "Sandbox: \(sandboxEmail)")
+                                .font(.caption)
+                        }
+                        .foregroundColor(sandboxEmail.isEmpty ? .cyan.opacity(0.8) : .green.opacity(0.9))
+                    }
+                    
+                    if !sandboxEmail.isEmpty {
+                        Toggle(isOn: $useSandboxMode) {
+                            HStack(spacing: 8) {
+                                Image(systemName: useSandboxMode ? "checkmark.circle.fill" : "circle")
+                                    .font(.caption)
+                                Text("使用 Sandbox 账号购买")
+                                    .font(.caption)
+                            }
+                            .foregroundColor(useSandboxMode ? .green.opacity(0.9) : .cyan.opacity(0.8))
+                        }
+                        .toggleStyle(.button)
+                    }
+                }
+                .padding(.top, 4)
+                #endif
             }
         }
         .padding(24)
@@ -300,6 +388,26 @@ struct PurchaseView: View {
     
     private func purchaseProduct(_ product: Product) {
         guard !isPurchasing else { return }
+        
+        #if DEBUG
+        // 如果启用了 Sandbox 模式，先提示用户退出 Apple ID
+        if useSandboxMode {
+            pendingProduct = product  // 保存待购买的产品
+            showSandboxTip = true
+            return
+        }
+        #endif
+        
+        performPurchase(product: product)
+    }
+    
+    private func performPurchase(product: Product? = nil) {
+        // 使用待购买的产品，或者传入的产品，或者第一个可用产品
+        guard let product = product ?? pendingProduct ?? storeKitManager.products.first else { return }
+        guard !isPurchasing else { return }
+        
+        // 清除待购买的产品
+        pendingProduct = nil
         
         isPurchasing = true
         purchaseError = nil
@@ -490,6 +598,137 @@ struct PurchaseView: View {
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return formatter
     }()
+    
+    #if DEBUG
+    // Sandbox 账号输入界面
+    private var sandboxLoginSheet: some View {
+        NavigationStack {
+            ZStack {
+                // 背景
+                LinearGradient(
+                    colors: [
+                        Color(red: 28/255, green: 18/255, blue: 46/255),
+                        Color(red: 8/255, green: 6/255, blue: 18/255)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // 说明
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("Sandbox 测试账号设置", systemImage: "person.badge.key.fill")
+                                .font(.headline)
+                                .foregroundColor(.white.opacity(0.9))
+                            
+                            Text("输入 Sandbox 测试账号信息，购买时会提示使用此账号登录。")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.white.opacity(0.1))
+                        )
+                        
+                        // 账号输入
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("邮箱")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(.white.opacity(0.9))
+                            
+                            TextField("shilong@tester.com", text: $sandboxEmail)
+                                .textFieldStyle(.plain)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.white.opacity(0.15))
+                                )
+                                .foregroundColor(.white)
+                                .autocapitalization(.none)
+                                .keyboardType(.emailAddress)
+                        }
+                        
+                        // 密码输入
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("密码")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(.white.opacity(0.9))
+                            
+                            SecureField("输入密码", text: $sandboxPassword)
+                                .textFieldStyle(.plain)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.white.opacity(0.15))
+                                )
+                                .foregroundColor(.white)
+                        }
+                        
+                        // 提示信息
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("使用说明", systemImage: "info.circle")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(.white.opacity(0.9))
+                            
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("1. 输入 Sandbox 测试账号和密码")
+                                Text("2. 开启\"使用 Sandbox 账号购买\"开关")
+                                Text("3. 点击购买，系统会弹出登录界面")
+                                Text("4. 在登录界面输入上述账号和密码")
+                            }
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.7))
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.blue.opacity(0.2))
+                        )
+                        
+                        // 保存按钮
+                        Button {
+                            // 保存账号信息（可以保存到 UserDefaults）
+                            UserDefaults.standard.set(sandboxEmail, forKey: "sandbox_test_email")
+                            UserDefaults.standard.set(sandboxPassword, forKey: "sandbox_test_password")
+                            showSandboxLogin = false
+                        } label: {
+                            Text("保存")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(sandboxEmail.isEmpty || sandboxPassword.isEmpty ? Color.gray.opacity(0.5) : Color.blue)
+                                )
+                        }
+                        .disabled(sandboxEmail.isEmpty || sandboxPassword.isEmpty)
+                    }
+                    .padding()
+                }
+            }
+            .navigationTitle("Sandbox 测试账号")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("取消") {
+                        showSandboxLogin = false
+                    }
+                    .foregroundColor(.white)
+                }
+            }
+            .onAppear {
+                // 加载已保存的账号信息
+                sandboxEmail = UserDefaults.standard.string(forKey: "sandbox_test_email") ?? ""
+                sandboxPassword = UserDefaults.standard.string(forKey: "sandbox_test_password") ?? ""
+            }
+        }
+    }
+    #endif
 }
 
 struct PurchaseOptionCard: View {
@@ -839,6 +1078,7 @@ private struct CoinProductInfo: Equatable {
         return formatter
     }()
 }
+
 
 #Preview {
     PurchaseView()

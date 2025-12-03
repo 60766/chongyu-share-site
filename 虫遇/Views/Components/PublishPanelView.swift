@@ -27,8 +27,6 @@ struct PublishPanelView: View {
     @State private var contentText: String = ""
     /// 选中的角色
     @State private var selectedCharacters: [CharacterModel] = []
-    /// 选中的时代
-    @State private var selectedEra: String = "现代"
     /// 是否显示角色选择器
     @State private var showingCharacterSelector = false
     /// 是否显示发布预览
@@ -73,16 +71,12 @@ struct PublishPanelView: View {
     @State private var showDragHint: Bool = false // 显示拖拽提示
     @State private var dragHintOpacity: Double = 0 // 拖拽提示透明度
     
-    // 时代选项
-    private let eras = ["现代", "古代", "中世纪", "文艺复兴", "启蒙运动", "未来"]
-    
-
-    
     // 虫洞能量指示器
     private var energyIndicatorView: some View {
         WormholeEnergyIndicator(
             contentText: contentText,
             characters: selectedCharacters,
+            imageCount: selectedImages.count, // 传递图片数量
             isAnimating: true // 在发布面板中显示动画
         )
     }
@@ -271,7 +265,7 @@ struct PublishPanelView: View {
     
     // 内容输入区域
     private var contentInputArea: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) { // 减小间距，更紧凑
             // 输入区域 - 现代化设计
             VStack {
                 contentEditorView
@@ -280,8 +274,9 @@ struct PublishPanelView: View {
                             .stroke(
                                 LinearGradient(
                                     gradient: Gradient(colors: [
-                                        Color.primaryColor.opacity(0.2),
-                                        Color.blue.opacity(0.1)
+                                        // 使用与发布按钮同色系的紫色，保持纯度和亮度不变
+                                        Color(red: 0.6, green: 0.5, blue: 0.8).opacity(0.2),
+                                        Color(red: 0.55, green: 0.45, blue: 0.75).opacity(0.1)
                                     ]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -290,13 +285,13 @@ struct PublishPanelView: View {
                             )
                     )
                     .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
-                    .shadow(color: Color.primaryColor.opacity(0.1), radius: 3, x: 0, y: 1)
+                    .shadow(color: Color(red: 0.6, green: 0.5, blue: 0.8).opacity(0.1), radius: 3, x: 0, y: 1) // 使用与发布按钮同色系的紫色
             }
             .frame(height: UIScreen.main.bounds.height * 0.2)
             
-            // 功能按钮区 - 极简布局
-            HStack(spacing: 10) {
-                // 图片选择按钮 - 现代化设计
+            // 功能按钮区 - 图片按钮和穿越能量同一行，更紧凑
+            HStack(alignment: .center, spacing: 12) {
+                // 图片选择按钮 - 现代化设计，靠左对齐
                 Button(action: { 
                     showingImagePicker = true 
                     let impactFeedback = UIImpactFeedbackGenerator(style: .light)
@@ -319,58 +314,32 @@ struct PublishPanelView: View {
                     .background(
                         ZStack {
                             Capsule()
-                                .fill(Color.blue.opacity(selectedImages.isEmpty ? 0.06 : 0.1))
+                                // 略微降低饱和度：更浅的蓝色背景
+                                .fill(Color.blue.opacity(selectedImages.isEmpty ? 0.04 : 0.08))
                             
                             Capsule()
-                                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                                // 边框也稍微变淡一点
+                                .stroke(Color.blue.opacity(0.16), lineWidth: 1)
                         }
                     )
-                    .foregroundColor(Color.blue.opacity(0.85))
-                    .shadow(color: Color.blue.opacity(0.1), radius: 2, x: 0, y: 1)
+                    // 前景色饱和度略降，让图片按钮比主按钮更弱一丢丢
+                    .foregroundColor(Color.blue.opacity(0.78))
+                    .shadow(color: Color.blue.opacity(0.08), radius: 2, x: 0, y: 1)
                 }
                 .buttonStyle(EnhancedBouncyButtonStyle())
                 
-                Spacer()
+                // 穿越能量指示器 - 放在同一行，更紧凑
+                energyIndicatorView
+                    .opacity(0.8) // 整体降低透明度，进一步弱化
                 
-                // 时代选择按钮 - 现代化设计
-                Menu {
-                    ForEach(eras, id: \.self) { era in
-                        Button(era) {
-                            selectedEra = era
-                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                            generator.impactOccurred()
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "clock.fill")
-                            .font(.system(size: 14, weight: .medium))
-                        Text(selectedEra)
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule()
-                                .fill(Color.primaryColor.opacity(0.06))
-                            
-                            Capsule()
-                                .stroke(Color.primaryColor.opacity(0.2), lineWidth: 1)
-                        }
-                    )
-                    .foregroundColor(Color.primaryColor.opacity(0.85))
-                    .shadow(color: Color.primaryColor.opacity(0.1), radius: 2, x: 0, y: 1)
-                }
+                Spacer() // 右侧留白
             }
             
             // 图片预览区域
             if !selectedImages.isEmpty {
                 imagePreviewArea
+                    .padding(.top, 4) // 添加小间距
             }
-            
-            energyIndicatorView
-                .padding(.top, 2)
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
@@ -385,7 +354,7 @@ struct PublishPanelView: View {
             minHeight: UIScreen.main.bounds.height * 0.15,
             maxHeight: UIScreen.main.bounds.height * 0.25,
             cornerRadius: 16,
-            borderColor: Color.primaryColor,
+            borderColor: Color(red: 0.6, green: 0.5, blue: 0.8), // 使用与发布按钮同色系的紫色
             backgroundColor: .white,
             showDebugInfo: false
         )
@@ -594,7 +563,7 @@ struct PublishPanelView: View {
     // 底部工具栏 - 优化设计
     private var bottomToolbar: some View {
         HStack {
-            // 角色选择按钮 - 现代化设计
+            // 角色选择按钮 - 优化设计，统一高度
             Button(action: {
                 showingCharacterSelector = true
                 let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -602,44 +571,28 @@ struct PublishPanelView: View {
             }) {
                 HStack(spacing: 6) {
                     Image(systemName: selectedCharacters.isEmpty ? "person.fill" : "person.2.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                     
                     Text(selectedCharacters.isEmpty ? "角色" : "角色")
                         .font(.system(size: 15, weight: .medium))
                 }
-                .foregroundStyle(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.primaryColor,
-                            Color.primaryColor.opacity(0.8)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                // 使用与发布按钮同色系的紫色，保持纯度不变
+                .foregroundColor(Color(red: 0.6, green: 0.5, blue: 0.8).opacity(0.9))
+                .padding(.horizontal, 18) // 统一水平padding，与发布按钮更协调
+                .padding(.vertical, 12) // 统一垂直padding，与发布按钮高度一致
                 .background(
                     ZStack {
                         Capsule()
-                            .fill(Color.primaryColor.opacity(0.08))
+                            .fill(Color(red: 0.6, green: 0.5, blue: 0.8).opacity(0.1)) // 使用同色系紫色
                         
                         Capsule()
                             .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.primaryColor.opacity(0.3),
-                                        Color.primaryColor.opacity(0.1)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
+                                Color(red: 0.6, green: 0.5, blue: 0.8).opacity(0.25), // 使用同色系紫色
                                 lineWidth: 1
                             )
                     }
                 )
-                .shadow(color: Color.primaryColor.opacity(0.15), radius: 3, x: 0, y: 1)
-                .contentShape(Rectangle())
+                .shadow(color: Color(red: 0.6, green: 0.5, blue: 0.8).opacity(0.12), radius: 2, x: 0, y: 1)
             }
             .buttonStyle(EnhancedBouncyButtonStyle())
             
@@ -649,7 +602,7 @@ struct PublishPanelView: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.white)
                     .frame(width: 20, height: 20)
-                    .background(Color.primaryColor)
+                    .background(Color(red: 0.6, green: 0.5, blue: 0.8)) // 使用与发布按钮同色系的紫色
                     .clipShape(Circle())
                     .offset(x: -5)
             }
@@ -676,14 +629,16 @@ struct PublishPanelView: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
                 .background(
+                    // 主背景渐变 - 使用漂亮的紫色渐变，添加果冻质感
                     ZStack {
-                        // 主背景渐变
                         Capsule()
                             .fill(
                                 LinearGradient(
                                     gradient: Gradient(colors: hasValidContent ? [
-                                        Color.primaryColor,
-                                        Color.primaryColor.opacity(0.8)
+                                        // 从亮紫色到深紫色，稍微调亮
+                                        Color(red: 0.7, green: 0.6, blue: 0.9),   // 亮紫色（调亮）
+                                        Color(red: 0.6, green: 0.5, blue: 0.8),   // 中紫色（调亮）
+                                        Color(red: 0.55, green: 0.45, blue: 0.75) // 深紫色（调亮）
                                     ] : [
                                         Color.gray.opacity(0.3),
                                         Color.gray.opacity(0.2)
@@ -693,33 +648,33 @@ struct PublishPanelView: View {
                                 )
                             )
                         
-                        // 光晕效果（仅在可用时显示）
+                        // 果冻质感：添加轻微的高光效果
                         if hasValidContent {
                             Capsule()
-                                .stroke(
+                                .fill(
                                     LinearGradient(
                                         gradient: Gradient(colors: [
-                                            Color.white.opacity(0.3),
-                                            Color.clear
+                                            Color.white.opacity(0.15),
+                                            Color.white.opacity(0.0)
                                         ]),
                                         startPoint: .top,
-                                        endPoint: .bottom
-                                    ),
-                                    lineWidth: 1
+                                        endPoint: .center
+                                    )
                                 )
                         }
                     }
                 )
                 .foregroundColor(.white)
-                .shadow(color: hasValidContent ? Color.primaryColor.opacity(0.4) : Color.clear, radius: 8, x: 0, y: 2)
-                .shadow(color: hasValidContent ? Color.primaryColor.opacity(0.2) : Color.clear, radius: 2, x: 0, y: 1)
+                // 增强阴影效果（参考主页面风格）
+                .shadow(color: hasValidContent ? Color(red: 0.6, green: 0.5, blue: 0.8, opacity: 0.5) : Color.clear, radius: 12, x: 0, y: 3)
+                .shadow(color: hasValidContent ? Color.white.opacity(0.2) : Color.clear, radius: 4, x: 0, y: 1)
             }
             .disabled(!hasValidContent || isPublishing)
             .buttonStyle(EnhancedSpringyButtonStyle())
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .padding(.bottom, 4) // 减小底部边距，提高位置
+        .padding(.vertical, 12) // 减小垂直内边距，更紧凑
+        .padding(.bottom, 8) // 统一底部边距
     }
     
     // 发布内容判断 - 文本必须不为空，图片可选
@@ -743,7 +698,6 @@ struct PublishPanelView: View {
         // 🔧 修复：在发布前保存内容，避免被resetPanelState清空
         let contentToPublish = contentText
         let imagesToPublish = selectedImages
-        let eraToPublish = selectedEra
         let charactersToPublish = selectedCharacters
         let characterProbabilitiesToPublish = getProbabilityDict()
         let publishModeToPublish = publishMode
@@ -775,7 +729,6 @@ struct PublishPanelView: View {
                 self.publishContent(
                     content: contentToPublish,
                     images: imagesToPublish,
-                    era: eraToPublish,
                     characters: charactersToPublish,
                     characterProbabilities: characterProbabilitiesToPublish,
                     publishMode: publishModeToPublish
@@ -895,7 +848,6 @@ struct PublishPanelView: View {
     private func publishContent(
         content: String,
         images: [UIImage],
-        era: String,
         characters: [CharacterModel],
         characterProbabilities: [String: Int],
         publishMode: PublishMode
@@ -918,7 +870,6 @@ struct PublishPanelView: View {
         let postData = PostData(
                 content: content,
                 images: images,
-                era: era,
                 characters: characters,
                 characterProbabilities: characterProbabilities,
                 publishMode: publishMode
@@ -1279,33 +1230,42 @@ struct PublishPanelView: View {
             manuallySelectedCharacters = selectedCharacters.map { $0.id }
         }
         
-        // 计算需要额外选择的角色数量
-        let targetCount = 3 // 目标总数为3个角色
-        let additionalNeeded = max(0, targetCount - manuallySelectedCharacters.count)
+        // 智能动态限制策略：
+        // 1. 如果用户选择了角色，优先使用用户选择的（尊重用户选择）
+        // 2. 如果用户没选择，自动补充到3个（保证基本互动）
+        // 3. 设置上限为5个（平衡质量和成本）
+        let maxCharacters = 5 // 最多5个角色，保证质量
+        let minCharacters = 3 // 最少3个角色，保证基本互动
         
         var finalSelectedCharacters = manuallySelectedCharacters
         
-        if additionalNeeded > 0 {
-            // 使用角色轮换系统获取额外的角色
-            let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: additionalNeeded)
-            
-            // 转换为字符串ID并排除已经手动选择的角色
-            let additionalCharacterIds = rotationCharacters
-                .map { $0.id }
-                .filter { !manuallySelectedCharacters.contains($0) }
-                .prefix(additionalNeeded)
-            
-            finalSelectedCharacters.append(contentsOf: additionalCharacterIds)
+        // 如果用户选择了角色
+        if !manuallySelectedCharacters.isEmpty {
+            // 如果用户选择的角色数量在合理范围内（1-5个），直接使用
+            if manuallySelectedCharacters.count <= maxCharacters {
+                return Array(manuallySelectedCharacters.prefix(maxCharacters))
+            } else {
+                // 如果用户选择了超过5个，限制为5个（保证质量）
+                print("⚠️ 用户选择了\(manuallySelectedCharacters.count)个角色，限制为\(maxCharacters)个以保证生成质量")
+                return Array(manuallySelectedCharacters.prefix(maxCharacters))
             }
+        } else {
+            // 用户没有选择角色，自动补充到3个
+            let additionalNeeded = minCharacters
+            let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: additionalNeeded)
+            finalSelectedCharacters = rotationCharacters.map { $0.id }
             
         // 如果仍然不足（极端情况），使用轮换系统重新选择
         if finalSelectedCharacters.count < 2 {
-            let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: targetCount)
+                let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: minCharacters)
             finalSelectedCharacters = rotationCharacters.map { $0.id }
         }
+        }
         
-        // 限制最多3个角色
-        let result = Array(finalSelectedCharacters.prefix(3))
+        // 最终限制：最多5个角色
+        let result = Array(finalSelectedCharacters.prefix(maxCharacters))
+        
+        print("✅ 最终选择\(result.count)个角色进行评论生成")
         
         return result
     }
@@ -1353,7 +1313,6 @@ struct PublishPanelView: View {
         contentText = ""
         selectedCharacters = []
         selectedImages = []
-        selectedEra = "现代"
         showProbabilitySettings = false
         characterProbabilities = []
         publishMode = .communication
@@ -1365,17 +1324,15 @@ struct PublishPanelView: View {
         let id: String
         let content: String
         let images: [UIImage]
-        let era: String
         let characters: [CharacterModel]
         let characterProbabilities: [String: Int]
         let publishMode: PublishMode
         let timestamp: Date
         
-        init(content: String, images: [UIImage], era: String, characters: [CharacterModel], characterProbabilities: [String: Int], publishMode: PublishMode) {
+        init(content: String, images: [UIImage], characters: [CharacterModel], characterProbabilities: [String: Int], publishMode: PublishMode) {
             self.id = UUID().uuidString
             self.content = content
             self.images = images
-            self.era = era
             self.characters = characters
             self.characterProbabilities = characterProbabilities
             self.publishMode = publishMode
@@ -1905,52 +1862,6 @@ struct PublishPanelView: View {
         }
     }
     
-    /**
-     * 时代选择区域
-     * 通过改进的布局和动画增强用户体验
-     */
-    func eraSelectionArea() -> some View {
-        EnhancedScrollView(title: "选择时代") {
-            HStack(spacing: 8) {
-                ForEach(eras, id: \.self) { era in
-                    Button(action: {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
-                            selectedEra = era
-                        }
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
-                    }) {
-                        // 精简样式
-                        let isSelected = era == selectedEra
-                        let textFont = Font.system(size: 14, weight: isSelected ? .semibold : .regular)
-                        let textColor = isSelected ? Color.white : Color.primary.opacity(0.7)
-                        
-                        Text(era)
-                            .font(textFont)
-                            .foregroundColor(textColor)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(isSelected ? 
-                                        AnyShapeStyle(
-                                            LinearGradient(
-                                                gradient: Gradient(colors: [Color.blue.opacity(0.7), Color.purple.opacity(0.7)]),
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        ) : 
-                                        AnyShapeStyle(Color.secondary.opacity(0.08))
-                                    )
-                            )
-                            .scaleEffect(isSelected ? 1.02 : 1.0)
-                    }
-                    .buttonStyle(SpringyButtonStyle())
-                }
-            }
-        }
-        .padding(.horizontal, 12)
-    }
 }
 
 /**
@@ -1982,6 +1893,7 @@ struct CharacterSelectorView: View {
     @State private var selectedCategory: CharacterCategory? = .all
     @State private var showSearchCancelButton = false
     @State private var isSearchFocused: Bool = false
+    @State private var showLimitToast = false // 显示限制提示
     
     // 动画效果控制
     @State private var isAnimating = false
@@ -1990,6 +1902,7 @@ struct CharacterSelectorView: View {
     private let cornerRadius: CGFloat = 12
     private let primaryPadding: CGFloat = 16
     private let secondaryPadding: CGFloat = 8
+    private let maxCharacterCount = 5 // 最多选择5个角色
     
     var body: some View {
         ZStack {
@@ -2007,30 +1920,32 @@ struct CharacterSelectorView: View {
             VStack(spacing: 0) {
                 // 重新设计顶部区域 - 移除取消按钮，优化布局
                 VStack(spacing: 12) { // 增加间距
-                    // 标题与确定按钮
-                    HStack {
-                        // 左侧空间
-                        Spacer()
-                            .frame(width: 50)
-                        
-                        Spacer()
-                        
+                    // 标题与确定按钮 - 使用ZStack确保标题居中
+                    ZStack {
+                        // 标题居中
                         Text("选择角色")
                             .font(.system(size: 17, weight: .semibold))
                         
+                        // 确定按钮在右侧
+                        HStack {
                         Spacer()
                         
-                        // 完全重新设计确定按钮 - 水平布局
                         Button(action: {
                             selectedCharacters = localSelectedCharacters
                             presentationMode.wrappedValue.dismiss()
                         }) {
-                            Text(localSelectedCharacters.isEmpty ? "确定" : "确定(\(localSelectedCharacters.count))")
+                                if localSelectedCharacters.isEmpty {
+                                    Text("确定")
                                 .font(.system(size: 16))
-                                .foregroundColor(localSelectedCharacters.isEmpty ? .gray : .primaryColor)
+                                        .foregroundColor(.gray)
+                                } else {
+                                    Text("确定(\(localSelectedCharacters.count)/\(maxCharacterCount))")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.primaryColor)
+                                }
                         }
                         .disabled(localSelectedCharacters.isEmpty)
-                        .frame(width: 60, alignment: .trailing)
+                        }
                     }
                     .padding(.top, 8)
                     
@@ -2084,6 +1999,29 @@ struct CharacterSelectorView: View {
                 // 角色网格 - 更高效的布局
                 characterGridOptimized
                     .padding(.top, 6)
+            }
+            
+            // 限制提示Toast
+            if showLimitToast {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("最多只能选择\(maxCharacterCount)个角色")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.primary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+                    )
+                    .padding(.bottom, 100)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .onAppear {
@@ -2163,26 +2101,26 @@ struct CharacterSelectorView: View {
         .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
     }
     
-    // 更紧凑的分类标签设计
+    // 更紧凑的分类标签设计 - 与角色库分类保持一致
     private var categoryTabsCompact: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 // 全部分类按钮
                 compactCategoryButton(category: .all)
                 
-                // 历史人物分类
+                // 第一排热门分类（与角色库保持一致）
                 Group {
-                    compactCategoryButton(category: .philosopher)
-                    compactCategoryButton(category: .writer)
+                    compactCategoryButton(category: .animeCharacter)
+                    compactCategoryButton(category: .historical)
+                    compactCategoryButton(category: .filmCharacter)
                 }
                 
-                // 虚构角色分类
-                if CharacterCategory.allCases.contains(where: { $0.isVirtual }) {
+                // 第二排分类（与角色库保持一致）
                     Group {
-                        compactCategoryButton(category: .animeCharacter)
                         compactCategoryButton(category: .gameCharacter)
-                        compactCategoryButton(category: .filmCharacter)
-                    }
+                    compactCategoryButton(category: .writer)
+                    compactCategoryButton(category: .philosopher)
+                    compactCategoryButton(category: .mythCharacter)
                 }
             }
             .padding(.horizontal, primaryPadding)
@@ -2200,6 +2138,9 @@ struct CharacterSelectorView: View {
                 if category != .all {
                     Image(systemName: category.icon)
                         .font(.system(size: 12))
+                        .foregroundColor(selectedCategory == category 
+                                      ? category.color 
+                                      : category.color.opacity(0.6))
                 }
                 
                 Text(category.displayName)
@@ -2211,11 +2152,11 @@ struct CharacterSelectorView: View {
                 Capsule()
                     .fill(selectedCategory == category 
                           ? category.color.opacity(0.15) 
-                          : Color.gray.opacity(0.08))
+                          : category.color.opacity(0.08)) // 未选中时也显示分类颜色，但透明度更低
             )
             .foregroundColor(selectedCategory == category 
                            ? category.color 
-                           : .primary)
+                           : category.color.opacity(0.7)) // 未选中时使用分类颜色的70%透明度
         }
     }
     
@@ -2231,9 +2172,11 @@ struct CharacterSelectorView: View {
                 spacing: 8 // 进一步减少间距
             ) {
                 ForEach(filteredCharacters) { character in
+                    let isDisabled = !isSelected(character) && localSelectedCharacters.count >= maxCharacterCount
                     CharacterSelectionCell(
                         character: character,
                         isSelected: isSelected(character),
+                        isDisabled: isDisabled,
                         onToggle: { toggleCharacter(character) }
                     )
                     .opacity(isAnimating ? 1.0 : 0)
@@ -2404,14 +2347,46 @@ struct CharacterSelectorView: View {
     
     // 切换角色选中状态
     private func toggleCharacter(_ character: CharacterModel) {
+        if isSelected(character) {
+            // 取消选择
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
-            if isSelected(character) {
                 localSelectedCharacters.removeAll { $0.id == character.id }
+            }
+            
+            // 如果之前显示了限制提示，现在可以隐藏
+            if showLimitToast {
+                withAnimation {
+                    showLimitToast = false
+                }
+            }
             } else {
+            // 尝试添加角色
+            if localSelectedCharacters.count >= maxCharacterCount {
+                // 已达到上限，显示提示
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.warning)
+                
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    showLimitToast = true
+                }
+                
+                // 3秒后自动隐藏提示
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    withAnimation {
+                        showLimitToast = false
+                    }
+                }
+            } else {
+                // 可以添加
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
                 localSelectedCharacters.append(character)
+                }
             }
         }
     }
@@ -2429,30 +2404,23 @@ struct CharacterSelectorView: View {
 struct CharacterSelectionCell: View {
     let character: CharacterModel
     let isSelected: Bool
+    let isDisabled: Bool
     let onToggle: () -> Void
     
     @State private var isPressed = false
+    @State private var dragOffset: CGSize = .zero
+    @State private var isDragging = false
+    @State private var initialDragLocation: CGPoint = .zero
     
     // 定义固定尺寸常量
     private let cardWidth: CGFloat = 100 // 减小宽度适应三列布局
     private let cardHeight: CGFloat = 120 // 减小高度
     private let avatarSize: CGFloat = 50 // 减小头像尺寸
+    private let dragThreshold: CGFloat = 10 // 滑动阈值，超过这个距离认为是滑动而不是点击
     
     var body: some View {
-        Button(action: {
-            onToggle()
-            
-            // 添加短暂的按压效果
-            withAnimation(.easeInOut(duration: 0.1)) {
-                isPressed = true
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.easeInOut(duration: 0.1)) {
-                    isPressed = false
-                }
-            }
-        }) {
+        // 使用ZStack包装，以便添加手势
+        ZStack {
             VStack(spacing: 0) {
                 // 角色头像与选中指示器
                 ZStack {
@@ -2547,9 +2515,10 @@ struct CharacterSelectionCell: View {
             .frame(width: cardWidth, height: cardHeight) // 使用固定尺寸
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white)
+                    // 与首页「角色库」中的角色卡片背景保持一致
+                    .fill(Color(UIColor.systemBackground))
                     .shadow(
-                        color: isSelected ? character.category.color.opacity(0.2) : Color.black.opacity(0.05),
+                        color: isSelected ? character.category.color.opacity(0.2) : (isDisabled ? Color.gray.opacity(0.05) : Color.black.opacity(0.05)),
                         radius: isSelected ? 4 : 2,
                         x: 0,
                         y: isSelected ? 2 : 1
@@ -2558,14 +2527,82 @@ struct CharacterSelectionCell: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(
-                        isSelected ? character.category.color.opacity(0.3) : Color.clear,
+                        isSelected ? character.category.color.opacity(0.3) : (isDisabled ? Color.gray.opacity(0.2) : Color.clear),
                         lineWidth: 1.2
                     )
             )
+            .opacity(isDisabled ? 0.5 : 1.0) // 禁用时降低不透明度
             .scaleEffect(isPressed ? 0.97 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
         }
-        .buttonStyle(PlainButtonStyle())
+        .contentShape(Rectangle()) // 确保整个区域可点击
+        .simultaneousGesture(
+            // 使用DragGesture来区分滑动和点击，使用simultaneousGesture允许ScrollView滑动
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    // 记录初始位置
+                    if initialDragLocation == .zero {
+                        initialDragLocation = value.startLocation
+                    }
+                    
+                    // 计算滑动距离
+                    let dragDistance = sqrt(
+                        pow(value.translation.width, 2) + 
+                        pow(value.translation.height, 2)
+                    )
+                    
+                    // 如果滑动距离超过阈值，标记为滑动
+                    if dragDistance > dragThreshold {
+                        if !isDragging {
+                            isDragging = true
+                            // 取消按压效果
+                            withAnimation(.easeInOut(duration: 0.1)) {
+                                isPressed = false
+                            }
+                        }
+                        dragOffset = value.translation
+                    } else if !isDragging {
+                        // 在滑动阈值内，显示按压效果
+                        if !isPressed {
+                            withAnimation(.easeInOut(duration: 0.1)) {
+                                isPressed = true
+                            }
+                        }
+                    }
+                }
+                .onEnded { value in
+                    // 计算最终滑动距离
+                    let finalDragDistance = sqrt(
+                        pow(value.translation.width, 2) + 
+                        pow(value.translation.height, 2)
+                    )
+                    
+                    // 只有在没有滑动或滑动距离很小的情况下才触发点击
+                    let shouldTrigger = !isDisabled && !isDragging && finalDragDistance < dragThreshold
+                    
+                    // 重置状态
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        isPressed = false
+                    }
+                    
+                    // 延迟触发点击，确保不是滑动的一部分
+                    if shouldTrigger {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            // 再次检查是否仍在拖动状态
+                            if !isDragging {
+                                onToggle()
+                            }
+                        }
+                    }
+                    
+                    // 延迟重置，确保点击事件不会在滑动结束后触发
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        isDragging = false
+                        dragOffset = .zero
+                        initialDragLocation = .zero
+                    }
+                }
+        )
     }
     
     // 根据职业获取图标
@@ -2592,74 +2629,118 @@ struct CharacterSelectionCell: View {
 
 /**
  * 虫洞能量指示器 - 优化后的简化版本
- * 只保留核心因素：文本长度和角色数量
+ * 核心因素：文本长度、角色数量和图片数量
  * 移除复杂的关键词检测和时代因素，提高响应性和公平性
  */
 struct WormholeEnergyIndicator: View {
     let contentText: String
     let characters: [CharacterModel]
+    let imageCount: Int // 图片数量
     let isAnimating: Bool // 控制是否显示动画
     
     // 添加防抖状态，避免拼音输入时能量条频繁变化
     @State private var debouncedTextLength: Int = 0
     @State private var debounceTimer: Timer?
+    @State private var maxEnergySeen: Int = 0 // 记录用户输入过程中看到的最高能量值
+    @State private var lastTextLength: Int = 0 // 记录上一次的文本长度，用于判断是增加还是删除
     
-    // 计算能量等级 - 优化后的简化算法
+    // 计算能量等级 - 优化后的简化算法，提高文字权重，添加图片因素
     private var energyLevel: Int {
         // 🎯 优化说明：
-        // 1. 删除了关键词检测：避免用户通过特定词汇"刷分"
-        // 2. 删除了时代因素：时代选择主要用于内容生成，不影响穿越能量
-        // 3. 调整了文本系数：从每3字符1点改为每2字符1点，提高响应性
-        // 4. 降低了角色权重：从每个角色20点改为15点，避免角色数量过度影响
+        // 1. 提高文字权重：每1个字符提供1点能量，让用户输入时立即看到反馈
+        // 2. 提高文本能量上限：从40点提高到60点，让文字占比更大
+        // 3. 降低角色权重：从每个角色15点改为10点，避免角色数量过度影响
+        // 4. 添加图片因素：每张图片提供15点能量，最高30点（2张图片）
+        // 5. 调整总能量计算：让文字更容易达到高等级
         
-        // 📝 文本长度因素：使用防抖后的文本长度，每2个字符提供1点能量，最高40点
-        let textFactor = min(debouncedTextLength / 2, 40)
+        // 📝 文本长度因素：使用防抖后的文本长度，每1个字符提供1点能量，最高60点
+        // 这样用户输入10个字就能看到明显增长，提供更好的正反馈
+        let textFactor = min(debouncedTextLength, 60)
         
-        // 👥 角色数量因素：每个角色提供15点能量，最高45点
-        let characterFactor = min(characters.count * 15, 45)
+        // 👥 角色数量因素：每个角色提供10点能量，最高30点（降低权重）
+        let characterFactor = min(characters.count * 10, 30)
         
-        // 🧮 总能量计算：文本 + 角色，除以17得到0-5级
-        let totalEnergy = textFactor + characterFactor
-        return min(totalEnergy / 17, 5) // 5级需要85点能量
+        // 🖼️ 图片数量因素：每张图片提供15点能量，最高30点（2张图片）
+        // 图片内容也很重要，应该给予合理的能量奖励
+        let imageFactor = min(imageCount * 15, 30)
+        
+        // 🧮 总能量计算：文本 + 角色 + 图片，除以20得到0-5级
+        // 现在更容易达到高等级：60文字 + 30角色 + 30图片 = 120点，可以轻松达到5级
+        let totalEnergy = textFactor + characterFactor + imageFactor
+        return min(totalEnergy / 20, 5) // 5级需要100点能量
     }
     
     // 移除关键词检测方法，简化逻辑
     
-    // 获取能量百分比值
+    // 获取能量百分比值 - 优化为更直观的能量增长，从0开始
     private var energyPercentage: Int {
-        // 确保即使没有文本也显示至少10%的能量
-        let basePercentage = 10
-        let calculatedPercentage = energyLevel * 20
-        
-        // 如果有输入内容但计算值低于基础值，至少显示基础值
-        if !contentText.isEmpty && calculatedPercentage < basePercentage {
-            return basePercentage
+        // 如果没有文字输入，显示角色和图片带来的能量
+        if debouncedTextLength == 0 {
+            // 角色能量：每个角色约3%
+            let characterEnergy = min(characters.count * 3, 15)
+            // 图片能量：每张图片约5%
+            let imageEnergy = min(imageCount * 5, 10) // 最多2张图片，10%
+            let totalEnergy = characterEnergy + imageEnergy
+            // 重置最高能量值
+            maxEnergySeen = totalEnergy
+            return totalEnergy
         }
         
-        return max(calculatedPercentage, basePercentage) // 确保不低于基础值
+        // 有文字输入时，计算能量百分比
+        // 基础百分比：等级 * 20
+        let calculatedPercentage = energyLevel * 20
+        
+        // 为了让用户输入时立即看到反馈，根据文字长度给予更积极的奖励
+        // 每5个字符额外增加3%的能量显示（更敏感的视觉反馈）
+        // 这样用户输入5个字就能看到明显增长，10个字就能看到较大增长
+        let textBonus = min(debouncedTextLength / 5 * 3, 30) // 最多额外30%
+        let currentPercentage = min(calculatedPercentage + textBonus, 100)
+        
+        // 🎯 关键优化：能量记忆机制 - 从第一性原理思考
+        // 能量应该反映用户的"输入努力"，而不是简单的字符数
+        // 用户输入拼音的过程也是"努力"，不应该因为转换成中文就"丢失"
+        
+        // 如果当前能量比历史最高值高，更新最高值（用户正在输入或继续输入）
+        if currentPercentage > maxEnergySeen {
+            maxEnergySeen = currentPercentage
+            return currentPercentage
+        }
+        
+        // 如果当前能量比历史最高值低，判断是否是用户主动删除文字
+        // 只有当文本长度明显减少时（减少超过30%），才认为是用户主动删除，允许能量降低
+        let lengthReduction = lastTextLength > 0 ? Double(lastTextLength - debouncedTextLength) / Double(lastTextLength) : 0
+        
+        if lengthReduction > 0.3 {
+            // 用户明显删除了文字（减少超过30%），允许能量降低
+            // 使用平滑过渡：取当前值和历史最高值的85%，让能量缓慢下降
+            let smoothedPercentage = max(currentPercentage, Int(Double(maxEnergySeen) * 0.85))
+            maxEnergySeen = smoothedPercentage
+            return smoothedPercentage
+        }
+        
+        // 如果文本长度减少不明显（可能是拼音转中文，字符数变化不大）
+        // 或者文本长度没变/增加，但能量降低了（拼音转中文，字符数减少但语义不变）
+        // 保持历史最高值，不让能量"缩回去"，尊重用户的输入努力
+        return maxEnergySeen
     }
     
     // 移除高频计时器，改为基于内容变化的响应式更新
     
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) { // 减小间距
             HStack {
-                // 标题与图标
-                HStack(spacing: 4) {
+                // 标题与图标 - 缩小并弱化
+                HStack(spacing: 3) { // 减小图标和文字间距
                     Image(systemName: "bolt.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(energyColor)
+                        .font(.system(size: 12)) // 从16缩小到12
+                        .foregroundColor(energyColor.opacity(0.7)) // 降低透明度弱化
                     
                     Text("穿越能量")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 11, weight: .regular)) // 从14缩小到11，weight从medium改为regular
+                        .foregroundColor(.secondary.opacity(0.8)) // 使用次要颜色并降低透明度
                 }
                 
-                Spacer()
-                
-                // 能量百分比
-                Text("\(formattedEnergyPercentage)%")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(energyColor)
+                Spacer() // 右侧留白，不再显示百分比
             }
             
             // 能量条
@@ -2683,18 +2764,41 @@ struct WormholeEnergyIndicator: View {
                     energyParticles
                 }
             }
-            .frame(height: 10)
+            .frame(height: 6) // 从10缩小到6，进一步弱化
             .clipShape(Capsule())
         }
         .onAppear {
             // 初始化防抖文本长度
             debouncedTextLength = contentText.count
+            lastTextLength = contentText.count
+            // 初始化最高能量值
+            if contentText.isEmpty {
+                maxEnergySeen = min(characters.count * 3, 15)
+            }
         }
         .onChange(of: contentText) { oldValue, newText in
+            let oldLength = oldValue.count
+            let newLength = newText.count
+            
+            // 如果文本被清空，重置最高能量值
+            if newLength == 0 {
+                maxEnergySeen = min(characters.count * 3, 15)
+                lastTextLength = 0
+                debouncedTextLength = 0
+                return
+            }
+            
             // 防抖处理：延迟300ms更新文本长度，避免拼音输入时的频繁变化
             debounceTimer?.invalidate()
+            // 捕获当前值，因为struct是值类型，可以直接捕获
+            let currentDebouncedLength = debouncedTextLength
             debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
-                debouncedTextLength = newText.count
+                // 在防抖回调中更新，此时可以准确判断是增加还是删除
+                DispatchQueue.main.async {
+                    // 保存当前防抖后的长度作为"上一次长度"，用于下次比较
+                    lastTextLength = currentDebouncedLength
+                    debouncedTextLength = newLength
+                }
             }
         }
         .onDisappear {
@@ -2734,13 +2838,10 @@ struct WormholeEnergyIndicator: View {
         }
     }
     
-    // 能量条填充
+    // 能量条填充 - 使用更漂亮的渐变色
     private var energyBarFill: some View {
         LinearGradient(
-            gradient: Gradient(colors: [
-                energyColor.opacity(0.7),
-                energyColor
-            ]),
+            gradient: Gradient(colors: energyGradientColors),
             startPoint: .leading,
             endPoint: .trailing
         )
@@ -2806,10 +2907,54 @@ struct WormholeEnergyIndicator: View {
         }
     }
     
-    // 格式化能量百分比
-    private var formattedEnergyPercentage: String {
-        return "\(energyPercentage)"
+    // 能量条渐变色 - 根据能量等级返回更漂亮的渐变色
+    private var energyGradientColors: [Color] {
+        switch energyLevel {
+        case 0:
+            // 低能量：淡蓝色渐变
+            return [
+                Color.blue.opacity(0.4),
+                Color.cyan.opacity(0.5)
+            ]
+        case 1:
+            // 1级：蓝色到青色
+            return [
+                Color.blue.opacity(0.6),
+                Color.cyan.opacity(0.7)
+            ]
+        case 2:
+            // 2级：蓝色到紫色
+            return [
+                Color.blue.opacity(0.7),
+                Color.purple.opacity(0.8)
+            ]
+        case 3:
+            // 3级：紫色渐变
+            return [
+                Color.purple.opacity(0.8),
+                Color.primaryColor.opacity(0.85)
+            ]
+        case 4:
+            // 4级：紫色到粉紫色
+            return [
+                Color.primaryColor.opacity(0.9),
+                Color.pink.opacity(0.8)
+            ]
+        case 5:
+            // 5级：金色到粉紫色（满能量）
+            return [
+                Color(red: 1.0, green: 0.84, blue: 0.0), // 金色
+                Color.primaryColor,
+                Color.pink.opacity(0.9)
+            ]
+        default:
+            return [
+                Color.blue.opacity(0.6),
+                Color.cyan.opacity(0.7)
+            ]
+        }
     }
+    
 }
 
 /**
@@ -2821,7 +2966,6 @@ struct PublishPreviewView: View {
     
     let contentText: String
     let selectedCharacters: [CharacterModel]
-    let selectedEra: String
     let mode: PublishMode
     
     @State private var showingReactions = false
@@ -2876,15 +3020,6 @@ struct PublishPreviewView: View {
                     .cornerRadius(12)
                 
                 Spacer()
-                
-                // 时代标签
-                Text(selectedEra)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(12)
             }
             
             // 内容文本
@@ -2944,7 +3079,6 @@ struct PublishPreviewView: View {
                     
                     Spacer()
                     
-                    Text(selectedEra)
                 }
                 
                 HStack {
@@ -3168,13 +3302,21 @@ struct EnhancedBouncyButtonStyle: ButtonStyle {
     }
 }
 
-// 增强型发布按钮样式 - 更丰富的动画效果
+// 增强型发布按钮样式 - 果冻效果（平衡版）
 struct EnhancedSpringyButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .brightness(configuration.isPressed ? -0.1 : 0)
-            .animation(.spring(response: 0.2, dampingFraction: 0.8), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0) // 适度的缩放，不要太夸张
+            .opacity(configuration.isPressed ? 0.92 : 1.0) // 轻微透明度变化，增加果冻感
+            .brightness(configuration.isPressed ? -0.05 : 0) // 轻微的亮度变化
+            .animation(
+                .spring(
+                    response: 0.35, // 稍慢的响应，更柔和的果冻感
+                    dampingFraction: 0.65, // 适中的阻尼，保持弹性但不过度
+                    blendDuration: 0.2 // 平滑的混合
+                ),
+                value: configuration.isPressed
+            )
     }
 }
 

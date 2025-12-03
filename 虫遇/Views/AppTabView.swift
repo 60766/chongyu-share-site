@@ -106,13 +106,18 @@ struct AppTabView: View {
                             .opacity(tabBarManager.isVisible ? 1 : 0)
                             .background(Color.clear) // 确保背景是透明的
                         
-                        // 虫洞发布按钮 - 位置微调，更轻量化
+                        // 虫洞发布按钮 - 位置微调，同时扩大可点击区域
                         CosmicPublishButton(isPressed: $isPublishButtonPressed) {
-                            // 移除动画效果，直接显示
+                            // 直接弹出发布面板
                             showPublishPanel = true
                         }
-                        .scaleEffect(0.45) // 保持减小的比例
-                        .offset(y: -6) // 保持位置
+                        // 适当放大小一点，避免过小难以点中
+                        .scaleEffect(0.55)
+                        // 将点击区域精确限制在与底部中间槽位一致的宽度内（90）
+                        .frame(width: 90, height: 90, alignment: .center)
+                        .contentShape(Rectangle())     // 整个 90x90 区域可点击
+                        // 细调发布按钮的垂直位置：略微上移一点点，避免看起来太靠下
+                        .offset(y: -1)
                         .shadow(color: Color.primaryColor.opacity(0.4), radius: 12, x: 0, y: 0) // 减轻阴影
                         .environment(\.colorScheme, .dark) // 确保在深色模式下发光效果更明显
                         .opacity(tabBarManager.isVisible && tabBarManager.showFloatingButtons ? 1 : 0) // 与导航栏和浮动按钮状态关联

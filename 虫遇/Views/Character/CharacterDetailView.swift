@@ -303,25 +303,25 @@ struct CharacterDetailView: View {
                 TabView(selection: $selectedTabIndex) {
                         // 第一个标签页：人物档案
                         ScrollView(.vertical, showsIndicators: false) {
-                            VStack {
+                            VStack(alignment: .leading, spacing: 0) {
                                 PersonalProfileContentView(character: character)
-                                    .padding(.top, 20)  // 增加顶部间距
+                                    .padding(.top, 8)  // 减少顶部间距，让内容紧贴标签下方
                                     .padding(.horizontal, 8)  // 减少左右内边距
                                     .padding(.bottom, 150) // 显著增加底部内边距确保内容完全可见
                             }
-                            .frame(minWidth: geometry.size.width, minHeight: geometry.size.height) // 确保内容宽度和高度充满屏幕
+                            .frame(maxWidth: .infinity, alignment: .topLeading) // 确保内容从顶部开始，宽度充满屏幕
                         }
                         .tag(0)
                     
                         // 第二个标签页：成就作品
                         ScrollView(.vertical, showsIndicators: false) {
-                            VStack {
+                            VStack(alignment: .leading, spacing: 0) {
                                 AchievementsWorksContentView(character: character)
-                                    .padding(.top, 20)  // 增加顶部间距
+                                    .padding(.top, 8)  // 减少顶部间距，让内容紧贴标签下方
                                     .padding(.horizontal, 8)  // 减少左右内边距
                                     .padding(.bottom, 150) // 显著增加底部内边距确保内容完全可见
                             }
-                            .frame(minWidth: geometry.size.width, minHeight: geometry.size.height) // 确保内容宽度和高度充满屏幕
+                            .frame(maxWidth: .infinity, alignment: .topLeading) // 确保内容从顶部开始，宽度充满屏幕
                         }
                         .tag(1)
                     
@@ -596,7 +596,7 @@ struct CharacterDetailView: View {
     
     // 操作按钮区域
     private var actionButtonsSection: some View {
-        HStack(spacing: 12) { // 优化按钮间距，提高屏幕利用率
+        HStack(alignment: .bottom, spacing: 12) { // 优化按钮间距，提高屏幕利用率，底部对齐确保文字位置一致
             // 关注按钮 - 使用微妙的渐变效果
             Button {
                 // 关注操作
@@ -629,10 +629,12 @@ struct CharacterDetailView: View {
                             .font(.system(size: 18, weight: .medium)) // 增大图标尺寸从16到18
                             .foregroundColor(isFavorited ? .white : .gray.opacity(0.85))
                     }
+                    .frame(height: 48) // 统一图标区域高度为48，与对话按钮一致
                     
                     Text(isFavorited ? "已关注" : "关注")
                         .font(.system(size: 13, weight: .medium)) // 增大字体从12到13
                         .foregroundColor(isFavorited ? Color(red: 0.85, green: 0.36, blue: 0.38) : .gray.opacity(0.85))
+                        .alignmentGuide(.bottom) { d in d[.bottom] }
                 }
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
@@ -749,10 +751,12 @@ struct CharacterDetailView: View {
                                 .frame(width: 10, height: 10)
                         }
                     }
+                    .frame(height: 48) // 统一图标区域高度为48
                     
                     Text("对话")
-                        .font(.system(size: 14, weight: .semibold)) // 增大字体从13到14
+                        .font(.system(size: 13, weight: .medium)) // 统一字体大小与关注和个性化一致
                         .foregroundColor(Color(red: 0.62, green: 0.43, blue: 0.83))
+                        .alignmentGuide(.bottom) { d in d[.bottom] }
                 }
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
@@ -793,10 +797,12 @@ struct CharacterDetailView: View {
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(.gray.opacity(0.85))
                     }
+                    .frame(height: 48) // 统一图标区域高度为48，与对话按钮一致
                     
                     Text("个性化")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.gray.opacity(0.85))
+                        .alignmentGuide(.bottom) { d in d[.bottom] }
                 }
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
