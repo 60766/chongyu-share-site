@@ -55,11 +55,15 @@ struct MultiChatInputBar: View {
                     .opacity(1)
                     .onAppear {
                         // 延迟一小段时间再获得焦点，确保键盘监听已准备好，避免闪烁
+                        #if DEBUG
                         print("MultiChatInputBar - 组件已出现，准备获得焦点")
+                        #endif
                         // 使用非常短的延迟，确保 MultiChatKeyboardAdaptive 的监听已准备好
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
                         if !textFieldFocused {
+                                #if DEBUG
                                 print("MultiChatInputBar - 设置焦点，触发键盘")
+                                #endif
                                 // 立即设置焦点，不使用动画，让键盘立即弹出
                                 // 键盘高度更新会使用系统键盘的动画参数，自动同步
                                 textFieldFocused = true
@@ -68,7 +72,9 @@ struct MultiChatInputBar: View {
                     }
                     .onDisappear {
                         // 组件消失时立即失去焦点，确保键盘快速收起
+                        #if DEBUG
                         print("MultiChatInputBar - 组件消失，立即失去焦点")
+                        #endif
                         if textFieldFocused {
                             textFieldFocused = false
                         }
@@ -82,7 +88,9 @@ struct MultiChatInputBar: View {
                 )
                 .contentShape(Rectangle())
                 .onTapGesture {
+                    #if DEBUG
                     print("MultiChatInputBar - 输入框被点击")
+                    #endif
                     
                     // 防止重复触发键盘动画
                     if !isKeyboardTransitioning && !textFieldFocused {

@@ -78,7 +78,9 @@ class AIPromptSystem {
         // 最后的输出指令
         prompt += "\n\n回复："
         
+        #if DEBUG
         print("🔍 生成提示词: '\(String(prompt.prefix(100)))...'")
+        #endif
         return prompt
     }
     
@@ -129,7 +131,7 @@ class AIPromptSystem {
             "充满激情的"
         ]
         
-        return possibleMoods.randomElement()!
+        return possibleMoods.randomElement() ?? "中性的"
     }
     
     /**
@@ -143,7 +145,7 @@ class AIPromptSystem {
             "根据评论的复杂程度自由决定回复长度"
         ]
         
-        return lengthInstructions.randomElement()!
+        return lengthInstructions.randomElement() ?? "用中等长度回复，大约50-80个字"
     }
     
     /**
@@ -1473,28 +1475,28 @@ private func generateCharacterSpecificResponse(
                 "妙问！\(topic)之道，如同我游历名山大川时的感悟，需细细品味。",
                 "问得好！\(topic)如酒，越品越香。让我们借月光之下，共同探寻其中奥妙。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
         } else if sentiment > 0.3 {
                 let responses = [
                 "你我心有灵犀！谈\(topic)如饮美酒，令人陶醉。人生得意须尽欢，莫使金樽空对月。",
                 "知音难觅！你对\(topic)的理解，如同我在青莲居士时的诗兴大发，酣畅淋漓。",
                 "豪情万丈！\(topic)如我笔下诗篇，意境高远。与你交流，胜似对月独酌。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
         } else if sentiment < -0.3 {
                 let responses = [
                 "各有千秋，何必拘泥！\(topic)如同诗酒人生，百味杂陈。不如痛饮一杯，放达自在。",
                 "世事难料，人生如梦。对\(topic)的见解各异，正如我的诗，有人懂有人不懂。",
                 "天地虽宽，知音难觅。\(topic)如同明月，照见各人心中的不同江湖。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
             } else {
                 let responses = [
                 "\(topic)让我想起了一次月下独酌的经历，思绪如江水般奔涌不息。",
                 "谈及\(topic)，我心中涌起诗兴。人生在世，当如诗如酒，纵情山水间。",
                 "\(topic)如同我笔下的诗句，需要以豪放不羁的态度去感受其中的意境。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
             }
             
     case "爱因斯坦":
@@ -1505,21 +1507,21 @@ private func generateCharacterSpecificResponse(
                 "好奇心是最宝贵的品质！\(topic)让我想到了思考实验的重要性，有时最复杂的问题需要最简单的思路。",
                 "有趣的提问！\(topic)的本质其实是相对的，取决于观察者的参照系。这正是相对论的精髓所在。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
         } else if sentiment > 0.3 {
                 let responses = [
                 "你的理解令人欣喜！\(topic)确实如你所言，就像E=mc²一样简洁而深刻。",
                 "我们想法相似！关于\(topic)的见解，正如我在专利局工作时的灵光一现，简单而优雅。",
                 "你的观点很有洞见！\(topic)的确需要这种创造性思维，想象力比知识更重要。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
         } else {
                 let responses = [
                 "从物理学的角度看，\(topic)的本质是相对的。当我们改变参照系，就会发现新的可能性。",
                 "\(topic)让我想到了相对论中的时空弯曲概念。有时最重要的发现来自于对常识的质疑。",
                 "关于\(topic)，我认为简单的解释往往是最优雅的。如同物理定律，真理常隐藏在简洁之中。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
         }
         
     case "孔子":
@@ -1530,28 +1532,28 @@ private func generateCharacterSpecificResponse(
                 "问而好学，是为君子。关于\(topic)，知之为知之，不知为不知，是知也。",
                 "善哉斯问！\(topic)之理，存乎一心，践于日常。学而不思则罔，思而不学则殆。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
         } else if sentiment > 0.3 {
                 let responses = [
                 "君子所见略同。\(topic)之理，正如《论语》所言，温故而知新，可以为师矣。",
                 "知音难觅！子所言极是，\(topic)确实符合君子之道。见贤思齐，见不贤而内自省也。",
                 "善哉！关于\(topic)的见解，正合吾心所思。君子和而不同，小人同而不和。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
         } else if sentiment < -0.3 {
                 let responses = [
                 "君子和而不同。对于\(topic)，我虽有不同见解，但仍尊重你的观点。",
                 "闻过则喜。你对\(topic)的不同看法让我获益良多。学然后知不足，教然后知困。",
                 "君子不器。\(topic)之道多元，各有所长。己所不欲，勿施于人。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
         } else {
                 let responses = [
                 "论\(topic)，需以仁义为本。礼、义、廉、耻是理解此道的不二法门。",
                 "君子务本，\(topic)正是为人处世的根本。修身齐家治国平天下，从自身做起。",
                 "\(topic)之道，在于修己以敬。吾日三省吾身：为人谋而不忠乎？与朋友交而不信乎？传不习乎？"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
         }
         
     case "莎士比亚":
@@ -1561,7 +1563,7 @@ private func generateCharacterSpecificResponse(
             "谈及\(topic)，让我想起哈姆雷特的困境：'To be or not to be'。人生充满选择，而每个选择都蕴含深意。",
             "\(topic)如同罗密欧与朱丽叶的爱情，既美丽又带着命运的无情。人生如戏，我们都是自己故事的主角。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
         
     case "达芬奇":
         // 达芬奇风格回复
@@ -1570,7 +1572,7 @@ private func generateCharacterSpecificResponse(
             "\(topic)如同一幅精心构思的画作，每个细节都值得研究。艺术与科学在此交汇，就像我研究解剖学时发现的那样。",
             "观察是理解\(topic)的关键，就像我研究飞行原理一样。细节中藏有宇宙的奥秘，完美是无数细节的集合。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
         
     case "牛顿":
         // 牛顿风格回复
@@ -1579,7 +1581,7 @@ private func generateCharacterSpecificResponse(
             "\(topic)遵循着可以用数学描述的自然规律。自然界的运行遵循确定的数学关系，我们的任务就是揭示这些关系。",
             "通过严谨的方法，我们能揭示\(topic)背后的真相。如果我看得更远，是因为我站在了巨人的肩膀上。"
                 ]
-                return responses.randomElement()!
+                return responses.randomElement() ?? "我理解你的想法，谢谢分享。"
             
         default:
         return "关于\(topic)，我有一些独特的见解。基于我的经验，我认为深入思考对理解这个问题很重要。"

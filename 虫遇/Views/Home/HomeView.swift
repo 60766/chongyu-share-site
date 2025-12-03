@@ -396,7 +396,9 @@ struct VirtualCharacterPickerView: View {
                 .contentShape(Rectangle())
                 .edgesIgnoringSafeArea(.all)
                 .onTapGesture {
+                    #if DEBUG
                     print("背景点击 - 关闭角色选择器")
+                    #endif
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                         onDismiss()
                     }
@@ -598,7 +600,9 @@ struct VirtualCharacterPickerView: View {
         .onDisappear {
             // 不在onDisappear中恢复TabBar，而是让HomeView中的代码来控制
             // 这样可以避免在角色选择器消失时TabBar意外显示
+            #if DEBUG
             print("VirtualCharacterPickerView消失")
+            #endif
         }
     }
     
@@ -718,7 +722,9 @@ struct VirtualCharacterCard: View {
             }
             
             // 打印调试信息
+            #if DEBUG
             print("VirtualCharacterCard appeared: \(character.name)")
+            #endif
         }
         .onDisappear {
             // 重置状态以便下次显示
@@ -1471,20 +1477,28 @@ showCharacterPicker = true
             EditPostView(
                 post: post,
                 onClose: {
+                    #if DEBUG
                     print("关闭编辑视图")
+                    #endif
                     editingPost = nil
                 },
                 onUpdate: { newContent, newImages in
+                    #if DEBUG
                     print("更新帖子内容，新内容长度: \(newContent.count), 图片数: \(newImages.count)")
+                    #endif
                     updatePost(post, content: newContent, images: newImages)
                 }
             )
             .presentationDetents([.height(550), .large])
             .onAppear {
                 // 添加延迟，确保视图完全加载
+                #if DEBUG
                 print("EditPostView 开始加载，帖子ID: \(post.id)")
+                #endif
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    #if DEBUG
                     print("EditPostView 已完全加载")
+                    #endif
                 }
             }
         }
@@ -1582,15 +1596,21 @@ showCharacterPicker = true
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PostsUpdated"))) { _ in
             // 不再强制刷新整个视图，让SwiftUI自然处理数据变化
+            #if DEBUG
             print("🏠 HomeView: 收到PostsUpdated通知，但不再强制刷新")
+            #endif
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NewPostsGenerated"))) { _ in
             // 不再强制刷新整个视图，让SwiftUI自然处理数据变化
+            #if DEBUG
             print("🏠 HomeView: 收到NewPostsGenerated通知，但不再强制刷新")
+            #endif
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NewPostGenerated"))) { _ in
             // 不再强制刷新整个视图，让SwiftUI自然处理数据变化
+            #if DEBUG
             print("🏠 HomeView: 收到NewPostGenerated通知，但不再强制刷新")
+            #endif
             
             // 如果列表滚动到顶部，确保新帖子可见
             if self.scrollOffset < 50 {
@@ -1603,8 +1623,12 @@ showCharacterPicker = true
             if let count = notification.userInfo?["newPostsCount"] as? Int,
                let postIds = notification.userInfo?["newPostIds"] as? [String],
                let _ = notification.userInfo?["newPosts"] as? [UserPostModel] {
+                #if DEBUG
                 print("🏠 postsListView: 收到增量更新通知，\(count)个新帖子")
+                #endif
+                #if DEBUG
                 print("🏠 postsListView: 新帖子IDs: \(postIds)")
+                #endif
                 
                 // 🔧 优化：只处理新帖子，不触发全量刷新
                 // 新帖子已经通过@Published自动添加到posts数组中
@@ -1620,8 +1644,12 @@ showCharacterPicker = true
             if let postId = notification.userInfo?["newPostId"] as? String,
                let content = notification.userInfo?["newPostContent"] as? String,
                let _ = notification.userInfo?["newPost"] as? UserPostModel {
+                #if DEBUG
                 print("🏠 postsListView: 收到单帖子添加通知")
+                #endif
+                #if DEBUG
                 print("🏠 postsListView: 新帖子ID: \(postId), 内容: \(content)")
+                #endif
                 
                 // 🔧 优化：只处理新帖子，不触发全量刷新
                 // 新帖子已经通过@Published自动添加到posts数组中
@@ -2058,14 +2086,20 @@ showCharacterPicker = true
     
     // MARK: - 数据加载
     private func loadSampleData() {
+        #if DEBUG
         print("📋 HomeView.loadSampleData: 开始加载示例数据")
+        #endif
         
         // 加载用户帖子 - 使用共享的PostViewModel
         // 检查是否已有帖子，如果没有才加载示例帖子
+        #if DEBUG
         print("📋 HomeView.loadSampleData: 当前帖子数量: \(postViewModel.posts.count)")
+        #endif
         
         if postViewModel.posts.isEmpty {
+            #if DEBUG
             print("📋 HomeView.loadSampleData: 帖子为空，加载示例帖子")
+            #endif
             let samplePosts = ModelData.samplePosts
             let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
             let filteredSamplePosts = samplePosts.filter { post in
@@ -2075,14 +2109,20 @@ showCharacterPicker = true
                 return true
             }
             postViewModel.posts = filteredSamplePosts
+            #if DEBUG
             print("📋 HomeView.loadSampleData: 示例帖子加载完成，数量: \(postViewModel.posts.count)")
+            #endif
             
             // 打印所有帖子的ID和内容前缀，方便调试
             for (index, post) in postViewModel.posts.enumerated() {
+                #if DEBUG
                 print("📋 HomeView.loadSampleData: 帖子[\(index)] ID = \(post.id), 内容 = \(post.content.prefix(30))...")
+                #endif
             }
         } else {
+            #if DEBUG
             print("📋 HomeView.loadSampleData: 已有帖子数据，跳过加载，当前数量: \(postViewModel.posts.count)")
+            #endif
         }
     }
 
@@ -2154,7 +2194,9 @@ showCharacterPicker = true
         
         // 如果没有任何互动数据，添加一些模拟数据
         if interactionScores.values.reduce(0, +) == 0 {
+            #if DEBUG
             print("📊 添加模拟的角色互动数据")
+            #endif
             
             // 模拟与几个角色的互动
             let characters = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "居里夫人", "福尔摩斯", "钢铁侠"]
@@ -2180,7 +2222,9 @@ showCharacterPicker = true
                 }
             }
             
+            #if DEBUG
             print("📊 模拟互动数据添加完成")
+            #endif
         }
     }
     
@@ -2296,30 +2340,46 @@ showCharacterPicker = true
      * 该方法使用ContentGeneratorService生成虫洞内容并添加到帖子列表
      */
     private func generateAndAddPosts() async {
-        // 首先检查余额：如果未登录或余额为0，直接提示，不调用API
-        if !AppleSignInManager.shared.isSignedIn {
+        // 检查余额：只有在没有登录 AND 余额为0时才提示登录
+        // 如果有余额（无论是否登录），都可以使用一键生成
+        let isSignedIn = AppleSignInManager.shared.isSignedIn
+        let balance = WalletManager.shared.balance
+        
+        // 如果没有登录且余额为0，提示登录
+        if !isSignedIn && balance <= 0 {
             await MainActor.run {
                 isGeneratingPosts = false
                 showInsufficientBalance = true
-                print("💰 未登录 Apple ID，无法生成内容")
+                #if DEBUG
+                Logger.debug("💰 未登录且余额为0，提示登录", log: Logger.business)
+                #endif
             }
             return
         }
         
-        // 检查余额是否为0
-        if WalletManager.shared.balance <= 0 {
+        // 如果已登录但余额为0，提示充值
+        if isSignedIn && balance <= 0 {
             await MainActor.run {
                 isGeneratingPosts = false
                 showInsufficientBalance = true
-                print("💰 余额为0，无法生成内容")
+                #if DEBUG
+                Logger.debug("💰 已登录但余额为0，提示充值", log: Logger.business)
+                #endif
             }
             return
         }
+        
+        // 如果有余额（无论是否登录），继续生成
+        #if DEBUG
+        Logger.debug("💰 余额检查通过：登录状态=\(isSignedIn), 余额=\(balance)，继续生成", log: Logger.business)
+        #endif
         
         // 创建本地取消令牌集合，避免资源泄漏
         var localCancellables = Set<AnyCancellable>()
         
+        #if DEBUG
         print("🔄 HomeView: 开始生成多种类型帖子...")
+        #endif
         
         // 设置内容生成状态为生成中，防止权重被重置
         ContentTypeWeightManager.shared.setGeneratingContent(true)
@@ -2329,7 +2389,9 @@ showCharacterPicker = true
         
         do {
             // 使用ContentGeneratorService生成多种类型的内容
+            #if DEBUG
             print("📊 开始根据权重分配内容类型...")
+            #endif
             
             // 设置内容类型和总数量
             let contentTypes: [ContentGeneratorService.ContentType] = [
@@ -2349,23 +2411,31 @@ showCharacterPicker = true
             )
             
             // 打印分配情况和权重
+            #if DEBUG
             print("📊 内容类型分配结果:")
+            #endif
             for contentType in contentTypes {
                 let weight = ContentTypeWeightManager.shared.getWeight(for: contentType)
                 let count = typeDistribution[contentType] ?? 0
+                #if DEBUG
                 print("  - \(contentType.rawValue): 权重=\(weight), 分配数量=\(count)")
+                #endif
             }
             
             // 为每种类型分别生成帖子和评论
             for contentType in contentTypes {
                 // 获取当前类型分配的数量
                 guard let typeCount = typeDistribution[contentType], typeCount > 0 else {
+                    #if DEBUG
                     print("⏩ 跳过\(contentType.rawValue)类型，因为分配数量为0")
+                    #endif
                     continue // 如果分配数量为0，跳过此类型
                 }
                 
                 // 生成特定类型的帖子
+                #if DEBUG
                 print("🌟 正在批量生成\(contentType.rawValue)类型的\(typeCount)篇帖子...")
+                #endif
                 
                 try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                     // 使用批量生成方法，一次性生成所有指定类型的帖子
@@ -2377,15 +2447,21 @@ showCharacterPicker = true
                     .sink(
                         receiveCompletion: { completion in
                             if case .failure(let error) = completion {
+                                #if DEBUG
                                 print("❌ 生成\(contentType.rawValue)类型帖子失败: \(error.localizedDescription)")
+                                #endif
                                 continuation.resume(throwing: error)
                             } else {
+                                #if DEBUG
                                 print("✅ 完成\(contentType.rawValue)类型帖子的API请求")
+                                #endif
                                 continuation.resume(returning: ())
                             }
                         },
                         receiveValue: { results in
+                            #if DEBUG
                             print("✅ 成功生成\(results.count)篇\(contentType.rawValue)类型帖子")
+                            #endif
                             
                             // 将所有结果转换为UserPostModel
                             let posts = results.map { result -> UserPostModel in
@@ -2409,7 +2485,7 @@ showCharacterPicker = true
                                             isVirtualCharacter: true,
                                             characterID: commentItem.characterId,
                                             parentCommentId: nil, // 暂时设为nil，后面会更新
-                                            replyToUsername: self.findUsernameById(commentItem.parentCommentId!, in: result.comments), // 查找被回复者用户名
+                                            replyToUsername: commentItem.parentCommentId != nil ? self.findUsernameById(commentItem.parentCommentId!, in: result.comments) : nil, // 查找被回复者用户名
                                             likes: commentItem.likes,
                                             isLikedByCurrentUser: false
                                         )
@@ -2495,7 +2571,9 @@ showCharacterPicker = true
                                 // 不再强制刷新视图，让SwiftUI自然处理数据变化
                                 // self.forceRefreshID = UUID()
                                 
+                                #if DEBUG
                                 print("🎉 UI更新完成，新增\(posts.count)篇\(contentType.rawValue)类型帖子")
+                                #endif
                                 
                                 // 提供触觉反馈，表示新帖子已生成
                                 HapticFeedback.light()
@@ -2510,7 +2588,9 @@ showCharacterPicker = true
             await MainActor.run {
                 // 生成状态设置为false
                 self.isGeneratingPosts = false
+                #if DEBUG
                 print("✅ 所有帖子生成完成，生成状态设置为false")
+                #endif
                 
                 // 内容生成完成，恢复权重管理器状态
                 ContentTypeWeightManager.shared.setGeneratingContent(false)
@@ -2522,7 +2602,9 @@ showCharacterPicker = true
                 ContentTypeWeightManager.shared.printAllWeights()
             }
         } catch {
+            #if DEBUG
             print("❌ 生成帖子失败: \(error.localizedDescription)")
+            #endif
             
             // 在主线程处理错误
             await MainActor.run {
@@ -2532,7 +2614,9 @@ showCharacterPicker = true
                     // 余额不足，显示特殊提示
                     showInsufficientBalance = true
                     isGeneratingPosts = false
+                    #if DEBUG
                     print("💰 余额不足，显示充值提示")
+                    #endif
                     return
                 }
                 
@@ -2548,7 +2632,9 @@ showCharacterPicker = true
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 showGenerateError = true
                             }
+                            #if DEBUG
                             print("⚠️ 系统错误（\(code)），显示友好提示")
+                            #endif
                             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showGenerateError = false
@@ -2568,7 +2654,9 @@ showCharacterPicker = true
                         withAnimation(.easeInOut(duration: 0.3)) {
                             showGenerateError = true
                         }
+                        #if DEBUG
                         print("⚠️ 服务器响应错误，显示友好提示")
+                        #endif
                         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 showGenerateError = false
@@ -2609,11 +2697,15 @@ showCharacterPicker = true
                 withAnimation(.easeInOut(duration: 0.3)) {
                     showGenerateError = true
                 }
+                #if DEBUG
                 print("⚠️ 显示错误提示: \(generateError)")
+                #endif
                 
                 // 3秒后隐藏错误提示并重置生成状态
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    #if DEBUG
                     print("⏱️ 错误提示显示3秒后，开始隐藏错误并缩回按钮")
+                    #endif
                     
                     // 先隐藏错误提示
                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -2624,7 +2716,9 @@ showCharacterPicker = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                             isGeneratingPosts = false
+                            #if DEBUG
                             print("🔄 生成状态设置为false，按钮应开始缩回")
+                            #endif
                         }
                     }
                 }
@@ -2647,11 +2741,15 @@ showCharacterPicker = true
     
     // 处理编辑帖子
     private func handleEditPost(_ post: UserPostModel) {
+        #if DEBUG
         print("开始编辑帖子: \(post.id), 内容: \(post.content.prefix(20))...")
+        #endif
         
         // 直接设置要编辑的帖子，不再需要标志变量
         editingPost = post
+        #if DEBUG
         print("✅ 设置editingPost成功: \(post.id)")
+        #endif
         
         // 触发触觉反馈
         HapticFeedbackManager.shared.selectionChanged()

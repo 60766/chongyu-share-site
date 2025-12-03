@@ -145,7 +145,9 @@ struct CommentsListView: View {
                     }
                 }
                 .onChange(of: comments) { oldComments, newComments in
+                    #if DEBUG
                     print("🔄 评论数据变化: 旧评论数=\(oldComments.count), 新评论数=\(newComments.count)")
+                    #endif
                     
                     // 1. 记录当前锚点
                     if let firstVisible = oldComments.first {
@@ -1375,7 +1377,9 @@ struct CommentItemView: View {
                     .frame(width: 38, height: 38)
                     .onAppear {
                             if comment.isCurrentUser {
+                            #if DEBUG
                             print("📱 评论头像 - 当前用户: \(UserProfileManager.shared.getCurrentUsername())")
+                            #endif
                             }
                         }
                     }

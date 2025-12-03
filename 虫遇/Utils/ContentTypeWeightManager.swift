@@ -27,11 +27,15 @@ class ContentTypeWeightManager {
         loadWeights()
         
         // 添加调试日志，显示初始权重
+        #if DEBUG
         print("📊 ContentTypeWeightManager初始化，当前权重设置：")
+        #endif
         for type in ContentGeneratorService.ContentType.allCases {
             let typeKey = type.rawValue
             let weight = contentTypeWeights[typeKey] ?? 1.0
+            #if DEBUG
             print("  - \(typeKey): \(weight)")
+            #endif
         }
         
         // 只有在不生成内容时才检查权重恢复
@@ -46,7 +50,9 @@ class ContentTypeWeightManager {
      */
     func setGeneratingContent(_ generating: Bool) {
         isGeneratingContent = generating
+        #if DEBUG
         print("📊 ContentTypeWeightManager: 内容生成状态设置为 \(generating ? "生成中" : "未生成")")
+        #endif
     }
     
     /**
@@ -71,11 +77,15 @@ class ContentTypeWeightManager {
         // 保存更新后的权重
         saveWeights()
         
+        #if DEBUG
         print("📉 已降低内容类型[\(typeKey)]的权重: \(currentWeight) -> \(newWeight)")
+        #endif
         
         // 如果权重非常低但不为0，直接降到0（加速测试）
         if newWeight < 0.1 && newWeight > 0 {
+            #if DEBUG
             print("⚠️ 权重已经非常低，直接设置为0进行测试")
+            #endif
             contentTypeWeights[typeKey] = 0.0
             saveWeights()
         }
@@ -123,12 +133,16 @@ class ContentTypeWeightManager {
             // 重置特定类型
             contentTypeWeights.removeValue(forKey: type.rawValue)
             lastReducedDate.removeValue(forKey: type.rawValue)
+            #if DEBUG
             print("🔄 已重置内容类型[\(type.rawValue)]的权重为默认值")
+            #endif
         } else {
             // 重置所有类型
             contentTypeWeights.removeAll()
             lastReducedDate.removeAll()
+            #if DEBUG
             print("🔄 已重置所有内容类型的权重为默认值")
+            #endif
         }
         
         saveWeights()
@@ -153,7 +167,9 @@ class ContentTypeWeightManager {
         // 保存更新后的权重
         saveWeights()
         
+        #if DEBUG
         print("⚠️ 测试：已强制将内容类型[\(typeKey)]的权重从 \(currentWeight) 设置为 0.0")
+        #endif
     }
     
     /**
@@ -172,7 +188,9 @@ class ContentTypeWeightManager {
                 contentTypeWeights.removeValue(forKey: typeKey)
                 lastReducedDate.removeValue(forKey: typeKey)
                 hasChanges = true
+                #if DEBUG
                 print("⏱️ 内容类型[\(typeKey)]的权重已自动恢复 (已过\(Int(daysSinceReduced))天)")
+                #endif
             } else if daysSinceReduced >= weightRecoveryCycleDays / 2 {
                 // 过半恢复周期，权重部分恢复
                 if let currentWeight = contentTypeWeights[typeKey], currentWeight < 1.0 {
@@ -181,7 +199,9 @@ class ContentTypeWeightManager {
                     let newWeight = min(1.0, currentWeight + (1.0 - currentWeight) * recoveryRatio)
                     contentTypeWeights[typeKey] = newWeight
                     hasChanges = true
+                    #if DEBUG
                     print("⏱️ 内容类型[\(typeKey)]的权重部分恢复: \(currentWeight) -> \(newWeight)")
+                    #endif
                 }
             }
         }
@@ -206,7 +226,9 @@ class ContentTypeWeightManager {
         // 强制立即同步
         UserDefaults.standard.synchronize()
         
+        #if DEBUG
         print("💾 权重已保存到UserDefaults")
+        #endif
     }
     
     /**
@@ -216,18 +238,26 @@ class ContentTypeWeightManager {
         // 加载权重
         if let savedWeights = UserDefaults.standard.dictionary(forKey: "contentTypeWeights") as? [String: Double] {
             contentTypeWeights = savedWeights
+            #if DEBUG
             print("📂 从UserDefaults加载权重成功: \(contentTypeWeights)")
+            #endif
         } else {
+            #if DEBUG
             print("⚠️ 未找到保存的权重数据，使用默认权重")
+            #endif
         }
         
         // 加载最后降权时间
         if let savedDatesData = UserDefaults.standard.data(forKey: "contentTypeLastReducedDates"),
            let savedDates = try? JSONDecoder().decode([String: Date].self, from: savedDatesData) {
             lastReducedDate = savedDates
+            #if DEBUG
             print("📂 从UserDefaults加载降权时间成功")
+            #endif
         } else {
+            #if DEBUG
             print("⚠️ 未找到保存的降权时间数据")
+            #endif
         }
     }
     
@@ -253,7 +283,9 @@ class ContentTypeWeightManager {
         
         // 如果没有有效类型，将所有类型权重临时设为1.0并继续
         if validTypes.isEmpty {
+            #if DEBUG
             print("⚠️ 警告：所有内容类型权重都为0，将临时使用默认权重进行内容分配")
+            #endif
             // 创建一个临时的有效类型数组，包含所有原始类型
             var tempTypes: [ContentGeneratorService.ContentType] = []
             var tempWeights: [ContentGeneratorService.ContentType: Double] = [:]
@@ -304,7 +336,9 @@ class ContentTypeWeightManager {
         if validTypes.count == 1 {
             // 如果只有一种有效类型，允许分配所有数量
             maxAllocationPerType = totalCount
+            #if DEBUG
             print("⚠️ 警告：只有一种内容类型有权重，将分配所有\(totalCount)篇内容给该类型")
+            #endif
         } else {
             maxAllocationPerType = min(6, totalCount / validTypes.count + 3)
         }
@@ -412,7 +446,9 @@ class ContentTypeWeightManager {
                     // 如果一轮中没有添加任何帖子，说明所有类型都已达到最大限制
                     // 这种情况下，我们需要放宽最大限制
                     if !addedAny {
+                        #if DEBUG
                         print("⚠️ 警告：所有类型都已达到最大限制\(maxAllocationPerType)，无法满足总数\(totalCount)要求")
+                        #endif
                         // 强制分配到权重最高的类型
                         if let highestType = sortedTypes.first {
                             distribution[highestType] = (distribution[highestType] ?? 0) + remainingToAdd
@@ -457,7 +493,9 @@ class ContentTypeWeightManager {
             // 最终验证总数是否正确
             let verifiedTotal = distribution.values.reduce(0, +)
             if verifiedTotal != totalCount {
+                #if DEBUG
                 print("⚠️ 警告：调整后总数仍不正确，预期\(totalCount)，实际\(verifiedTotal)")
+                #endif
             }
         }
         
@@ -491,17 +529,23 @@ class ContentTypeWeightManager {
         // 保存更新后的权重
         saveWeights()
         
+        #if DEBUG
         print("📊 已设置内容类型[\(typeKey)]的权重: \(currentWeight) -> \(weight)")
+        #endif
     }
     
     /**
      * 打印所有权重，用于调试
      */
     func printAllWeights() {
+        #if DEBUG
         print("📊 当前所有内容类型权重：")
+        #endif
         for type in ContentGeneratorService.ContentType.allCases {
             let weight = getWeight(for: type)
+            #if DEBUG
             print("  - \(type.rawValue): \(weight)")
+            #endif
         }
     }
 } 

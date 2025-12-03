@@ -175,7 +175,8 @@ struct ContactUsView: View {
             }
         case "应用评分":
             // 打开App Store评分页面
-            // TODO: 替换为真实的应用ID
+            // 注意：应用上架后，需要替换为真实的应用ID
+            // 格式：https://apps.apple.com/app/id{应用ID}?action=write-review
             if Bundle.main.bundleIdentifier != nil,
                let url = URL(string: "https://apps.apple.com/search?term=虫遇") {
                 UIApplication.shared.open(url)

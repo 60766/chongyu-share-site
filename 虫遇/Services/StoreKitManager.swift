@@ -91,11 +91,15 @@ final class StoreKitManager: NSObject, ObservableObject {
                     print("[IAP] 📦 应用 Bundle ID: \(appBundleID)")
                     #endif
                     if configBundleID != appBundleID {
+                        #if DEBUG
                         print("[IAP] ❌ Bundle ID 不匹配！这可能是问题所在")
+                        #endif
                     }
                 }
             } catch {
+                #if DEBUG
                 print("[IAP] ❌ 无法读取 StoreKit 配置文件: \(error)")
+                #endif
             }
         } else {
             #if DEBUG
@@ -105,7 +109,9 @@ final class StoreKitManager: NSObject, ObservableObject {
         #endif
         
         guard AppStore.canMakePayments else {
+            #if DEBUG
             print("[IAP] ❌ 设备不支持应用内购买")
+            #endif
             return
         }
         #if DEBUG
@@ -124,7 +130,9 @@ final class StoreKitManager: NSObject, ObservableObject {
             #endif
             
             if products.isEmpty {
+                #if DEBUG
                 print("[IAP] ⚠️ 没有找到任何商品")
+                #endif
                 #if DEBUG
                 print("[IAP] 可能原因：")
                 print("[IAP] 1. App Store Connect中未配置这些Product ID")
@@ -154,7 +162,9 @@ final class StoreKitManager: NSObject, ObservableObject {
                 
                 // 在模拟器中使用备用方案
                 #if targetEnvironment(simulator)
+                #if DEBUG
                 print("[IAP] 🔄 启用模拟器备用模式，创建本地模拟产品...")
+                #endif
                 await createFallbackProducts()
                 return
                 #endif
@@ -171,7 +181,9 @@ final class StoreKitManager: NSObject, ObservableObject {
                 self.isSimulatorFallback = false
             }
         } catch {
+            #if DEBUG
             print("[IAP] ❌ 加载商品失败: \(error)")
+            #endif
             #if DEBUG
             print("[IAP] 错误详情: \(error.localizedDescription)")
             if let nsError = error as NSError? {
@@ -226,14 +238,18 @@ final class StoreKitManager: NSObject, ObservableObject {
     // 创建备用的模拟产品（仅用于模拟器测试）
     @MainActor
     private func createFallbackProducts() async {
+        #if DEBUG
         print("[IAP] 📱 创建模拟器备用产品...")
+        #endif
         
         // 注意：这里我们不能创建真实的Product对象，因为它们是系统创建的
         // 我们需要修改UI来处理这种情况
         isSimulatorFallback = true
         products = [] // 保持空数组，但设置fallback标志
         
+        #if DEBUG
         print("[IAP] ✅ 模拟器备用模式已启用，UI将显示测试充值按钮")
+        #endif
     }
     
     // 获取备用产品信息
@@ -273,7 +289,9 @@ final class StoreKitManager: NSObject, ObservableObject {
                 try await handle(transaction)
                 await transaction.finish()
             } catch {
+                #if DEBUG
                 print("[IAP] 交易监听处理失败: \(error)")
+                #endif
             }
         }
     }
@@ -290,7 +308,9 @@ final class StoreKitManager: NSObject, ObservableObject {
                 receipt: receiptJSON
             )
         } catch {
+            #if DEBUG
             print("[IAP] 确认购买失败: \(error)")
+            #endif
             throw error
         }
     }
@@ -298,7 +318,9 @@ final class StoreKitManager: NSObject, ObservableObject {
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
         case .unverified(_, let verificationError):
+            #if DEBUG
             print("[IAP] ⚠️ 交易验证失败: \(verificationError)")
+            #endif
             throw verificationError
         case .verified(let signedType):
             #if DEBUG

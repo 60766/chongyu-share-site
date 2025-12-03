@@ -14,14 +14,18 @@ class FollowDataMigration {
      * 将所有旧的关注数据合并到统一的FollowManager中
      */
     func migrateFollowData() {
+        #if DEBUG
         print("🔄 开始关注数据迁移...")
+        #endif
         
         var allFollowedUsers: Set<String> = Set()
         
         // 1. 迁移帖子详情页面的关注数据 (FollowedUsers)
         if let followedUsers = UserDefaults.standard.stringArray(forKey: "FollowedUsers") {
             allFollowedUsers.formUnion(followedUsers)
+            #if DEBUG
             print("📱 从FollowedUsers迁移了 \(followedUsers.count) 个用户")
+            #endif
         }
         
         // 2. 迁移探索页面的角色关注数据 (favoriteCharacters)
@@ -33,7 +37,9 @@ class FollowDataMigration {
                 CharacterModel.allCharacters.first(where: { $0.id == id })?.name
             }
             allFollowedUsers.formUnion(characterNames)
+            #if DEBUG
             print("🎭 从favoriteCharacters迁移了 \(characterNames.count) 个角色")
+            #endif
         }
         
         // 3. 迁移选项菜单的关注数据 (FollowedCharacters)
@@ -48,7 +54,9 @@ class FollowDataMigration {
                 return idOrName
             }
             allFollowedUsers.formUnion(characterNames)
+            #if DEBUG
             print("⚙️ 从FollowedCharacters迁移了 \(characterNames.count) 个角色")
+            #endif
         }
         
         // 4. 将合并后的数据导入到FollowManager
@@ -58,7 +66,9 @@ class FollowDataMigration {
         // 5. 清理旧数据（可选，保留一段时间以防需要回滚）
         // cleanupOldData()
         
+        #if DEBUG
         print("✅ 关注数据迁移完成，共迁移了 \(uniqueFollowedUsers.count) 个用户/角色")
+        #endif
         
         // 6. 标记迁移已完成
         UserDefaults.standard.set(true, forKey: "FollowDataMigrationCompleted")
@@ -89,7 +99,9 @@ class FollowDataMigration {
         UserDefaults.standard.removeObject(forKey: "FollowedCharacters")
         // 保留FollowedUsers作为主数据源，不删除
         
+        #if DEBUG
         print("🗑️ 已清理旧的关注数据")
+        #endif
     }
     
     /**

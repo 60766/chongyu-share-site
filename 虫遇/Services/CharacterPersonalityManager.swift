@@ -125,7 +125,9 @@ class CharacterPersonalityManager {
         // 如果没有任何调整，删除该角色的记录
         if !adjustments.hasAnyAdjustments {
             userAdjustments.removeValue(forKey: characterId)
+            #if DEBUG
             print("✅ CharacterPersonalityManager: 重置了角色个性参数 - \(characterId)")
+            #endif
         } else {
             userAdjustments[characterId] = adjustments
             let adjustedParams = [
@@ -135,7 +137,9 @@ class CharacterPersonalityManager {
                 adjustments.responseStyle != nil ? "responseStyle" : nil,
                 adjustments.communicationPace != nil ? "communicationPace" : nil
             ].compactMap { $0 }
+            #if DEBUG
             print("✅ CharacterPersonalityManager: 更新了角色个性参数 - \(characterId), 调整的参数: \(adjustedParams)")
+            #endif
         }
         
         saveUserAdjustments()
@@ -148,7 +152,9 @@ class CharacterPersonalityManager {
     func resetPersonality(for characterId: String) {
         userAdjustments.removeValue(forKey: characterId)
         saveUserAdjustments()
+        #if DEBUG
         print("✅ CharacterPersonalityManager: 重置了角色个性参数 - \(characterId)")
+        #endif
     }
     
     /**
@@ -267,18 +273,26 @@ class CharacterPersonalityManager {
                 let totalAdjustments = userAdjustments.values.reduce(0) { count, adj in
                     count + [adj.intimacy, adj.engagementDepth, adj.emotionality, adj.responseStyle, adj.communicationPace].compactMap { $0 }.count
                 }
+                #if DEBUG
                 print("✅ CharacterPersonalityManager: 加载用户调整成功，共\(userAdjustments.count)个角色，\(totalAdjustments)个参数调整")
+                #endif
             } catch {
+                #if DEBUG
                 print("⚠️ CharacterPersonalityManager: 加载用户调整失败，尝试加载旧格式 - \(error.localizedDescription)")
+                #endif
                 // 尝试加载旧格式并转换
                 if let oldAdjustments = try? JSONDecoder().decode([String: CharacterPersonality].self, from: savedData) {
                     userAdjustments = convertOldFormat(oldAdjustments)
+                    #if DEBUG
                     print("✅ CharacterPersonalityManager: 成功转换旧格式数据，共\(userAdjustments.count)个角色")
+                    #endif
                     saveUserAdjustments() // 保存转换后的新格式
                 }
             }
         } else {
+            #if DEBUG
             print("📝 CharacterPersonalityManager: 首次启动，无用户调整数据")
+            #endif
         }
     }
     
@@ -316,9 +330,13 @@ class CharacterPersonalityManager {
             let totalAdjustments = userAdjustments.values.reduce(0) { count, adj in
                 count + [adj.intimacy, adj.engagementDepth, adj.emotionality, adj.responseStyle, adj.communicationPace].compactMap { $0 }.count
             }
+            #if DEBUG
             print("💾 CharacterPersonalityManager: 保存用户调整成功，共\(userAdjustments.count)个角色，\(totalAdjustments)个参数调整")
+            #endif
         } catch {
+            #if DEBUG
             print("⚠️ CharacterPersonalityManager: 保存用户调整失败 - \(error.localizedDescription)")
+            #endif
         }
     }
 } 

@@ -255,7 +255,9 @@ struct PostShareModalView: View {
     // MARK: - 分享功能实现
     
     private func shareToWeChat() {
+        #if DEBUG
         print("🔍 点击了微信分享按钮")
+        #endif
         // 微信分享逻辑 - 调用系统分享，用户可选择微信好友或朋友圈
         // 添加触觉反馈
         let generator = UIImpactFeedbackGenerator(style: .light)
@@ -267,7 +269,9 @@ struct PostShareModalView: View {
     }
     
     private func shareToMoments() {
+        #if DEBUG
         print("🔍 点击了朋友圈分享按钮")
+        #endif
         // 朋友圈分享逻辑 - 同样调用系统分享
         // 添加触觉反馈
         let generator = UIImpactFeedbackGenerator(style: .light)
@@ -336,15 +340,21 @@ struct PostShareModalView: View {
     }
     
     private func shareImage() {
+        #if DEBUG
         print("🔍 开始分享图片...")
+        #endif
         
         // 使用已生成的预览图片
         guard let image = previewImage else {
+            #if DEBUG
             print("❌ 预览图片不存在")
+            #endif
             return
         }
         
+        #if DEBUG
         print("✅ 使用预览图片，尺寸: \(image.size)")
+        #endif
         
         // 🔧 关键修复：先关闭分享模态视图，避免视图层级冲突
         isPresented = false
@@ -357,16 +367,22 @@ struct PostShareModalView: View {
     
     private func presentSystemShareSheet(with image: UIImage) {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+            #if DEBUG
             print("❌ 无法获取windowScene")
+            #endif
             return
         }
         
         guard let rootViewController = windowScene.windows.first?.rootViewController else {
+            #if DEBUG
             print("❌ 无法获取rootViewController")
+            #endif
             return
         }
         
+        #if DEBUG
         print("✅ 准备显示系统分享界面...")
+        #endif
         
         let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
         
@@ -381,17 +397,25 @@ struct PostShareModalView: View {
         activityVC.completionWithItemsHandler = { activityType, completed, returnedItems, error in
             DispatchQueue.main.async {
                 if let error = error {
+                    #if DEBUG
                     print("❌ 分享失败: \(error.localizedDescription)")
+                    #endif
                 } else if completed {
+                    #if DEBUG
                     print("✅ 分享成功: \(activityType?.rawValue ?? "未知")")
+                    #endif
                 } else {
+                    #if DEBUG
                     print("ℹ️ 用户取消分享")
+                    #endif
                 }
             }
         }
         
         rootViewController.present(activityVC, animated: true) {
+            #if DEBUG
             print("✅ 系统分享界面已显示")
+            #endif
         }
     }
     
@@ -513,7 +537,9 @@ struct PostShareModalView: View {
         
         // 如果没找到内容，返回原图
         guard minX < maxX && minY < maxY else {
+            #if DEBUG
             print("⚠️ 未检测到内容边界，返回原图")
+            #endif
             return image
         }
         
@@ -521,11 +547,21 @@ struct PostShareModalView: View {
         let paddingPixels = Int(targetPadding * scale)
         
         // 🔍 调试日志：检测结果
+        #if DEBUG
         print("✅ 内容边界检测成功:")
+        #endif
+        #if DEBUG
         print("   - 图片尺寸: \(width)×\(height)px")
+        #endif
+        #if DEBUG
         print("   - 内容边界: x[\(minX), \(maxX)] y[\(minY), \(maxY)]")
+        #endif
+        #if DEBUG
         print("   - 内容尺寸: \((maxX - minX))×\((maxY - minY))px")
+        #endif
+        #if DEBUG
         print("   - 目标白边: \(targetPadding)pt = \(paddingPixels)px")
+        #endif
         
         // 计算裁剪区域（内容边界 + 目标padding）
         let cropX = max(0, minX - paddingPixels)
@@ -533,8 +569,12 @@ struct PostShareModalView: View {
         let cropWidth = min(width - cropX, maxX - minX + 1 + 2 * paddingPixels)
         let cropHeight = min(height - cropY, maxY - minY + 1 + 2 * paddingPixels)
         
+        #if DEBUG
         print("   - 裁剪区域: (\(cropX), \(cropY), \(cropWidth), \(cropHeight))")
+        #endif
+        #if DEBUG
         print("   - 白边验证: 上=\(minY - cropY)px 下=\(cropY + cropHeight - maxY)px 左=\(minX - cropX)px 右=\(cropX + cropWidth - maxX)px")
+        #endif
         
         let cropRect = CGRect(
             x: cropX,
@@ -553,7 +593,9 @@ struct PostShareModalView: View {
     private func renderViewAsImage<T: View>(_ view: T, size: CGSize) -> UIImage? {
         // ⚠️ 重要：此方法必须在主线程调用
         guard Thread.isMainThread else {
+            #if DEBUG
             print("❌ renderViewAsImage 必须在主线程调用")
+            #endif
             return nil
         }
         

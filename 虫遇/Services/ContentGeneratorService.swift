@@ -53,7 +53,9 @@ class ContentGeneratorService: ObservableObject {
          */
         func saveComments(_ comments: [CommentItem], forContentID contentID: String) {
             commentsMap[contentID] = comments
+            #if DEBUG
             print("📦 已保存\(comments.count)条评论，内容ID: \(contentID)")
+            #endif
         }
         
         /**
@@ -63,7 +65,9 @@ class ContentGeneratorService: ObservableObject {
         func saveComments(_ commentsMap: [String: [CommentItem]]) {
             for (contentID, comments) in commentsMap {
                 self.commentsMap[contentID] = comments
+                #if DEBUG
                 print("📦 已批量保存\(comments.count)条评论，内容ID: \(contentID)")
+                #endif
             }
         }
         
@@ -74,7 +78,9 @@ class ContentGeneratorService: ObservableObject {
          */
         func getComments(forContentID contentID: String) -> [CommentItem] {
             let comments = commentsMap[contentID] ?? []
+            #if DEBUG
             print("📦 获取到\(comments.count)条评论，内容ID: \(contentID)")
+            #endif
             return comments
         }
         
@@ -83,7 +89,9 @@ class ContentGeneratorService: ObservableObject {
          */
         func clearAllComments() {
             commentsMap.removeAll()
+            #if DEBUG
             print("🧹 已清除所有评论")
+            #endif
         }
     }
     
@@ -441,7 +449,9 @@ class ContentGeneratorService: ObservableObject {
                 .collect() // 收集所有结果
                 .sink(
                     receiveValue: { results in
+                        #if DEBUG
                         print("✅ 成功生成\(results.count)篇带评论的内容")
+                        #endif
                         
                         var contentItems: [ContentItem] = []
                         var commentsMap: [String: [CommentItem]] = [:] // 存储每个内容项的评论
@@ -454,7 +464,9 @@ class ContentGeneratorService: ObservableObject {
                             // 存储评论
                             commentsMap[contentItem.id] = result.comments
                             
+                            #if DEBUG
                             print("📝 内容「\(contentItem.characterName)」: 评论数=\(result.comments.count)")
+                            #endif
                         }
                         
                         // 使用CommentStore保存所有评论
@@ -474,19 +486,25 @@ class ContentGeneratorService: ObservableObject {
      */
     func generateContentWithComments(for characterID: String, contentType: ContentType, topic: String? = nil, commentersCount: Int = 3) -> Future<(contentItem: ContentItem, comments: [CommentItem]), Error> {
         return Future { promise in
+            #if DEBUG
             print("🔄 生成带评论的内容: 角色ID=\(characterID), 类型=\(contentType.rawValue), 评论数=\(commentersCount)")
+            #endif
             
             // 获取角色信息
             self.characterSystem.getCharacter(characterID)
                 .sink(
                     receiveCompletion: { completion in
                         if case .failure(let error) = completion {
+                            #if DEBUG
                             print("❌ 获取角色信息失败: \(error.localizedDescription)")
+                            #endif
                             promise(.failure(error))
                         }
                     },
                     receiveValue: { character in
+                        #if DEBUG
                         print("👤 获取角色成功: \(character.name)")
+                        #endif
                         
                         // 将ContentType转换为字符串表示
                         let contentTypeString = self.contentTypeToString(contentType)
@@ -501,7 +519,9 @@ class ContentGeneratorService: ObservableObject {
                         .sink(
                             receiveCompletion: { completion in
                                 if case .failure(let error) = completion {
+                                    #if DEBUG
                                     print("❌ AI生成内容和评论失败: \(error.localizedDescription)")
+                                    #endif
                                     
                                     // 显示友好的错误提示给用户
                                     // 注意：403错误已经在AINetworkService中显示Toast，这里避免重复显示
@@ -528,7 +548,9 @@ class ContentGeneratorService: ObservableObject {
                                 }
                             },
                             receiveValue: { result in
+                                #if DEBUG
                                 print("✅ AI成功生成内容和\(result.comments.count)条评论")
+                                #endif
                                 
                                 // 创建内容项
                                 let contentItem = ContentItem(
@@ -547,7 +569,9 @@ class ContentGeneratorService: ObservableObject {
                                 
                                 // 如果没有评论，直接返回结果
                                 if result.comments.isEmpty {
+                                    #if DEBUG
                                     print("⚠️ 警告：AI没有生成任何评论")
+                                    #endif
                                     promise(.success((contentItem, [])))
                                     return
                                 }
@@ -557,7 +581,9 @@ class ContentGeneratorService: ObservableObject {
                                 let now = Date()
                                 let dispatchGroup = DispatchGroup()
                                 
+                                #if DEBUG
                                 print("🔄 开始处理\(result.comments.count)条评论...")
+                                #endif
                                 
                                 // 存储基础评论的ID和角色名映射，用于后续处理回复评论
                                 var baseCommentIdMap: [String: String] = [:]
@@ -590,10 +616,14 @@ class ContentGeneratorService: ObservableObject {
                                         // 保存评论ID和角色名的映射
                                         baseCommentIdMap[commentData.character] = commentId.uuidString
                                         
+                                        #if DEBUG
                                         print("📝 创建评论项 #\(index+1): \(commentItem.characterName)")
+                                        #endif
                                         comments.append(commentItem)
                                     } else {
+                                        #if DEBUG
                                         print("⚠️ 跳过空评论内容 - 角色: \(commenter?.name ?? commentData.character)")
+                                        #endif
                                     }
                                     
                                     dispatchGroup.leave()
@@ -601,7 +631,9 @@ class ContentGeneratorService: ObservableObject {
                                 
                                 // 等待所有评论处理完成
                                 dispatchGroup.notify(queue: .main) {
+                                    #if DEBUG
                                     print("✅ 所有评论处理完成，共\(comments.count)条评论")
+                                    #endif
                                     // 按时间排序评论
                                     let sortedComments = comments.sorted { $0.timestamp > $1.timestamp }
                                     promise(.success((contentItem, sortedComments)))
@@ -898,7 +930,9 @@ public func processComments(
     _ commentItems: [(character: String, comment: String, isReply: Bool, replyTo: String?)],
     contentID: String
 ) -> [CommentItem] {
+    #if DEBUG
     print("🔄 处理\(commentItems.count)条评论...")
+    #endif
     
     var comments: [CommentItem] = []
     var commentMap: [String: String] = [:] // 角色名到评论ID的映射
@@ -957,6 +991,8 @@ public func processComments(
     // 保存评论到评论存储
     CommentStore.shared.saveComments(comments, forContentID: contentID)
     
+    #if DEBUG
     print("✅ 成功处理\(comments.count)条评论")
+    #endif
     return comments
 } 

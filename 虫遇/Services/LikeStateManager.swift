@@ -67,14 +67,18 @@ class LikeStateManager: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: likedItemsKey),
            let items = try? JSONDecoder().decode(Set<String>.self, from: data) {
             self.likedItems = items
+            #if DEBUG
             print("📖 加载了 \(items.count) 个点赞状态")
+            #endif
         }
     }
     
     private func saveLikedItems() {
         if let data = try? JSONEncoder().encode(likedItems) {
             UserDefaults.standard.set(data, forKey: likedItemsKey)
+            #if DEBUG
             print("💾 保存了 \(likedItems.count) 个点赞状态")
+            #endif
         }
     }
 } 

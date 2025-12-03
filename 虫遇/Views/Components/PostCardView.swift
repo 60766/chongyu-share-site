@@ -206,7 +206,9 @@ class CommentLoader: ObservableObject {
         
         if shouldLog {
     
+            #if DEBUG
             print("❌ 错误信息: \"\(errorMessage)\"")
+            #endif
         }
         
         // 检查是否与当前加载的帖子匹配
@@ -938,14 +940,18 @@ struct PostCardView: View {
             if let postIdString = notification.userInfo?["postID"] as? String,
                postIdString == post.id.uuidString {
                 
+                #if DEBUG
                 print("❤️ PostCardView: 收到PostLikeUpdated通知，当前帖子点赞数需要更新")
+                #endif
                 
                 // 从PostViewModel获取最新的帖子数据并更新本地状态
                 if let updatedPost = PostViewModel.shared.posts.first(where: { $0.id.uuidString == postIdString }) {
                     DispatchQueue.main.async {
                         // 更新本地点赞状态，触发UI刷新
                         isLiked = updatedPost.isLikedByCurrentUser
+                        #if DEBUG
                         print("✅ PostCardView: 帖子卡片点赞数已更新: \(updatedPost.likes)")
+                        #endif
                     }
                 }
             }
@@ -2273,17 +2279,23 @@ struct PostCardView: View {
             )
             .onAppear {
                 if comment.isVirtualCharacter {
+                #if DEBUG
                 print("📱 PostCardView - 评论头像 - 角色ID: \(comment.characterID ?? "nil"), 头像路径: \(comment.userAvatar), 用户名: \(comment.username)")
+                #endif
                 
                 // 检查图片是否存在
                 if let characterID = comment.characterID {
                     let avatarService = CharacterAvatarService.shared
                     let exists = avatarService.checkImageExistence(imageName: characterID)
+                    #if DEBUG
                     print("🔍 PostCardView - 角色头像检查 - \(characterID): \(exists ? "存在" : "不存在")")
+                    #endif
                     
                     // 如果不存在，确认会降级到字母头像
                     if !exists {
+                        #if DEBUG
                         print("⚠️ PostCardView - 角色头像不存在，将使用字母头像 - 角色: \(characterID), 名称: \(comment.username)")
+                        #endif
                     }
                 }
                 }

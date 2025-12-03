@@ -35,7 +35,9 @@ struct AutoSizingTextView: UIViewRepresentable {
         // 设置文本内容
         textView.text = text
         
+        #if DEBUG
         print("AutoSizingTextView - makeUIView 创建")
+        #endif
         
         return textView
     }
@@ -83,12 +85,16 @@ struct AutoSizingTextView: UIViewRepresentable {
         
         // 简化的焦点状态处理
         if isFocused && !uiView.isFirstResponder {
+            #if DEBUG
             print("AutoSizingTextView - 激活键盘")
+            #endif
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     uiView.becomeFirstResponder()
             }
         } else if !isFocused && uiView.isFirstResponder {
+            #if DEBUG
             print("AutoSizingTextView - 收起键盘")
+            #endif
                     uiView.resignFirstResponder()
                 }
         
@@ -147,7 +153,9 @@ struct AutoSizingTextView: UIViewRepresentable {
         }
         
         func textViewDidBeginEditing(_ textView: UITextView) {
+            #if DEBUG
             print("AutoSizingTextView - textViewDidBeginEditing")
+            #endif
             // 简单更新焦点状态
             if !parent.isFocused {
                 DispatchQueue.main.async {
@@ -157,7 +165,9 @@ struct AutoSizingTextView: UIViewRepresentable {
         }
         
         func textViewDidEndEditing(_ textView: UITextView) {
+            #if DEBUG
             print("AutoSizingTextView - textViewDidEndEditing")
+            #endif
             // 简单更新焦点状态
             if parent.isFocused {
                 DispatchQueue.main.async {

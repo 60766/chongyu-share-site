@@ -37,9 +37,11 @@ class MultiPersonChatDataService {
         
         do {
             try modelContext.save()
+            #if DEBUG
             print("✅ 多人聊天会话已创建: \(session.id)")
+            #endif
         } catch {
-            print("❌ 创建多人聊天会话失败: \(error.localizedDescription)")
+            Logger.error("创建多人聊天会话失败", error: error, log: Logger.data)
         }
         
         return session
@@ -55,7 +57,7 @@ class MultiPersonChatDataService {
             )
             return try modelContext.fetch(descriptor)
         } catch {
-            print("❌ 获取聊天会话失败: \(error.localizedDescription)")
+            Logger.error("获取聊天会话失败", error: error, log: Logger.data)
             return []
         }
     }
@@ -80,10 +82,12 @@ class MultiPersonChatDataService {
                 session.updatedAt = Date()
                 
                 try modelContext.save()
+                #if DEBUG
                 print("✅ 会话活跃度已更新: \(sessionId)")
+                #endif
             }
         } catch {
-            print("❌ 更新会话活跃度失败: \(error.localizedDescription)")
+            Logger.error("更新会话活跃度失败", error: error, log: Logger.data)
         }
     }
     
@@ -112,10 +116,12 @@ class MultiPersonChatDataService {
             if let session = try modelContext.fetch(sessionDescriptor).first {
                 modelContext.delete(session)
                 try modelContext.save()
+                #if DEBUG
                 print("✅ 聊天会话已删除: \(sessionId)")
+                #endif
             }
         } catch {
-            print("❌ 删除聊天会话失败: \(error.localizedDescription)")
+            Logger.error("删除聊天会话失败", error: error, log: Logger.data)
         }
     }
     
@@ -150,9 +156,11 @@ class MultiPersonChatDataService {
             // 更新会话的消息计数
             updateMessageCount(sessionId: sessionId, modelContext: modelContext)
             
+            #if DEBUG
             print("✅ 聊天消息已保存: \(message.id)")
+            #endif
         } catch {
-            print("❌ 保存聊天消息失败: \(error.localizedDescription)")
+            Logger.error("保存聊天消息失败", error: error, log: Logger.data)
         }
         
         return message
@@ -172,7 +180,7 @@ class MultiPersonChatDataService {
             )
             return try modelContext.fetch(descriptor)
         } catch {
-            print("❌ 获取聊天消息失败: \(error.localizedDescription)")
+            Logger.error("获取聊天消息失败", error: error, log: Logger.data)
             return []
         }
     }
@@ -190,7 +198,7 @@ class MultiPersonChatDataService {
             
             updateSessionActivity(sessionId: sessionId, messageCount: messageCount, modelContext: modelContext)
         } catch {
-            print("❌ 更新消息计数失败: \(error.localizedDescription)")
+            Logger.error("更新消息计数失败", error: error, log: Logger.data)
         }
     }
     
@@ -226,7 +234,7 @@ class MultiPersonChatDataService {
             let sessions = try modelContext.fetch(descriptor)
             return sessions.first
         } catch {
-            print("❌ 获取会话失败: \(error.localizedDescription)")
+            Logger.error("获取会话失败", error: error, log: Logger.data)
             return nil
         }
     }

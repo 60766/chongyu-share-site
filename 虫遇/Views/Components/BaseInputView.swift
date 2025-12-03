@@ -137,7 +137,9 @@ struct BaseInputView<Content: View>: View, BaseInputViewProtocol {
                 )
                 .onTapGesture {
                     if debug {
+                        #if DEBUG
                         print("输入区域被点击")
+                        #endif
                     }
                     internalFocus = true
                     isFocused = true
@@ -168,7 +170,9 @@ struct BaseInputView<Content: View>: View, BaseInputViewProtocol {
         }
         .onAppear {
             if debug {
+                #if DEBUG
                 print("BaseInputView出现，初始文本: '\(text)'")
+                #endif
             }
             
             // 同步焦点状态
@@ -178,7 +182,9 @@ struct BaseInputView<Content: View>: View, BaseInputViewProtocol {
         }
         .onChange(of: internalFocus) { oldValue, newValue in
             if debug {
+                #if DEBUG
                 print("BaseInputView焦点状态变化: \(newValue)")
+                #endif
             }
             isFocused = newValue
         }

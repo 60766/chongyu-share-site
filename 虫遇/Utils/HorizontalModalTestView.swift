@@ -62,7 +62,9 @@ struct HorizontalModalTestView: View {
             isPresented: $showModal,
             direction: .fromRight,
             onDismiss: {
+                #if DEBUG
                 print("模态视图已关闭")
+                #endif
             }
         ) {
             ModalContentView(
@@ -78,7 +80,9 @@ struct HorizontalModalTestView: View {
             item: $selectedItem,
             direction: .fromRight,
             onDismiss: {
+                #if DEBUG
                 print("项目模态视图已关闭")
+                #endif
             }
         ) { item in
             ModalContentView(

@@ -25,11 +25,15 @@ struct HistoricalFigureAvatarView: View {
             size: size
         )
         .onAppear {
+            #if DEBUG
             print("🔍 HistoricalFigureAvatarView - 显示历史人物头像: \(characterId), 名称: \(name)")
+            #endif
             
             // 检查图片是否存在
             let exists = avatarService.checkImageExistence(imageName: characterId)
+            #if DEBUG
             print("🔍 HistoricalFigureAvatarView - 角色头像检查 - \(characterId): \(exists ? "存在" : "不存在")")
+            #endif
         }
     }
 }

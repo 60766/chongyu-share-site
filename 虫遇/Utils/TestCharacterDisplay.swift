@@ -7,36 +7,56 @@ import Foundation
 class CharacterDisplayTester {
     
     static func testAllCharactersLoaded() {
+        #if DEBUG
         print("🧪 开始测试角色显示完整性...")
+        #endif
         
         let characterDataManager = CharacterDataManager.shared
         
         // 测试1：检查角色数据加载
+        #if DEBUG
         print("\n📊 测试1：角色数据加载检查")
+        #endif
         let allCharacterIds = characterDataManager.getAllCharacterIds()
+        #if DEBUG
         print("📋 总角色数量：\(allCharacterIds.count)")
+        #endif
         
         // 检查是否达到预期的169个角色
         if allCharacterIds.count == 169 {
+            #if DEBUG
             print("✅ 角色数量正确：169个")
+            #endif
         } else {
+            #if DEBUG
             print("❌ 角色数量不正确：期望169个，实际\(allCharacterIds.count)个")
+            #endif
         }
         
         // 测试2：检查角色信息完整性
+        #if DEBUG
         print("\n📋 测试2：角色信息完整性检查")
+        #endif
         let allCharacterInfos = characterDataManager.getAllCharactersInfo()
+        #if DEBUG
         print("📊 角色信息数量：\(allCharacterInfos.count)")
+        #endif
         
         // 检查是否有角色信息缺失
         if allCharacterInfos.count == allCharacterIds.count {
+            #if DEBUG
             print("✅ 所有角色都有完整信息")
+            #endif
         } else {
+            #if DEBUG
             print("❌ 角色信息不完整：ID数量\(allCharacterIds.count)，信息数量\(allCharacterInfos.count)")
+            #endif
         }
         
         // 测试3：检查关键角色是否存在
+        #if DEBUG
         print("\n🔍 测试3：关键角色存在性检查")
+        #endif
         let keyCharacters = [
             "einstein", "shakespeare", "davinci", "kongzi", "newton",
             "sunwukong", "holmes", "ironman", "naruto", "gandalf"
@@ -44,14 +64,20 @@ class CharacterDisplayTester {
         
         for characterId in keyCharacters {
             if let name = characterDataManager.getName(for: characterId) {
+                #if DEBUG
                 print("✅ \(characterId) -> \(name)")
+                #endif
             } else {
+                #if DEBUG
                 print("❌ \(characterId) -> 未找到")
+                #endif
             }
         }
         
         // 测试4：检查角色分类映射
+        #if DEBUG
         print("\n🏷️ 测试4：角色分类映射检查")
+        #endif
         var categoryCounts: [String: Int] = [:]
         
         for characterInfo in allCharacterInfos {
@@ -59,34 +85,50 @@ class CharacterDisplayTester {
             categoryCounts[category.rawValue, default: 0] += 1
         }
         
+        #if DEBUG
         print("📊 分类统计：")
+        #endif
         for (category, count) in categoryCounts.sorted(by: { $0.value > $1.value }) {
+            #if DEBUG
             print("  \(category): \(count)个")
+            #endif
         }
         
         // 测试5：检查头像信息
+        #if DEBUG
         print("\n🖼️ 测试5：头像信息检查")
+        #endif
         var avatarIssues = 0
         var missingAvatars = 0
         
         for characterInfo in allCharacterInfos {
             if characterInfo.avatar.isEmpty {
                 missingAvatars += 1
+                #if DEBUG
                 print("⚠️ \(characterInfo.name) 缺少头像信息")
+                #endif
             } else if characterInfo.avatar == characterInfo.id {
                 avatarIssues += 1
+                #if DEBUG
                 print("⚠️ \(characterInfo.name) 头像字段与ID相同，可能有问题")
+                #endif
             }
         }
         
         if avatarIssues == 0 && missingAvatars == 0 {
+            #if DEBUG
             print("✅ 所有角色头像信息正常")
+            #endif
         } else {
+            #if DEBUG
             print("❌ 发现 \(avatarIssues + missingAvatars) 个头像问题")
+            #endif
         }
         
         // 测试6：检查时代和职业信息
+        #if DEBUG
         print("\n📅 测试6：时代和职业信息检查")
+        #endif
         var missingEra = 0
         var missingProfession = 0
         
@@ -99,42 +141,74 @@ class CharacterDisplayTester {
             }
         }
         
+        #if DEBUG
         print("📊 信息完整性：")
+        #endif
+        #if DEBUG
         print("  时代信息完整：\(allCharacterInfos.count - missingEra)/\(allCharacterInfos.count)")
+        #endif
+        #if DEBUG
         print("  职业信息完整：\(allCharacterInfos.count - missingProfession)/\(allCharacterInfos.count)")
+        #endif
         
         // 测试7：检查数据一致性
+        #if DEBUG
         print("\n🔗 测试7：数据一致性检查")
+        #endif
         let idSet = Set(allCharacterIds)
         let infoIdSet = Set(allCharacterInfos.map { $0.id })
         
         if idSet == infoIdSet {
+            #if DEBUG
             print("✅ 角色ID和角色信息完全一致")
+            #endif
         } else {
+            #if DEBUG
             print("❌ 角色ID和角色信息不一致")
+            #endif
             let missingInInfo = idSet.subtracting(infoIdSet)
             let extraInInfo = infoIdSet.subtracting(idSet)
             
             if !missingInInfo.isEmpty {
+                #if DEBUG
                 print("  缺失的角色信息：\(missingInInfo.joined(separator: ", "))")
+                #endif
             }
             if !extraInInfo.isEmpty {
+                #if DEBUG
                 print("  多余的角色信息：\(extraInInfo.joined(separator: ", "))")
+                #endif
             }
         }
         
         // 总结
+        #if DEBUG
         print("\n🎯 测试总结：")
+        #endif
+        #if DEBUG
         print("📊 总角色数：\(allCharacterIds.count)")
+        #endif
+        #if DEBUG
         print("📋 角色信息数：\(allCharacterInfos.count)")
+        #endif
+        #if DEBUG
         print("🏷️ 分类数量：\(categoryCounts.count)")
+        #endif
+        #if DEBUG
         print("🖼️ 头像问题：\(avatarIssues + missingAvatars)")
+        #endif
+        #if DEBUG
         print("📅 信息缺失：时代\(missingEra)个，职业\(missingProfession)个")
+        #endif
         
         if allCharacterIds.count == 169 && allCharacterInfos.count == 169 {
+            #if DEBUG
             print("🎉 所有169个角色都已正确加载！")
+            #endif
         } else {
+            #if DEBUG
             print("⚠️ 存在角色加载问题，需要进一步检查")
+            #endif
         }
     }
     

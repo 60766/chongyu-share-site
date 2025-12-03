@@ -450,7 +450,9 @@ struct CreateCharacterView: View {
         // 处理角色名称，优化显示效果
         let optimizedName = optimizeCharacterName(name)
         
+        #if DEBUG
         print("尝试创建角色: \(optimizedName)")
+        #endif
         
         // 创建新角色 - 确保所有必填字段都有值，减少可选参数
         let newCharacter = CharacterModel(
@@ -463,7 +465,9 @@ struct CreateCharacterView: View {
             category: selectedCategory
         )
         
+        #if DEBUG
         print("角色创建成功，添加到列表")
+        #endif
         
         // 添加到角色列表
         characters.append(newCharacter)
@@ -474,12 +478,16 @@ struct CreateCharacterView: View {
         // 如果用户选择了头像，安全地保存头像
         if let image = selectedImage {
             // 使用更可靠的方法保存图片
+            #if DEBUG
             print("📸 CreateCharacterView - 开始保存用户选择的头像")
+            #endif
             DispatchQueue.global(qos: .background).async {
                 self.safelySaveImage(image, forCharacterId: characterId)
             }
         } else {
+            #if DEBUG
             print("⚠️ CreateCharacterView - 用户未选择头像，使用默认头像")
+            #endif
         }
         
         // 发送通知，通知其他视图更新
@@ -691,7 +699,9 @@ struct CreateCharacterView: View {
         
         // 压缩并转换为JPEG数据（使用较高质量以保持清晰度）
         guard let data = croppedImage.jpegData(compressionQuality: 0.85) else { 
+            #if DEBUG
             print("❌ CreateCharacterView - 无法将图像转换为JPEG数据")
+            #endif
             return 
         }
         
@@ -709,9 +719,13 @@ struct CreateCharacterView: View {
             
             // 写入数据
             try data.write(to: fileURL)
+            #if DEBUG
             print("✅ CreateCharacterView - 头像已保存到: \(fileURL.path), 尺寸: \(Int(croppedImage.size.width))x\(Int(croppedImage.size.height))")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ CreateCharacterView - 保存头像失败: \(error)")
+            #endif
         }
     }
     
@@ -775,10 +789,14 @@ struct CreateCharacterView: View {
             do {
                 if let existingCharacters = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
                     customCharacters = existingCharacters
+                    #if DEBUG
                     print("成功加载现有角色数据，共\(customCharacters.count)个角色")
+                    #endif
                 }
             } catch {
+                #if DEBUG
                 print("加载现有角色数据失败: \(error)")
+                #endif
                 // 如果加载失败，使用空数组
                 customCharacters = []
             }
@@ -813,7 +831,9 @@ struct CreateCharacterView: View {
         
         // 添加到列表
         customCharacters.append(characterDict)
+        #if DEBUG
         print("添加新角色后，共有\(customCharacters.count)个角色")
+        #endif
         
         // 确保所有嵌套数据都是属性列表兼容的
         let propertyListCustomCharacters = convertToPropertyList(customCharacters)
@@ -823,9 +843,13 @@ struct CreateCharacterView: View {
             // 使用Data方式保存复杂数据
             let data = try JSONSerialization.data(withJSONObject: propertyListCustomCharacters, options: [])
             UserDefaults.standard.set(data, forKey: "CustomCharactersData")
+            #if DEBUG
             print("角色数据已成功保存到UserDefaults")
+            #endif
         } catch {
+            #if DEBUG
             print("保存角色数据失败: \(error)")
+            #endif
             errorMessage = "保存角色数据失败: \(error.localizedDescription)"
             showingError = true
         }

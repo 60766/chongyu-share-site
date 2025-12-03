@@ -493,7 +493,9 @@ class CharacterPersonalityViewModel: ObservableObject {
             if personality.responseStyle != 0.5 { adjustedParameters.insert("responseStyle") }
             if personality.communicationPace != 0.5 { adjustedParameters.insert("communicationPace") }
             
+            #if DEBUG
             print("✅ 加载了用户调整的个性化设置: \(characterName)，已调整参数: \(adjustedParameters)")
+            #endif
         } else {
             // 用户没有调整，使用默认值(0.5)
             intimacy = 0.5
@@ -502,7 +504,9 @@ class CharacterPersonalityViewModel: ObservableObject {
             responseStyle = 0.5
             communicationPace = 0.5
             adjustedParameters.removeAll()
+            #if DEBUG
             print("📝 使用默认个性化设置: \(characterName)")
+            #endif
         }
     }
     
@@ -543,7 +547,9 @@ class CharacterPersonalityViewModel: ObservableObject {
         }
         
         personalityManager.updatePersonality(for: characterId, personality: personality)
+        #if DEBUG
         print("🔄 更新个性化参数，只包含调整的参数: \(adjustedParameters)")
+        #endif
     }
 
     
@@ -557,7 +563,9 @@ class CharacterPersonalityViewModel: ObservableObject {
     // 保存并应用设置
     func saveAndApply() {
         updatePersonality()
+        #if DEBUG
         print("✅ 已保存并应用角色个性化设置: \(characterName)，调整的参数: \(adjustedParameters)")
+        #endif
         }
     
 

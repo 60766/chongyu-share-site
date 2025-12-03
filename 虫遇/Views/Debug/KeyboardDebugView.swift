@@ -205,7 +205,9 @@ struct KeyboardDebugView: View {
             safeArea: CGFloat(safeArea)
         )
         .onKeyboardHeightChange { height, isVisible in
+            #if DEBUG
             print("键盘高度变化: \(height)pt, 可见性: \(isVisible)")
+            #endif
         }
     }
     

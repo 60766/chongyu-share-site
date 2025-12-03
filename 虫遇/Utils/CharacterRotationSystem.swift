@@ -163,7 +163,9 @@ class CharacterRotationSystem {
     private func startNewCycle() {
         currentCycleUsedIds.removeAll()
         currentCycleNumber += 1
+        #if DEBUG
         print("🔄 开始角色新轮换周期 #\(currentCycleNumber)")
+        #endif
         saveRotationState()
     }
     
@@ -355,10 +357,18 @@ class CharacterRotationSystem {
         let selectedIds = result.map { $0.id }
         let uniqueTypes = Set(result.map { $0.type })
         
+        #if DEBUG
         print("🔄 角色轮换系统选择了\(result.count)个角色：\(selectedIds.joined(separator: ", "))")
+        #endif
+        #if DEBUG
         print("📊 角色类型分布：\(uniqueTypes.map { "\($0)" }.joined(separator: ", "))")
+        #endif
+        #if DEBUG
         print("❄️ 冷却期角色数量：\(coolingCount)/\(recentlyUsedCharacterIds.count)")
+        #endif
+        #if DEBUG
         print("📈 总角色库大小：\(allCharacters.count)，当前可用：\(allCharacters.count - coolingCount)")
+        #endif
         
         return result
     }
@@ -423,7 +433,9 @@ class CharacterRotationSystem {
         let usedCount = currentCycleUsedIds.count
         let totalCount = allCharacterIds.count
         let remainingCount = totalCount - usedCount
+        #if DEBUG
         print("🔄 严格轮换模式：选择了\(result.count)个角色，当前周期#\(currentCycleNumber)已使用\(usedCount)/\(totalCount)个角色，剩余\(remainingCount)个")
+        #endif
         
         return result
     }
@@ -449,7 +461,9 @@ class CharacterRotationSystem {
             }
             
             saveRotationState()
+            #if DEBUG
             print("🔀 角色分配模式已切换为: \(getModeName(mode))")
+            #endif
         }
     }
     
@@ -663,7 +677,9 @@ class CharacterRotationSystem {
         // 保存用户偏好
         saveUserPreferences()
         
+        #if DEBUG
         print("👎 用户已标记不喜欢角色: \(characterId)")
+        #endif
     }
     
     /**

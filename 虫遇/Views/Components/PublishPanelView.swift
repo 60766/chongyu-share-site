@@ -895,7 +895,9 @@ struct PublishPanelView: View {
                 self.generateAICommentsForUserPost(userPost)
                     }
                 } else {
+                    #if DEBUG
                     print("🎭 图片帖子已通过通义千问生成评论，跳过DeepSeek评论生成")
+                    #endif
                 }
             }
         }
@@ -989,12 +991,16 @@ struct PublishPanelView: View {
         
         // 🎯 关键优化：不管有没有图片，都先立即创建并显示帖子
         // 这样用户就能立即看到自己发布的内容，不会感到卡顿
+        #if DEBUG
         print("📝 立即创建帖子对象，图片数量: \(postData.images.count)")
+        #endif
         createUserPostWithContent(postData, imageIdentifiers: imageIdentifiers, imageDescription: nil, comments: comments, completion: completion)
         
         // 如果有图片，异步调用通义千问视觉API生成评论，完成后动态更新
         if !postData.images.isEmpty {
+            #if DEBUG
             print("📸 检测到\(postData.images.count)张图片，异步调用通义千问生成评论...")
+            #endif
             
             // 获取要评论的角色列表
             let selectedCharacterIDs = selectCharactersForResponse()
@@ -1010,8 +1016,12 @@ struct PublishPanelView: View {
             .sink(
                 receiveCompletion: { completionResult in
                     if case .failure(let error) = completionResult {
+                        #if DEBUG
                         print("❌ 通义千问视觉API调用失败: \(error.localizedDescription)")
+                        #endif
+                        #if DEBUG
                         print("❌ 错误详情: \(error)")
+                        #endif
                         
                         // 在主线程显示错误提示
                         DispatchQueue.main.async {
@@ -1023,11 +1033,15 @@ struct PublishPanelView: View {
                             )
                         }
                     } else {
+                        #if DEBUG
                         print("✅ 通义千问视觉API调用完成")
+                        #endif
                     }
                 },
                 receiveValue: { commentsMap in
+                    #if DEBUG
                     print("✅ 通义千问生成了\(commentsMap.count)条评论，准备更新帖子...")
+                    #endif
                     
                     // 🎯 处理角色点赞（基于AI的点赞判断）
                     DoubaoVisionService.shared.processCharacterLikes(
@@ -1063,7 +1077,9 @@ struct PublishPanelView: View {
                         // 找到这个帖子并更新评论
                         if let index = PostViewModel.shared.posts.firstIndex(where: { $0.id == postId }) {
                             PostViewModel.shared.posts[index].comments.append(contentsOf: generatedComments)
+                            #if DEBUG
                             print("🎨 已动态添加\(generatedComments.count)条评论到帖子")
+                            #endif
                             
                             // 发送通知刷新UI
                             NotificationCenter.default.post(
@@ -1083,7 +1099,9 @@ struct PublishPanelView: View {
                                 ]
                             )
                         } else {
+                            #if DEBUG
                             print("⚠️ 找不到帖子ID: \(postId)，无法更新评论")
+                            #endif
                         }
                     }
                 }
@@ -1105,7 +1123,9 @@ struct PublishPanelView: View {
         
         if let imageDescription = imageDescription, !imageDescription.isEmpty {
             enhancedContent += "\n\n[图片内容]: \(imageDescription)"
+            #if DEBUG
             print("📝 帖子内容已增强，添加了图片描述")
+            #endif
         }
         
         // 创建用户帖子
@@ -1246,7 +1266,9 @@ struct PublishPanelView: View {
                 return Array(manuallySelectedCharacters.prefix(maxCharacters))
             } else {
                 // 如果用户选择了超过5个，限制为5个（保证质量）
+                #if DEBUG
                 print("⚠️ 用户选择了\(manuallySelectedCharacters.count)个角色，限制为\(maxCharacters)个以保证生成质量")
+                #endif
                 return Array(manuallySelectedCharacters.prefix(maxCharacters))
             }
         } else {
@@ -1265,7 +1287,9 @@ struct PublishPanelView: View {
         // 最终限制：最多5个角色
         let result = Array(finalSelectedCharacters.prefix(maxCharacters))
         
+        #if DEBUG
         print("✅ 最终选择\(result.count)个角色进行评论生成")
+        #endif
         
         return result
     }
@@ -2252,7 +2276,9 @@ struct CharacterSelectorView: View {
         // 模拟延迟，然后进行创建角色操作（从0.3秒减少到0.1秒）
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             // 这里应该跳转到创建角色的页面或弹出创建角色的表单
+            #if DEBUG
             print("创建新角色: \(defaultName)")
+            #endif
         }
     }
     
@@ -3215,9 +3241,9 @@ struct PublishPreviewView: View {
             "[name]，这位[era]的著名[field]，对'[content]'表现出了浓厚的兴趣。[pronoun]分享了[pronoun]在[field]领域的经验，并提出了一些独到的见解。"
         ]
         
-        let template = templates.randomElement()!
+        let template = templates.randomElement() ?? "今天"
         
-        let pronoun = ["他", "她"].randomElement()!
+        let pronoun = ["他", "她"].randomElement() ?? "他"
         
         return template
             .replacingOccurrences(of: "[name]", with: character.name)

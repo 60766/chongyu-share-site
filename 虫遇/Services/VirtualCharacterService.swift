@@ -26,7 +26,9 @@ class CharacterDataManager {
         // 从characters.json加载数据
         guard let url = Bundle.main.url(forResource: "characters", withExtension: "json"),
               let data = try? Data(contentsOf: url) else {
+            #if DEBUG
             print("⚠️ 无法加载characters.json文件")
+            #endif
             return
         }
         
@@ -47,7 +49,9 @@ class CharacterDataManager {
                 #endif
             }
         } catch {
+            #if DEBUG
             print("⚠️ 解析characters.json出错: \(error.localizedDescription)")
+            #endif
         }
     }
     
@@ -76,7 +80,9 @@ class CharacterDataManager {
             return value
         }
         
+        #if DEBUG
         print("⚠️ 无法获取角色 \(id) 的 \(attribute) 属性")
+        #endif
         return nil
     }
     
@@ -190,7 +196,9 @@ class VirtualCharacterService {
     
     // MARK: - 测试API配置
     static func testAPIOnStartup() {
+        #if DEBUG
         print("✅ VirtualCharacterService: API测试启动")
+        #endif
         // 移除了testGenerateCharacterComment方法调用，因为该方法不存在
     }
     
@@ -289,7 +297,9 @@ class VirtualCharacterService {
     ) {
         // 创建后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            #if DEBUG
             print("⚠️ VirtualCharacterService: 获取角色回复的后台任务超时")
+            #endif
         }
         
         // 调试日志已关闭
@@ -320,17 +330,25 @@ class VirtualCharacterService {
                     // 在任务完成时结束后台任务
                     if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                         UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        #if DEBUG
                         print("🏁 VirtualCharacterService: 角色回复生成任务已完成，后台任务结束")
+                        #endif
                     }
                     
                     if case .failure(let error) = completionStatus {
+                        #if DEBUG
                         print("❌❌❌ 生成角色回复失败: \(error.localizedDescription)")
+                        #endif
                         completion(.failure(error))
                     }
                 },
                 receiveValue: { output in
+                    #if DEBUG
                     print("✅✅✅ API返回成功! 角色: \(characterId)")
+                    #endif
+                    #if DEBUG
                     print("💬 回复内容: \"\(output)\"")
+                    #endif
                     completion(.success(output))
                 }
             )
@@ -353,10 +371,14 @@ class VirtualCharacterService {
     ) -> AnyPublisher<String, Error> {
         // 创建后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            #if DEBUG
             print("⚠️ VirtualCharacterService: 获取角色回复的后台任务超时")
+            #endif
         }
         
+        #if DEBUG
         print("🔄 VirtualCharacterService: 创建获取角色回复后台任务，ID: \(backgroundTaskID)")
+        #endif
         
         // 使用传统方式生成提示词（不使用个性化参数）
             // 分析评论语义
@@ -370,23 +392,31 @@ class VirtualCharacterService {
                 semanticModel: semanticModel,
                 memories: []
             )
+            #if DEBUG
             print("📝 使用传统提示词，长度: \(prompt.count)字符")
+            #endif
         
         // 调用API生成回复
         return AINetworkService.shared.sendRequest(prompt: prompt)
             .handleEvents(
                 receiveOutput: { output in
+                    #if DEBUG
                     print("✅ 成功生成角色回复: \"\(output.prefix(50))...\"")
+                    #endif
                 },
                 receiveCompletion: { completion in
                     // 在任务完成时结束后台任务
                     if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                         UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        #if DEBUG
                         print("🏁 VirtualCharacterService: 角色回复生成任务已完成，后台任务结束")
+                        #endif
                     }
                     
                     if case .failure(let error) = completion {
+                        #if DEBUG
                         print("❌ 生成角色回复失败: \(error.localizedDescription)")
+                        #endif
                     }
                 }
             )
@@ -409,10 +439,14 @@ class VirtualCharacterService {
     ) -> AnyPublisher<String, Error> {
         // 创建后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            #if DEBUG
             print("⚠️ VirtualCharacterService: 生成角色评论的后台任务超时")
+            #endif
         }
         
+        #if DEBUG
         print("🔄 VirtualCharacterService: 创建生成角色评论后台任务，ID: \(backgroundTaskID)")
+        #endif
         
         // 构建提示词
         let prompt: String
@@ -458,11 +492,21 @@ class VirtualCharacterService {
             5. 评论长度控制在100字以内，简短有力
             """
             
+        #if DEBUG
         print("\n📝 使用传统提示词生成评论")
+        #endif
+            #if DEBUG
             print("📏 传统提示词长度: \(prompt.count)字符")
+            #endif
+            #if DEBUG
             print("\n🟡 ===== 传统提示词内容 =====")
+            #endif
+            #if DEBUG
             print(prompt)
+            #endif
+            #if DEBUG
             print("🟡 ===== 传统提示词结束 =====")
+            #endif
         
         // 调试日志已关闭
         // print("\n🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡")
@@ -490,11 +534,15 @@ class VirtualCharacterService {
                     // 在任务完成时结束后台任务
                     if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                         UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        #if DEBUG
                         print("🏁 VirtualCharacterService: 角色评论生成任务已完成，后台任务结束")
+                        #endif
                     }
                     
                     if case .failure(let error) = completion {
+                        #if DEBUG
                         print("❌ 生成角色评论失败: \(error.localizedDescription)")
+                        #endif
                     }
                 }
             )
@@ -520,13 +568,21 @@ class VirtualCharacterService {
         postAuthor: String? = nil,
         completion: @escaping (Result<String, Error>) -> Void
     ) {
+        #if DEBUG
         print("🚀 开始生成角色评论回复: 角色=\(characterID), 帖子作者=\(postAuthor ?? "未指定")")
+        #endif
+        #if DEBUG
         print("📝 用户评论: \"\(userComment.prefix(50))...\"")
+        #endif
+        #if DEBUG
         print("📄 帖子内容: \"\(postContent.prefix(50))...\"")
+        #endif
         
         // 创建后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            #if DEBUG
             print("⚠️ VirtualCharacterService: 生成角色评论回复的后台任务超时")
+            #endif
         }
         
         // 检查用户评论是否是增强提示词（由CommentManager传入）
@@ -543,7 +599,9 @@ class VirtualCharacterService {
             if let author = postAuthor, !author.isEmpty {
                 prompt = prompt.replacingOccurrences(of: "帖子作者：帖子作者", with: "帖子作者：\(author)")
             }
+            #if DEBUG
             print("🔍 检测到增强提示词，直接使用 - 长度: \(prompt.count)字符")
+            #endif
             
             // 提取原始用户评论以判断长度
             let originalUserComment = userComment.components(separatedBy: "\n\n请注意：").first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -659,10 +717,14 @@ class VirtualCharacterService {
                 memories: []
             )
             
+            #if DEBUG
             print("📝 使用标准提示词 - 长度: \(prompt.count)字符")
+            #endif
         }
         
+        #if DEBUG
         print("📤 准备发送API请求 - 提示词长度: \(prompt.count)字符")
+        #endif
         
         // 调用API生成回复
         let cancellable = AINetworkService.shared.sendRequest(prompt: prompt)
@@ -671,17 +733,25 @@ class VirtualCharacterService {
                     // 在任务完成时结束后台任务
                     if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                         UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        #if DEBUG
                         print("🏁 VirtualCharacterService: 角色回复生成任务已完成，后台任务结束")
+                        #endif
                     }
                     
                     if case .failure(let error) = completionStatus {
+                        #if DEBUG
                         print("❌ 生成角色回复失败: \(error.localizedDescription)")
+                        #endif
                         completion(.failure(error))
                     }
                 },
                 receiveValue: { output in
+                    #if DEBUG
                     print("✅ API返回成功! 角色: \(characterID)")
+                    #endif
+                    #if DEBUG
                     print("💬 回复内容: \"\(output.prefix(50))...\"")
+                    #endif
                     
                     // 无需检查模板语言或添加备用回复，直接返回API生成的内容
                     completion(.success(output))
@@ -699,7 +769,9 @@ class VirtualCharacterService {
      * @param postAuthor 帖子作者名称，可选
      */
     func inviteCharactersToComment(characterIDs: [String], postId: String, postAuthor: String? = nil) {
+        #if DEBUG
         print("🔔 开始邀请角色参与讨论 - 角色数量: \(characterIDs.count), 帖子ID: \(postId), 帖子作者: \(postAuthor ?? "未指定")")
+        #endif
         
         // 创建一个后台任务ID - 使用正确的方式处理后台任务
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "CharacterCommentGeneration") {
@@ -707,14 +779,18 @@ class VirtualCharacterService {
             // 不需要在这里引用backgroundTaskID，因为这是一个逃逸闭包，
             // 在任务结束前系统会调用这个闭包，此时我们只需终止一个无效任务即可
             UIApplication.shared.endBackgroundTask(.invalid)
+            #if DEBUG
             print("⚠️ 角色评论生成后台任务被系统终止")
+            #endif
         }
         
         // 过滤空ID，规范化角色ID
         let validCharacterIDs = characterIDs.filter { !$0.isEmpty }.map { $0.lowercased() }
         
         if validCharacterIDs.isEmpty {
+            #if DEBUG
             print("⚠️ 没有有效的角色ID，取消邀请")
+            #endif
             // 结束后台任务
             UIApplication.shared.endBackgroundTask(backgroundTaskID)
             return
@@ -725,16 +801,22 @@ class VirtualCharacterService {
             let characterName = getCharacterName(for: characterID)
             // 使用我们修复过的CharacterAvatarService
             let characterAvatar = CharacterAvatarService.shared.getAvatarName(for: characterID)
+            #if DEBUG
             print("👤 邀请角色: ID=\(characterID), 名称=\(characterName), 头像=\(characterAvatar)")
+            #endif
         }
         
         // 获取帖子数据
         let viewModel = PostViewModel.shared
+        #if DEBUG
         print("✅ VirtualCharacterService: 获取PostViewModel实例成功")
+        #endif
         
         // 查找对应帖子
         guard let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) else {
+            #if DEBUG
             print("❌ VirtualCharacterService: 未找到指定的帖子ID: \(postId)")
+            #endif
             // 结束后台任务
             UIApplication.shared.endBackgroundTask(backgroundTaskID)
             return
@@ -744,7 +826,9 @@ class VirtualCharacterService {
         
         // 如果没有提供帖子作者，尝试从帖子中获取
         let finalPostAuthor = postAuthor ?? post.username
+        #if DEBUG
         print("👤 最终使用的帖子作者: \(finalPostAuthor)")
+        #endif
         
         // 在生成评论之前，先发送一个通知，确保UI准备好接收新评论
         DispatchQueue.main.async {
@@ -765,22 +849,32 @@ class VirtualCharacterService {
         
         // 🎯 检查帖子是否有图片，如果有则使用视觉模型
         if !postImages.isEmpty {
+            #if DEBUG
             print("📸 检测到帖子包含\(postImages.count)张图片，使用视觉模型生成评论")
+            #endif
             
             // 从图片标识符加载 UIImage 数组
             var images: [UIImage] = []
+            #if DEBUG
             print("📸 开始加载图片，帖子包含\(postImages.count)张图片")
+            #endif
             for (index, imageId) in postImages.enumerated() {
                 if let image = ImageManager.shared.getImage(withId: imageId) {
                     images.append(image)
+                    #if DEBUG
                     print("✅ 成功加载图片 \(index + 1)/\(postImages.count): \(imageId)")
+                    #endif
                 } else {
+                    #if DEBUG
                     print("⚠️ 无法加载图片 \(index + 1)/\(postImages.count): \(imageId)")
+                    #endif
                 }
             }
             
             if images.isEmpty {
+                #if DEBUG
                 print("❌ 所有图片加载失败，回退到文本API")
+                #endif
                 // 回退到文本API
                 self.fallbackToTextAPI(
             characterIDs: validCharacterIDs,
@@ -793,13 +887,19 @@ class VirtualCharacterService {
             }
             
             if images.count < postImages.count {
+                #if DEBUG
                 print("⚠️ 警告：只成功加载了\(images.count)/\(postImages.count)张图片，将使用已加载的图片")
+                #endif
             } else {
+                #if DEBUG
                 print("✅ 成功加载所有\(images.count)张图片")
+                #endif
             }
             
             // 使用视觉模型生成评论（会使用新的提示词）
+            #if DEBUG
             print("🔄 使用视觉模型处理\(validCharacterIDs.count)个角色的评论生成，图片数量: \(images.count)张")
+            #endif
             DoubaoVisionService.shared.analyzeImagesAndGenerateComments(
                 images,
                 postContent: postContent,
@@ -813,7 +913,9 @@ class VirtualCharacterService {
                     }
                     
                     if case .failure(let error) = completion {
+                        #if DEBUG
                         print("❌ 视觉模型生成评论失败: \(error.localizedDescription)")
+                        #endif
                         // 发送失败通知
                         NotificationCenter.default.post(
                             name: NSNotification.Name("CharacterReplyGenerationFailed"),
@@ -826,7 +928,9 @@ class VirtualCharacterService {
                         UIApplication.shared.endBackgroundTask(backgroundTaskID)
                     } else {
                         UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        #if DEBUG
                         print("✅ 视觉模型评论生成任务完成")
+                        #endif
                     }
                 },
                 receiveValue: { [weak self] commentsMap in
@@ -835,7 +939,9 @@ class VirtualCharacterService {
                         return
                     }
                     
+                    #if DEBUG
                     print("✅ 视觉模型生成成功，共生成\(commentsMap.count)条评论")
+                    #endif
                     
                     // 处理视觉模型返回的评论并添加到帖子
                     self.addVisionCommentsToPost(
@@ -850,7 +956,9 @@ class VirtualCharacterService {
             .store(in: &cancellables)
         } else {
             // 没有图片，使用文本API
+            #if DEBUG
             print("📝 帖子没有图片，使用文本API生成评论")
+            #endif
             self.fallbackToTextAPI(
                 characterIDs: validCharacterIDs,
                 postId: postId,
@@ -871,7 +979,9 @@ class VirtualCharacterService {
         postAuthor: String?,
         backgroundTaskID: UIBackgroundTaskIdentifier
     ) {
+        #if DEBUG
         print("🔄 使用批量评论生成服务处理\(characterIDs.count)个角色")
+        #endif
         MultiCharacterCommentService.shared.generateMultiCharacterComments(
             characterIDs: characterIDs,
             postId: postId,
@@ -888,7 +998,9 @@ class VirtualCharacterService {
             
             switch result {
             case .success(let commentsMap):
+                #if DEBUG
                 print("✅ 批量生成成功，共生成\(commentsMap.count)条评论")
+                #endif
                 
                 // 批量评论已经在MultiCharacterCommentService中添加到帖子
                 // 通过CommentsGenerated通知处理，不需要再发送CharacterReplyGenerated通知
@@ -943,10 +1055,14 @@ class VirtualCharacterService {
                 
                 // 结束后台任务
                 UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                #if DEBUG
                 print("✅ 角色评论生成后台任务完成")
+                #endif
                 
             case .failure(let error):
+                #if DEBUG
                 print("❌ 批量生成角色评论失败 - \(error.localizedDescription)")
+                #endif
                 
                 // 发送批量生成失败的通知
                 NotificationCenter.default.post(
@@ -960,7 +1076,9 @@ class VirtualCharacterService {
                 
                 // 结束后台任务
                 UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                #if DEBUG
                 print("❌ 角色评论生成后台任务失败")
+                #endif
             }
         })
     }
@@ -983,7 +1101,9 @@ class VirtualCharacterService {
         let viewModel = PostViewModel.shared
         
         guard let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) else {
+            #if DEBUG
             print("❌ 未找到指定的帖子ID: \(postId)，无法添加视觉评论")
+            #endif
             UIApplication.shared.endBackgroundTask(backgroundTaskID)
             return
         }
@@ -993,7 +1113,9 @@ class VirtualCharacterService {
         // 为每个角色创建评论
         for characterID in characterIDs {
             guard let commentContent = commentsMap[characterID], !commentContent.isEmpty else {
+                #if DEBUG
                 print("⚠️ 角色 \(characterID) 没有生成评论内容")
+                #endif
                 continue
             }
             
@@ -1020,7 +1142,9 @@ class VirtualCharacterService {
         }
         
         if newComments.isEmpty {
+            #if DEBUG
             print("⚠️ 没有新评论需要添加")
+            #endif
             UIApplication.shared.endBackgroundTask(backgroundTaskID)
             return
         }
@@ -1089,11 +1213,15 @@ class VirtualCharacterService {
                 userInfo: ["postID": postId]
             )
             
+            #if DEBUG
             print("✅ 已添加 \(newComments.count) 条视觉评论到帖子")
+            #endif
         }
         
         UIApplication.shared.endBackgroundTask(backgroundTaskID)
+        #if DEBUG
         print("✅ 视觉评论生成后台任务完成")
+        #endif
     }
     
     /**
@@ -1111,10 +1239,14 @@ class VirtualCharacterService {
     ) -> AnyPublisher<String, Error> {
         // 创建后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            #if DEBUG
             print("⚠️ VirtualCharacterService: 获取聊天回复的后台任务超时")
+            #endif
         }
         
+        #if DEBUG
         print("🔄 VirtualCharacterService: 创建获取聊天回复后台任务，ID: \(backgroundTaskID)")
+        #endif
         
         // 构建角色信息
         let characterInfo = buildCharacterInfo(character)
@@ -1128,17 +1260,23 @@ class VirtualCharacterService {
         )
         .handleEvents(
             receiveOutput: { output in
+                #if DEBUG
                 print("✅ 成功生成聊天回复: \"\(output.prefix(50))...\"")
+                #endif
             },
             receiveCompletion: { completion in
                 // 在任务完成时结束后台任务
                 if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                     UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    #if DEBUG
                     print("🏁 VirtualCharacterService: 聊天回复生成任务已完成，后台任务结束")
+                    #endif
                 }
                 
                 if case .failure(let error) = completion {
+                    #if DEBUG
                     print("❌ 生成聊天回复失败: \(error.localizedDescription)")
+                    #endif
                 }
             }
         )
@@ -1164,7 +1302,9 @@ class VirtualCharacterService {
     ) {
         // 创建后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            #if DEBUG
             print("⚠️ VirtualCharacterService: 获取聊天回复的后台任务超时")
+            #endif
         }
         
         // 调试日志已关闭
@@ -1204,11 +1344,15 @@ class VirtualCharacterService {
                 // 在任务完成时结束后台任务
                 if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                     UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    #if DEBUG
                     print("🏁 VirtualCharacterService: 聊天回复生成任务已完成，后台任务结束")
+                    #endif
                 }
                 
                 if case .failure(let error) = completionStatus {
+                    #if DEBUG
                     print("❌❌❌ 生成聊天回复失败: \(error.localizedDescription)")
+                    #endif
                     completion(.failure(error))
                 }
             },
@@ -1274,7 +1418,9 @@ class VirtualCharacterService {
         if !personalityPrompt.isEmpty {
             info += personalityPrompt
             info += "\n\n请严格按照以上个性化调整进行对话，确保每个维度的特点都能在回复中体现出来。"
+            #if DEBUG
             print("🎭 应用了角色 \(character.id) 的个性化调整")
+            #endif
         }
         
         return info
@@ -1356,7 +1502,9 @@ class VirtualCharacterService {
         
         // 获取帖子作者信息 - 如果提供了作者名称则使用，否则使用默认值
         let authorInfo = postAuthor ?? "帖子作者"
+        #if DEBUG
         print("👤 使用帖子作者: \(authorInfo)")
+        #endif
         
         let prompt = """
         你需要为以下角色分别生成评论回复。每个角色都有自己的风格和特点。针对同一个帖子内容，生成每个角色独特的回复。
@@ -1403,7 +1551,9 @@ class VirtualCharacterService {
         15. 禁止使用括号中的内容，如"(微笑)"、"(思考中)"等
         """
         
+        #if DEBUG
         print("📋 构建批量提示词，包含\(characterIDs.count)个角色")
+        #endif
         return prompt
     }
     
@@ -1416,7 +1566,9 @@ class VirtualCharacterService {
         for id in importantIds {
             let name = getCharacterName(for: id)
             if name == id {
+                #if DEBUG
                 print("⚠️ 健康检查警告: 角色 \(id) 可能缺少中文名称映射。")
+                #endif
         }
     }
 }

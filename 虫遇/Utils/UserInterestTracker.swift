@@ -326,7 +326,9 @@ class UserInterestTracker {
             let data = try encoder.encode(interestModel)
             UserDefaults.standard.set(data, forKey: "userInterestModel")
         } catch {
+            #if DEBUG
             print("无法保存用户兴趣模型: \(error.localizedDescription)")
+            #endif
         }
     }
     
@@ -339,7 +341,9 @@ class UserInterestTracker {
                 let decoder = JSONDecoder()
                 interestModel = try decoder.decode(UserInterestModel.self, from: data)
             } catch {
+                #if DEBUG
                 print("无法加载用户兴趣模型: \(error.localizedDescription)")
+                #endif
             }
         }
     }

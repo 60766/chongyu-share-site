@@ -246,7 +246,9 @@ struct MultiPersonChatView: View {
                             let oldValue = isUserNearBottom
                             isUserNearBottom = isNear
                             if oldValue != isNear {
+                                #if DEBUG
                                 print("📍 底部检测状态变化: minY=\(minY), threshold=\(threshold), isNear=\(isNear)")
+                                #endif
                             }
                         }
                     }
@@ -265,7 +267,9 @@ struct MultiPersonChatView: View {
                         if !chatManager.messages.isEmpty {
                             if isUserNearBottom {
                                 // 用户在底部，自动滚动显示新消息
+                                #if DEBUG
                                 print("✅ 用户在底部，自动滚动到新消息")
+                                #endif
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         proxy.scrollTo("bottomId", anchor: .center)
@@ -273,7 +277,9 @@ struct MultiPersonChatView: View {
                                 }
                             } else {
                                 // 用户不在底部，新消息静默出现在底部，不触发滚动
+                                #if DEBUG
                                 print("⏸️ 用户不在底部，新消息静默出现，不滚动")
+                                #endif
                             }
                         }
                     }

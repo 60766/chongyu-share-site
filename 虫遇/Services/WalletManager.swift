@@ -33,10 +33,14 @@ class WalletManager: ObservableObject {
         AppleSignInManager.shared.$isSignedIn
             .dropFirst() // 跳过初始值
             .sink { [weak self] isSignedIn in
+                #if DEBUG
                 print("💰 [WalletManager] Apple ID登录状态变化: \(isSignedIn)")
+                #endif
                 if isSignedIn {
                     // 如果登录了，刷新余额（确保显示最新数据）
+                    #if DEBUG
                     print("💰 [WalletManager] Apple ID已登录，刷新余额")
+                    #endif
                     self?.loadBalance()
                 }
             }
@@ -52,7 +56,9 @@ class WalletManager: ObservableObject {
         
         // 直接加载余额，不检查Apple ID登录状态
         // 因为后端不要求Apple ID登录，只要有appAccountToken就可以查询余额
+        #if DEBUG
         print("💰 [WalletManager] 延迟检查：加载余额（不要求Apple ID登录）")
+        #endif
         loadBalance()
     }
     
@@ -83,11 +89,13 @@ class WalletManager: ObservableObject {
                     self.currency = walletBalance.currency
                     self.isLoading = false
                     self.hasLoadedBalance = true // 标记已加载
+                    #if DEBUG
                     print("💰 [WalletManager] 余额加载成功: \(walletBalance.balance) 虫洞币")
+                    #endif
                 }
             } catch {
-                // 保留错误日志，对生产环境很重要
-                print("❌ [WalletManager] 加载余额失败: \(error)")
+                // 错误日志：使用Logger记录，生产环境也会记录
+                Logger.error("加载余额失败", error: error, log: Logger.business)
                 #if DEBUG
                 if let urlError = error as? URLError {
                     print("   URLError code: \(urlError.code.rawValue)")
@@ -131,9 +139,11 @@ class WalletManager: ObservableObject {
                     self.isLoading = false
                     self.hasLoadedBalance = true // 标记已加载
                 }
+                #if DEBUG
                 print("💰 [WalletManager] 账号恢复后余额加载成功: \(walletBalance.balance) 虫洞币")
+                #endif
             } catch {
-                print("❌ [WalletManager] 账号恢复后余额加载失败: \(error)")
+                Logger.error("账号恢复后余额加载失败", error: error, log: Logger.business)
                 await MainActor.run {
                     self.isLoading = false
                     // 保持余额为 0，不更新
@@ -213,7 +223,9 @@ class WalletManager: ObservableObject {
             Task { @MainActor in
                 // 新账号创建时，加载余额（不要求Apple ID登录）
                 // 后端会根据deviceId判断是否赠送新用户虫洞币
+                #if DEBUG
                 print("💰 [WalletManager] 新账号创建，加载余额")
+                #endif
                     self?.loadBalance()
             }
         }
@@ -239,7 +251,9 @@ class WalletManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
+            #if DEBUG
             print("💰 [WalletManager] 应用进入前台，刷新余额")
+            #endif
             self?.loadBalance()
         }
     }

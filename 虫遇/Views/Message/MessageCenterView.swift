@@ -203,9 +203,13 @@ struct MessageCenterView: View {
             conversations.remove(at: index)
             }
             
+            #if DEBUG
             print("✅ 已删除对话: \(conversation.id)")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ 删除对话失败: \(error)")
+            #endif
         }
     }
     
@@ -218,7 +222,9 @@ struct MessageCenterView: View {
                 try modelContext.save()
             }
         } catch {
+            #if DEBUG
             print("❌ 更新对话状态失败: \(error)")
+            #endif
         }
     }
     
@@ -238,9 +244,13 @@ struct MessageCenterView: View {
                 sortBy: [SortDescriptor(\.lastMessageTime, order: .reverse)] // 按最后消息时间倒序排列
             )
             conversations = try modelContext.fetch(fetchDescriptor)
+            #if DEBUG
             print("✅ MessageCenterView: 加载了 \(conversations.count) 个对话（已按时间排序）")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ MessageCenterView: 加载对话失败: \(error)")
+            #endif
             conversations = []
         }
     }

@@ -641,11 +641,15 @@ struct CommentInputView: View {
     private func submitComment() {
         // 检查评论内容是否为空
         guard !commentManager.commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            #if DEBUG
             print("⚠️ 评论内容为空，取消提交")
+            #endif
             return
         }
         
+        #if DEBUG
         print("📝 CommentInputView - 开始提交评论: \"\(commentManager.commentText.prefix(30))...\"")
+        #endif
         
         // 发送通知，确保不会滚动页面
         NotificationCenter.default.post(

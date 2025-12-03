@@ -11,7 +11,9 @@ public class NavigationHelper {
     
     /// 私有初始化方法
     private init() {
+        #if DEBUG
         print("NavigationHelper初始化")
+        #endif
     }
     
     /// 强制返回上一级页面

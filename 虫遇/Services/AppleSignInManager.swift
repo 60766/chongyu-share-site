@@ -43,7 +43,9 @@ class AppleSignInManager: NSObject, ObservableObject {
         provider.getCredentialState(forUserID: appleID) { [weak self] state, error in
             DispatchQueue.main.async {
                 if let error = error {
+                    #if DEBUG
                     print("🍎 getCredentialState error: \(error)")
+                    #endif
                 }
                 switch state {
                 case .authorized:
@@ -56,17 +58,25 @@ class AppleSignInManager: NSObject, ObservableObject {
                             await self?.restoreEmailFromBackend(appleID: appleID)
                         }
                     }
+                    #if DEBUG
                     print("🍎 Apple ID 登录状态：已授权")
+                    #endif
                 case .revoked:
                     self?.signOut()
+                    #if DEBUG
                     print("🍎 Apple ID 登录状态：已撤销")
+                    #endif
                 case .notFound:
                     self?.signOut()
+                    #if DEBUG
                     print("🍎 Apple ID 登录状态：未找到")
+                    #endif
                 default:
                     // 未知时进行一次 silent request 以尝试恢复
                     self?.performExistingAccountSetupFlows()
+                    #if DEBUG
                     print("🍎 Apple ID 登录状态：未知，尝试恢复")
+                    #endif
                 }
             }
         }
@@ -108,13 +118,17 @@ class AppleSignInManager: NSObject, ObservableObject {
         // 清除本地存储的登录信息（但保留绑定关系在后端）
         clearStoredData()
         
+        #if DEBUG
         print("🍎 Apple ID 退出登录成功（绑定关系保留在后端）")
+        #endif
     }
     
     /// 完全解绑：解除 Apple ID 和 Token 的绑定关系（慎用，会导致无法通过 Apple ID 找回账号）
     func unlinkAppleID() {
         guard let appleID = userAppleID else {
+            #if DEBUG
             print("⚠️ 没有 Apple ID，无法解绑")
+            #endif
             return
         }
         
@@ -129,9 +143,11 @@ class AppleSignInManager: NSObject, ObservableObject {
                     self.userAppleIDEmail = nil
                     self.clearStoredData()
                 }
+                #if DEBUG
                 print("🍎 Apple ID 解绑成功")
+                #endif
             } catch {
-                print("⚠️ Apple ID 解绑失败: \(error)")
+                Logger.error("Apple ID 解绑失败", error: error, log: Logger.business)
             }
         }
     }
@@ -162,7 +178,12 @@ class AppleSignInManager: NSObject, ObservableObject {
     // MARK: - 钥匙串操作
     
     private func saveToKeychain(key: String, value: String) {
-        let data = value.data(using: .utf8)!
+        guard let data = value.data(using: .utf8) else {
+            #if DEBUG
+            Logger.error("无法将字符串转换为Data", log: Logger.business)
+            #endif
+            return
+        }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceIdentifier,
@@ -211,6 +232,7 @@ class AppleSignInManager: NSObject, ObservableObject {
     
     /// 诊断当前存储状态（用于调试）
     func diagnoseStorageStatus() {
+        #if DEBUG
         guard let appleID = userAppleID ?? retrieveAppleID() else {
             print("🔍 [诊断] 未找到 Apple ID")
             return
@@ -230,6 +252,7 @@ class AppleSignInManager: NSObject, ObservableObject {
             print("   - UserDefaults 缓存: 无")
         }
         print("🔍 [诊断] ==========================================")
+        #endif
     }
     
     // MARK: - 与现有账号系统集成
@@ -240,16 +263,20 @@ class AppleSignInManager: NSObject, ObservableObject {
     
     func linkWithExistingAccount() {
         guard let appleID = userAppleID else {
+            #if DEBUG
             print("❌ Apple ID 为空，无法关联账号")
+            #endif
             return
         }
         
         Task {
             do {
+                #if DEBUG
                 print("🔍 [Apple ID] 开始查找绑定的账号...")
+                #endif
                 if let found = try await findAccountByAppleID(appleUserId: appleID) {
-                    print("✅ [Apple ID] 找到绑定的账号!")
                     #if DEBUG
+                    print("✅ [Apple ID] 找到绑定的账号!")
                     print("🔍 [诊断] 后端返回的数据:")
                     print("   - 显示名称: \(found.displayName ?? "无")")
                     print("   - 账号Token: \(String(found.appAccountToken.prefix(8)))...")
@@ -258,15 +285,18 @@ class AppleSignInManager: NSObject, ObservableObject {
                     let serverToken = found.appAccountToken
                     let currentToken = AppAccountManager.shared.appAccountToken
                     if serverToken != currentToken {
+                        #if DEBUG
                         print("⚠️ [Apple ID] 检测到账号切换需求!")
                         print("   已绑定的账号: \(String(serverToken.prefix(8)))...")
                         print("   当前新账号: \(String(currentToken.prefix(8)))...")
+                        #endif
                         
                         async let existingBalanceTask = getAccountBalance(token: serverToken)
                         async let currentBalanceTask = getAccountBalance(token: currentToken)
                         let existingBalance = await existingBalanceTask
                         let currentBalance = await currentBalanceTask
                         
+                        #if DEBUG
                         if let existingBalance {
                         print("💰 [Apple ID] 已绑定账号的余额: \(existingBalance) 虫洞币")
                         } else {
@@ -277,6 +307,7 @@ class AppleSignInManager: NSObject, ObservableObject {
                         } else {
                             print("⚠️ [Apple ID] 未能获取当前账号余额")
                         }
+                        #endif
                         
                             await MainActor.run {
                                 self.accountConflict = AccountConflict(
@@ -286,14 +317,20 @@ class AppleSignInManager: NSObject, ObservableObject {
                                 currentBalance: currentBalance
                             )
                         }
+                        #if DEBUG
                         print("💡 [Apple ID] 已触发账号冲突提示，等待用户选择处理方式")
+                        #endif
                         return
                     } else {
+                        #if DEBUG
                         print("✅ [Apple ID] 账号已匹配，无需切换")
+                        #endif
                         // 即使 token 相同，也刷新一下余额（确保余额是最新的）
                         Task { @MainActor in
                             await WalletManager.shared.refreshBalance()
+                            #if DEBUG
                             print("💰 [Apple ID] 余额刷新完成，当前余额: \(WalletManager.shared.balance)")
+                            #endif
                         }
                     }
                     if let restoredName = found.displayName, !restoredName.isEmpty {
@@ -313,12 +350,16 @@ class AppleSignInManager: NSObject, ObservableObject {
                         userID: appleID,
                         displayName: self.userDisplayName
                     )
+                    #if DEBUG
                     print("🔄 已切换到与 Apple ID 绑定的账号")
+                    #endif
                     return
                 } else {
+                    #if DEBUG
                     print("⚠️ [Apple ID] 后端未找到该 Apple ID 绑定的账号")
                     print("💡 [Apple ID] 提示: 如果这是您第一次绑定 Apple ID，系统会创建新的绑定关系")
                     print("💡 [Apple ID] 如果您想找回旧账号，请使用账号标识（Token）找回功能")
+                    #endif
                 }
             } catch {
                 #if DEBUG
@@ -328,7 +369,9 @@ class AppleSignInManager: NSObject, ObservableObject {
             }
             do {
                 guard let identityToken = latestIdentityToken else {
+                    #if DEBUG
                     print("⚠️ 缺少 identityToken，无法关联 Apple ID")
+                    #endif
                     return
                 }
                 let currentToken = AppAccountManager.shared.appAccountToken
@@ -336,22 +379,30 @@ class AppleSignInManager: NSObject, ObservableObject {
                 // 🔒 确保一对一关系：检查当前 token 是否已绑定其他 Apple ID
                 let existingAppleID = retrieveAppleID()
                 if let existingAppleID = existingAppleID, existingAppleID != appleID {
+                    #if DEBUG
                     print("⚠️ [一对一检查] 检测到当前 token 已绑定其他 Apple ID!")
                     print("   已绑定的 Apple ID: \(existingAppleID)")
                     print("   新的 Apple ID: \(appleID)")
                     print("💡 [一对一检查] 先解绑旧的 Apple ID，确保一对一关系...")
+                    #endif
                     
                     // 先解绑旧的 Apple ID
                     do {
                         try await unlinkAppleIDFromBackend(appleUserId: existingAppleID)
+                        #if DEBUG
                         print("✅ [一对一检查] 已解绑旧的 Apple ID")
+                        #endif
                     } catch {
+                        #if DEBUG
                         print("⚠️ [一对一检查] 解绑旧的 Apple ID 失败: \(error)")
+                        #endif
                         // 继续尝试绑定新的，让后端处理冲突
                     }
                 }
                 
+                #if DEBUG
                 print("🔗 [Apple ID] 正在绑定当前账号到 Apple ID...")
+                #endif
                 try await linkAppleIDToBackend(
                     appleUserId: appleID,
                     appAccountToken: currentToken,
@@ -359,20 +410,26 @@ class AppleSignInManager: NSObject, ObservableObject {
                     email: userAppleIDEmail,  // 保存邮箱到后端，用于后续恢复
                     identityToken: identityToken
                 )
+                #if DEBUG
                 print("✅ [Apple ID] Apple ID 已与虫遇账号关联: \(String(currentToken.prefix(8)))...")
+                #endif
                 // 绑定后刷新余额
                 Task { @MainActor in
                     await WalletManager.shared.refreshBalance()
+                    #if DEBUG
                     print("💰 [Apple ID] 余额刷新完成，当前余额: \(WalletManager.shared.balance)")
+                    #endif
                 }
             } catch {
                 // 如果后端返回409并包含已存在的token，触发冲突处理
                 if let nsError = error as NSError?, nsError.code == 409,
                    let existingToken = nsError.userInfo["existingToken"] as? String {
                     let currentToken = AppAccountManager.shared.appAccountToken
+                    #if DEBUG
                     print("⚠️ [Apple ID] 检测到账号冲突（409错误）!")
                     print("   已绑定的账号: \(String(existingToken.prefix(8)))...")
                     print("   当前新账号: \(String(currentToken.prefix(8)))...")
+                    #endif
                     
                     // 获取旧账号的余额信息
                     let existingBalance = await getAccountBalance(token: existingToken)
@@ -386,9 +443,11 @@ class AppleSignInManager: NSObject, ObservableObject {
                             currentBalance: nil
                         )
                     }
+                    #if DEBUG
                     print("💡 [Apple ID] 等待用户选择处理方式...")
+                    #endif
                 } else {
-                    print("❌ Apple ID 关联失败: \(error)")
+                    Logger.error("Apple ID 关联失败", error: error, log: Logger.business)
                 }
             }
         }
@@ -447,7 +506,9 @@ class AppleSignInManager: NSObject, ObservableObject {
             throw NSError(domain: "AppleSignIn", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
         
+        #if DEBUG
         print("✅ Apple ID 后端关联成功")
+        #endif
     }
     
     private func unlinkAppleIDFromBackend(appleUserId: String) async throws {
@@ -481,7 +542,9 @@ class AppleSignInManager: NSObject, ObservableObject {
             throw NSError(domain: "AppleSignIn", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
         
+        #if DEBUG
         print("✅ Apple ID 后端解绑成功")
+        #endif
     }
     
     /// 从后端恢复邮箱（当本地邮箱为空时）
@@ -539,13 +602,17 @@ class AppleSignInManager: NSObject, ObservableObject {
     func switchToExistingAccount() {
         guard let conflict = accountConflict else { return }
         
+        #if DEBUG
         print("✅ [Apple ID] 用户选择切换到旧账号（保留余额）")
+        #endif
         AppAccountManager.shared.replaceLocalAccountToken(conflict.existingToken)
         
         // 刷新余额
         Task { @MainActor in
             await WalletManager.shared.refreshBalance()
+            #if DEBUG
             print("💰 [Apple ID] 余额刷新完成，当前余额: \(WalletManager.shared.balance)")
+            #endif
         }
         
         // 清除冲突状态
@@ -557,13 +624,17 @@ class AppleSignInManager: NSObject, ObservableObject {
         guard let conflict = accountConflict,
               let appleID = userAppleID,
               let identityToken = latestIdentityToken else {
+            #if DEBUG
             print("❌ [Apple ID] 无法替换绑定：缺少必要信息")
+            #endif
             return
         }
         
+        #if DEBUG
         print("✅ [Apple ID] 用户选择用新账号替换旧账号的绑定")
         let existingBalanceText = conflict.existingBalance.map { "\($0) 虫洞币" } ?? "未知"
         print("⚠️ [Apple ID] 警告: 旧账号（\(String(conflict.existingToken.prefix(8)))...）将被解绑，余额: \(existingBalanceText)")
+        #endif
         
         Task {
             do {
@@ -571,7 +642,9 @@ class AppleSignInManager: NSObject, ObservableObject {
                 
                 // 1. 先解绑旧账号（解绑当前 Apple ID 与旧 token 的绑定）
                 try await unlinkAppleIDFromBackend(appleUserId: appleID)
+                #if DEBUG
                 print("✅ [Apple ID] 已解绑旧账号")
+                #endif
                 
                 // 2. 切换到新 token（因为要绑定的是新 token）
                 AppAccountManager.shared.replaceLocalAccountToken(newToken)
@@ -580,10 +653,14 @@ class AppleSignInManager: NSObject, ObservableObject {
                 // 如果本地存储的 Apple ID 和当前要绑定的不一致，先解绑
                 if let existingAppleID = retrieveAppleID(),
                    existingAppleID != appleID {
+                    #if DEBUG
                     print("⚠️ [一对一检查] 检测到新 token 本地已绑定其他 Apple ID: \(existingAppleID)")
                     print("💡 [一对一检查] 先解绑新 token 的旧绑定...")
+                    #endif
                     try await unlinkAppleIDFromBackend(appleUserId: existingAppleID)
+                    #if DEBUG
                     print("✅ [一对一检查] 已解绑新 token 的旧绑定")
+                    #endif
                 }
                 
                 // 4. 绑定新账号
@@ -594,12 +671,16 @@ class AppleSignInManager: NSObject, ObservableObject {
                     email: userAppleIDEmail,  // 保存邮箱到后端，用于后续恢复
                     identityToken: identityToken
                 )
+                #if DEBUG
                 print("✅ [Apple ID] 已绑定新账号")
+                #endif
                 
                 // 3. 刷新余额
                 Task { @MainActor in
                     await WalletManager.shared.refreshBalance()
+                    #if DEBUG
                     print("💰 [Apple ID] 余额刷新完成，当前余额: \(WalletManager.shared.balance)")
+                    #endif
                 }
                 
                 // 4. 清除冲突状态
@@ -607,7 +688,7 @@ class AppleSignInManager: NSObject, ObservableObject {
                     accountConflict = nil
                 }
             } catch {
-                print("❌ [Apple ID] 替换绑定失败: \(error)")
+                Logger.error("替换绑定失败", error: error, log: Logger.business)
                 // 清除冲突状态，让用户可以重试
                 await MainActor.run {
                     accountConflict = nil
@@ -618,7 +699,9 @@ class AppleSignInManager: NSObject, ObservableObject {
     
     /// 取消账号冲突处理
     func cancelAccountConflict() {
+        #if DEBUG
         print("❌ [Apple ID] 用户取消账号冲突处理")
+        #endif
         accountConflict = nil
         // 退出 Apple ID 登录
         signOut()
@@ -629,10 +712,14 @@ class AppleSignInManager: NSObject, ObservableObject {
         // 直接查询指定 token 的余额，不切换当前 token
         do {
             let balance = try await WalletService.shared.getBalance(for: token)
+            #if DEBUG
             print("💰 [Apple ID] 查询账号 \(String(token.prefix(8)))... 的余额: \(balance) 虫洞币")
+            #endif
             return balance
         } catch {
+            #if DEBUG
             print("⚠️ [Apple ID] 查询账号余额失败: \(error)")
+            #endif
             return nil
         }
     }
@@ -689,10 +776,10 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
             // 与现有账号系统集成
             linkWithExistingAccount()
             
+            #if DEBUG
             print("🍎 Apple ID 登录成功")
             print("   用户ID: \(userID)")
             print("   显示名称: \(resolvedDisplayName ?? "未提供")")
-            #if DEBUG
             print("🔍 [诊断] 最终状态:")
             print("   - Apple ID: \(userID)")
             print("   - 显示名称: \(resolvedDisplayName ?? "无")")
@@ -701,6 +788,7 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
     }
     
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        #if DEBUG
         print("🍎 Apple ID 登录失败: \(error.localizedDescription)")
         
         if let authError = error as? ASAuthorizationError {
@@ -719,6 +807,7 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
                 print("🍎 Apple ID登录其他错误")
             }
         }
+        #endif
     }
 }
 

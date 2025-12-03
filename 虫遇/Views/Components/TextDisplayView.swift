@@ -94,7 +94,9 @@ struct EnhancedTextDisplayView: View {
                         DispatchQueue.main.async {
                             isTextFieldFocused = true
                             tapCount += 1
+                            #if DEBUG
                             print("点击TextEditor - 次数: \(tapCount)")
+                            #endif
                         }
                     }
                 )
@@ -128,7 +130,9 @@ struct EnhancedTextDisplayView: View {
                     isTextFieldFocused = true
                     isFocused = true 
                     tapCount += 1
+                    #if DEBUG
                     print("点击视图区域 - 次数: \(tapCount)")
+                    #endif
                     
                     // 强制激活输入
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

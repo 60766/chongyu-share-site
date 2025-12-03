@@ -193,7 +193,9 @@ class TabBarManager: ObservableObject {
                 
                 // 明确禁用TabBar的交互，防止点击事件穿透
                 tabBarController.tabBar.isUserInteractionEnabled = false
+                #if DEBUG
                 print("TabBar交互已禁用 (pushHideState)")
+                #endif
                 
                 // 如果已有高度约束，先移除
                 if let existingConstraint = self.heightConstraint {
@@ -244,7 +246,9 @@ class TabBarManager: ObservableObject {
                     
                     // 恢复TabBar交互
                     tabBarController.tabBar.isUserInteractionEnabled = true
+                    #if DEBUG
                     print("TabBar交互已恢复 (popHideState)")
+                    #endif
                     
                     // 应用一致的样式
                     applyConsistentStyle()
@@ -539,7 +543,9 @@ class TabBarManager: ObservableObject {
         if let tabBarController = findTabBarController() {
             // 明确禁用TabBar的交互，防止点击事件穿透
             tabBarController.tabBar.isUserInteractionEnabled = false
+            #if DEBUG
             print("TabBar交互已禁用 (hide)")
+            #endif
         }
     }
     
@@ -1017,7 +1023,9 @@ class TabBarManager: ObservableObject {
             
             // 恢复TabBar交互
             tabBarController.tabBar.isUserInteractionEnabled = true
+            #if DEBUG
             print("TabBar交互已恢复 (showImmediately)")
+            #endif
             
             // 立即更新布局
             UIView.performWithoutAnimation {
@@ -1033,7 +1041,9 @@ class TabBarManager: ObservableObject {
         UIScrollView.appearance().contentInsetAdjustmentBehavior = .automatic
         UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = true
         
+        #if DEBUG
         print("TabBar立即显示完成")
+        #endif
     }
     
     /// 强制重置堆栈和显示状态
@@ -1049,7 +1059,9 @@ class TabBarManager: ObservableObject {
         
         // 立即获取TabBar控制器
         guard let tabBarController = findTabBarController() else {
+            #if DEBUG
             print("TabBarManager: 无法获取TabBar控制器")
+            #endif
             return
         }
         
@@ -1166,7 +1178,9 @@ class TabBarManager: ObservableObject {
         
         // 立即获取TabBar控制器
         guard let tabBarController = findTabBarController() else {
+            #if DEBUG
             print("TabBarManager: 无法获取TabBar控制器")
+            #endif
             return
         }
         
@@ -1195,7 +1209,9 @@ class TabBarManager: ObservableObject {
         UIScrollView.appearance().contentInsetAdjustmentBehavior = .automatic
         UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = true
         
+        #if DEBUG
         print("TabBar平滑显示完成")
+        #endif
     }
     
     /// 平滑隐藏TabBar - 用于导航到详情页前
@@ -1210,7 +1226,9 @@ class TabBarManager: ObservableObject {
         
         // 获取TabBar控制器
         guard let tabBarController = findTabBarController() else {
+            #if DEBUG
             print("TabBarManager: 无法获取TabBar控制器")
+            #endif
             return
         }
         
@@ -1225,6 +1243,8 @@ class TabBarManager: ObservableObject {
             tabBarController.view.layoutIfNeeded()
         }
         
+        #if DEBUG
         print("TabBar平滑隐藏完成")
+        #endif
     }
 }

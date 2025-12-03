@@ -193,10 +193,14 @@ class CharacterSystem {
             
             if let characters = characters {
                 self.characterDatabase = characters
+                #if DEBUG
                 print("角色数据库刷新成功，共\(characters.count)个角色")
+                #endif
                 completion(true, nil)
             } else {
+                #if DEBUG
                 print("角色数据库刷新失败: \(error?.localizedDescription ?? "未知错误")")
+                #endif
                 completion(false, error)
             }
         }
@@ -389,7 +393,9 @@ class CharacterSystem {
         // 1. 先尝试从本地修改过的预设角色文件加载
         if let modifiedCharacters = loadModifiedPresetCharacters() {
             characterDatabase = modifiedCharacters
+            #if DEBUG
             print("从本地修改的预设文件加载了\(modifiedCharacters.count)个角色")
+            #endif
             // 加载用户自定义角色
             loadUserDefinedCharacters()
             return
@@ -399,15 +405,21 @@ class CharacterSystem {
         CharacterSystem.loadCharacterDatabaseFromJSON { characters, error in
             if let characters = characters {
                 self.characterDatabase = characters
+                #if DEBUG
                 print("成功从JSON加载了\(characters.count)个角色")
+                #endif
             } else {
                 // 记录错误信息
                 if let error = error {
+                    #if DEBUG
                     print("加载角色数据库失败: \(error.localizedDescription)")
+                    #endif
                 }
                 
                 // 备用方案：使用空数组
+                #if DEBUG
                 print("JSON加载失败，使用空数组")
+                #endif
                 self.characterDatabase = []
             }
             
@@ -421,7 +433,9 @@ class CharacterSystem {
      */
     private func loadCharactersFromJSON() -> [CharacterIdentity]? {
         guard let url = Bundle.main.url(forResource: "characters", withExtension: "json") else {
+            #if DEBUG
             print("角色JSON文件未找到")
+            #endif
             return nil
         }
         
@@ -438,7 +452,9 @@ class CharacterSystem {
             let response = try decoder.decode(CharactersResponse.self, from: data)
             return response.characters
         } catch {
+            #if DEBUG
             print("加载角色JSON失败: \(error)")
+            #endif
             return nil
         }
     }
@@ -543,9 +559,13 @@ class CharacterSystem {
             ).appendingPathComponent("userCharacters.json")
             
             try data.write(to: fileURL)
+            #if DEBUG
             print("用户自定义角色保存成功，共\(userDefinedCharacters.count)个")
+            #endif
         } catch {
+            #if DEBUG
             print("保存用户自定义角色失败: \(error)")
+            #endif
         }
     }
     
@@ -564,7 +584,9 @@ class CharacterSystem {
             let data = try Data(contentsOf: fileURL)
             userDefinedCharacters = try JSONDecoder().decode([CharacterIdentity].self, from: data)
         } catch {
+            #if DEBUG
             print("加载用户自定义角色失败: \(error)")
+            #endif
             userDefinedCharacters = []
         }
     }
@@ -608,10 +630,14 @@ class CharacterSystem {
             ).appendingPathComponent(fileName)
             
             try data.write(to: fileURL)
+            #if DEBUG
             print("角色数据导出成功: \(fileURL.path)")
+            #endif
             completion(fileURL, nil)
         } catch {
+            #if DEBUG
             print("角色数据导出失败: \(error)")
+            #endif
             completion(nil, error)
         }
     }
@@ -650,10 +676,14 @@ class CharacterSystem {
             // 保存用户自定义角色
             saveUserDefinedCharacters()
             
+            #if DEBUG
             print("角色导入成功，共\(imported.characters.count)个角色")
+            #endif
             completion(imported.characters.count, nil)
         } catch {
+            #if DEBUG
             print("角色导入失败: \(error)")
+            #endif
             completion(nil, error)
         }
     }
@@ -708,7 +738,9 @@ class CharacterSystem {
                 }
             } catch {
                 DispatchQueue.main.async {
+                    #if DEBUG
                     print("加载角色JSON失败: \(error)")
+                    #endif
                     completion(nil, error)
                 }
             }
@@ -776,9 +808,13 @@ class CharacterSystem {
             ).appendingPathComponent("preset_characters.json")
             
             try data.write(to: fileURL)
+            #if DEBUG
             print("预设角色修改已保存: \(fileURL.path)")
+            #endif
         } catch {
+            #if DEBUG
             print("保存预设角色修改失败: \(error)")
+            #endif
         }
     }
     
@@ -797,7 +833,9 @@ class CharacterSystem {
             
             // 检查文件是否存在
             guard FileManager.default.fileExists(atPath: fileURL.path) else {
+                #if DEBUG
                 print("本地修改的预设角色文件不存在")
+                #endif
                 return nil
             }
             
@@ -812,11 +850,15 @@ class CharacterSystem {
             }
             
             let response = try decoder.decode(CharactersResponse.self, from: data)
+            #if DEBUG
             print("从本地修改文件加载预设角色成功")
+            #endif
             return response.characters
             
         } catch {
+            #if DEBUG
             print("从本地修改文件加载预设角色失败: \(error)")
+            #endif
             return nil
         }
     }

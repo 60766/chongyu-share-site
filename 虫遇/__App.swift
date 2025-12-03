@@ -141,8 +141,98 @@ struct ChongYuApp: App {
                 return fallbackContainer
             } catch {
                 // 如果连内存模式都失败，说明Schema定义有问题
+                #if DEBUG
                 print("   ❌ 内存模式创建也失败，Schema可能有问题")
-                fatalError("无法创建ModelContainer（包括内存模式）: \(error)\n\n可能的原因：\n1. Schema定义有问题\n2. Model类定义错误\n3. 系统资源不足\n\n建议：\n1. 检查所有@Model类的定义\n2. 确保所有Model类都正确导入SwiftData\n3. 删除应用重新安装")
+                print("   错误详情: \(error)")
+                #endif
+                
+                // 记录错误到日志系统
+                Logger.error("无法创建ModelContainer（包括内存模式）", error: error, log: Logger.data)
+                
+                // 尝试创建一个最小可用的容器（只包含基础模型）
+                do {
+                    #if DEBUG
+                    print("   🔄 尝试创建最小可用容器（仅基础模型）...")
+                    #endif
+                    
+                    // 只使用最基础的模型，避免复杂关系导致的问题
+                    let minimalSchema = Schema([
+                        Character.self,
+                        User.self,
+                        Message.self
+                    ])
+                    let minimalConfig = ModelConfiguration(
+                        schema: minimalSchema,
+                        isStoredInMemoryOnly: true
+                    )
+                    let minimalContainer = try ModelContainer(for: minimalSchema, configurations: [minimalConfig])
+                    
+                    #if DEBUG
+                    print("   ✅ 创建最小可用容器成功（功能受限）")
+                    print("   ⚠️ 警告：部分功能可能不可用，建议删除应用重新安装")
+                    #endif
+                    
+                    // 在主线程显示错误提示（延迟执行，确保UI已初始化）
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        // 发送通知，让UI层显示错误提示
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("ModelContainerCreationFailed"),
+                            object: nil,
+                            userInfo: [
+                                "error": error.localizedDescription,
+                                "suggestion": "数据初始化失败，部分功能可能不可用。建议删除应用重新安装。"
+                            ]
+                        )
+                    }
+                    
+                    return minimalContainer
+                } catch {
+                    // 如果连最小容器都创建失败，记录错误但继续运行
+                    #if DEBUG
+                    print("   ❌ 最小容器创建也失败: \(error)")
+                    #endif
+                    Logger.error("最小容器创建失败", error: error, log: Logger.data)
+                    
+                    // 创建一个完全空的容器，至少让应用可以启动
+                    // 这会导致数据功能完全不可用，但应用不会崩溃
+                    do {
+                        let emptySchema = Schema([])
+                        let emptyConfig = ModelConfiguration(schema: emptySchema, isStoredInMemoryOnly: true)
+                        let emptyContainer = try ModelContainer(for: emptySchema, configurations: [emptyConfig])
+                        
+                        #if DEBUG
+                        print("   ⚠️ 使用空容器（数据功能完全不可用）")
+                        #endif
+                        
+                        // 显示严重错误提示
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ModelContainerCreationFailed"),
+                                object: nil,
+                                userInfo: [
+                                    "error": error.localizedDescription,
+                                    "suggestion": "数据系统初始化失败，请删除应用重新安装。",
+                                    "severity": "critical"
+                                ]
+                            )
+                        }
+                        
+                        return emptyContainer
+                    } catch {
+                        // 最后的最后，如果连空容器都创建失败，使用系统默认处理
+                        // 这应该永远不会发生，但如果发生了，至少不会崩溃
+                        #if DEBUG
+                        print("   🚨 所有容器创建方案都失败，使用系统默认处理")
+                        #endif
+                        Logger.error("所有容器创建方案都失败", error: error, log: Logger.data)
+                        
+                        // 返回一个临时的内存容器，至少让应用可以启动
+                        // 注意：这会导致SwiftData功能完全不可用
+                        return try! ModelContainer(for: Schema([]), configurations: [
+                            ModelConfiguration(schema: Schema([]), isStoredInMemoryOnly: true)
+                        ])
+                    }
+                }
             }
         }
     }()

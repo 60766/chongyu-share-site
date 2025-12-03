@@ -37,7 +37,9 @@ class ImageManager {
             
             // 获取文档目录路径
             guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                #if DEBUG
                 print("无法访问文档目录")
+                #endif
                 return false
             }
             
@@ -49,7 +51,9 @@ class ImageManager {
                 do {
                     try FileManager.default.createDirectory(at: imageDirectory, withIntermediateDirectories: true)
                 } catch {
+                    #if DEBUG
                     print("创建图片目录失败: \(error)")
+                    #endif
                     return false
                 }
             }
@@ -61,15 +65,21 @@ class ImageManager {
             if let imageData = processedImage.jpegData(compressionQuality: 0.8) {
                 do {
                     try imageData.write(to: imagePath)
+                    #if DEBUG
                     print("✅ 图片保存成功: \(id), 路径: \(imagePath.path)")
+                    #endif
                     return true
                 } catch {
+                    #if DEBUG
                     print("❌ 保存图片失败: \(error), ID: \(id)")
+                    #endif
                     return false
                 }
             }
             
+            #if DEBUG
             print("❌ 无法生成图片数据: \(id)")
+            #endif
             return false
         }
     }
@@ -184,7 +194,9 @@ class ImageManager {
                 try FileManager.default.removeItem(at: imagePath)
                 return true
             } catch {
+                #if DEBUG
                 print("删除图片失败: \(error)")
+                #endif
                 return false
             }
         }

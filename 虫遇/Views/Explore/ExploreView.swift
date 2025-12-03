@@ -310,7 +310,9 @@ struct ExploreView: View {
                                                 showingUserCharacters = false
                                                 
                                                 // 打印调试信息
+                                                #if DEBUG
                                                 print("选中分类: \(category.displayName)")
+                                                #endif
                                             }
                                         }) {
                                             categoryView(for: category)
@@ -339,7 +341,9 @@ struct ExploreView: View {
                                             showingUserCharacters = false
                                             
                                             // 打印调试信息
+                                                #if DEBUG
                                                 print("选中分类: \(category.displayName)")
+                                                #endif
                                         }
                                     }) {
                                             categoryView(for: category)
@@ -1060,7 +1064,9 @@ struct ExploreView: View {
         // 保存到本地存储
         saveRecentInteractions()
         
+        #if DEBUG
         print("添加/更新交互记录: \(character.name) - \(type.rawValue)")
+        #endif
     }
     
     /// 保存最近互动记录到本地
@@ -1155,7 +1161,9 @@ struct ExploreView: View {
         addInteraction(for: character, type: .like)
         
         // 这里可以添加点赞的网络请求等
+        #if DEBUG
         print("用户点赞了角色: \(character.name)")
+        #endif
     }
     
     /// 处理角色评论
@@ -1164,7 +1172,9 @@ struct ExploreView: View {
         addInteraction(for: character, type: .comment)
         
         // 这里可以添加评论的网络请求等
+        #if DEBUG
         print("用户评论了角色: \(character.name)")
+        #endif
     }
     
     /// 处理角色聊天
@@ -1237,14 +1247,18 @@ struct ExploreView: View {
                 userCharacters = loadedCharacters
             }
         } catch {
+            #if DEBUG
             print("加载自定义角色失败: \(error)")
+            #endif
             userCharacters = []
         }
     }
 
     // 添加删除角色的方法
     private func deleteCharacter(_ character: CharacterModel) {
+        #if DEBUG
         print("删除角色: \(character.name), ID: \(character.id)")
+        #endif
         
         // 1. 从内存中删除
         if let index = userCharacters.firstIndex(where: { $0.id == character.id }) {
@@ -1289,10 +1303,14 @@ struct ExploreView: View {
                 // 保存更新后的数据
                 let updatedData = try JSONSerialization.data(withJSONObject: characterDicts)
                 UserDefaults.standard.set(updatedData, forKey: "CustomCharactersData")
+                #if DEBUG
                 print("成功从UserDefaults中删除角色: \(characterId)")
+                #endif
             }
         } catch {
+            #if DEBUG
             print("从UserDefaults中删除角色失败: \(error)")
+            #endif
         }
     }
     
@@ -1304,16 +1322,22 @@ struct ExploreView: View {
         do {
             if FileManager.default.fileExists(atPath: fileURL.path) {
                 try FileManager.default.removeItem(at: fileURL)
+                #if DEBUG
                 print("成功删除角色图像文件: \(fileURL.path)")
+                #endif
             }
         } catch {
+            #if DEBUG
             print("删除角色图像文件失败: \(error)")
+            #endif
         }
     }
 
     // 添加隐藏角色的方法
     func hideCharacter(_ character: CharacterModel) {
+        #if DEBUG
         print("隐藏角色: \(character.name), ID: \(character.id)")
+        #endif
         
         // 将角色ID添加到隐藏列表
         if !hiddenCharacters.contains(character.id) {
@@ -1332,11 +1356,15 @@ struct ExploreView: View {
         if pinnedCharacters.contains(character.id) {
             // 如果已经置顶，则取消置顶
             pinnedCharacters.removeAll { $0 == character.id }
+            #if DEBUG
             print("取消置顶角色: \(character.name)")
+            #endif
         } else {
             // 如果未置顶，则添加到置顶列表
             pinnedCharacters.append(character.id)
+            #if DEBUG
             print("置顶角色: \(character.name)")
+            #endif
         }
         
         // 保存置顶状态
@@ -1456,7 +1484,9 @@ struct ExploreView: View {
                 return loadedCharacters
             }
         } catch {
+            #if DEBUG
             print("加载自定义角色失败: \(error)")
+            #endif
         }
         
         return []
@@ -1560,7 +1590,9 @@ extension ExploreView {
     func saveHiddenCharacters() {
         if let encoded = try? JSONEncoder().encode(hiddenCharacters) {
             UserDefaults.standard.set(encoded, forKey: "HiddenCharacters")
+            #if DEBUG
             print("保存了\(hiddenCharacters.count)个隐藏角色到UserDefaults")
+            #endif
         }
     }
     
@@ -1580,7 +1612,9 @@ extension ExploreView {
     func savePinnedCharacters() {
         if let encoded = try? JSONEncoder().encode(pinnedCharacters) {
             UserDefaults.standard.set(encoded, forKey: "PinnedCharacters")
+            #if DEBUG
             print("保存了\(pinnedCharacters.count)个置顶角色到UserDefaults")
+            #endif
         }
     }
     
@@ -1820,7 +1854,9 @@ struct MyCharactersView: View {
                 characters = loadedCharacters
             }
         } catch {
+            #if DEBUG
             print("加载自定义角色失败: \(error)")
+            #endif
             characters = []
         }
     }
@@ -1964,7 +2000,9 @@ struct CharacterGridItem: View {
     // 从文档目录加载自定义头像
     private func loadCustomAvatar() {
         // 记录尝试加载的信息
+        #if DEBUG
         print("🔄 CharacterGridItem - 尝试加载头像: id=\(character.id), avatar=\(character.avatar)")
+        #endif
         
         // 只对自定义角色尝试加载头像
         if character.id.hasPrefix("custom_") {
@@ -1977,24 +2015,34 @@ struct CharacterGridItem: View {
                    let image = UIImage(data: imageData) {
                     DispatchQueue.main.async {
                         self.customImage = image
+                        #if DEBUG
                         print("✅ CharacterGridItem - 成功加载自定义头像: \(character.id)")
+                        #endif
                     }
                 } else {
+                    #if DEBUG
                     print("❌ CharacterGridItem - 无法加载自定义头像数据: \(character.id)")
+                    #endif
                 }
             } else {
+                #if DEBUG
                 print("⚠️ CharacterGridItem - 自定义头像文件不存在: \(character.id)")
+                #endif
                 
                 // 如果直接加载失败，尝试使用CustomAvatarLoader
                 if let image = CustomAvatarLoader.shared.loadCustomAvatar(characterId: character.id, avatarName: character.avatar) {
                     DispatchQueue.main.async {
                         self.customImage = image
+                        #if DEBUG
                         print("✅ CharacterGridItem - 通过CustomAvatarLoader成功加载: \(character.id)")
+                        #endif
                     }
                 }
             }
         } else {
+            #if DEBUG
             print("ℹ️ CharacterGridItem - 非自定义角色: \(character.id)")
+            #endif
         }
     }
 } 

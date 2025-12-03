@@ -33,7 +33,9 @@ class CharacterPinManager {
     private func savePinnedCharacters() {
         if let encoded = try? JSONEncoder().encode(pinnedCharacterIds) {
             UserDefaults.standard.set(encoded, forKey: "PinnedCharacters")
+            #if DEBUG
             print("保存了\(pinnedCharacterIds.count)个置顶角色到UserDefaults")
+            #endif
         }
     }
     
@@ -47,11 +49,15 @@ class CharacterPinManager {
         if isCharacterPinned(characterId) {
             // 如果已经置顶，则取消置顶
             pinnedCharacterIds.removeAll { $0 == characterId }
+            #if DEBUG
             print("取消置顶角色: \(characterName)")
+            #endif
         } else {
             // 如果未置顶，则添加到置顶列表
             pinnedCharacterIds.append(characterId)
+            #if DEBUG
             print("置顶角色: \(characterName)")
+            #endif
         }
         
         // 保存置顶状态

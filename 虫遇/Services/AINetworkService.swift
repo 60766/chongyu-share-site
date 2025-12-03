@@ -20,35 +20,21 @@ class PartialDataDelegate: NSObject, URLSessionDataDelegate, URLSessionDelegate 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         // 即使有错误，也尝试返回已接收的数据
         if let error = error as? URLError, error.code == .networkConnectionLost {
+            #if DEBUG
             print("🔄 Connection lost, but we have \(receivedData.count) bytes of partial data")
+            #endif
             completion?(receivedData.isEmpty ? nil : receivedData, task.response, error)
         } else {
             completion?(error == nil ? receivedData : nil, task.response, error)
         }
     }
     
-    // SSL验证处理（与WalletService中的SSLValidationDelegate相同逻辑）
+    // SSL验证：使用系统默认验证
+    // 系统会自动验证Let's Encrypt证书，无需自定义验证
+    // 这符合App Store的ATS（App Transport Security）要求
     func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust else {
+        // 使用系统默认的SSL验证（安全且符合规范）
             completionHandler(.performDefaultHandling, nil)
-            return
-        }
-        
-        guard let serverTrust = challenge.protectionSpace.serverTrust else {
-            completionHandler(.performDefaultHandling, nil)
-            return
-        }
-        
-        // 检查是否是我们的API域名
-        let host = challenge.protectionSpace.host
-        if host == "api.chongyuai.com" || host.hasSuffix(".chongyuai.com") {
-            // 直接信任证书（快速解决方案）
-            let credential = URLCredential(trust: serverTrust)
-            completionHandler(.useCredential, credential)
-        } else {
-            // 对于其他域名，使用默认验证
-            completionHandler(.performDefaultHandling, nil)
-        }
     }
 }
 
@@ -145,7 +131,9 @@ class AINetworkService: ObservableObject {
                 }
                 
                 if httpResponse.statusCode != 200 {
+                    #if DEBUG
                     print("❌ Non-200 status: \(httpResponse.statusCode)")
+                    #endif
                     
                     // 403错误：API额度不足或服务不可用
                     if httpResponse.statusCode == 403 {
@@ -153,9 +141,13 @@ class AINetworkService: ObservableObject {
                             ContentGeneratorService.shared.markBackendBusy(true)
                             // 显示友好的错误提示
                             let errorMessage = "API服务暂时不可用，请联系客服或稍后重试"
+                            #if DEBUG
                             print("🔔 [Toast] 准备显示403错误提示: \(errorMessage)")
+                            #endif
                             ToastManager.shared.showToast(message: errorMessage)
+                            #if DEBUG
                             print("🔔 [Toast] Toast已调用，isVisible应该为true")
+                            #endif
                         }
                     } else {
                     Task { @MainActor in
@@ -182,7 +174,9 @@ class AINetworkService: ObservableObject {
                                 if case .failure(let parseError) = completion {
                                     // 如果解析失败但有网络错误，优先报告网络问题
                                     if let urlError = error as? URLError, urlError.code == .networkConnectionLost {
+                                        #if DEBUG
                                         print("🔄 Data parsing failed, but connection was lost - treating as partial data available")
+                                        #endif
                                         promise(.failure(.partialDataAvailable(urlError)))
                                     } else {
                                         promise(.failure(parseError))
@@ -382,7 +376,9 @@ class AINetworkService: ObservableObject {
             throw AINetworkError.decodingError(NSError(domain: "JSON", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON structure"]))
             
         } catch {
+            #if DEBUG
             print("❌ JSON parsing failed: \(error)")
+            #endif
             
             // 如果允许部分数据，尝试从原始数据中提取有用信息
             if allowPartial {
@@ -491,8 +487,8 @@ class AINetworkService: ObservableObject {
             }
         }
         
-        print("❌ Failed to extract content from partial data")
         #if DEBUG
+        print("❌ Failed to extract content from partial data")
         print("🔍 Data sample: \(dataString.prefix(500))")
         #endif
         return Fail(error: AINetworkError.decodingError(NSError(domain: "Regex", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to extract content from partial data"]))).eraseToAnyPublisher()

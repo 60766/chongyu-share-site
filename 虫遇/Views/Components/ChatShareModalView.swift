@@ -168,7 +168,9 @@ struct ChatShareModalView: View {
     private func shareToWeChat() {
         guard currentCardIndex < shareCards.count else { return }
         
+        #if DEBUG
         print("🔍 点击了微信分享按钮")
+        #endif
         
         // 添加触觉反馈
         let generator = UIImpactFeedbackGenerator(style: .light)

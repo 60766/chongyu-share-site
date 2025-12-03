@@ -524,14 +524,20 @@ struct CharacterChatInsightView: View {
     
     private func loadCachedInsight() {
         // 只加载缓存，不自动生成
+        #if DEBUG
         print("🔍 CharacterChatInsightView - 尝试加载缓存画像，角色ID: \(characterId)")
+        #endif
         let cachedInsight = service.loadCachedInsight(characterId: characterId, modelContext: modelContext)
         
         if let cachedInsight = cachedInsight {
+            #if DEBUG
             print("✅ CharacterChatInsightView - 成功加载缓存画像: \(cachedInsight.title)")
+            #endif
             insight = cachedInsight
         } else {
+            #if DEBUG
             print("⚠️ CharacterChatInsightView - 未找到缓存画像")
+            #endif
             insight = nil
         }
     }

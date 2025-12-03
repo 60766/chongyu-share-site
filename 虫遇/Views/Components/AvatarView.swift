@@ -28,7 +28,9 @@ struct AvatarView: View {
                     .stroke(avatarService.getCharacterTagColor(for: characterID).opacity(0.2), lineWidth: 1)
             )
             .onAppear {
+                #if DEBUG
                 print("🔍 AvatarView - 显示虚拟角色头像: \(characterID), 用户名: \(comment.username)")
+                #endif
             }
         } else if comment.isCurrentUser {
             // 当前用户评论使用UserProfileManager的数据
@@ -42,7 +44,9 @@ struct AvatarView: View {
                     .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
                     )
             .onAppear {
+                #if DEBUG
                 print("🔍 AvatarView - 显示当前用户头像: \(UserProfileManager.shared.getCurrentAvatarURL()), 用户名: \(UserProfileManager.shared.getCurrentUsername())")
+                #endif
             }
         } else {
             // 其他用户使用userAvatar
@@ -56,7 +60,9 @@ struct AvatarView: View {
                     .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
                     )
             .onAppear {
+                #if DEBUG
                 print("🔍 AvatarView - 显示其他用户头像: \(comment.userAvatar), 用户名: \(comment.username)")
+                #endif
             }
         }
     }

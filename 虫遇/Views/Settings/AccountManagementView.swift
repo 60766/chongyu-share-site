@@ -36,6 +36,11 @@ struct AccountManagementView: View {
         ]
     }
     
+    /// 安全获取状态颜色，如果不存在则返回默认颜色
+    private func getStatusColor(_ key: String) -> Color {
+        return statusColors[key] ?? statusColors["neutral"] ?? primaryAccentColor
+    }
+    
     var body: some View {
         List {
             // 1. Apple ID 登录区块（最核心功能，放在最前面）
@@ -126,8 +131,12 @@ struct AccountManagementView: View {
                     if success {
                         // 3. 立即生成新 token（切换账号后应该使用新 token）
                         accountManager.createNewAccount { newToken in
+                            #if DEBUG
                             print("✅ 切换账号：已清除旧账号，已生成新 token: \(String(newToken.prefix(8)))...")
+                            #endif
+                            #if DEBUG
                             print("💰 余额已归零，等待用户登录后才会加载新账号余额")
+                            #endif
                         }
                     }
                 }
@@ -161,7 +170,7 @@ struct AccountManagementView: View {
                 icon: "person.circle.fill",
                 title: "账号标识",
                 value: accountManager.accountDisplayIdentifier,
-                iconColor: statusColors["info"]!,
+                iconColor: getStatusColor("info"),
                 trailing: {
                     // 复制按钮
                     Button(action: {
@@ -181,7 +190,7 @@ struct AccountManagementView: View {
                 title: "创建时间",
                 value: formatCreationDate(),
                 subtitle: getAccountAgeText(),
-                iconColor: statusColors["neutral"]!
+                iconColor: getStatusColor("neutral")
             )
             
             // 用户昵称
@@ -190,7 +199,7 @@ struct AccountManagementView: View {
                 title: "用户昵称",
                 value: profileManager.username.isEmpty ? "虫遇大王" : profileManager.username,
                 subtitle: "Lv.\(profileManager.userLevel)",
-                iconColor: statusColors["info"]!
+                iconColor: getStatusColor("info")
             )
             
             // 切换账号
@@ -202,7 +211,7 @@ struct AccountManagementView: View {
                     title: "切换账号",
                     value: nil,
                     subtitle: "退出当前账号并登录新账号",
-                    iconColor: statusColors["info"]!
+                    iconColor: getStatusColor("info")
                 )
             }
             .foregroundColor(.primary)
@@ -282,7 +291,7 @@ struct AccountManagementView: View {
                     icon: "arrow.clockwise.circle.fill",
                     title: "找回账号",
                     value: nil,
-                    iconColor: statusColors["info"]!
+                    iconColor: getStatusColor("info")
             )
             }
         } header: {
@@ -308,7 +317,7 @@ struct AccountManagementView: View {
                     icon: "icloud.and.arrow.up.fill",
                     title: "立即备份",
                     subtitle: "保存当前数据状态到 iCloud Drive",
-                    iconColor: statusColors["info"]!
+                    iconColor: getStatusColor("info")
                 )
             }
             .foregroundColor(.primary)
@@ -319,7 +328,7 @@ struct AccountManagementView: View {
                     icon: "clock.arrow.circlepath",
                     title: "备份历史",
                     subtitle: getBackupHistorySubtitle(),
-                    iconColor: statusColors["info"]!
+                    iconColor: getStatusColor("info")
                 )
             }
             
@@ -330,7 +339,7 @@ struct AccountManagementView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(spacing: 8) {
                                 Image(systemName: "icloud.fill")
-                                    .foregroundColor(statusColors["info"]!)
+                                    .foregroundColor(getStatusColor("info"))
                                 Text("iCloud自动备份")
                                     .font(.body)
                             }
@@ -499,9 +508,13 @@ struct AccountManagementView: View {
             iCloudBackupService.shared.performAutoBackup(data: data) { result in
                 switch result {
                 case .success:
+                    #if DEBUG
                     print("✅ 自动备份成功")
+                    #endif
                 case .failure(let error):
+                    #if DEBUG
                     print("⚠️ 自动备份失败: \(error.localizedDescription)")
+                    #endif
                 }
             }
         }
@@ -534,9 +547,13 @@ struct AccountManagementView: View {
                 iCloudBackupService.shared.performAutoBackup(data: data) { result in
                     switch result {
                     case .success(let filePath):
+                        #if DEBUG
                         print("✅ [自动备份] 备份成功: \(filePath)")
+                        #endif
                     case .failure(let error):
+                        #if DEBUG
                         print("⚠️ [自动备份] 备份失败: \(error.localizedDescription)")
+                        #endif
                     }
                 }
             }
@@ -2691,7 +2708,9 @@ struct BackupHistoryView: View {
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.success)
         } catch {
+            #if DEBUG
             print("删除备份失败: \(error)")
+            #endif
         }
     }
     

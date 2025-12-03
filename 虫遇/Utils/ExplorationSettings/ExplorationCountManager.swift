@@ -21,7 +21,9 @@ class ExplorationCountManager {
     // 初始化
     private init() {
         loadCounts()
+        #if DEBUG
         print("🔢 ExplorationCountManager初始化完成，加载配置: \(contentTypeCounts)")
+        #endif
     }
     
     /**
@@ -53,7 +55,9 @@ class ExplorationCountManager {
         contentTypeCounts[typeKey] = newCount
         saveCounts()
         
+        #if DEBUG
         print("📈 增加「\(typeKey)」生成数量: \(currentCount) → \(newCount)")
+        #endif
         return newCount
     }
     
@@ -72,7 +76,9 @@ class ExplorationCountManager {
         contentTypeCounts[typeKey] = newCount
         saveCounts()
         
+        #if DEBUG
         print("📉 减少「\(typeKey)」生成数量: \(currentCount) → \(newCount)")
+        #endif
         return newCount
     }
     
@@ -91,7 +97,9 @@ class ExplorationCountManager {
         contentTypeCounts[typeKey] = newCount
         saveCounts()
         
+        #if DEBUG
         print("🔄 设置「\(typeKey)」生成数量: \(currentCount) → \(newCount)")
+        #endif
         return newCount
     }
     
@@ -107,7 +115,9 @@ class ExplorationCountManager {
         contentTypeCounts[typeKey] = defaultCount
         saveCounts()
         
+        #if DEBUG
         print("🔄 重置「\(typeKey)」生成数量: \(currentCount) → \(defaultCount)")
+        #endif
         return defaultCount
     }
     
@@ -117,7 +127,9 @@ class ExplorationCountManager {
     func resetAllCounts() {
         contentTypeCounts.removeAll()
         saveCounts()
+        #if DEBUG
         print("🔄 已重置所有内容类型的生成数量为默认值 \(defaultCount)")
+        #endif
     }
     
     /**
@@ -125,15 +137,21 @@ class ExplorationCountManager {
      * 用于调试
      */
     func printAllCounts() {
+        #if DEBUG
         print("📊 当前所有内容类型生成数量配置:")
+        #endif
         
         if contentTypeCounts.isEmpty {
+            #if DEBUG
             print("   - 暂无自定义配置，所有类型使用默认值: \(defaultCount)")
+            #endif
             return
         }
         
         for (type, count) in contentTypeCounts {
+            #if DEBUG
             print("   - \(type): \(count)")
+            #endif
         }
     }
     

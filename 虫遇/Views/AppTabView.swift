@@ -288,9 +288,13 @@ struct AppTabView: View {
                 iCloudBackupService.shared.performAutoBackup(data: data) { result in
                     switch result {
                     case .success(let filePath):
+                        #if DEBUG
                         print("✅ [自动备份] 备份成功: \(filePath)")
+                        #endif
                     case .failure(let error):
+                        #if DEBUG
                         print("⚠️ [自动备份] 备份失败: \(error.localizedDescription)")
+                        #endif
                     }
                 }
             }

@@ -41,8 +41,12 @@ struct BasicTextEditor: View {
             isFocused = newValue
             
             // 打印调试信息
+            #if DEBUG
             print("TextEditor焦点状态: \(newValue ? "获得焦点" : "失去焦点")")
+            #endif
+            #if DEBUG
             print("当前文本: \"\(text)\"")
+            #endif
         }
         .onChange(of: isFocused) { _, newValue in
             if internalFocus != newValue {
@@ -51,7 +55,9 @@ struct BasicTextEditor: View {
         }
         .onChange(of: text) { _, newValue in
             // 打印调试信息，监控文本变化
+            #if DEBUG
             print("文本已更新为: \"\(newValue)\"")
+            #endif
         }
     }
 }

@@ -4,15 +4,14 @@ final class BackendTestService {
     static let shared = BackendTestService()
     private init() {}
     
-    // 共享的SSL验证delegate（与WalletService相同）
-    private let sslDelegate = SSLValidationDelegate()
-    
-    // 创建带有SSL处理的URLSession
+    // 创建URLSession（使用系统默认的SSL验证）
+    // 系统会自动验证Let's Encrypt证书，无需自定义验证
     private func createSession() -> URLSession {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 300
         config.timeoutIntervalForResource = 300
-        return URLSession(configuration: config, delegate: sslDelegate, delegateQueue: nil)
+        // 不使用delegate，让系统使用默认的SSL验证
+        return URLSession(configuration: config)
     }
     
     // 与其他服务保持一致的后端地址解析逻辑
@@ -24,7 +23,9 @@ final class BackendTestService {
     func testConnection() async -> (success: Bool, message: String, details: [String: Any]?) {
         do {
             let url = baseURL
+            #if DEBUG
             print("🔍 测试连接到: \(url.absoluteString)")
+            #endif
             
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
@@ -40,8 +41,10 @@ final class BackendTestService {
             let statusCode = httpResponse.statusCode
             let responseBody = String(data: data, encoding: .utf8) ?? ""
             
+            #if DEBUG
             print("📡 响应状态码: \(statusCode)")
             print("📄 响应内容: \(responseBody)")
+            #endif
             
             var details: [String: Any] = [
                 "url": url.absoluteString,
@@ -80,7 +83,9 @@ final class BackendTestService {
     func testHealthCheck() async -> (success: Bool, message: String, details: [String: Any]?) {
         do {
             let url = baseURL.appendingPathComponent("health")
+            #if DEBUG
             print("🏥 测试健康检查: \(url.absoluteString)")
+            #endif
             
             var request = URLRequest(url: url)
             request.httpMethod = "GET"

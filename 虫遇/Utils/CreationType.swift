@@ -22,12 +22,18 @@ public class CreationTypeManager: ObservableObject {
     
     private init() {
         // 初始化时验证类型是否与ContentGeneratorService.ContentType一致
+        #if DEBUG
         print("📊 CreationTypeManager初始化，验证类型一致性：")
+        #endif
         for (_, type) in types.enumerated() {
             if ContentGeneratorService.ContentType(rawValue: type) != nil {
+                #if DEBUG
                 print("  ✅ 类型[\(type)]可以成功映射到ContentGeneratorService.ContentType")
+                #endif
             } else {
+                #if DEBUG
                 print("  ⚠️ 警告：类型[\(type)]无法映射到ContentGeneratorService.ContentType")
+                #endif
             }
         }
     }

@@ -30,7 +30,9 @@ class DataCacheService: ObservableObject {
         // 注册应用生命周期通知
         setupLifecycleObservers()
         
+        #if DEBUG
         print("🗄️ 数据缓存服务初始化")
+        #endif
     }
     
     // MARK: - 缓存条目结构

@@ -396,7 +396,9 @@ public struct WormholeTransitionView: View {
         
         // 记录动画开始时间
         let startTime = Date()
+        #if DEBUG
         print("⭐️ 虫洞动画开始: \(startTime)")
+        #endif
         
         // 阶段1：虫洞形成（0-1.0秒）
         withAnimation(.easeInOut(duration: 0.6)) {
@@ -411,7 +413,9 @@ public struct WormholeTransitionView: View {
             let impactMed = UIImpactFeedbackGenerator(style: .medium)
             impactMed.impactOccurred()
             
+            #if DEBUG
             print("⭐️ 虫洞动画阶段2开始: +1.0秒")
+            #endif
             
             withAnimation(.easeInOut(duration: 0.6)) {
                 phase2 = true
@@ -424,7 +428,9 @@ public struct WormholeTransitionView: View {
             let impactMed = UIImpactFeedbackGenerator(style: .rigid)
             impactMed.impactOccurred()
             
+            #if DEBUG
             print("⭐️ 虫洞动画阶段3开始: +3.0秒")
+            #endif
             
             withAnimation(.easeOut(duration: 0.2)) {
                 phase3 = true
@@ -441,7 +447,9 @@ public struct WormholeTransitionView: View {
         
         // 阶段4：溶解回主页面（4.0-5.0秒）
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+            #if DEBUG
             print("⭐️ 虫洞动画阶段4开始: +4.0秒")
+            #endif
             
             withAnimation(.easeOut(duration: 0.8)) {
                 phase4 = true
@@ -452,11 +460,15 @@ public struct WormholeTransitionView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
+            #if DEBUG
             print("⭐️ 虫洞动画阶段已全部完成: \(endTime), 总持续时间: \(duration)秒")
+            #endif
             
             // 增加短暂延迟后再关闭视图，确保动画能够完全展示
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                #if DEBUG
                 print("⭐️ 现在关闭虫洞视图")
+                #endif
                 isActive = false
                 
                 // 重置所有状态以便下次使用

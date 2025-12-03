@@ -28,6 +28,11 @@ struct DataBackupView: View {
         ]
     }
     
+    /// 安全获取状态颜色，如果不存在则返回默认颜色
+    private func getStatusColor(_ key: String) -> Color {
+        return statusColors[key] ?? statusColors["neutral"] ?? primaryAccentColor
+    }
+    
     var body: some View {
         List {
             // 立即备份
@@ -37,7 +42,7 @@ struct DataBackupView: View {
                         icon: "icloud.and.arrow.up.fill",
                         title: "立即备份",
                         subtitle: "保存当前数据状态到 iCloud Drive",
-                        iconColor: statusColors["info"]!
+                        iconColor: getStatusColor("info")
                     )
                 }
                 .foregroundColor(.primary)
@@ -55,7 +60,7 @@ struct DataBackupView: View {
                         icon: "clock.arrow.circlepath",
                         title: "备份历史",
                         subtitle: getBackupHistorySubtitle(),
-                        iconColor: statusColors["info"]!
+                        iconColor: getStatusColor("info")
                     )
                 }
             } header: {
@@ -287,9 +292,13 @@ struct DataBackupView: View {
             backupService.performAutoBackup(data: data) { result in
                 switch result {
                 case .success:
+                    #if DEBUG
                     print("✅ 自动备份成功")
+                    #endif
                 case .failure(let error):
+                    #if DEBUG
                     print("❌ 自动备份失败: \(error.localizedDescription)")
+                    #endif
                 }
             }
         }
@@ -309,9 +318,13 @@ struct DataBackupView: View {
                     self.backupService.performAutoBackup(data: data) { result in
                         switch result {
                         case .success:
+                            #if DEBUG
                             print("✅ 自动备份成功")
+                            #endif
                         case .failure(let error):
+                            #if DEBUG
                             print("❌ 自动备份失败: \(error.localizedDescription)")
+                            #endif
                         }
                     }
                 }

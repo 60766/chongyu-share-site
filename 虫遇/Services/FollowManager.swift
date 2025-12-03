@@ -58,7 +58,9 @@ class FollowManager: ObservableObject {
             ]
         )
         
+        #if DEBUG
         print("✅ 已关注用户: \(username)")
+        #endif
     }
     
     /**
@@ -79,7 +81,9 @@ class FollowManager: ObservableObject {
             ]
         )
         
+        #if DEBUG
         print("❌ 已取消关注用户: \(username)")
+        #endif
     }
     
     /**
@@ -114,7 +118,9 @@ class FollowManager: ObservableObject {
      */
     private func loadFollowedUsers() {
         followedUsers = UserDefaults.standard.stringArray(forKey: followedUsersKey) ?? []
+        #if DEBUG
         print("📱 已加载关注列表，共 \(followedUsers.count) 个用户")
+        #endif
     }
     
     /**
@@ -122,7 +128,9 @@ class FollowManager: ObservableObject {
      */
     private func saveFollowedUsers() {
         UserDefaults.standard.set(followedUsers, forKey: followedUsersKey)
+        #if DEBUG
         print("💾 已保存关注列表到本地存储")
+        #endif
     }
     
     /**
@@ -148,7 +156,9 @@ class FollowManager: ObservableObject {
         followedUsers = uniqueUsernames
         saveFollowedUsers()
         
+        #if DEBUG
         print("📥 批量导入关注列表，共 \(uniqueUsernames.count) 个用户")
+        #endif
     }
     
     /**
@@ -163,7 +173,9 @@ class FollowManager: ObservableObject {
             object: nil
         )
         
+        #if DEBUG
         print("🗑️ 已清空所有关注")
+        #endif
     }
 }
 

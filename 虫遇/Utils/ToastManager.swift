@@ -29,49 +29,67 @@ class ToastManager: ObservableObject {
      * @param message 要显示的消息
      */
     func showToast(message: String) {
+        #if DEBUG
         print("🔔 [ToastManager] showToast被调用，消息: \(message)")
+        #endif
         // 取消之前的计时器
         workItem?.cancel()
         
         // 在主线程更新UI
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { 
+                #if DEBUG
                 print("⚠️ [ToastManager] self为nil，无法显示Toast")
+                #endif
                 return 
             }
             
+            #if DEBUG
             print("🔔 [ToastManager] 更新消息和显示状态")
+            #endif
             // 更新消息和显示状态
             self.currentMessage = message
             
             // 如果当前可见，先隐藏再显示，创造刷新效果
             if self.isVisible {
+                #if DEBUG
                 print("🔔 [ToastManager] Toast当前可见，先隐藏再显示")
+                #endif
                 withAnimation {
                     self.isVisible = false
                 }
                 
                 // 100ms后重新显示
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    #if DEBUG
                     print("🔔 [ToastManager] 重新显示Toast")
+                    #endif
                     withAnimation {
                         self.isVisible = true
                     }
+                    #if DEBUG
                     print("🔔 [ToastManager] isVisible = \(self.isVisible)")
+                    #endif
                 }
             } else {
                 // 直接显示
+                #if DEBUG
                 print("🔔 [ToastManager] 直接显示Toast")
+                #endif
                 withAnimation {
                     self.isVisible = true
                 }
+                #if DEBUG
                 print("🔔 [ToastManager] isVisible = \(self.isVisible)")
+                #endif
             }
             
             // 设置自动隐藏
             let workItem = DispatchWorkItem { [weak self] in
                 guard let self = self else { return }
+                #if DEBUG
                 print("🔔 [ToastManager] 自动隐藏Toast")
+                #endif
                 withAnimation {
                     self.isVisible = false
                 }
@@ -129,7 +147,9 @@ struct ToastView: View {
         .allowsHitTesting(false) // 整个ToastView不拦截点击事件
         .animation(.easeInOut(duration: 0.3), value: toastManager.isVisible)
         .onChange(of: toastManager.isVisible) { oldValue, newValue in
+            #if DEBUG
             print("🔔 [ToastView] isVisible变化: \(oldValue) -> \(newValue), message: \(toastManager.currentMessage)")
+            #endif
         }
     }
 } 

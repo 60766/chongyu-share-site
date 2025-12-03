@@ -257,7 +257,9 @@ struct TestPublishPanelView: View {
             placeholder: "请输入内容...",
             onFocus: { focused in
                 directInputFocused = focused
+                #if DEBUG
                 print("DirectTextInput焦点变化: \(focused)")
+                #endif
             },
             debug: true
         )

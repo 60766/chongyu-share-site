@@ -73,7 +73,9 @@ struct PHImagePicker: UIViewControllerRepresentable {
                             let processedImage = self.processImage(image)
                             newImages.append(processedImage)
                         } else if let error = error {
+                            #if DEBUG
                             print("图片加载错误: \(error.localizedDescription)")
+                            #endif
                         }
                     }
                 } else {

@@ -88,20 +88,28 @@ struct UserPostListView: View {
             EditPostView(
                 post: post,
                 onClose: {
+                    #if DEBUG
                     print("关闭编辑视图")
+                    #endif
                     editingPost = nil
                 },
                 onUpdate: { newContent, newImages in
+                    #if DEBUG
                     print("更新帖子内容，新内容长度: \(newContent.count), 图片数: \(newImages.count)")
+                    #endif
                     updatePost(post, content: newContent, images: newImages)
                 }
             )
             .presentationDetents([.height(550), .large])
             .onAppear {
                 // 添加延迟，确保视图完全加载
+                #if DEBUG
                 print("EditPostView 开始加载，帖子ID: \(post.id)")
+                #endif
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    #if DEBUG
                     print("EditPostView 已完全加载")
+                    #endif
                 }
             }
         }
@@ -310,11 +318,15 @@ struct UserPostListView: View {
     
     // 处理编辑帖子
     private func handleEditPost(_ post: UserPostModel) {
+        #if DEBUG
         print("开始编辑帖子: \(post.id), 内容: \(post.content.prefix(20))...")
+        #endif
         
         // 直接设置要编辑的帖子，不再需要标志变量
         editingPost = post
+        #if DEBUG
         print("✅ 设置editingPost成功: \(post.id)")
+        #endif
         
         // 触发触觉反馈
         HapticFeedbackManager.shared.selectionChanged()

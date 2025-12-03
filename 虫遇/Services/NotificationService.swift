@@ -61,14 +61,18 @@ class NotificationService: ObservableObject {
     // MARK: - 行为处理器
     
     @objc private func handleCommentGenerated(_ notification: Notification) {
+        #if DEBUG
         print("📨 NotificationService: 收到评论生成通知")
         print("📨 当前通知数量: \(self.notifications.count)")
+        #endif
         
         guard let userInfo = notification.userInfo,
               let postId = userInfo["postID"] as? String,
               let commentsMap = userInfo["commentsMap"] as? [String: String] else {
+            #if DEBUG
             print("❌ NotificationService: 评论生成通知数据无效")
             print("❌ userInfo: \(notification.userInfo ?? [:])")
+            #endif
             return
         }
         
@@ -76,7 +80,9 @@ class NotificationService: ObservableObject {
         let isInvited = userInfo["isInvited"] as? Bool ?? false
         
         if isInvited {
+            #if DEBUG
             print("🚫 NotificationService: 这是邀请虚拟角色的评论，跳过创建通知")
+            #endif
             return
         }
         
@@ -85,18 +91,22 @@ class NotificationService: ObservableObject {
         let originalPost = userInfo["originalPost"] as? String
         let originalPostAuthor = userInfo["originalPostAuthor"] as? String
         
+        #if DEBUG
         print("📨 NotificationService: 处理\(commentsMap.count)个角色的评论通知")
         print("📝 用户评论: \(userComment ?? "无")")
         print("📝 用户评论是否为空: \(userComment?.isEmpty ?? true)")
         print("📝 用户评论长度: \(userComment?.count ?? 0)")
         print("📝 原帖ID: \(postId)")
         print("📝 角色评论: \(commentsMap)")
+        #endif
         
         // 为每个AI生成的评论创建通知 - 🔧 移除延迟，立即创建通知
         DispatchQueue.main.async {
             for (characterId, commentContent) in commentsMap {
+                #if DEBUG
                 print("📨 NotificationService: 为角色\(characterId)创建评论通知")
                 print("🔍 传递给createCommentNotification的userComment: '\(userComment ?? "nil")'")
+                #endif
                 self.createCommentNotification(
                     characterId: characterId,
                     content: commentContent,
@@ -106,21 +116,29 @@ class NotificationService: ObservableObject {
                     originalPostAuthor: originalPostAuthor
                 )
             }
+            #if DEBUG
             print("📨 NotificationService: 评论通知创建完成，新的通知数量: \(self.notifications.count)")
+            #endif
         }
     }
     
     @objc private func handlePostLiked(_ notification: Notification) {
+        #if DEBUG
         print("❤️ NotificationService: 收到点赞通知")
+        #endif
         
         guard let userInfo = notification.userInfo,
               let postId = userInfo["postId"] as? String,
               let authorCharacterId = userInfo["authorCharacterId"] as? String else {
+            #if DEBUG
             print("❌ NotificationService: 点赞通知数据无效")
+            #endif
             return
         }
         
+        #if DEBUG
         print("❤️ NotificationService: 为角色\(authorCharacterId)创建点赞感谢通知")
+        #endif
         
         // 延迟生成点赞感谢通知
         DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 2...5)) {
@@ -132,11 +150,15 @@ class NotificationService: ObservableObject {
     }
     
     @objc private func handleCharacterInteraction(_ notification: Notification) {
+        #if DEBUG
         print("🤝 NotificationService: 收到角色互动通知")
+        #endif
         
         guard let userInfo = notification.userInfo,
               let characterId = userInfo["characterId"] as? String else {
+            #if DEBUG
             print("❌ NotificationService: 角色互动通知数据无效")
+            #endif
             return
         }
         
@@ -145,11 +167,15 @@ class NotificationService: ObservableObject {
         saveInteractionCount()
         
         let currentCount = characterInteractionCount[characterId]!
+        #if DEBUG
         print("🤝 NotificationService: 角色\(characterId)互动次数: \(currentCount)")
+        #endif
         
         // 达到一定互动次数时生成关注通知
         if currentCount == 3 {
+            #if DEBUG
             print("🤝 NotificationService: 角色\(characterId)互动达到3次，将生成关注通知")
+            #endif
             DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 5...10)) {
                 self.createFollowNotification(characterId: characterId)
             }
@@ -161,6 +187,7 @@ class NotificationService: ObservableObject {
     private func createCommentNotification(characterId: String, content: String, postId: String, userComment: String? = nil, originalPost: String? = nil, originalPostAuthor: String? = nil) {
         guard let character = getCharacterInfo(characterId: characterId) else { return }
         
+        #if DEBUG
         print("🔔 创建评论通知:")
         print("   角色: \(character.name)")
         print("   AI回复: \(content.prefix(30))...")
@@ -170,7 +197,10 @@ class NotificationService: ObservableObject {
         print("   用户评论是否为空: \(userComment?.isEmpty ?? true)")
         print("   原帖: \(originalPost?.prefix(42) ?? "无")...")
         print("   原帖作者: \(originalPostAuthor ?? "无")")
+        #endif
+        #if DEBUG
         print("   原帖内容长度: \(originalPost?.count ?? 0)")
+        #endif
         
         let notification = NotificationModel(
             type: .comment,
@@ -192,6 +222,7 @@ class NotificationService: ObservableObject {
             originalPostAuthor: originalPostAuthor
         )
         
+        #if DEBUG
         print("🔔 NotificationModel创建完成:")
         print("   NotificationModel.userComment: '\(notification.userComment ?? "nil")'")
         print("   NotificationModel.originalPost: '\(notification.originalPost ?? "nil")'")
@@ -200,6 +231,7 @@ class NotificationService: ObservableObject {
         print("   NotificationModel.previewContent长度: \(notification.previewContent?.count ?? 0)")
         print("   是否应该显示用户上下文: \((notification.userComment != nil && !notification.userComment!.isEmpty) || (notification.userPost != nil && !notification.userPost!.isEmpty))")
         print("   是否应该显示原帖信息: \(notification.originalPost != nil && !notification.originalPost!.isEmpty && notification.userComment != nil)")
+        #endif
         
         addNotification(notification)
     }
@@ -256,7 +288,9 @@ class NotificationService: ObservableObject {
     ) {
         // 获取角色信息
         guard let character = getCharacterInfo(characterId: characterId) else {
+            #if DEBUG
             print("❌ 无法获取角色\(characterId)的详细信息")
+            #endif
             return
         }
         
@@ -281,7 +315,9 @@ class NotificationService: ObservableObject {
         )
         
         addNotification(notification)
+        #if DEBUG
         print("📨 创建虚拟角色点赞通知: \(characterName)点赞了您的内容")
+        #endif
     }
     
     private func createFollowNotification(characterId: String) {
@@ -321,10 +357,12 @@ class NotificationService: ObservableObject {
         postTitle: String,
         userComment: String? = nil  // 🔧 添加用户评论参数
     ) {
+        #if DEBUG
         print("💬 NotificationService: 直接创建评论通知")
         print("   角色: \(characterName)")
         print("   评论内容: \(commentContent.prefix(30))...")
         print("   用户评论: \(userComment?.prefix(30) ?? "无")...")  // 🔧 添加调试信息
+        #endif
         
         let notification = NotificationModel(
             type: .comment,
@@ -363,8 +401,10 @@ class NotificationService: ObservableObject {
         postId: String,
         postTitle: String
     ) {
+        #if DEBUG
         print("👤 NotificationService: 创建用户评论通知")
         print("   评论内容: \(commentContent.prefix(30))...")
+        #endif
         
         let notification = NotificationModel(
             type: .comment,
@@ -398,9 +438,11 @@ class NotificationService: ObservableObject {
         postId: String,
         postTitle: String
     ) {
+        #if DEBUG
         print("👤 NotificationService: 创建用户回复通知")
         print("   回复内容: \(replyContent.prefix(30))...")
         print("   回复对象: \(replyToUsername)")
+        #endif
         
         let notification = NotificationModel(
             type: .comment,
@@ -461,21 +503,29 @@ class NotificationService: ObservableObject {
     
     // 添加更多系统通知的方法
     func generateAdditionalSystemNotifications() {
+        #if DEBUG
         print("🔍 NotificationService: 开始生成系统通知，当前通知数量: \(notifications.count)")
+        #endif
         
         // 检查是否已经有欢迎通知了
         let hasWelcomeNotification = notifications.contains { $0.type == .system && $0.username == "虫遇小助手" }
+        #if DEBUG
         print("🔍 NotificationService: 是否已有欢迎通知: \(hasWelcomeNotification)")
+        #endif
         
         if !hasWelcomeNotification {
             // 生成欢迎通知
             generateSystemWelcomeNotification()
+            #if DEBUG
             print("✅ NotificationService: 已生成欢迎通知")
+            #endif
         }
         
         // 检查是否已经有新手指南通知了
         let hasGuideNotification = notifications.contains { $0.type == .system && $0.username == "功能指南" }
+        #if DEBUG
         print("🔍 NotificationService: 是否已有新手指南通知: \(hasGuideNotification)")
+        #endif
         
         if !hasGuideNotification {
             // 生成功能指南通知
@@ -535,7 +585,9 @@ class NotificationService: ObservableObject {
             )
             
             addNotification(guideNotification)
+            #if DEBUG
             print("✅ NotificationService: 已生成功能指南通知")
+            #endif
         }
         
         // 检查是否已经有版本更新通知了
@@ -582,11 +634,13 @@ class NotificationService: ObservableObject {
     
     private func addNotification(_ notification: NotificationModel) {
         // 添加调试输出
+        #if DEBUG
         print("🔔 NotificationService: 添加新通知")
         print("   类型: \(notification.type)")
         print("   发送者: \(notification.character?.name ?? "用户")")
         print("   内容: \(notification.content?.prefix(30) ?? "无内容")...")
         print("   当前通知总数: \(notifications.count + 1)")
+        #endif
         
         DispatchQueue.main.async {
             // 检查是否存在重复通知 - 使用更严格的去重条件
@@ -611,10 +665,12 @@ class NotificationService: ObservableObject {
             }
             
             if isDuplicate {
+                #if DEBUG
                 print("⚠️ NotificationService: 发现重复通知，跳过添加")
                 print("   角色: \(notification.character?.name ?? "未知")")
                 print("   类型: \(notification.type)")
                 print("   帖子ID: \(notification.relatedPostId ?? "未知")")
+                #endif
                 return
             }
             
@@ -622,7 +678,9 @@ class NotificationService: ObservableObject {
             self.objectWillChange.send()
             self.notifications.insert(notification, at: 0)
             self.saveNotifications()
+            #if DEBUG
             print("✅ NotificationService: 通知已添加，当前总数: \(self.notifications.count)")
+            #endif
         }
     }
     
@@ -630,7 +688,9 @@ class NotificationService: ObservableObject {
         // 从CharacterSystem获取角色信息
         let allCharacters = CharacterSystem.shared.getAllCharacters()
         guard let character = allCharacters.first(where: { $0.id == characterId }) else {
+            #if DEBUG
             print("⚠️ NotificationService: 未找到角色ID: \(characterId)")
+            #endif
             return nil
         }
         
@@ -705,12 +765,16 @@ class NotificationService: ObservableObject {
             if !isDuplicate {
                 cleanedNotifications.append(notification)
             } else {
+                #if DEBUG
                 print("🗑️ 清理重复通知: \(notification.character?.name ?? "未知") - \(notification.type)")
+                #endif
             }
         }
         
         if cleanedNotifications.count != notifications.count {
+            #if DEBUG
             print("🧹 清理完成，从 \(notifications.count) 条通知减少到 \(cleanedNotifications.count) 条")
+            #endif
             notifications = cleanedNotifications
             saveNotifications()
         }
@@ -722,7 +786,7 @@ class NotificationService: ObservableObject {
             let data = try encoder.encode(notifications)
             UserDefaults.standard.set(data, forKey: notificationsKey)
         } catch {
-            print("❌ 保存通知失败: \(error)")
+            Logger.error("保存通知失败", error: error, log: Logger.data)
         }
     }
     
@@ -736,12 +800,14 @@ class NotificationService: ObservableObject {
         do {
             let decoder = JSONDecoder()
             notifications = try decoder.decode([NotificationModel].self, from: data)
+            #if DEBUG
             print("📂 加载了 \(notifications.count) 条本地通知")
+            #endif
             
             // 加载后清理重复通知
             cleanupDuplicateNotifications()
         } catch {
-            print("❌ 加载通知失败: \(error)")
+            Logger.error("加载通知失败", error: error, log: Logger.data)
             notifications = []
         }
     }
@@ -752,7 +818,7 @@ class NotificationService: ObservableObject {
             let data = try encoder.encode(characterInteractionCount)
             UserDefaults.standard.set(data, forKey: interactionCountKey)
         } catch {
-            print("❌ 保存互动统计失败: \(error)")
+            Logger.error("保存互动统计失败", error: error, log: Logger.data)
         }
     }
     
@@ -763,7 +829,7 @@ class NotificationService: ObservableObject {
             let decoder = JSONDecoder()
             characterInteractionCount = try decoder.decode([String: Int].self, from: data)
         } catch {
-            print("❌ 加载互动统计失败: \(error)")
+            Logger.error("加载互动统计失败", error: error, log: Logger.data)
         }
     }
     
@@ -777,7 +843,9 @@ class NotificationService: ObservableObject {
             self.objectWillChange.send()
             self.notifications.removeAll()
             self.saveNotifications()
+            #if DEBUG
             print("🗑️ 已清空所有通知")
+            #endif
         }
     }
     
@@ -812,21 +880,27 @@ class NotificationService: ObservableObject {
     // 清除所有通知并重新生成系统通知
     func resetSystemNotifications() {
         DispatchQueue.main.async {
+            #if DEBUG
             print("🔄 重置系统通知...")
+            #endif
             // 清除所有通知
             self.notifications.removeAll()
             self.saveNotifications()
             
             // 重新生成系统通知
             self.generateAdditionalSystemNotifications()
+            #if DEBUG
             print("✅ 系统通知重置完成，当前通知数量: \(self.notifications.count)")
+            #endif
         }
     }
     
     // 修复系统通知内容
     func fixSystemNotificationContent() {
         DispatchQueue.main.async {
+            #if DEBUG
             print("🔧 修复系统通知内容...")
+            #endif
             
             // 找到虫遇小助手通知并修复内容
             for i in 0..<self.notifications.count {
@@ -858,7 +932,9 @@ class NotificationService: ObservableObject {
                     )
                     
                     self.notifications[i] = correctedNotification
+                    #if DEBUG
                     print("✅ 已修复虫遇小助手通知内容")
+                    #endif
                     break
                 }
             }
@@ -922,13 +998,17 @@ class NotificationService: ObservableObject {
                     )
                     
                     self.notifications[i] = correctedGuide
+                    #if DEBUG
                     print("✅ 已修复功能指南通知内容")
+                    #endif
                     break
                 }
             }
             
             self.saveNotifications()
+            #if DEBUG
             print("✅ 系统通知内容修复完成")
+            #endif
         }
     }
 }

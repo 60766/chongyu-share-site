@@ -34,6 +34,11 @@ struct SettingsView: View {
         ]
     }
     
+    /// 安全获取图标颜色，如果不存在则返回默认颜色
+    private func getIconColor(_ key: String) -> Color {
+        return iconColors[key] ?? primaryAccentColor
+    }
+    
     // 在初始化时加载当前的角色分配模式
     init() {
         let mode = CharacterRotationSystem.shared.currentMode
@@ -60,7 +65,7 @@ struct SettingsView: View {
                             icon: "person.circle.fill",
                             title: "账号管理",
                             subtitle: AppAccountManager.shared.accountDisplayIdentifier,
-                            iconColor: iconColors["account"]!
+                            iconColor: getIconColor("account")
                         )
                     }
                     
@@ -69,7 +74,7 @@ struct SettingsView: View {
                         SettingRowView(
                             icon: "lock.shield.fill",
                             title: "隐私设置",
-                            iconColor: iconColors["security"]!
+                            iconColor: getIconColor("security")
                         )
                     }
                 } header: {
@@ -105,7 +110,7 @@ struct SettingsView: View {
                             icon: "arrow.triangle.2.circlepath",
                             title: "角色分配模式",
                             subtitle: characterDistributionMode,
-                            iconColor: iconColors["character"]!
+                            iconColor: getIconColor("character")
                         )
                     }
                     
@@ -115,7 +120,7 @@ struct SettingsView: View {
                             icon: "hand.thumbsdown",
                             title: "已屏蔽角色",
                             subtitle: getBlockedCharactersCount().map { "\($0)个已屏蔽" },
-                            iconColor: iconColors["character"]!,
+                            iconColor: getIconColor("character"),
                             subtitleColor: .orange
                         )
                     }
@@ -126,7 +131,7 @@ struct SettingsView: View {
                             icon: "rectangle.stack.badge.minus",
                             title: "屏蔽角色分类",
                             subtitle: getBlockedCategoriesCount().map { "已屏蔽\($0)个分类" },
-                            iconColor: iconColors["character"]!,
+                            iconColor: getIconColor("character"),
                             subtitleColor: .orange
                         )
                     }
@@ -137,7 +142,7 @@ struct SettingsView: View {
                             icon: "slider.horizontal.3",
                             title: "内容偏好",
                             subtitle: getReducedContentTypesCount().map { "\($0)种已调整" },
-                            iconColor: iconColors["character"]!,
+                            iconColor: getIconColor("character"),
                             subtitleColor: .orange
                         )
                     }
@@ -164,7 +169,7 @@ struct SettingsView: View {
                             icon: "checkmark.shield.fill",
                             title: "审核使用说明",
                             subtitle: "提供测试账号与操作路径",
-                            iconColor: iconColors["security"]!
+                            iconColor: getIconColor("security")
                         )
                     }
                     

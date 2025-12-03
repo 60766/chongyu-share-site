@@ -198,7 +198,9 @@ struct DebugMenu: View {
                 Section(header: Text("其他调试工具")) {
                     Button {
                         // 打印当前环境信息
+                        #if DEBUG
                         print("当前环境: \(Bundle.main.infoDictionary?["CFBundleIdentifier"] as? String ?? "未知")")
+                        #endif
                     } label: {
                         HStack {
                             Image(systemName: "info.circle")

@@ -86,7 +86,9 @@ struct TouchDebugView: View {
                                 let location = value.location
                                 if touchPoints.isEmpty || touchPoints.last != location {
                                     touchPoints.append(location)
+                                    #if DEBUG
                                     print("触摸点: x=\(location.x), y=\(location.y)")
+                                    #endif
                                 }
                             }
                     )

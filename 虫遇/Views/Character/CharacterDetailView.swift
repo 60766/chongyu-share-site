@@ -390,7 +390,9 @@ struct CharacterDetailView: View {
                         while tabBarManager.hideStateStack.count > 1 {
                             tabBarManager.popHideState()
                         }
+                        #if DEBUG
                         print("从ChatView返回CharacterDetailView：TabBar状态栈已调整，当前深度: \(tabBarManager.hideStateStack.count)")
+                        #endif
                     }
                     */
                 }
@@ -526,7 +528,9 @@ struct CharacterDetailView: View {
                     }
                 }
                 .onAppear {
+                    #if DEBUG
                     print("🔍 CharacterDetailView - 显示角色头像: \(character.avatarUrl), 名称: \(character.name)")
+                    #endif
                     // 确保在onAppear时加载自定义头像
                     loadCustomAvatar()
                 }
@@ -1145,11 +1149,16 @@ struct CharacterDetailView: View {
         systemBackButtonWindow = nil
         
         // 计算顶部安全区域高度，为返回按钮定位
-        let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
-        let topPadding = windowScene?.windows.first?.safeAreaInsets.top ?? 44
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+            #if DEBUG
+            Logger.warning("无法获取windowScene，跳过创建返回按钮窗口", log: Logger.ui)
+            #endif
+            return
+        }
+        let topPadding = windowScene.windows.first?.safeAreaInsets.top ?? 44
         
         // 创建新窗口 - 只覆盖左上角返回按钮区域
-        let buttonWindow = UIWindow(windowScene: windowScene!)
+        let buttonWindow = UIWindow(windowScene: windowScene)
         buttonWindow.frame = CGRect(
             x: 0,
             y: 0,
@@ -1160,8 +1169,8 @@ struct CharacterDetailView: View {
         
         // 设置窗口属性
         buttonWindow.isUserInteractionEnabled = true
-        buttonWindow.windowLevel = .alert + 1 // 使用更高层级确保可见
-        buttonWindow.backgroundColor = .clear
+        buttonWindow.windowLevel = UIWindow.Level(rawValue: UIWindow.Level.alert.rawValue + 1) // 使用更高层级确保可见
+        buttonWindow.backgroundColor = UIColor.clear
         
         // 设置根视图控制器
         let viewController = UIViewController()
@@ -1205,7 +1214,9 @@ struct CharacterDetailView: View {
         buttonWindow.makeKeyAndVisible()
             
             // 输出调试信息
+            #if DEBUG
             print("✓ 返回按钮已创建并显示")
+            #endif
         }
     }
     
@@ -1246,12 +1257,17 @@ struct CharacterDetailView: View {
         systemShareButtonWindow = nil
         
         // 计算顶部安全区域高度，为分享按钮定位
-        let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
-        let topPadding = windowScene?.windows.first?.safeAreaInsets.top ?? 44
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+            #if DEBUG
+            Logger.warning("无法获取windowScene，跳过创建分享按钮窗口", log: Logger.ui)
+            #endif
+            return
+        }
+        let topPadding = windowScene.windows.first?.safeAreaInsets.top ?? 44
         let screenWidth = UIScreen.main.bounds.width
         
         // 创建新窗口 - 只覆盖右上角分享按钮区域
-        let buttonWindow = UIWindow(windowScene: windowScene!)
+        let buttonWindow = UIWindow(windowScene: windowScene)
         buttonWindow.frame = CGRect(
             x: screenWidth - 55,
             y: 0,
@@ -1262,8 +1278,8 @@ struct CharacterDetailView: View {
         
         // 设置窗口属性
         buttonWindow.isUserInteractionEnabled = true
-        buttonWindow.windowLevel = .alert + 1 // 使用更高层级确保可见
-        buttonWindow.backgroundColor = .clear
+        buttonWindow.windowLevel = UIWindow.Level(rawValue: UIWindow.Level.alert.rawValue + 1) // 使用更高层级确保可见
+        buttonWindow.backgroundColor = UIColor.clear
         
         // 设置根视图控制器
         let viewController = UIViewController()
@@ -1305,53 +1321,71 @@ struct CharacterDetailView: View {
         buttonWindow.makeKeyAndVisible()
             
             // 输出调试信息
+            #if DEBUG
             print("✓ 分享按钮已创建并显示")
+            #endif
         }
     }
     
     // 立即隐藏系统按钮，用于页面切换时
     private func hideSystemButtons() {
+        #if DEBUG
         print("🔄 CharacterDetailView - 隐藏系统按钮")
+        #endif
         
         // 使用异步调用确保UI更新
         DispatchQueue.main.async {
         // 隐藏返回按钮
             if let window = self.systemBackButtonWindow {
             window.isHidden = true
+                #if DEBUG
                 print("✓ 返回按钮已隐藏")
+                #endif
         }
         
         // 隐藏分享按钮
             if let window = self.systemShareButtonWindow {
             window.isHidden = true
+                #if DEBUG
                 print("✓ 分享按钮已隐藏")
+                #endif
             }
         }
     }
     
     // 显示系统按钮，用于页面返回时
     private func showSystemButtons() {
+        #if DEBUG
         print("🔄 CharacterDetailView - 显示系统按钮")
+        #endif
         
         // 使用异步调用确保UI更新
         DispatchQueue.main.async {
         // 显示返回按钮
             if let window = self.systemBackButtonWindow, !window.isHidden {
+                #if DEBUG
                 print("✓ 返回按钮窗口已存在，设置为可见")
+                #endif
             window.isHidden = false
         } else {
                 // 如果按钮不存在或被隐藏，重新创建
+                #if DEBUG
                 print("⚠️ 返回按钮窗口不存在或被隐藏，重新创建")
+                #endif
                 self.addSystemLevelBackButton()
         }
         
         // 显示分享按钮
             if let window = self.systemShareButtonWindow, !window.isHidden {
+                #if DEBUG
                 print("✓ 分享按钮窗口已存在，设置为可见")
+                #endif
             window.isHidden = false
         } else {
                 // 如果按钮不存在或被隐藏，重新创建
+                #if DEBUG
                 print("⚠️ 分享按钮窗口不存在或被隐藏，重新创建")
+                #endif
                 self.addSystemLevelShareButton()
             }
         }
@@ -1388,7 +1422,9 @@ struct CharacterDetailView: View {
      * 初始化模拟数据和UI状态
      */
     private func loadData() {
+        #if DEBUG
         print("🔍 CharacterDetailView - 加载数据")
+        #endif
         
         // 初始化角色主题
         determineCharacterTheme()
@@ -1414,7 +1450,9 @@ struct CharacterDetailView: View {
      * 在onAppear时调用，加载模拟数据和初始化UI状态
      */
     private func initializeView() {
+        #if DEBUG
         print("🔍 CharacterDetailView - 初始化视图: \(character.name)")
+        #endif
         
         // 调用loadData方法
         loadData()
@@ -1432,7 +1470,9 @@ struct CharacterDetailView: View {
             let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fileURL = documentsDirectory.appendingPathComponent("\(characterId).jpg")
             
+            #if DEBUG
             print("📁 CharacterDetailView - 尝试加载自定义头像: \(fileURL.path)")
+            #endif
             
             // 检查文件是否存在
             if FileManager.default.fileExists(atPath: fileURL.path) {
@@ -1440,13 +1480,19 @@ struct CharacterDetailView: View {
                    let image = UIImage(data: imageData) {
                     DispatchQueue.main.async {
                         self.customImage = image
+                        #if DEBUG
                         print("✅ CharacterDetailView - 成功加载自定义头像: \(fileURL.path)")
+                        #endif
                     }
         } else {
+                    #if DEBUG
                     print("❌ CharacterDetailView - 无法加载自定义头像数据: \(fileURL.path)")
+                    #endif
                 }
             } else {
+                #if DEBUG
                 print("⚠️ CharacterDetailView - 自定义头像文件不存在: \(fileURL.path)")
+                #endif
                 // 尝试从备份目录加载
                 let backupURL = URL(fileURLWithPath: "/Users/lishilong/IOS开发/虫遇/虫遇/backup_images/default_avatar.png")
                 if FileManager.default.fileExists(atPath: backupURL.path),
@@ -1454,7 +1500,9 @@ struct CharacterDetailView: View {
                    let image = UIImage(data: imageData) {
                     DispatchQueue.main.async {
                         self.customImage = image
+                        #if DEBUG
                         print("✅ CharacterDetailView - 从备份目录加载头像成功")
+                        #endif
                     }
                 }
             }
@@ -1811,7 +1859,9 @@ private struct DetailTabBarView: View {
         HStack(spacing: 0) {
             ForEach(0..<tabOptions.count, id: \.self) { index in
                 Button {
+                    #if DEBUG
                     print("标签选择: \(tabOptions[index])")
+                    #endif
                     withAnimation {
                         selectedTabIndex = index
                     }
@@ -2323,7 +2373,9 @@ private struct ShareCardView: View {
             let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fileURL = documentsDirectory.appendingPathComponent("\(characterId).jpg")
             
+            #if DEBUG
             print("📁 CharacterDetailView - 尝试加载自定义头像: \(fileURL.path)")
+            #endif
             
             // 检查文件是否存在
             if FileManager.default.fileExists(atPath: fileURL.path) {
@@ -2331,13 +2383,19 @@ private struct ShareCardView: View {
                    let image = UIImage(data: imageData) {
                     DispatchQueue.main.async {
                         self.customImage = image
+                        #if DEBUG
                         print("✅ CharacterDetailView - 成功加载自定义头像: \(fileURL.path)")
+                        #endif
                     }
                 } else {
+                    #if DEBUG
                     print("❌ CharacterDetailView - 无法加载自定义头像数据: \(fileURL.path)")
+                    #endif
                 }
             } else {
+                #if DEBUG
                 print("⚠️ CharacterDetailView - 自定义头像文件不存在: \(fileURL.path)")
+                #endif
                 // 尝试从备份目录加载
                 let backupURL = URL(fileURLWithPath: "/Users/lishilong/IOS开发/虫遇/虫遇/backup_images/default_avatar.png")
                 if FileManager.default.fileExists(atPath: backupURL.path),
@@ -2345,7 +2403,9 @@ private struct ShareCardView: View {
                    let image = UIImage(data: imageData) {
                     DispatchQueue.main.async {
                         self.customImage = image
+                        #if DEBUG
                         print("✅ CharacterDetailView - 从备份目录加载头像成功")
+                        #endif
                     }
                 }
             }

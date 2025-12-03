@@ -127,7 +127,9 @@ struct DebugTestView: View {
                         .frame(width: 80, height: 80)
                         .clipShape(Circle())
                         .onAppear {
+                            #if DEBUG
                             print("🔍 SwiftUI Image 尝试加载 assistant_avatar")
+                            #endif
                         }
                     Text("SwiftUI Image 测试")
                         .font(.caption)
@@ -199,10 +201,14 @@ struct DebugTestView: View {
             Button("清理缓存并重新加载") {
                 // 清理图片缓存
                 if NSClassFromString("ImageCache") != nil {
+                    #if DEBUG
                     print("🔄 尝试清理图片缓存")
+                    #endif
                 }
                 // 强制重新渲染
+                #if DEBUG
                 print("🔄 强制重新渲染视图")
+                #endif
             }
             .padding()
             .background(Color.blue.opacity(0.1))

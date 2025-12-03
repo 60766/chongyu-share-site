@@ -17,8 +17,10 @@ class APIConfigManager {
     var cancellables = Set<AnyCancellable>()
     
     private init() {
+        #if DEBUG
         print("🔧 APIConfigManager 初始化 - 安全模式")
         print("ℹ️ 所有AI功能通过后端代理，无需客户端API密钥")
+        #endif
     }
     
     // MARK: - 配置信息 (只读)
@@ -45,7 +47,9 @@ class APIConfigManager {
      */
     @available(*, deprecated, message: "API调用已迁移到后端代理，无需客户端密钥")
     var hasValidAPIKey: Bool {
+        #if DEBUG
         print("⚠️ hasValidAPIKey已弃用 - 使用后端代理，无需客户端验证")
+        #endif
         return true // 返回true保持兼容性
     }
     
@@ -54,7 +58,9 @@ class APIConfigManager {
      */
     @available(*, deprecated, message: "端点切换已迁移到后端服务器")
     func switchEndpoint() {
+        #if DEBUG
         print("⚠️ switchEndpoint已弃用 - 端点管理已迁移到后端")
+        #endif
     }
     
     /**
@@ -62,7 +68,9 @@ class APIConfigManager {
      */
     @available(*, deprecated, message: "API端点管理已迁移到后端")
     var deepSeekEndpoint: String {
+        #if DEBUG
         print("⚠️ deepSeekEndpoint已弃用 - 请使用后端代理")
+        #endif
         return "DEPRECATED_USE_BACKEND_PROXY"
     }
     
@@ -71,7 +79,9 @@ class APIConfigManager {
      */
     @available(*, deprecated, message: "模型管理已迁移到后端")
     var modelName: String {
+        #if DEBUG
         print("⚠️ modelName已弃用 - 请使用后端代理")
+        #endif
         return "DEPRECATED_USE_BACKEND_PROXY"
     }
     
@@ -80,7 +90,9 @@ class APIConfigManager {
      */
     @available(*, deprecated, message: "API密钥管理已迁移到后端")
     var apiKey: String? {
+        #if DEBUG
         print("⚠️ apiKey已弃用 - API密钥现在安全存储在后端")
+        #endif
         return nil
     }
     
@@ -91,18 +103,24 @@ class APIConfigManager {
      */
     func validateConfiguration() -> Bool {
         guard let backendURL = backendBaseURL, !backendURL.isEmpty else {
+            #if DEBUG
             print("❌ 后端服务地址未配置")
+            #endif
             return false
         }
         
         guard URL(string: backendURL) != nil else {
+            #if DEBUG
             print("❌ 后端服务地址格式无效: \(backendURL)")
+            #endif
             return false
         }
         
+        #if DEBUG
         print("✅ 应用配置验证通过")
         print("🌐 后端服务地址: \(backendURL)")
         print("📱 应用Bundle ID: \(appBundleID)")
+        #endif
         return true
     }
     
@@ -120,7 +138,9 @@ class APIConfigManager {
         
         let status = SecItemDelete(deleteQuery as CFDictionary)
         if status == errSecSuccess {
+            #if DEBUG
             print("🧹 已清理旧的API密钥数据")
+            #endif
         }
     }
 } 

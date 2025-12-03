@@ -43,7 +43,9 @@ public struct TimeSpaceEffectCenterTestView: View {
                         let centerY = geometry.frame(in: .global).midY + geometry.size.height * 0.25 - 290
                         blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
                         
+                        #if DEBUG
                         print("测试页面黑洞中心位置设置为: x=\(centerX), y=\(centerY)")
+                        #endif
                     }
             }
             
@@ -118,7 +120,9 @@ public struct TimeSpaceEffectCenterTestView: View {
                     // 使用黑洞中心位置作为特效中心
                     TimeSpaceEffectView(isActive: $showEffect, centerPosition: centerPosition) {
                         // 特效完成后的回调
+                        #if DEBUG
                         print("特效完成")
+                        #endif
                     }
                     .edgesIgnoringSafeArea(.all)
                     // 确保特效位于最顶层且全屏显示
@@ -128,7 +132,9 @@ public struct TimeSpaceEffectCenterTestView: View {
                     // 默认使用屏幕中心
                     TimeSpaceEffectView(isActive: $showEffect) {
                         // 特效完成后的回调
+                        #if DEBUG
                         print("特效完成")
+                        #endif
                     }
                     .edgesIgnoringSafeArea(.all)
                     // 确保特效位于最顶层且全屏显示

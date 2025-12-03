@@ -6,47 +6,21 @@ struct WalletBalance: Decodable {
 }
 
 /**
- * SSL证书验证Delegate
- * 处理SSL证书链不完整的问题
+ * WalletService
+ * 使用系统默认的SSL证书验证（安全且符合App Store要求）
  */
-class SSLValidationDelegate: NSObject, URLSessionDelegate {
-    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust else {
-            completionHandler(.performDefaultHandling, nil)
-            return
-        }
-        
-        guard let serverTrust = challenge.protectionSpace.serverTrust else {
-            completionHandler(.performDefaultHandling, nil)
-            return
-        }
-        
-        // 检查是否是我们的API域名
-        let host = challenge.protectionSpace.host
-        if host == "api.chongyuai.com" || host.hasSuffix(".chongyuai.com") {
-            // 直接信任证书（快速解决方案）
-            let credential = URLCredential(trust: serverTrust)
-            completionHandler(.useCredential, credential)
-        } else {
-            // 对于其他域名，使用默认验证
-            completionHandler(.performDefaultHandling, nil)
-        }
-    }
-}
-
 final class WalletService {
     static let shared = WalletService()
     private init() {}
     
-    // 共享的SSL验证delegate
-    private let sslDelegate = SSLValidationDelegate()
-    
-    // 创建带有SSL处理的URLSession
+    // 创建URLSession（使用系统默认的SSL验证）
+    // 系统会自动验证Let's Encrypt证书，无需自定义验证
     private func createSession() -> URLSession {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 300
         config.timeoutIntervalForResource = 300
-        return URLSession(configuration: config, delegate: sslDelegate, delegateQueue: nil)
+        // 不使用delegate，让系统使用默认的SSL验证
+        return URLSession(configuration: config)
     }
     
     // BaseURL: 统一从 BackendURLProvider 解析

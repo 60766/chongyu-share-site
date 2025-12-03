@@ -1063,7 +1063,7 @@ class ResonanceContentGenerator {
         
         // 30%的几率添加互动元素
         if Double.random(in: 0...1) > 0.7 {
-            return baseComment + socialMediaElements.randomElement()!
+            return baseComment + (socialMediaElements.randomElement() ?? "")
         }
         
         return baseComment
@@ -1126,7 +1126,8 @@ class ResonanceContentGenerator {
      */
     func generateVirtualCharacterReply(to userComment: Comment, on post: Post) -> Comment {
         let figure = post.author
-        if cognitionModel.getFigureTraits(for: figure) == nil {
+        guard let figureTraits = cognitionModel.getFigureTraits(for: figure) else {
+            // 如果无法获取特征，返回默认回复（不影响生成逻辑）
             return Comment(
                 id: UUID().uuidString,
                 author: figure,
@@ -1137,9 +1138,6 @@ class ResonanceContentGenerator {
                 isUserComment: false
             )
         }
-        
-        // 获取人物特征并转换为ResonanceCharacterTraits
-        let figureTraits = cognitionModel.getFigureTraits(for: figure)!
         // 将未使用的变量改为下划线，避免编译警告
         let _ = convertToResonanceCharacterTraits(figureTraits: figureTraits, name: figure)
         

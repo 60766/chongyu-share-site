@@ -69,7 +69,9 @@ public struct InputDebugView: View {
                         .stroke(textFieldIsFocused ? Color.blue : Color.gray, lineWidth: 1)
                 )
                 .onChange(of: textFieldIsFocused) { oldValue, newValue in
+                    #if DEBUG
                     print("TextField焦点状态: \(newValue)")
+                    #endif
                 }
                 .padding(.horizontal)
         }
@@ -87,7 +89,9 @@ public struct InputDebugView: View {
                         .stroke(textEditorIsFocused ? Color.blue : Color.gray, lineWidth: 1)
                 )
                 .onChange(of: textEditorIsFocused) { oldValue, newValue in
+                    #if DEBUG
                     print("TextEditor焦点状态: \(newValue)")
+                    #endif
                 }
                 .padding(.horizontal)
         }
@@ -104,7 +108,9 @@ public struct InputDebugView: View {
             )
             .padding(.horizontal)
             .onChange(of: debugState.simpleInputFocused) { oldValue, newValue in
+                #if DEBUG
                 print("SimpleInput焦点状态: \(newValue)")
+                #endif
             }
         }
     }

@@ -65,17 +65,23 @@ class BatchedUserDefaults {
     }
     
     @objc private func applicationDidEnterBackground() {
+        #if DEBUG
         print("📱 应用进入后台，立即执行批量写入")
+        #endif
         flushWrites()
     }
     
     @objc private func applicationWillTerminate() {
+        #if DEBUG
         print("📱 应用即将终止，立即执行批量写入")
+        #endif
         flushWrites()
     }
     
     @objc private func applicationDidReceiveMemoryWarning() {
+        #if DEBUG
         print("🧠 内存警告，立即执行批量写入")
+        #endif
         flushWrites()
     }
     
@@ -93,7 +99,9 @@ class BatchedUserDefaults {
                 // 立即写入关键数据
                 UserDefaults.standard.set(value, forKey: key)
                 self.emergencyWrites += 1
+                #if DEBUG
                 print("🚨 紧急写入: \(key)")
+                #endif
                 return
             }
             
@@ -107,7 +115,9 @@ class BatchedUserDefaults {
             
             // 检查是否需要立即写入（批量大小限制）
             if self.pendingWrites.count >= self.maxBatchSize {
+                #if DEBUG
                 print("📦 达到批量大小限制，立即写入")
+                #endif
                 self.flushWrites()
                 return
             }
@@ -174,7 +184,9 @@ class BatchedUserDefaults {
             let duration = CFAbsoluteTimeGetCurrent() - startTime
             self.batchCount += 1
             
+            #if DEBUG
             print("💾 批量写入完成: \(writeCount)个键值对, 耗时: \(String(format: "%.1f", duration * 1000))ms")
+            #endif
         }
     }
     
@@ -304,6 +316,7 @@ class BatchedUserDefaults {
      */
     func printPerformanceStats() {
         let stats = getPerformanceStats()
+        #if DEBUG
         print("""
         📊 BatchedUserDefaults 性能统计:
         - 批量写入次数: \(stats.batches)
@@ -312,6 +325,7 @@ class BatchedUserDefaults {
         - 待写入项目: \(stats.pending)
         - 节省写入次数: \(max(0, stats.individual - stats.batches))
         """)
+        #endif
     }
     
     /**
@@ -347,7 +361,9 @@ extension BatchedUserDefaults {
                 }
             }
             
+            #if DEBUG
             print("📦 批量设置 \(values.count) 个键值对")
+            #endif
             
             // 如果批量大小超限，立即写入
             if self.pendingWrites.count >= self.maxBatchSize {

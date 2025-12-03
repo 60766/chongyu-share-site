@@ -28,7 +28,9 @@ struct MultiChatTextView: UIViewRepresentable {
         textView.text = text
         
         // 添加调试日志
+        #if DEBUG
         print("MultiChatTextView - makeUIView 创建")
+        #endif
         
         return textView
     }
@@ -56,10 +58,14 @@ struct MultiChatTextView: UIViewRepresentable {
         // 处理焦点状态变化，添加防抖动逻辑
         DispatchQueue.main.async {
         if isFocused != uiView.isFirstResponder {
+            #if DEBUG
             print("MultiChatTextView - updateUIView - isFocused: \(isFocused), isFirstResponder: \(uiView.isFirstResponder)")
+            #endif
             
                 if isFocused && !uiView.isFirstResponder {
+                    #if DEBUG
                     print("MultiChatTextView - 尝试激活键盘")
+                    #endif
                     uiView.becomeFirstResponder()
                     
                     // 当获得焦点时，立即计算高度
@@ -139,7 +145,9 @@ struct MultiChatTextView: UIViewRepresentable {
         }
         
         func textViewDidBeginEditing(_ textView: UITextView) {
+            #if DEBUG
             print("MultiChatTextView - textViewDidBeginEditing")
+            #endif
             
             // 立即更新焦点状态，不使用动画，让系统键盘自然处理动画
             DispatchQueue.main.async {
@@ -150,7 +158,9 @@ struct MultiChatTextView: UIViewRepresentable {
         }
         
         func textViewDidEndEditing(_ textView: UITextView) {
+            #if DEBUG
             print("MultiChatTextView - textViewDidEndEditing")
+            #endif
             // 立即更新焦点状态，不使用动画，让系统键盘自然处理动画
             DispatchQueue.main.async {
                     self.parent.isFocused = false

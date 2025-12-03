@@ -179,7 +179,9 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
      * 从postId中提取可能的作者名称
      */
     private func extractAuthorFromPostId(postId: String) {
+        #if DEBUG
         print("从postId中提取作者: \(postId)")
+        #endif
         
         // 尝试从postId中提取作者名称
         // 检查是否包含已知角色名称
@@ -191,7 +193,9 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         }
         
         // 如果没有找到匹配的作者，设置一个默认作者
+        #if DEBUG
         print("未从postId中找到匹配的作者，设置默认作者")
+        #endif
         if let defaultAuthor = allCharacters.first(where: { $0.name == "岳飞" }) {
             self.postAuthor = defaultAuthor
         } else if !allCharacters.isEmpty {
@@ -203,18 +207,26 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
      * 根据作者名称设置帖子作者
      */
     private func setPostAuthorByName(authorName: String) {
+        #if DEBUG
         print("根据名称设置帖子作者: \(authorName)")
+        #endif
         
         // 在allCharacters中查找匹配的角色
         if let author = allCharacters.first(where: { $0.name == authorName }) {
             self.postAuthor = author
+            #if DEBUG
             print("找到匹配的作者: \(author.name), 是否在关系字典中: \(characterRelations[author.name] != nil)")
+            #endif
             
             if let relations = characterRelations[author.name] {
+                #if DEBUG
                 print("作者 \(author.name) 的相关角色: \(relations.joined(separator: ", "))")
+                #endif
             }
         } else {
+            #if DEBUG
             print("警告：未找到名为 \(authorName) 的角色，尝试设置默认作者")
+            #endif
             if let defaultAuthor = allCharacters.first(where: { $0.name == "岳飞" }) {
                 self.postAuthor = defaultAuthor
             } else if !allCharacters.isEmpty {
@@ -253,7 +265,9 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         // 重要修改：始终使用已设置的postAuthor，而不是从postId或内容推断
         // 如果postAuthor为nil，则尝试设置一个默认作者
         if postAuthor == nil {
+            #if DEBUG
             print("警告：postAuthor为nil，尝试设置默认作者")
+            #endif
             if let defaultAuthor = allCharacters.first(where: { $0.name == "夏洛克·福尔摩斯" }) {
                 self.postAuthor = defaultAuthor
             } else if !allCharacters.isEmpty {
@@ -262,9 +276,13 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         }
         
         // 调试日志
+        #if DEBUG
         print("加载帖子数据 - 作者: \(postAuthor?.name ?? "未知"), 是否在关系字典中: \(postAuthor != nil && characterRelations[postAuthor!.name] != nil)")
+        #endif
         if let author = postAuthor, let relations = characterRelations[author.name] {
+            #if DEBUG
             print("作者 \(author.name) 的相关角色: \(relations.joined(separator: ", "))")
+            #endif
         }
     }
     
@@ -272,19 +290,25 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
      * 加载所有可用角色
      */
     private func loadAllCharacters() {
+        #if DEBUG
         print("开始加载角色数据...")
+        #endif
         
         // 首先尝试直接加载characters.json
         if let url = Bundle.main.url(forResource: "characters", withExtension: "json"),
            let data = try? Data(contentsOf: url) {
+            #if DEBUG
             print("characters.json文件大小: \(data.count) 字节")
+            #endif
             
             // 尝试使用JSONSerialization先验证JSON格式
             do {
                 let json = try JSONSerialization.jsonObject(with: data, options: [])
                 if let dict = json as? [String: Any],
                    let characters = dict["characters"] as? [[String: Any]] {
+                    #if DEBUG
                     print("characters.json包含\(characters.count)个角色 (JSONSerialization验证)")
+                    #endif
                     
                     // JSON格式正确，现在尝试解码
                 let decoder = JSONDecoder()
@@ -295,19 +319,27 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
                     do {
                 let characterData = try decoder.decode(CharacterLibrary.self, from: data)
                 allCharacters = characterData.characters
+                        #if DEBUG
                         print("成功从characters.json加载了\(allCharacters.count)个角色")
+                        #endif
                         
                         // 打印一些角色名称作为验证
                         if !allCharacters.isEmpty {
                             let sampleNames = allCharacters.prefix(5).map { $0.name }.joined(separator: ", ")
+                            #if DEBUG
                             print("加载的角色示例: \(sampleNames)")
+                            #endif
                             return
                         }
                     } catch let decoderError {
+                        #if DEBUG
                         print("使用JSONDecoder解析characters.json失败: \(decoderError)")
+                        #endif
                         
                         // 尝试逐个解析角色
+                        #if DEBUG
                         print("尝试手动解析角色...")
+                        #endif
                         var parsedCharacters: [AppCharacter] = []
                         
                         for (index, characterDict) in characters.enumerated() {
@@ -316,20 +348,26 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
                                 let character = try decoder.decode(AppCharacter.self, from: characterData)
                                 parsedCharacters.append(character)
             } catch {
+                                #if DEBUG
                                 print("解析第\(index)个角色失败: \(error)")
+                                #endif
                                 // 继续解析下一个角色
                             }
                         }
                         
                         if !parsedCharacters.isEmpty {
+                            #if DEBUG
                             print("成功手动解析了\(parsedCharacters.count)个角色")
+                            #endif
                             allCharacters = parsedCharacters
                             return
                         }
                     }
                 }
             } catch let jsonError {
+                #if DEBUG
                 print("使用JSONSerialization验证characters.json失败: \(jsonError)")
+                #endif
             }
         }
         
@@ -338,35 +376,49 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         var charactersLoaded = false
         
         for fileName in backupFileNames {
+            #if DEBUG
             print("尝试加载备用文件\(fileName).json...")
+            #endif
             if let url = Bundle.main.url(forResource: fileName, withExtension: "json"),
                let data = try? Data(contentsOf: url) {
+                #if DEBUG
                 print("\(fileName).json文件大小: \(data.count) 字节")
+                #endif
                 
                 do {
                     // 解析JSON数据
                     let decoder = JSONDecoder()
                     let characterData = try decoder.decode(CharacterLibrary.self, from: data)
                     allCharacters = characterData.characters
+                    #if DEBUG
                     print("成功从\(fileName).json加载了\(allCharacters.count)个角色")
+                    #endif
                     
                     // 打印一些角色名称作为验证
                     let sampleNames = allCharacters.prefix(5).map { $0.name }.joined(separator: ", ")
+                    #if DEBUG
                     print("加载的角色示例: \(sampleNames)")
+                    #endif
                     
                     charactersLoaded = true
                     break
                 } catch let error {
+                    #if DEBUG
                     print("解析\(fileName).json失败: \(error)")
+                    #endif
             }
         } else {
+                #if DEBUG
                 print("无法找到或读取\(fileName).json文件")
+                #endif
             }
         }
         
         // 如果所有文件都加载失败，使用硬编码的备用数据
         if !charactersLoaded {
+            #if DEBUG
             print("所有角色JSON文件加载失败，使用硬编码的备用数据")
+            #endif
             loadFallbackCharacters()
         }
     }
@@ -499,25 +551,35 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
      * 加载历史人物数据
      */
     func loadHistoricalFigures() {
+        #if DEBUG
         print("开始加载历史人物数据...")
+        #endif
         isLoading = true
         
         // 加载所有角色
         loadAllCharacters()
         
         // 检查是否成功加载了角色
+        #if DEBUG
         print("从JSON加载的角色数量: \(allCharacters.count)")
+        #endif
         
         // 如果角色数量太少，可能是加载失败，尝试使用备用数据
         if allCharacters.count < 50 {
+            #if DEBUG
             print("警告：从JSON加载的角色数量太少，可能是加载失败，尝试使用备用数据")
+            #endif
             loadFallbackCharacters()
+            #if DEBUG
             print("使用备用数据后的角色数量: \(allCharacters.count)")
+            #endif
         }
         
         // 加载帖子数据
         loadPostData()
+        #if DEBUG
         print("当前帖子作者: \(postAuthor?.name ?? "未设置")")
+        #endif
         
         // 获取所有可用的历史人物
         var allFigures: [CommentHistoricalFigure] = []
@@ -536,32 +598,46 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         buildRelevantFiguresNetwork()
         
         // 添加调试日志
+        #if DEBUG
         print("历史人物数据加载完成 - 总角色数: \(availableFigures.count), 相关角色数: \(relevantFigures.count)")
+        #endif
         
         // 检查是否成功加载了角色
         if availableFigures.isEmpty {
+            #if DEBUG
             print("警告：没有加载到任何角色！")
+            #endif
         } else {
             // 打印一些角色名称作为验证
             let sampleNames = availableFigures.prefix(10).map { $0.name }.joined(separator: ", ")
+            #if DEBUG
             print("加载的角色示例: \(sampleNames)")
+            #endif
         }
         
         // 检查特定角色是否在可用列表中
         for name in ["庄子", "老子", "孟子", "爱因斯坦", "莎士比亚"] {
             if let figure = availableFigures.first(where: { $0.name == name }) {
                 let isMarkedAsRelevant = relevantFigures.contains(figure.id)
+                #if DEBUG
                 print("角色 \(name) 是否在可用角色列表中: \(true), 是否被标记为相关: \(isMarkedAsRelevant)")
+                #endif
             } else {
+                #if DEBUG
                 print("角色 \(name) 是否在可用角色列表中: \(false)")
+                #endif
             }
         }
         
         // 输出当前作者信息
         if let author = postAuthor {
+            #if DEBUG
             print("当前作者: \(author.name), 是否在关系字典中: \(characterRelations[author.name] != nil)")
+            #endif
         } else {
+            #if DEBUG
             print("当前没有作者")
+            #endif
         }
         
         isLoading = false
@@ -620,19 +696,27 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         relevantFigures.removeAll()
         
         guard let currentAuthor = postAuthor else { 
+            #if DEBUG
             print("构建关系网络失败：没有当前作者")
+            #endif
             return 
         }
         
+        #if DEBUG
         print("开始构建关系网络 - 当前作者: \(currentAuthor.name)")
+        #endif
         
         // 检查当前作者是否在characterRelations中有定义
         let authorHasDefinedRelations = characterRelations[currentAuthor.name] != nil
         
         if let authorRelations = characterRelations[currentAuthor.name] {
+            #if DEBUG
             print("作者 \(currentAuthor.name) 在 characterRelations 中定义的关系: \(authorRelations.joined(separator: ", "))")
+            #endif
         } else {
+            #if DEBUG
             print("警告：作者 \(currentAuthor.name) 在 characterRelations 中没有定义关系")
+            #endif
         }
         
         // 已标记相关的角色ID集合
@@ -641,7 +725,9 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         
         // 1. 首先标记与当前作者直接相关的角色
         let directlyRelatedCharacters = getDirectlyRelatedCharacters(for: currentAuthor)
+        #if DEBUG
         print("直接相关角色数量: \(directlyRelatedCharacters.count)")
+        #endif
         
         for character in directlyRelatedCharacters {
             if let figure = availableFigures.first(where: { $0.name == character.name }) {
@@ -649,14 +735,18 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
                 processedRelevantIds.insert(figure.id)
                 processedNames.insert(character.name)
             } else {
+                #if DEBUG
                 print("警告：未找到相关角色 \(character.name) 对应的 CommentHistoricalFigure")
+                #endif
             }
         }
         
         // 2. 标记与当前作者有二级关系的角色(相关角色的相关角色)
         if authorHasDefinedRelations {
             let secondaryRelations = getSecondaryRelatedCharacters(for: currentAuthor)
+            #if DEBUG
             print("二级相关角色数量: \(secondaryRelations.count)")
+            #endif
             
             for character in secondaryRelations {
                 if let figure = availableFigures.first(where: { $0.name == character.name }) {
@@ -679,7 +769,9 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
                         relevantFigures.insert(figure.id)
                         processedRelevantIds.insert(figure.id)
                         processedNames.insert(character.name)
+                        #if DEBUG
                         print("通过双向关系检查，标记 \(character.name) 为相关角色")
+                        #endif
                     }
                 }
             }
@@ -694,21 +786,31 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
                     relevantFigures.insert(figure.id)
                     processedRelevantIds.insert(figure.id)
                     processedNames.insert(characterName)
+                    #if DEBUG
                     print("通过反向关系检查，标记 \(characterName) 为相关角色")
+                    #endif
                 }
             }
         }
         
+        #if DEBUG
         print("关系网络构建完成 - 相关角色数量: \(relevantFigures.count)")
+        #endif
+        #if DEBUG
         print("已处理的相关角色名称: \(processedNames.joined(separator: ", "))")
+        #endif
         
         // 检查特定角色是否被标记为相关
         for name in ["庄子", "老子", "孟子", "康熙皇帝"] {
             if let figure = availableFigures.first(where: { $0.name == name }) {
                 let isMarkedAsRelevant = relevantFigures.contains(figure.id)
+                #if DEBUG
                 print("角色 \(name) 是否被标记为相关: \(isMarkedAsRelevant)")
+                #endif
             } else {
+                #if DEBUG
                 print("警告：未找到角色 \(name) 对应的 CommentHistoricalFigure")
+                #endif
             }
         }
     }
@@ -719,12 +821,16 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
     private func checkRelationship(between character1: AppCharacter, and character2: AppCharacter) -> Bool {
         // 检查characterRelations字典中的关系
         if let relatedNames = characterRelations[character1.name], relatedNames.contains(character2.name) {
+            #if DEBUG
             print("发现关系: \(character1.name) 与 \(character2.name) 相关")
+            #endif
             return true
         }
         
         if let relatedNames = characterRelations[character2.name], relatedNames.contains(character1.name) {
+            #if DEBUG
             print("发现关系: \(character2.name) 与 \(character1.name) 相关")
+            #endif
             return true
         }
         
@@ -777,25 +883,33 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         
         // 从字典中获取相关角色
         if let relatedNames = characterRelations[character.name] {
+            #if DEBUG
             print("获取 \(character.name) 的相关角色 - 在字典中定义的关系: \(relatedNames.joined(separator: ", "))")
+            #endif
             
             // 查找这些名称对应的角色对象
             for name in relatedNames {
                 if let relatedCharacter = allCharacters.first(where: { $0.name == name }) {
                     relatedCharacters.append(relatedCharacter)
                 } else {
+                    #if DEBUG
                     print("警告：未找到相关角色 \(name) 对应的 AppCharacter")
+                    #endif
                 }
             }
         } else {
+            #if DEBUG
             print("警告：\(character.name) 在 characterRelations 中没有定义关系")
+            #endif
             
             // 如果在字典中没有找到关系，尝试查找反向关系
             for (characterName, relatedNames) in characterRelations {
                 if relatedNames.contains(character.name) {
                     if let relatedCharacter = allCharacters.first(where: { $0.name == characterName }) {
                         relatedCharacters.append(relatedCharacter)
+                        #if DEBUG
                         print("通过反向关系找到相关角色: \(characterName)")
+                        #endif
                     }
                 }
             }
@@ -803,7 +917,9 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
             // 删除根据类型和时代查找的逻辑
         }
         
+        #if DEBUG
         print("获取到 \(character.name) 的相关角色数量: \(relatedCharacters.count)")
+        #endif
         return relatedCharacters
     }
     
@@ -834,12 +950,16 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
     func filteredFigures(searchText: String, category: String) -> [CommentHistoricalFigure] {
         // 确保有可用角色
         if availableFigures.isEmpty {
+            #if DEBUG
             print("警告：availableFigures为空，无法进行筛选")
+            #endif
             return []
         }
         
         // 打印当前可用角色总数，帮助调试
+        #if DEBUG
         print("当前可用角色总数: \(availableFigures.count)")
+        #endif
         
         var filtered = availableFigures
         
@@ -877,7 +997,9 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         } else {
             // "全部"分类 - 显示所有角色
             filtered = availableFigures
+            #if DEBUG
             print("选择了'全部'分类，显示所有\(filtered.count)个角色")
+            #endif
         }
         
         // 然后应用搜索过滤 - 只根据角色名字搜索
@@ -885,18 +1007,24 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
             filtered = filtered.filter { figure in
                 figure.name.localizedCaseInsensitiveContains(searchText)
             }
+            #if DEBUG
             print("应用搜索过滤后的角色数量: \(filtered.count)，搜索文本: \(searchText)")
+            #endif
         }
         
         // 打印过滤后的角色数量
+        #if DEBUG
         print("过滤后的角色数量: \(filtered.count)，类别: \(category)，搜索文本: \(searchText)")
+        #endif
         
         // 将相关角色排在最前面
         let relevantFigures = filtered.filter { isRelevant($0) }
         let nonRelevantFigures = filtered.filter { !isRelevant($0) }
         
         let result = relevantFigures + nonRelevantFigures
+        #if DEBUG
         print("最终返回角色数量: \(result.count)")
+        #endif
         
         return result
     }
@@ -967,7 +1095,9 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         if figureCount > 0 {
             // 有相关角色时，选择相关角色
             selectedFigures = Array(relevantFigures.prefix(figureCount))
+            #if DEBUG
             print("一键选择：选择了\(figureCount)个相关角色")
+            #endif
         } else {
             // 如果没有相关人物，尝试选择关注的角色
             let followedFigures = getFollowedFigures()
@@ -975,14 +1105,18 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
                 // 有关注角色时，选择关注角色
                 let followCount = min(3, followedFigures.count)
                 selectedFigures = Array(followedFigures.prefix(followCount))
+                #if DEBUG
                 print("一键选择：选择了\(followCount)个关注角色")
+                #endif
             } else {
                 // 如果没有关注角色，使用帖子ID作为随机种子，确保相同帖子推荐相同角色，不同帖子推荐不同角色
                 var generator = SeededRandomNumberGenerator(seed: postId.hashValue)
                 let shuffledFigures = availableFigures.shuffled(using: &generator)
                 let randomCount = min(3, shuffledFigures.count)
                 selectedFigures = Array(shuffledFigures.prefix(randomCount))
+                #if DEBUG
                 print("一键选择：随机选择了\(randomCount)个角色，使用帖子ID作为种子")
+                #endif
             }
         }
     }
@@ -1022,20 +1156,28 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
      */
     func inviteSelectedFigures() {
         guard !selectedFigures.isEmpty else {
+            #if DEBUG
             print("⚠️ 没有选择历史人物，取消邀请")
+            #endif
             return
         }
         
         // 保存最近使用的历史人物
         saveRecentlyUsedFigures()
         
+        #if DEBUG
         print("🚀 邀请历史人物参与讨论: \(selectedFigures.map { $0.name }.joined(separator: ", "))")
+        #endif
         
         // 获取帖子内容并检查是否有效
         if let content = getPostContent() {
+            #if DEBUG
             print("📝 帖子内容长度: \(content.count)字")
+            #endif
         } else {
+            #if DEBUG
             print("⚠️ 无法获取帖子内容")
+            #endif
             return
         }
         
@@ -1053,15 +1195,21 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         }
         
         if !invalidCharacterNames.isEmpty {
+            #if DEBUG
             print("⚠️ 无法获取以下人物的有效ID: \(invalidCharacterNames.joined(separator: ", "))")
+            #endif
         }
         
         guard !characterIDs.isEmpty else {
+            #if DEBUG
             print("⚠️ 没有有效的角色ID，取消邀请")
+            #endif
             return
         }
         
+        #if DEBUG
         print("📣 邀请角色: \(characterIDs.joined(separator: ", ")), 帖子ID: \(postId)")
+        #endif
         
         // 获取帖子作者信息
         let postAuthorName = postAuthor?.name
@@ -1115,7 +1263,9 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
      */
     func showPreview(for figure: CommentHistoricalFigure) {
         // 这里应该显示历史人物的详细信息预览
+        #if DEBUG
         print("显示历史人物预览: \(figure.name)")
+        #endif
     }
     
     /**
@@ -1269,7 +1419,9 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
      * @return 角色ID
      */
     func getCharacterIdByName(_ name: String) -> String? {
+        #if DEBUG
         print("🔍 HistoricalFigureSelectionViewModel.getCharacterIdByName - 名称: \(name)")
+        #endif
         
         // 中文名称到ID的映射
         let nameToId: [String: String] = [
@@ -1286,19 +1438,25 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         
         // 检查是否有直接映射
         if let id = nameToId[name] {
+            #if DEBUG
             print("✅ 找到名称映射: \(name) -> \(id)")
+            #endif
             return id
         }
         
         // 如果没有直接映射，尝试在角色列表中查找
         for character in allCharacters {
             if character.name == name {
+                #if DEBUG
                 print("✅ 在角色列表中找到: \(name) -> \(character.id)")
+                #endif
                 return character.id
             }
         }
         
+        #if DEBUG
         print("⚠️ 未找到名称映射: \(name)")
+        #endif
         return nil
     }
 } 

@@ -57,7 +57,9 @@ enum BackendURLProvider {
                 #endif
                 return url
             } else {
+                #if DEBUG
                 print("⚠️ [BackendURLProvider] 忽略非HTTPS地址: \(url.absoluteString)")
+                #endif
             }
             #endif
         }

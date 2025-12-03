@@ -133,14 +133,18 @@ extension UIHostingController {
         
         // 注册新的子类，以当前类为父类
         guard let subclass = objc_allocateClassPair(currentClass, newClassName, 0) else {
+            #if DEBUG
             print("无法创建子类来控制Home Indicator")
+            #endif
             return
         }
         
         // 添加方法实现
         let selector = #selector(getter: UIViewController.prefersHomeIndicatorAutoHidden)
         guard let method = class_getInstanceMethod(UIViewController.self, selector) else {
+            #if DEBUG
             print("无法获取prefersHomeIndicatorAutoHidden方法")
+            #endif
             objc_disposeClassPair(subclass)
             return
         }
@@ -153,7 +157,9 @@ extension UIHostingController {
         
         // 添加方法到子类
         if !class_addMethod(subclass, selector, implementation, method_getTypeEncoding(method)) {
+            #if DEBUG
             print("无法添加prefersHomeIndicatorAutoHidden方法")
+            #endif
             objc_disposeClassPair(subclass)
             return
         }
@@ -231,14 +237,18 @@ extension View {
         
         // 注册新的子类，以当前类为父类
         guard let subclass = objc_allocateClassPair(currentClass, newClassName, 0) else {
+            #if DEBUG
             print("无法创建子类来控制Home Indicator")
+            #endif
             return
         }
         
         // 添加方法实现
         let selector = #selector(getter: UIViewController.prefersHomeIndicatorAutoHidden)
         guard let method = class_getInstanceMethod(UIViewController.self, selector) else {
+            #if DEBUG
             print("无法获取prefersHomeIndicatorAutoHidden方法")
+            #endif
             objc_disposeClassPair(subclass)
             return
         }
@@ -251,7 +261,9 @@ extension View {
         
         // 添加方法到子类
         if !class_addMethod(subclass, selector, implementation, method_getTypeEncoding(method)) {
+            #if DEBUG
             print("无法添加prefersHomeIndicatorAutoHidden方法")
+            #endif
             objc_disposeClassPair(subclass)
             return
         }

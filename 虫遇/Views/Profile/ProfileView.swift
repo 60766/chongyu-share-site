@@ -225,7 +225,9 @@ class UserProfileManager: ObservableObject {
         
         // 检查是否升级
         if userLevel > oldLevel {
+            #if DEBUG
             print("🎉 恭喜升级！从 Lv.\(oldLevel) 升级到 Lv.\(userLevel)")
+            #endif
             
             // 显示升级通知
             levelUpMessage = "恭喜升级！从 \(getLevelTitle(level: oldLevel)) 升级到 \(levelTitle)"
@@ -282,14 +284,30 @@ class UserProfileManager: ObservableObject {
         let currentLevelExp = userExperience - range.current
         let maxLevelExp = range.next - range.current
         
+        #if DEBUG
         print("🔍 UserProfileManager调试信息:")
+        #endif
+        #if DEBUG
         print("  - 当前等级: \(userLevel)")
+        #endif
+        #if DEBUG
         print("  - 总经验值: \(userExperience)")
+        #endif
+        #if DEBUG
         print("  - 计算得到的总经验值: \(totalExp)")
+        #endif
+        #if DEBUG
         print("  - 等级范围: \(range.current) - \(range.next)")
+        #endif
+        #if DEBUG
         print("  - 当前等级内经验值: \(currentLevelExp)/\(maxLevelExp)")
+        #endif
+        #if DEBUG
         print("  - 升级进度: \(getLevelUpProgress()) (\(Int(getLevelUpProgress() * 100))%)")
+        #endif
+        #if DEBUG
         print("  - 统计数据: \(stats)")
+        #endif
     }
     
     /// 获取等级颜色
@@ -324,18 +342,30 @@ class UserProfileManager: ObservableObject {
     private func saveImageToDocuments(_ image: UIImage, name: String) {
         guard let data = image.jpegData(compressionQuality: 0.8) else { return }
         
-        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            #if DEBUG
+            Logger.error("无法获取文档目录", log: Logger.data)
+            #endif
+            return
+        }
         let fileURL = documentsDirectory.appendingPathComponent("\(name).jpg")
         
         do {
             try data.write(to: fileURL)
         } catch {
+            #if DEBUG
             print("保存头像失败: \(error)")
+            #endif
         }
     }
     
     private func loadImageFromDocuments(name: String) -> UIImage? {
-        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            #if DEBUG
+            Logger.error("无法获取文档目录", log: Logger.data)
+            #endif
+            return nil
+        }
         let fileURL = documentsDirectory.appendingPathComponent("\(name).jpg")
         
         if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
@@ -350,7 +380,12 @@ class UserProfileManager: ObservableObject {
         }
         
         // 从本地文件加载
-        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            #if DEBUG
+            Logger.error("无法获取文档目录", log: Logger.data)
+            #endif
+            return nil
+        }
         let fileURL = documentsDirectory.appendingPathComponent("\(avatarImageName).jpg")
         
         if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
@@ -442,7 +477,9 @@ struct TouchableView: UIViewRepresentable {
         }
         
         @objc func handleTap() {
+            #if DEBUG
             print("UIKit按钮被点击")
+            #endif
             let generator = UIImpactFeedbackGenerator(style: .heavy)
             generator.impactOccurred()
             action()
@@ -648,33 +685,51 @@ struct ProfileView: View {
             .photosPicker(isPresented: $showingImagePicker, selection: $selectedImage, matching: .images)
             .onChange(of: selectedImage) { _, newItem in
                 Task {
+                    #if DEBUG
                     print("📱 ProfileView: 图片选择器触发，开始加载图片")
+                    #endif
                     if let newItem = newItem {
                         do {
                             if let data = try await newItem.loadTransferable(type: Data.self),
                                let image = UIImage(data: data) {
+                                #if DEBUG
                                 print("📱 ProfileView: 图片加载成功，尺寸: \(image.size)")
+                                #endif
+                                #if DEBUG
                                 print("📱 ProfileView: 图片CGImage存在: \(image.cgImage != nil)")
+                                #endif
                                 
                                 // 确保图片有效
                                 guard image.size.width > 0 && image.size.height > 0 && image.cgImage != nil else {
+                                    #if DEBUG
                                     print("❌ ProfileView: 图片无效，尺寸为0或没有CGImage")
+                                    #endif
                                     return
                                 }
                                 
                                 await MainActor.run {
                                     selectedUIImage = image
+                                    #if DEBUG
                                     print("📱 ProfileView: 已设置 selectedUIImage，尺寸: \(image.size)")
+                                    #endif
+                                    #if DEBUG
                                     print("📱 ProfileView: selectedUIImage 已设置，sheet 将自动显示")
+                                    #endif
                                 }
                             } else {
+                                #if DEBUG
                                 print("❌ ProfileView: 无法创建 UIImage")
+                                #endif
                             }
                         } catch {
+                            #if DEBUG
                             print("❌ ProfileView: 图片加载失败: \(error)")
+                            #endif
                         }
                     } else {
+                        #if DEBUG
                         print("❌ ProfileView: 没有选择图片")
+                        #endif
                     }
                 }
             }
@@ -703,7 +758,9 @@ struct ProfileView: View {
                     }
                 )
                 .onAppear {
+                    #if DEBUG
                     print("📱 Sheet: 显示头像编辑器，图片尺寸: \(identifiableImage.image.size)")
+                    #endif
                 }
             }
     }
@@ -1207,7 +1264,9 @@ struct ProfileView: View {
                     ForEach(userPosts) { post in
                         UserPostRowView(post: post)
                             .onAppear {
+                                #if DEBUG
                                 print("🔵 [myPostsDetailView] UserPostRowView 出现，内容: \(post.content.prefix(20))...")
+                                #endif
                             }
                     }
                 }
@@ -2055,12 +2114,16 @@ struct ProfileView: View {
             notification.type == .like
         }
         
+        #if DEBUG
         print("🔍 ProfileView: 发现 \(likeNotifications.count) 个点赞通知")
+        #endif
         
         // 统计总点赞数
         let totalLikes = likeNotifications.count
         
+        #if DEBUG
         print("❤️ ProfileView: 计算得到的总点赞数: \(totalLikes)")
+        #endif
         
         return totalLikes
     }
@@ -2144,7 +2207,9 @@ struct ProfileView: View {
                 }
             }
         } catch {
+            #if DEBUG
             print("获取消息失败: \(error)")
+            #endif
         }
         
         // 如果没有任何数据，返回0天
@@ -2351,7 +2416,9 @@ struct ProfileView: View {
                 .foregroundColor(.primary)
                 .lineLimit(3)
                 .onTapGesture {
+                    #if DEBUG
                     print("🔵 [UserPostRowView private] Text 被点击")
+                    #endif
                 }
             
             HStack {
@@ -2378,7 +2445,9 @@ struct ProfileView: View {
             }
             .contextMenu {
                 Button {
+                    #if DEBUG
                     print("🔵 [UserPostRowView private] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
+                    #endif
                     UIPasteboard.general.string = post.content.trimmingCharacters(in: .whitespacesAndNewlines)
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
@@ -2392,10 +2461,14 @@ struct ProfileView: View {
                 }
             }
             .onTapGesture {
+                #if DEBUG
                 print("🔵 [UserPostRowView private] VStack 被点击")
+                #endif
             }
             .onLongPressGesture {
+                #if DEBUG
                 print("🔵 [UserPostRowView private] VStack 被长按")
+                #endif
             }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -2796,7 +2869,9 @@ struct ProfileView: View {
             let sessions = try modelContext.fetch(descriptor)
             return sessions.count
         } catch {
+            #if DEBUG
             print("获取聊天会话失败: \(error)")
+            #endif
             return 0
         }
     }
@@ -2842,7 +2917,9 @@ struct ProfileView: View {
             
             return deepMessages
         } catch {
+            #if DEBUG
             print("获取聊天消息失败: \(error)")
+            #endif
             return 0
         }
     }
@@ -2876,7 +2953,9 @@ struct ProfileView: View {
             
             return userCommentsCount + userMessagesCount + userPostsCount
         } catch {
+            #if DEBUG
             print("❌ 计算对话数失败: \(error)")
+            #endif
             return 0
         }
     }
@@ -2900,7 +2979,9 @@ struct ProfileView: View {
             let descriptor = FetchDescriptor<MultiPersonChatSession>()
             return try modelContext.fetchCount(descriptor)
         } catch {
+            #if DEBUG
             print("❌ 计算穿越次数失败: \(error)")
+            #endif
             return 0
         }
     }
@@ -2920,7 +3001,9 @@ struct ProfileView: View {
             let messages = try modelContext.fetch(descriptor)
             return messages.filter { $0.content.count > 100 }.count
         } catch {
+            #if DEBUG
             print("❌ 计算深度对话次数失败: \(error)")
+            #endif
             return 0
         }
     }
@@ -3295,7 +3378,9 @@ struct UserPostRowView: View {
                         .foregroundColor(.primary)
                 )
                 .onTapGesture {
+                    #if DEBUG
                     print("🔵 [UserPostRowView struct] 头像被点击")
+                    #endif
                 }
                 .allowsHitTesting(true)
             
@@ -3324,7 +3409,9 @@ struct UserPostRowView: View {
                     .contentShape(Rectangle())
                     .allowsHitTesting(true)
                     .onTapGesture {
+                        #if DEBUG
                         print("🔵 [UserPostRowView struct] Text 被点击")
+                        #endif
                     }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -3332,7 +3419,9 @@ struct UserPostRowView: View {
             .allowsHitTesting(true)
             .contextMenu {
                 Button {
+                    #if DEBUG
                     print("🔵 [UserPostRowView struct] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
+                    #endif
                     UIPasteboard.general.string = post.content.trimmingCharacters(in: .whitespacesAndNewlines)
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
@@ -3346,20 +3435,28 @@ struct UserPostRowView: View {
                 }
             }
             .onTapGesture {
+                #if DEBUG
                 print("🔵 [UserPostRowView struct] VStack 被点击")
+                #endif
             }
             .onLongPressGesture {
+                #if DEBUG
                 print("🔵 [UserPostRowView struct] VStack 被长按")
+                #endif
             }
             
             // 显示图片缩略图（如果有图片）
             if !post.images.isEmpty {
                 postThumbnailView
                     .onAppear {
+                        #if DEBUG
                         print("🖼️ 显示图片缩略图: 数量 = \(post.images.count), IDs = \(post.images)")
+                        #endif
                     }
                     .onTapGesture {
+                        #if DEBUG
                         print("🔵 [UserPostRowView struct] 图片缩略图被点击")
+                        #endif
                     }
                     .allowsHitTesting(true) // 图片可以点击，但不应该拦截文本区域
             }
@@ -3369,10 +3466,14 @@ struct UserPostRowView: View {
         .contentShape(Rectangle())
         .allowsHitTesting(true)
         .onTapGesture {
+            #if DEBUG
             print("🔵 [UserPostRowView struct] HStack 被点击")
+            #endif
         }
         .onLongPressGesture {
+            #if DEBUG
             print("🔵 [UserPostRowView struct] HStack 被长按")
+            #endif
         }
         .fullScreenCover(isPresented: $showImageViewer) {
             if !post.images.isEmpty {
@@ -4261,7 +4362,9 @@ struct UserPostCard: View {
         .contentShape(Rectangle())
         .contextMenu {
             Button {
+                #if DEBUG
                 print("🔵 [UserPostCard] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
+                #endif
                 UIPasteboard.general.string = post.content.trimmingCharacters(in: .whitespacesAndNewlines)
                 let generator = UINotificationFeedbackGenerator()
                 generator.notificationOccurred(.success)

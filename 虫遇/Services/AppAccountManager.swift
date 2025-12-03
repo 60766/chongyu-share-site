@@ -168,10 +168,14 @@ class AppAccountManager: ObservableObject {
             ]
             let deleteStatus = SecItemDelete(deleteQuery as CFDictionary)
             if deleteStatus != errSecSuccess && deleteStatus != errSecItemNotFound {
+                #if DEBUG
                 print("❌ 清除钥匙串失败: \(deleteStatus)")
+                #endif
                 success = false
             } else {
+                #if DEBUG
                 print("✅ 已清除钥匙串数据")
+                #endif
             }
             
             // 2. 清除账号创建时间
@@ -185,7 +189,9 @@ class AppAccountManager: ObservableObject {
                 )
                 
                 completion(success)
+                #if DEBUG
                 print("🔐 退出登录完成")
+                #endif
             }
         }
     }
@@ -217,7 +223,9 @@ class AppAccountManager: ObservableObject {
                 )
                 
                 completion(newToken)
+                #if DEBUG
                 print("🆕 新账号创建完成: \(String(newToken.prefix(8)))...")
+                #endif
             }
         }
     }
