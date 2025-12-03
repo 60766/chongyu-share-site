@@ -1,0 +1,102 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "com.lishilong.chongyu",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "6.00",
+      "familyShareable" : false,
+      "internalID" : "6449356781",
+      "localizations" : [
+        {
+          "description" : "适合轻度使用",
+          "displayName" : "1800虫洞币",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.lishilong.chongyu.100energy",
+      "referenceName" : "1800虫洞币",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "18.00",
+      "familyShareable" : false,
+      "internalID" : "6449356782",
+      "localizations" : [
+        {
+          "description" : "性价比之选",
+          "displayName" : "6000虫洞币",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.lishilong.chongyu.300energy",
+      "referenceName" : "6000虫洞币",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "38.00",
+      "familyShareable" : false,
+      "internalID" : "6449356783",
+      "localizations" : [
+        {
+          "description" : "深度体验",
+          "displayName" : "13800虫洞币",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.lishilong.chongyu.700energy",
+      "referenceName" : "13800虫洞币",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "68.00",
+      "familyShareable" : false,
+      "internalID" : "6449356784",
+      "localizations" : [
+        {
+          "description" : "无限探索",
+          "displayName" : "24000虫洞币",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.lishilong.chongyu.1400energy",
+      "referenceName" : "24000虫洞币",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

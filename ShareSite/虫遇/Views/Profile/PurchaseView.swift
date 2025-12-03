@@ -1,0 +1,845 @@
+import SwiftUI
+import StoreKit
+
+struct PurchaseView: View {
+    @StateObject private var storeKitManager = StoreKitManager.shared
+    @StateObject private var walletManager = WalletManager.shared
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var isPurchasing = false
+    @State private var purchaseError: String?
+    @State private var showError = false
+    @State private var showSuccess = false
+    @State private var lastPurchaseDetails: PurchaseSuccessDetails?
+    @State private var purchaseStatusPhase: PurchaseStatusPhase = .idle
+    @State private var purchaseStatusTask: Task<Void, Never>?
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                backgroundLayer
+                    .ignoresSafeArea(.all)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 28) {
+                        balanceCard
+                        purchaseOptionsSection
+                        infoSection
+                        Spacer(minLength: 40)
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.top, 24)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("取消") { dismiss() }
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                ToolbarItem(placement: .principal) {
+                    Text("虫洞币充值")
+                        .font(.headline)
+                        .foregroundColor(.white.opacity(0.9))
+                }
+            }
+        }
+        .task {
+            await storeKitManager.loadProducts()
+        }
+        .alert("充值失败", isPresented: $showError) {
+            Button("确定", role: .cancel) { }
+        } message: {
+            Text(purchaseError ?? "未知错误")
+        }
+        .alert("充值成功", isPresented: $showSuccess, presenting: lastPurchaseDetails) { _ in
+            Button("好的") {
+                dismiss()
+            }
+        } message: { details in
+            Text("""
+            已到账 \(details.coinAmount) 虫洞币
+            订单号：\(details.confirmation.transactionId)
+            时间：\(PurchaseView.successDateFormatter.string(from: details.confirmation.purchasedAt))
+            """)
+        }
+        .onDisappear {
+            purchaseStatusTask?.cancel()
+        }
+    }
+    
+    private var backgroundLayer: some View {
+            ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 28/255, green: 18/255, blue: 46/255),
+                    Color(red: 8/255, green: 6/255, blue: 18/255)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+                        RadialGradient(
+                            gradient: Gradient(colors: [
+                    Color(red: 128/255, green: 65/255, blue: 255/255).opacity(0.35),
+                    Color.clear
+                            ]),
+                center: .topTrailing,
+                startRadius: 60,
+                endRadius: 420
+                        )
+            .blendMode(.screen)
+            
+                Circle()
+                    .fill(Color(red: 90/255, green: 60/255, blue: 150/255).opacity(0.28))
+                .blur(radius: 150)
+                .frame(width: 360, height: 360)
+                .offset(x: -140, y: -280)
+            
+                Circle()
+                    .fill(Color(red: 60/255, green: 140/255, blue: 255/255).opacity(0.15))
+                    .blur(radius: 150)
+                    .frame(width: 320, height: 320)
+                    .offset(x: 150, y: 40)
+        }
+    }
+    
+    private var balanceCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+        HStack {
+                HStack(spacing: 12) {
+                    Image(systemName: "diamond.fill")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundColor(.cyan.opacity(0.8))
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("当前虫洞币")
+                            .font(.footnote.weight(.medium))
+                            .foregroundColor(.white.opacity(0.6))
+                    if walletManager.isLoading {
+                        ProgressView()
+                                .tint(.cyan)
+                            .scaleEffect(0.8)
+                    } else {
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(walletManager.formatBalance())
+                                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                                    .foregroundColor(.white)
+                                Text("枚")
+                                    .font(.headline)
+                            .foregroundColor(.white.opacity(0.8))
+                        }
+                    }
+                }
+            }
+            Spacer()
+            Button(action: {
+                    Task { await walletManager.refreshBalance() }
+            }) {
+                    Label("刷新", systemImage: "arrow.clockwise")
+                        .font(.footnote.weight(.semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(Color.white.opacity(0.08))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                )
+                        )
+            }
+            .disabled(walletManager.isLoading)
+            }
+        }
+        .padding(24)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 92/255, green: 72/255, blue: 210/255).opacity(0.6),
+                            Color(red: 52/255, green: 32/255, blue: 120/255).opacity(0.78)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+    
+    private var purchaseOptionsSection: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text("选择套餐")
+                    .font(.headline.weight(.semibold))
+                    .foregroundColor(.white.opacity(0.9))
+                Spacer()
+            }
+            
+            if purchaseStatusPhase != .idle {
+                purchaseStatusBanner
+            }
+            
+            // 如果有真实产品，显示真实充值选项
+            if !storeKitManager.products.isEmpty {
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 18),
+                    GridItem(.flexible(), spacing: 18)
+                ], spacing: 18) {
+                    ForEach(storeKitManager.products.sorted(by: { $0.price < $1.price }), id: \.id) { product in
+                        PurchaseOptionCard(
+                            product: product,
+                            isPurchasing: isPurchasing,
+                            onPurchase: {
+                                purchaseProduct(product)
+                            }
+                        )
+                    }
+                }
+            }
+            // 加载中状态
+            else {
+                loadingStateView
+            }
+        }
+    }
+    
+    private var loadingStateView: some View {
+        VStack(spacing: 18) {
+                    ProgressView()
+                        .tint(.cyan)
+            Text("正在连接 App Store...")
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.75))
+                    
+            VStack(alignment: .leading, spacing: 6) {
+                Label("请确认网络稳定", systemImage: "wifi")
+                Label("切换网络或稍后再试", systemImage: "clock")
+                Label("如有问题请联系客服", systemImage: "person.crop.circle.badge.questionmark")
+            }
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Button {
+                Task { await storeKitManager.loadProducts() }
+            } label: {
+                Text("重试")
+                    .font(.footnote.weight(.semibold))
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.1))
+                            .overlay(
+                                Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            )
+                    )
+            }
+        }
+        .padding(.vertical, 32)
+        .padding(.horizontal, 22)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 42/255, green: 24/255, blue: 70/255).opacity(0.85),
+                            Color(red: 18/255, green: 12/255, blue: 38/255).opacity(0.92)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+    }
+    
+    private var infoSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("购买须知")
+                .font(.headline.weight(.semibold))
+                .foregroundColor(.white.opacity(0.9))
+            
+            VStack(alignment: .leading, spacing: 12) {
+                InfoRow(icon: "seal.fill", text: "Apple 内购安全加密，支付后立即到账")
+                InfoRow(icon: "infinity", text: "虫洞币永久有效，支持设备间同步")
+                InfoRow(icon: "checkmark.shield", text: "支付异常时，可随时联系客服")
+                InfoRow(icon: "doc.text", text: "购买即表示同意《用户协议》与《隐私政策》")
+            }
+        }
+        .padding(24)
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 46/255, green: 28/255, blue: 80/255).opacity(0.88),
+                            Color(red: 30/255, green: 18/255, blue: 48/255).opacity(0.94)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
+            )
+    }
+    
+    private func purchaseProduct(_ product: Product) {
+        guard !isPurchasing else { return }
+        
+        isPurchasing = true
+        purchaseError = nil
+        purchaseStatusPhase = .requesting
+        startPurchaseStatusEscalation()
+        
+        Task {
+            do {
+                let confirmation = try await storeKitManager.purchase(product)
+                await walletManager.refreshBalance()
+                await MainActor.run {
+                    isPurchasing = false
+                    stopPurchaseStatusEscalation()
+                    lastPurchaseDetails = PurchaseSuccessDetails(
+                        confirmation: confirmation,
+                        coinAmount: coinQuantity(for: product.id)
+                    )
+                    showSuccess = true
+                }
+            } catch {
+                await MainActor.run {
+                    isPurchasing = false
+                    stopPurchaseStatusEscalation()
+                    purchaseError = friendlyErrorMessage(for: error)
+                    showError = true
+                }
+            }
+        }
+    }
+    
+    #if DEBUG
+    private func devTopup(productId: String) {
+        guard !isPurchasing else { return }
+        isPurchasing = true
+        Task {
+            do {
+                let txId = "dev-" + UUID().uuidString
+                _ = try await WalletService.shared.confirmPurchase(
+                    appAccountToken: AppAccountManager.shared.appAccountToken,
+                    productId: productId,
+                    transactionId: txId,
+                    receipt: nil
+                )
+                await walletManager.refreshBalance()
+                await MainActor.run { isPurchasing = false }
+            } catch {
+                await MainActor.run {
+                    isPurchasing = false
+                    purchaseError = error.localizedDescription
+                    showError = true
+                }
+            }
+        }
+    }
+    #endif
+    
+    private func friendlyErrorMessage(for error: Error) -> String {
+        if let skError = error as? StoreKitError {
+            switch skError {
+            case .userCancelled:
+                return "已取消支付，未扣款。"
+            case .networkError:
+                return "网络连接不稳定，请检查网络后重试。"
+            case .systemError:
+                return "Apple 支付系统暂时不可用，请稍后再试。"
+            default:
+                break
+            }
+        }
+        
+        let nsError = error as NSError
+        if nsError.domain == "iap" {
+            switch nsError.code {
+            case 1:
+                return "已取消支付，未扣款。"
+            case 2:
+                return "订单待处理，几分钟内会自动完成，请稍后刷新余额确认。"
+            default:
+                break
+            }
+        }
+        
+        if nsError.domain == "wallet.purchase" {
+            let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String
+            if let message, !message.isEmpty {
+                return message
+            }
+            return "支付已完成，但服务端记账失败，请稍后刷新余额或联系客服处理。"
+        }
+        
+        if nsError.domain == NSURLErrorDomain {
+            if nsError.code == NSURLErrorNotConnectedToInternet || nsError.code == NSURLErrorTimedOut {
+                return "网络请求超时，请确认网络后重试。"
+            }
+        }
+        
+        return "支付未完成，请稍后再试。如已扣款，可联系支持处理。"
+    }
+    
+    private func startPurchaseStatusEscalation() {
+        purchaseStatusTask?.cancel()
+        purchaseStatusTask = Task {
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            await MainActor.run {
+                if isPurchasing && purchaseStatusPhase == .requesting {
+                    purchaseStatusPhase = .waitingApple
+                }
+            }
+            try? await Task.sleep(nanoseconds: 12_000_000_000)
+            await MainActor.run {
+                if isPurchasing && purchaseStatusPhase == .waitingApple {
+                    purchaseStatusPhase = .takingLong
+                }
+            }
+        }
+    }
+    
+    private func stopPurchaseStatusEscalation() {
+        purchaseStatusTask?.cancel()
+        purchaseStatusTask = nil
+        purchaseStatusPhase = .idle
+    }
+    
+    private var purchaseStatusBanner: some View {
+        let config = purchaseStatusConfig
+        return HStack(alignment: .top, spacing: 12) {
+            if config.showSpinner {
+                ProgressView()
+                    .tint(.cyan)
+            } else {
+                Image(systemName: config.iconName)
+                    .foregroundStyle(.cyan)
+                    .font(.body)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(config.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(.white)
+                if let subtitle = config.subtitle {
+                    Text(subtitle)
+                        .font(.footnote)
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                if config.showRefreshButton {
+                    Button("刷新余额") {
+                        Task { await walletManager.refreshBalance() }
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule().fill(Color.white.opacity(0.08))
+                    )
+                }
+            }
+            Spacer()
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
+        )
+    }
+    
+    private var purchaseStatusConfig: (title: String, subtitle: String?, iconName: String, showSpinner: Bool, showRefreshButton: Bool) {
+        switch purchaseStatusPhase {
+        case .idle:
+            return ("", nil, "hourglass", false, false)
+        case .requesting:
+            return ("正在向 Apple 请求支付...", "请在系统弹窗中完成 Face ID/密码确认。", "hourglass", true, false)
+        case .waitingApple:
+            return ("正在等待 Apple 确认订单", "通常几秒内完成，如已支付请勿关闭此页面。", "hourglass.circle", true, false)
+        case .takingLong:
+            return ("订单确认时间较长", "如果已看到 Apple 扣款，可点击下方刷新余额确认。", "exclamationmark.triangle", false, true)
+        }
+    }
+    
+    private func coinQuantity(for productId: String) -> Int {
+        CoinProductInfo.info(for: productId)?.coinAmount ?? 0
+    }
+    
+    private static let successDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return formatter
+    }()
+}
+
+struct PurchaseOptionCard: View {
+    let product: Product
+    let isPurchasing: Bool
+    let onPurchase: () -> Void
+    
+    var body: some View {
+        let package = CoinProductInfo.info(for: product.id)
+        Button(action: onPurchase) {
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 12) {
+                    // 虫洞币数量（主标题）
+                    Text(package?.displayCoinText ?? "虫洞币")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                    
+                    // 价格
+                    Text(product.displayPrice)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.cyan)
+                    
+                    // 用途说明
+                    Text(package?.usageDescription ?? "用于解锁更多次元对话功能")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                    
+                    // 用途估算
+                    Text(package?.estimatedPostsText ?? "")
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.5))
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 120)
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(
+                            LinearGradient(
+                                colors: package?.isRecommended == true ? [
+                                    Color.orange.opacity(0.15),
+                                    Color.purple.opacity(0.08)
+                                ] : [
+                                    Color.white.opacity(0.12),
+                                    Color.white.opacity(0.05)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(
+                            LinearGradient(
+                                colors: package?.isRecommended == true ? [
+                                    Color.orange.opacity(0.5),
+                                    Color.purple.opacity(0.3)
+                                ] : [
+                                    Color.cyan.opacity(0.3),
+                                    Color.purple.opacity(0.2)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: package?.isRecommended == true ? 1.5 : 1
+                        )
+                )
+                .scaleEffect(isPurchasing ? 0.95 : 1.0)
+                .opacity(isPurchasing ? 0.6 : 1.0)
+                
+                if package?.isRecommended == true {
+                    Text("推荐")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.orange, Color.orange.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .offset(x: -10, y: -6)
+                        .shadow(color: .orange.opacity(0.5), radius: 4, x: 0, y: 2)
+                }
+            }
+        }
+        .disabled(isPurchasing)
+        .animation(.easeInOut(duration: 0.15), value: isPurchasing)
+    }
+}
+
+struct InfoRow: View {
+    let icon: String
+    let text: String
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(.cyan)
+                .frame(width: 16)
+            
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.8))
+            
+            Spacer()
+        }
+    }
+}
+
+struct FallbackPurchaseOptionCard: View {
+    let productId: String
+    let displayName: String
+    let price: String
+    let description: String
+    let isPurchasing: Bool
+    let onPurchase: () -> Void
+    
+    var body: some View {
+        let package = CoinProductInfo.info(for: productId)
+        Button(action: onPurchase) {
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 12) {
+                    // 虫洞币数量（主标题）
+                    Text(package?.displayCoinText ?? "虫洞币")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                    
+                    // 价格
+                    Text("¥\(price)")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.cyan)
+                    
+                    // 产品描述（用途说明）
+                    Text(package?.usageDescription ?? "用于解锁更多次元对话功能")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                    
+                    // API请求次数说明
+                    Text(package?.estimatedPostsText ?? "")
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.5))
+                        .multilineTextAlignment(.center)
+                    
+                    // 模拟器标识
+                    HStack(spacing: 4) {
+                        Image(systemName: "testtube.2")
+                            .font(.caption2)
+                            .foregroundColor(.yellow)
+                        Text("测试模式")
+                            .font(.caption2)
+                            .foregroundColor(.yellow)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 120)
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(
+                            LinearGradient(
+                                colors: package?.isRecommended == true ? [
+                                    Color.orange.opacity(0.12),
+                                    Color.purple.opacity(0.06)
+                                ] : [
+                                    Color.yellow.opacity(0.08),
+                                    Color.orange.opacity(0.05)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(
+                            LinearGradient(
+                                colors: package?.isRecommended == true ? [
+                                    Color.orange.opacity(0.4),
+                                    Color.purple.opacity(0.25)
+                                ] : [
+                                    Color.yellow.opacity(0.3),
+                                    Color.orange.opacity(0.2)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: package?.isRecommended == true ? 1.5 : 1
+                        )
+                )
+                .scaleEffect(isPurchasing ? 0.95 : 1.0)
+                .opacity(isPurchasing ? 0.6 : 1.0)
+                
+                // 推荐标签 - 放在右上角外部
+                if package?.isRecommended == true {
+                    Text("推荐")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.orange, Color.orange.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .offset(x: -10, y: -6)
+                        .shadow(color: .orange.opacity(0.5), radius: 4, x: 0, y: 2)
+                }
+            }
+        }
+        .disabled(isPurchasing)
+        .animation(.easeInOut(duration: 0.15), value: isPurchasing)
+    }
+}
+
+struct DevPurchaseButton: View {
+    let title: String
+    let productId: String
+    let isPurchasing: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                
+                Text(productName(for: productId))
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            )
+            .scaleEffect(isPurchasing ? 0.95 : 1.0)
+            .opacity(isPurchasing ? 0.6 : 1.0)
+        }
+        .disabled(isPurchasing)
+        .animation(.easeInOut(duration: 0.15), value: isPurchasing)
+    }
+    
+    private func productName(for productId: String) -> String {
+        switch productId {
+        case "com.lishilong.chongyu.100energy": return "1800币"
+        case "com.lishilong.chongyu.300energy": return "6000币"
+        case "com.lishilong.chongyu.700energy": return "13800币"
+        case "com.lishilong.chongyu.1400energy": return "24000币"
+        default: return ""
+        }
+    }
+}
+
+private enum PurchaseStatusPhase {
+    case idle
+    case requesting
+    case waitingApple
+    case takingLong
+}
+
+private struct PurchaseSuccessDetails {
+    let confirmation: PurchaseConfirmation
+    let coinAmount: Int
+}
+
+private struct CoinProductInfo: Equatable {
+    let productId: String
+    let coinAmount: Int
+    let usageDescription: String
+    let estimatedPosts: Int
+    let isRecommended: Bool
+    
+    var displayCoinText: String {
+        let amount = CoinProductInfo.numberFormatter.string(from: NSNumber(value: coinAmount)) ?? "\(coinAmount)"
+        return "\(amount) 虫洞币"
+    }
+    
+    var estimatedPostsText: String {
+        "可生成约\(estimatedPosts)篇动态"
+    }
+    
+    static func info(for productId: String) -> CoinProductInfo? {
+        all.first { $0.productId == productId }
+    }
+    
+    private static let all: [CoinProductInfo] = [
+        .init(
+            productId: "com.lishilong.chongyu.100energy",
+            coinAmount: 1800,
+            usageDescription: "适合轻度使用",
+            estimatedPosts: 70,
+            isRecommended: false
+        ),
+        .init(
+            productId: "com.lishilong.chongyu.300energy",
+            coinAmount: 6000,
+            usageDescription: "性价比之选",
+            estimatedPosts: 240,
+            isRecommended: true
+        ),
+        .init(
+            productId: "com.lishilong.chongyu.700energy",
+            coinAmount: 13800,
+            usageDescription: "深度体验",
+            estimatedPosts: 550,
+            isRecommended: false
+        ),
+        .init(
+            productId: "com.lishilong.chongyu.1400energy",
+            coinAmount: 24000,
+            usageDescription: "无限探索",
+            estimatedPosts: 1000,
+            isRecommended: false
+        )
+    ]
+    
+    private static let numberFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = ","
+        return formatter
+    }()
+}
+
+#Preview {
+    PurchaseView()
+} 

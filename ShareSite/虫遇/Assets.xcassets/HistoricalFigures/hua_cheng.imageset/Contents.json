@@ -1,0 +1,23 @@
+{
+  "images": [
+    {
+      "filename": "hua_cheng.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "hua_cheng.png",
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "filename": "hua_cheng.png",
+      "idiom": "universal",
+      "scale": "3x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

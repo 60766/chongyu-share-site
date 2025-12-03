@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BACKEND_BASE_URL</key>
+	<string>https://api.chongyuai.com</string>
+	<key>NASA_API_BASE_URL</key>
+	<string>https://api.nasa.gov</string>
+	<key>NASA_API_KEY</key>
+	<string>DEMO_KEY</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>需要访问您的相册以保存精美的分享卡片</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>需要访问您的相册以保存和分享内容</string>
+	<key>UIHomeIndicatorAutoHidden</key>
+	<true/>
+	<key>UIScrollViewContentInsetAdjustmentBehavior</key>
+	<string>Never</string>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>api.chongyuai.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

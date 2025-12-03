@@ -1,0 +1,11 @@
+spawn ssh root@47.94.254.130
+root@47.94.254.130's password: 
+Permission denied, please try again.
+root@47.94.254.130's password: 
+Permission denied, please try again.
+root@47.94.254.130's password: 
+root@47.94.254.130: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,password).
+send: spawn id exp7 not open
+    while executing
+"send "exit\r""
+    (file "./get_server_data.exp" line 24)

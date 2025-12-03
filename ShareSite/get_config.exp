@@ -1,0 +1,18 @@
+#!/usr/bin/expect -f
+
+set timeout 10
+set password "3Qq123456."
+set server_ip "121.40.184.29"
+
+spawn ssh root@${server_ip} "cat /var/www/chongyu-backend/production.env"
+expect {
+    "password:" {
+        send "$password\r"
+        expect eof
+    }
+    timeout {
+        puts "❌ SSH超时"
+        exit 1
+    }
+}
+

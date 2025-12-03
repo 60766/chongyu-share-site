@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+set timeout 60
+set password "3Qq123456."
+set local_file [lindex $argv 0]
+set remote_file [lindex $argv 1]
+
+spawn scp -o StrictHostKeyChecking=no $local_file $remote_file
+expect {
+    "password:" {
+        send "$password\r"
+        exp_continue
+    }
+    "yes/no" {
+        send "yes\r"
+        exp_continue
+    }
+    eof
+}
+wait
+

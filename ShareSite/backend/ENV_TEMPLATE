@@ -1,0 +1,19 @@
+PROVIDER_ENDPOINT=https://ark.cn-beijing.volces.com/api/v3/chat/completions
+PROVIDER_MODEL=deepseek-r1-250528
+# 将此值替换为你的真实密钥
+PROVIDER_API_KEY=demo_key_placeholder
+
+# 0 表示使用真实提供商；1 表示使用本地模拟响应
+MOCK_PROVIDER=0
+
+# 每 1k tokens 消耗的积分（可按需调整）
+CREDITS_PER_1K_TOKENS=100
+
+# 新账号初始赠送虫洞币
+INITIAL_WELCOME_CREDITS=600
+
+# 服务器端口
+PORT=8787
+
+# iOS 应用 Bundle ID (用于验证 Apple 身份令牌 aud)
+APP_BUNDLE_ID=com.example.chongyu 

@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set password "3Qq123456."
+
+spawn ssh root@121.40.184.29
+expect {
+    "password:" {
+        send "$password\r"
+    }
+    timeout {
+        puts "连接超时"
+        exit 1
+    }
+}
+
+expect "#"
+send "nginx -v 2>&1\r"
+sleep 1
+send "find /etc/nginx -name '*.conf' 2>/dev/null | head -5\r"
+expect "#"
+send "exit\r"
+expect eof
+

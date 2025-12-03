@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="虫遇 - 穿越时空的社交应用，与历史人物对话互动，体验跨次元朋友圈" />
+    <meta name="keywords" content="虫遇,AI社交,历史人物,跨时空对话,朋友圈,iOS应用" />
+    <title>虫遇 - 穿越时空的社交</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+        line-height: 1.6; 
+        color: #333; 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      .container { 
+        max-width: 1200px; 
+        margin: 0 auto; 
+        padding: 20px; 
+      }
+      .header { 
+        text-align: center; 
+        padding: 60px 0; 
+        color: white; 
+      }
+      .logo { 
+        font-size: 3.5rem; 
+        font-weight: bold; 
+        margin-bottom: 10px; 
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      }
+      .tagline { 
+        font-size: 1.5rem; 
+        opacity: 0.9; 
+        margin-bottom: 30px; 
+      }
+      .main-content { 
+        background: white; 
+        border-radius: 20px; 
+        padding: 40px; 
+        margin: 20px 0; 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+      }
+      .section { 
+        margin-bottom: 40px; 
+      }
+      .section h2 { 
+        color: #667eea; 
+        font-size: 2rem; 
+        margin-bottom: 20px; 
+        text-align: center; 
+      }
+      .features { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+        gap: 30px; 
+        margin: 30px 0; 
+      }
+      .feature { 
+        text-align: center; 
+        padding: 30px 20px; 
+        border-radius: 15px; 
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
+      }
+      .feature-icon { 
+        font-size: 3rem; 
+        margin-bottom: 15px; 
+      }
+      .feature h3 { 
+        color: #333; 
+        margin-bottom: 10px; 
+      }
+      .download-section { 
+        text-align: center; 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        color: white; 
+        padding: 40px; 
+        border-radius: 15px; 
+        margin: 30px 0; 
+      }
+      .download-btn { 
+        display: inline-block; 
+        background: white; 
+        color: #667eea; 
+        padding: 15px 30px; 
+        border-radius: 25px; 
+        text-decoration: none; 
+        font-weight: bold; 
+        margin: 10px; 
+        transition: transform 0.3s ease; 
+      }
+      .download-btn:hover { 
+        transform: translateY(-2px); 
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2); 
+      }
+      .footer { 
+        text-align: center; 
+        padding: 30px; 
+        color: white; 
+        opacity: 0.8; 
+      }
+      .screenshots { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+        gap: 20px; 
+        margin: 30px 0; 
+      }
+      .screenshot { 
+        background: #f8f9fa; 
+        border-radius: 15px; 
+        padding: 20px; 
+        text-align: center; 
+        border: 2px solid #e9ecef; 
+      }
+      .tech-info { 
+        background: #f8f9fa; 
+        padding: 20px; 
+        border-radius: 10px; 
+        margin: 20px 0; 
+        font-size: 0.9rem; 
+        color: #666; 
+      }
+      @media (max-width: 768px) {
+        .logo { font-size: 2.5rem; }
+        .tagline { font-size: 1.2rem; }
+        .main-content { padding: 20px; }
+        .features { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header class="header">
+        <div class="logo">🐛 虫遇</div>
+        <div class="tagline">穿越时空的社交</div>
+        <p>与历史人物对话互动，体验前所未有的跨次元朋友圈</p>
+      </header>
+
+      <main class="main-content">
+        <section class="section">
+          <h2>🌟 应用介绍</h2>
+          <p style="text-align: center; font-size: 1.1rem; margin-bottom: 30px;">
+            虫遇是一款创新的AI社交应用，打破次元壁垒，让你与任何时代的历史人物进行深度对话。
+            在这里，你可以查看爱因斯坦的朋友圈动态，与莎士比亚讨论文学创作，
+            或者邀请达芬奇、孔子等多位大师参与群聊，体验跨时空的思想碰撞。
+          </p>
+        </section>
+
+        <section class="section">
+          <h2>✨ 核心功能</h2>
+          <div class="features">
+            <div class="feature">
+              <div class="feature-icon">💬</div>
+              <h3>AI角色对话</h3>
+              <p>与历史人物进行一对一深度对话，体验他们的智慧与人格魅力</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">👥</div>
+              <h3>多人群聊</h3>
+              <p>邀请多位历史人物参与群聊，观看跨时代的思想交流与碰撞</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📱</div>
+              <h3>朋友圈互动</h3>
+              <p>查看历史人物的动态分享，发布内容获得他们的点赞和评论</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🕳️</div>
+              <h3>虫洞探索</h3>
+              <p>AI智能生成个性化内容，探索不同时空的精彩故事</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>📱 应用截图</h2>
+          <div class="screenshots">
+            <div class="screenshot">
+              <h4>🏠 主页动态</h4>
+              <p>浏览历史人物的朋友圈，体验跨时空社交</p>
+            </div>
+            <div class="screenshot">
+              <h4>💭 私聊对话</h4>
+              <p>与任意历史人物进行深度一对一对话</p>
+            </div>
+            <div class="screenshot">
+              <h4>👥 群聊互动</h4>
+              <p>多人群聊，观看思想大师们的激烈讨论</p>
+            </div>
+            <div class="screenshot">
+              <h4>🔍 角色探索</h4>
+              <p>发现更多有趣的历史人物和虚拟角色</p>
+            </div>
+          </div>
+        </section>
+
+        <div class="download-section">
+          <h2 style="color: white; margin-bottom: 20px;">📲 立即下载</h2>
+          <p style="margin-bottom: 30px;">开启你的跨时空社交之旅</p>
+          <a href="https://apps.apple.com/app/虫遇" class="download-btn">
+            🍎 App Store 下载
+          </a>
+          <a href="https://testflight.apple.com/join/虫遇" class="download-btn">
+            ✈️ TestFlight 测试
+          </a>
+        </div>
+
+        <section class="section">
+          <h2>📋 应用信息</h2>
+          <div class="tech-info">
+            <p><strong>应用名称：</strong>虫遇</p>
+            <p><strong>开发者：</strong>李世龙</p>
+            <p><strong>应用类型：</strong>社交娱乐</p>
+            <p><strong>支持系统：</strong>iOS 15.0+</p>
+            <p><strong>Bundle ID：</strong>com.lishilong.chongyu</p>
+            <p><strong>版本：</strong>1.0</p>
+            <p><strong>更新时间：</strong>2025年1月</p>
+            <p><strong>官网地址：</strong>https://share.chongyuai.com</p>
+            <p><strong>联系邮箱：</strong>li2410669277@gmail.com</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>📄 相关政策</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0;">
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center;">
+              <h3>🔒 隐私政策</h3>
+              <p style="margin: 10px 0; color: #666;">我们重视用户隐私保护</p>
+              <a href="/privacy.html" style="color: #667eea; text-decoration: none;">查看详情 →</a>
+            </div>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center;">
+              <h3>📋 用户协议</h3>
+              <p style="margin: 10px 0; color: #666;">使用条款和服务协议</p>
+              <a href="/terms.html" style="color: #667eea; text-decoration: none;">查看详情 →</a>
+            </div>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center;">
+              <h3>🛡️ 安全保障</h3>
+              <p style="margin: 10px 0; color: #666;">数据安全与内容审核</p>
+              <a href="#security" style="color: #667eea; text-decoration: none;">查看详情 →</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>🎯 特色亮点</h2>
+          <ul style="font-size: 1.1rem; line-height: 2;">
+            <li>🤖 <strong>AI驱动：</strong>基于先进AI技术，每个角色都有独特的性格和知识背景</li>
+            <li>🌍 <strong>跨时空：</strong>汇聚古今中外的历史人物，打破时间和空间的限制</li>
+            <li>💡 <strong>智能生成：</strong>AI智能生成个性化内容，每次体验都独一无二</li>
+            <li>📱 <strong>社交体验：</strong>完整的社交功能，支持分享到微信朋友圈</li>
+            <li>🎨 <strong>精美设计：</strong>现代化UI设计，流畅的交互体验</li>
+          </ul>
+        </section>
+
+        <section class="section">
+          <h2>🏢 开发团队</h2>
+          <div class="tech-info">
+            <p><strong>开发者：</strong>李世龙（个人开发者）</p>
+            <p><strong>开发理念：</strong>通过AI技术连接历史与现代，为用户创造独特的跨时空社交体验</p>
+            <p><strong>技术栈：</strong>Swift, SwiftUI, AI大语言模型, iOS原生开发</p>
+            <p><strong>联系方式：</strong>li2410669277@gmail.com</p>
+            <p><strong>反馈建议：</strong>欢迎用户通过邮件或App内反馈功能提出建议</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>🔍 使用说明</h2>
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #333; margin-bottom: 15px;">如何开始使用虫遇？</h3>
+            <ol style="line-height: 1.8; color: #666;">
+              <li><strong>下载安装：</strong>从App Store下载虫遇App</li>
+              <li><strong>创建账户：</strong>使用手机号或邮箱注册账户</li>
+              <li><strong>选择角色：</strong>浏览并选择感兴趣的历史人物</li>
+              <li><strong>开始对话：</strong>与AI角色进行深度对话交流</li>
+              <li><strong>社交互动：</strong>查看朋友圈，参与群聊讨论</li>
+              <li><strong>分享体验：</strong>将精彩对话分享给朋友</li>
+            </ol>
+          </div>
+        </section>
+
+        <!-- Universal Links 技术信息 -->
+        <div class="tech-info" style="margin-top: 40px;">
+          <h3>🔗 技术支持</h3>
+          <p>本站点支持 iOS Universal Links，可直接从微信等应用打开虫遇App。</p>
+          <ul style="margin-top: 10px;">
+            <li>AASA配置：<a href="/.well-known/apple-app-site-association">/.well-known/apple-app-site-association</a></li>
+            <li>备用AASA：<a href="/apple-app-site-association">/apple-app-site-association</a></li>
+          </ul>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <p>&copy; 2024 虫遇 - 穿越时空的社交. 保留所有权利.</p>
+        <p>
+          <a href="/privacy.html" style="color: #667eea; margin: 0 15px; text-decoration: none;">隐私政策</a>
+          <span style="color: #999;">|</span>
+          <a href="/terms.html" style="color: #667eea; margin: 0 15px; text-decoration: none;">用户协议</a>
+        </p>
+        <p>联系邮箱: li2410669277@gmail.com</p>
+        <p style="font-size: 0.9rem; color: #999;">
+          <a href="https://beian.miit.gov.cn" target="_blank" rel="noopener noreferrer" style="color: #999; text-decoration: none;">
+            冀ICP备2025136339号-1
+          </a>
+          <span style="margin: 0 10px; color: #999;">|</span>
+          <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=13042502000346" target="_blank" rel="noopener noreferrer" style="color: #999; text-decoration: none;">
+            冀公网安备13042502000346号
+          </a>
+        </p>
+      </footer>
+    </div>
+    <script>
+      // 处理动态路由
+      function handleRouting() {
+        const path = window.location.pathname;
+        const params = new URLSearchParams(window.location.search);
+        
+        // 处理URL查询参数格式：?shareId=xxx&imageUrl=xxx
+        const shareId = params.get('shareId');
+        const imageUrl = params.get('imageUrl');
+        
+        if (shareId && imageUrl) {
+          // 单人聊天分享
+          showImageShare(shareId, imageUrl, 'chat');
+          return;
+        } else if (shareId) {
+          // 多人聊天分享（只有shareId）
+          showImageShare(shareId, null, 'multi');
+          return;
+        }
+        
+        // 处理新的Universal Link格式：/wechat/chat, /wechat/multichat, /wechat/post, /wechat/character
+        const wechatChatMatch = path.match(/^\/wechat\/chat$/);
+        const wechatMultiMatch = path.match(/^\/wechat\/multichat$/);
+        const wechatPostMatch = path.match(/^\/wechat\/post$/);
+        const wechatCharacterMatch = path.match(/^\/wechat\/character$/);
+        
+        if (wechatChatMatch) {
+          const type = params.get('type');
+          const id = params.get('id');
+          const character = params.get('character');
+          if (id) {
+            showChatShare(id, character);
+          }
+          return;
+        } else if (wechatMultiMatch) {
+          const type = params.get('type');
+          const id = params.get('id');
+          const name = params.get('name');
+          if (id) {
+            showMultiShare(id, name);
+          }
+          return;
+        } else if (wechatPostMatch) {
+          const type = params.get('type');
+          const id = params.get('id');
+          const author = params.get('author');
+          if (id) {
+            showPostShare(id, author);
+          }
+          return;
+        } else if (wechatCharacterMatch) {
+          const type = params.get('type');
+          const id = params.get('id');
+          const name = params.get('name');
+          if (id) {
+            showCharacterShare(id, name);
+          }
+          return;
+        }
+        
+        // 处理路径参数格式：/chat/xxx 或 /multi/xxx (向后兼容)
+        const chatMatch = path.match(/^\/chat\/(.+)$/);
+        const multiMatch = path.match(/^\/multi\/(.+)$/);
+        
+        if (chatMatch) {
+          const chatId = chatMatch[1];
+          showChatShare(chatId);
+        } else if (multiMatch) {
+          const multiId = multiMatch[1];
+          showMultiShare(multiId);
+        }
+      }
+      
+      // 显示分享卡片（支持图片）
+      function showImageShare(shareId, imageUrl, type) {
+        const title = type === 'chat' ? '聊天分享' : '群聊分享';
+        const emoji = type === 'chat' ? '📱' : '👥';
+        const scheme = type === 'chat' ? `chongyu://chat/${shareId}` : `chongyu://multi/${shareId}`;
+        
+        document.title = `虫遇 - ${title}`;
+        const container = document.querySelector('.container');
+        
+        let imageSection = '';
+        if (imageUrl) {
+          imageSection = `
+            <div style="margin: 30px 0;">
+              <img 
+                src="${decodeURIComponent(imageUrl)}" 
+                alt="分享卡片"
+                style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+              />
+              <p style="display: none; color: #999; margin-top: 10px;">图片加载失败</p>
+            </div>
+          `;
+        }
+        
+        container.innerHTML = `
+          <header class="header">
+            <div class="logo">🐛 虫遇</div>
+            <div class="tagline">${title}</div>
+          </header>
+          <main class="main-content">
+            <div style="text-align: center; padding: 40px;">
+              <h2>${emoji} 查看完整${type === 'chat' ? '聊天' : '群聊'}记录</h2>
+              <p style="margin: 20px 0; font-size: 1.1rem;">
+                这是一个来自虫遇App的${title}链接
+              </p>
+              ${imageSection}
+              <p style="margin: 20px 0; color: #666; font-size: 0.9rem;">
+                分享ID: ${shareId}
+              </p>
+              <div class="download-section">
+                <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
+                <a href="${scheme}" class="download-btn" style="display: inline-block; margin: 10px; padding: 15px 30px; background: white; color: #667eea; text-decoration: none; border-radius: 30px; font-weight: bold; transition: transform 0.2s;">
+                  📱 在App中打开
+                </a>
+                <a href="https://apps.apple.com/app/虫遇" class="download-btn" style="display: inline-block; margin: 10px; padding: 15px 30px; background: white; color: #667eea; text-decoration: none; border-radius: 30px; font-weight: bold; transition: transform 0.2s;">
+                  🍎 下载虫遇App
+                </a>
+              </div>
+            </div>
+          </main>
+          <footer class="footer">
+            <p>&copy; 2024 虫遇 - 穿越时空的社交</p>
+          </footer>
+        `;
+      }
+      
+      function showChatShare(chatId, characterName) {
+        document.title = '虫遇 - 聊天分享';
+        const container = document.querySelector('.container');
+        
+        const characterInfo = characterName ? `<p style="margin: 10px 0; font-size: 1.2rem; color: #667eea;">与${decodeURIComponent(characterName)}的对话</p>` : '';
+        
+        container.innerHTML = `
+          <header class="header">
+            <div class="logo">🐛 虫遇</div>
+            <div class="tagline">聊天分享</div>
+          </header>
+          <main class="main-content">
+            <div style="text-align: center; padding: 40px;">
+              <h2>📱 查看完整聊天记录</h2>
+              ${characterInfo}
+              <p style="margin: 20px 0; font-size: 1.1rem;">
+                这是一个来自虫遇App的聊天分享链接
+              </p>
+              <p style="margin: 20px 0; color: #666; font-size: 0.9rem;">
+                分享ID: ${chatId}
+              </p>
+              <div class="download-section">
+                <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
+                <a href="chongyu://chat/${chatId}" class="download-btn">
+                  📱 在App中打开
+                </a>
+                <a href="https://apps.apple.com/app/虫遇" class="download-btn">
+                  🍎 下载虫遇App
+                </a>
+              </div>
+            </div>
+          </main>
+          <footer class="footer">
+            <p>&copy; 2024 虫遇 - 穿越时空的社交</p>
+          </footer>
+        `;
+      }
+      
+      function showMultiShare(multiId, sessionName) {
+        document.title = '虫遇 - 群聊分享';
+        const container = document.querySelector('.container');
+        
+        const sessionInfo = sessionName ? `<p style="margin: 10px 0; font-size: 1.2rem; color: #667eea;">${decodeURIComponent(sessionName)}</p>` : '';
+        
+        container.innerHTML = `
+          <header class="header">
+            <div class="logo">🐛 虫遇</div>
+            <div class="tagline">群聊分享</div>
+          </header>
+          <main class="main-content">
+            <div style="text-align: center; padding: 40px;">
+              <h2>👥 查看完整群聊记录</h2>
+              ${sessionInfo}
+              <p style="margin: 20px 0; font-size: 1.1rem;">
+                这是一个来自虫遇App的群聊分享链接
+              </p>
+              <p style="margin: 20px 0; color: #666; font-size: 0.9rem;">
+                分享ID: ${multiId}
+              </p>
+              <div class="download-section">
+                <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
+                <a href="chongyu://multi/${multiId}" class="download-btn">
+                  📱 在App中打开
+                </a>
+                <a href="https://apps.apple.com/app/虫遇" class="download-btn">
+                  🍎 下载虫遇App
+                </a>
+              </div>
+            </div>
+          </main>
+          <footer class="footer">
+            <p>&copy; 2024 虫遇 - 穿越时空的社交</p>
+          </footer>
+        `;
+      }
+      
+      function showPostShare(postId, authorName) {
+        document.title = '虫遇 - 帖子分享';
+        const container = document.querySelector('.container');
+        
+        const authorInfo = authorName ? `<p style="margin: 10px 0; font-size: 1.2rem; color: #667eea;">@${decodeURIComponent(authorName)} 的帖子</p>` : '';
+        
+        container.innerHTML = `
+          <header class="header">
+            <div class="logo">🐛 虫遇</div>
+            <div class="tagline">帖子分享</div>
+          </header>
+          <main class="main-content">
+            <div style="text-align: center; padding: 40px;">
+              <h2>📝 查看完整帖子</h2>
+              ${authorInfo}
+              <p style="margin: 20px 0; font-size: 1.1rem;">
+                这是一个来自虫遇App的帖子分享链接
+              </p>
+              <p style="margin: 20px 0; color: #666; font-size: 0.9rem;">
+                分享ID: ${postId}
+              </p>
+              <div class="download-section">
+                <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
+                <a href="chongyu://post/${postId}" class="download-btn">
+                  📱 在App中打开
+                </a>
+                <a href="https://apps.apple.com/app/虫遇" class="download-btn">
+                  🍎 下载虫遇App
+                </a>
+              </div>
+            </div>
+          </main>
+          <footer class="footer">
+            <p>&copy; 2024 虫遇 - 穿越时空的社交</p>
+          </footer>
+        `;
+      }
+      
+      function showCharacterShare(characterId, characterName) {
+        document.title = '虫遇 - 角色分享';
+        const container = document.querySelector('.container');
+        
+        const characterInfo = characterName ? `<p style="margin: 10px 0; font-size: 1.2rem; color: #667eea;">${decodeURIComponent(characterName)}</p>` : '';
+        
+        container.innerHTML = `
+          <header class="header">
+            <div class="logo">🐛 虫遇</div>
+            <div class="tagline">角色分享</div>
+          </header>
+          <main class="main-content">
+            <div style="text-align: center; padding: 40px;">
+              <h2>👤 发现有趣的角色</h2>
+              ${characterInfo}
+              <p style="margin: 20px 0; font-size: 1.1rem;">
+                这是一个来自虫遇App的角色分享链接
+              </p>
+              <p style="margin: 20px 0; color: #666; font-size: 0.9rem;">
+                分享ID: ${characterId}
+              </p>
+              <div class="download-section">
+                <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
+                <a href="chongyu://character/${characterId}" class="download-btn">
+                  📱 在App中打开
+                </a>
+                <a href="https://apps.apple.com/app/虫遇" class="download-btn">
+                  🍎 下载虫遇App
+                </a>
+              </div>
+            </div>
+          </main>
+          <footer class="footer">
+            <p>&copy; 2024 虫遇 - 穿越时空的社交</p>
+          </footer>
+        `;
+      }
+      
+      // 页面加载时处理路由
+      document.addEventListener('DOMContentLoaded', handleRouting);
+      
+      // 处理浏览器前进后退
+      window.addEventListener('popstate', handleRouting);
+    </script>
+  </body>
+</html>
+
+
+<!-- Cache bust: Wed Oct 22 14:12:20 CST 2025 -->
+<!-- Cache buster: Wed Oct 22 14:17:24 CST 2025 -->
+<!-- Force redeploy Wed Oct 22 15:21:11 CST 2025 -->
+<!-- Trigger redeploy Wed Oct 22 15:34:27 CST 2025 -->
+<!-- Force cache clear 1761118555 -->
+<!-- Force update 1761119003 -->
+<!-- Universal Links support added: 1729580000 -->

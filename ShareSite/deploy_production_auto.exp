@@ -1,0 +1,62 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set password "3Qq123456."
+set server_ip "121.40.184.29"
+set backend_dir "/var/www/chongyu-backend"
+set local_backend "/Users/lishilong/IOS开发/虫遇/虫遇/backend"
+
+puts "🚀 开始部署虫遇后端到生产环境..."
+
+# 1. 上传 production.env
+puts "\n📤 上传 production.env 配置文件..."
+spawn scp ${local_backend}/production.env root@${server_ip}:${backend_dir}/
+expect {
+    "password:" {
+        send "$password\r"
+        expect eof
+    }
+    timeout {
+        puts "❌ 上传配置文件超时"
+        exit 1
+    }
+}
+
+sleep 1
+
+# 2. 应用配置并重启服务
+puts "\n⚙️  应用配置并重启服务..."
+spawn ssh root@${server_ip} "cd ${backend_dir} && cp production.env .env && pm2 restart chongyu-backend"
+expect {
+    "password:" {
+        send "$password\r"
+        expect eof
+    }
+    timeout {
+        puts "❌ 重启服务超时"
+        exit 1
+    }
+}
+
+sleep 3
+
+# 3. 验证服务状态
+puts "\n🔍 验证服务状态..."
+spawn ssh root@${server_ip} "pm2 status chongyu-backend"
+expect {
+    "password:" {
+        send "$password\r"
+        expect eof
+    }
+    timeout {
+        puts "❌ 检查状态超时"
+        exit 1
+    }
+}
+
+puts "\n✅ 部署完成！"
+puts "📊 已更新配置："
+puts "   Bundle ID: com.lishilong.chongyu"
+puts "   服务已重启并应用新配置"
+puts "\n🔗 测试命令: curl http://121.40.184.29:3000/health"
+

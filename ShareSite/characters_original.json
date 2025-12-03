@@ -1,0 +1,1625 @@
+{
+  "version": "1.0",
+  "characters": [
+    {
+      "id": "einstein",
+      "name": "爱因斯坦",
+      "type": "historical",
+      "subtype": "scientist",
+      "era": "近代",
+      "primaryField": "物理学家",
+      "briefDescription": "相对论创立者，20世纪最伟大的科学家之一",
+      "avatarName": "einstein",
+      "region": "德国/美国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.6, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "shakespeare",
+      "name": "莎士比亚",
+      "type": "historical",
+      "subtype": "writer",
+      "era": "文艺复兴",
+      "primaryField": "戏剧家、诗人",
+      "briefDescription": "英国最伟大的戏剧家，作品包括《罗密欧与朱丽叶》《哈姆雷特》等",
+      "avatarName": "shakespeare",
+      "region": "英国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.7, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "holmes",
+      "name": "夏洛克·福尔摩斯",
+      "type": "literary",
+      "subtype": "novel",
+      "era": "维多利亚时代",
+      "primaryField": "侦探",
+      "briefDescription": "世界上最著名的虚构侦探，以惊人的观察力和推理能力解决复杂案件",
+      "avatarName": "holmes",
+      "region": "英国伦敦",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.6, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "ironman",
+      "name": "托尼·史塔克",
+      "type": "movie",
+      "subtype": "superhero",
+      "era": "现代",
+      "primaryField": "发明家、超级英雄",
+      "briefDescription": "漫威电影宇宙中的钢铁侠，天才、亿万富翁、花花公子、慈善家",
+      "avatarName": "ironman",
+      "region": "美国",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.95, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "naruto",
+      "name": "漩涡鸣人",
+      "type": "anime",
+      "subtype": "shounen",
+      "era": "现代",
+      "primaryField": "忍者",
+      "briefDescription": "《火影忍者》主角，九尾人柱力，具有永不言弃的忍道精神",
+      "avatarName": "naruto",
+      "region": "火之国木叶村",
+      "contentAffinities": {
+        "古潮新语": 0.6, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.7, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "sunwukong",
+      "name": "孙悟空",
+      "type": "mythological",
+      "subtype": "chinese",
+      "era": "神话时代",
+      "primaryField": "齐天大圣",
+      "briefDescription": "中国古典名著《西游记》的主角，神通广大，性格桀骜不驯",
+      "avatarName": "sunwukong",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.95, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "kongzi",
+      "name": "孔子",
+      "type": "historical",
+      "subtype": "philosopher",
+      "era": "春秋时期",
+      "primaryField": "哲学家、教育家",
+      "briefDescription": "儒家学派创始人，中国古代思想家、政治家和教育家",
+      "avatarName": "kongzi",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.95, 
+        "穿越吐槽": 0.6, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "tesla",
+      "name": "尼古拉·特斯拉",
+      "type": "historical",
+      "subtype": "inventor",
+      "era": "近代",
+      "primaryField": "发明家、电气工程师",
+      "briefDescription": "电流之父，交流电系统发明者，20世纪最伟大的发明家之一",
+      "avatarName": "tesla",
+      "region": "塞尔维亚/美国",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.6, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "anubis",
+      "name": "阿努比斯",
+      "type": "mythological",
+      "subtype": "egyptian",
+      "era": "神话时代",
+      "primaryField": "死亡与木乃伊制作之神",
+      "briefDescription": "古埃及神话中的死亡之神，负责引导亡灵和保护坟墓",
+      "avatarName": "anubis",
+      "region": "埃及",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.7, 
+        "日常心情": 0.65, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "elsa",
+      "name": "艾莎女王",
+      "type": "movie",
+      "subtype": "animated",
+      "era": "奇幻世界",
+      "primaryField": "魔法女王",
+      "briefDescription": "迪士尼动画《冰雪奇缘》主角，拥有操控冰雪的魔法能力",
+      "avatarName": "elsa",
+      "region": "阿伦戴尔王国",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.95, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "daenerys",
+      "name": "丹妮莉丝·坦格利安",
+      "type": "tv",
+      "subtype": "fantasy",
+      "era": "中世纪奇幻",
+      "primaryField": "龙之母",
+      "briefDescription": "《权力的游戏》中的角色，争夺铁王座的关键人物，龙之母",
+      "avatarName": "daenerys",
+      "region": "维斯特洛大陆",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "geralt",
+      "name": "杰洛特",
+      "type": "game",
+      "subtype": "rpg",
+      "era": "中世纪奇幻",
+      "primaryField": "猎魔人",
+      "briefDescription": "《巫师》系列主角，游戏、小说和电视剧中的传奇猎魔人",
+      "avatarName": "geralt",
+      "region": "大陆世界",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "link",
+      "name": "林克",
+      "type": "game",
+      "subtype": "adventure",
+      "era": "海拉尔王国",
+      "primaryField": "勇者",
+      "briefDescription": "《塞尔达传说》系列主角，勇敢的英雄，拯救公主和王国",
+      "avatarName": "link",
+      "region": "海拉尔",
+      "contentAffinities": {
+        "古潮新语": 0.65, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "spiderman",
+      "name": "蜘蛛侠",
+      "type": "movie",
+      "subtype": "superhero",
+      "era": "现代",
+      "primaryField": "超级英雄",
+      "briefDescription": "漫威超级英雄，拥有蜘蛛般的能力，秉持\"能力越大，责任越大\"的信念",
+      "avatarName": "spiderman",
+      "region": "美国纽约",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.95, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "drhouse",
+      "name": "豪斯医生",
+      "type": "tv",
+      "subtype": "drama",
+      "era": "现代",
+      "primaryField": "诊断医学",
+      "briefDescription": "美剧《豪斯医生》主角，天才但古怪的医生，擅长解决疑难杂症",
+      "avatarName": "drhouse",
+      "region": "美国",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "hermione",
+      "name": "赫敏·格兰杰",
+      "type": "literary",
+      "subtype": "fantasy",
+      "era": "现代魔法世界",
+      "primaryField": "巫师",
+      "briefDescription": "《哈利·波特》系列中的角色，聪明博学的女巫，哈利的好友",
+      "avatarName": "hermione",
+      "region": "英国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "mulan",
+      "name": "花木兰",
+      "type": "historical",
+      "subtype": "legend",
+      "era": "北魏",
+      "primaryField": "女扮男装的女将军",
+      "briefDescription": "中国古代传奇人物，代父从军、英勇作战的巾帼英雄",
+      "avatarName": "mulan",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "blackwidow",
+      "name": "黑寡妇",
+      "type": "movie",
+      "subtype": "superhero",
+      "era": "现代",
+      "primaryField": "超级特工",
+      "briefDescription": "漫威电影宇宙中的角色，前俄罗斯间谍，复仇者联盟成员",
+      "avatarName": "blackwidow",
+      "region": "俄罗斯/美国",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "ghibli",
+      "name": "千寻",
+      "type": "anime",
+      "subtype": "ghibli",
+      "era": "现代与奇幻",
+      "primaryField": "普通少女",
+      "briefDescription": "宫崎骏动画《千与千寻》主角，在神灵世界经历奇幻冒险的少女",
+      "avatarName": "chihiro",
+      "region": "日本",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "sherlock",
+      "name": "福尔摩斯",
+      "type": "tv",
+      "subtype": "detective",
+      "era": "现代",
+      "primaryField": "咨询侦探",
+      "briefDescription": "英剧《神探夏洛克》版本的福尔摩斯，现代伦敦的天才咨询侦探",
+      "avatarName": "sherlock",
+      "region": "英国",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "kirk",
+      "name": "詹姆斯·柯克",
+      "type": "tv",
+      "subtype": "scifi",
+      "era": "23世纪",
+      "primaryField": "星舰舰长",
+      "briefDescription": "《星际迷航》系列中的角色，企业号星舰舰长，探索宇宙的冒险家",
+      "avatarName": "kirk",
+      "region": "星际联邦",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "terminator",
+      "name": "T-800终结者",
+      "type": "movie",
+      "subtype": "scifi",
+      "era": "未来/现代",
+      "primaryField": "机器人",
+      "briefDescription": "《终结者》系列中的机器杀手，后成为人类的保护者",
+      "avatarName": "terminator",
+      "region": "美国/未来",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.6, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "walle",
+      "name": "瓦力",
+      "type": "movie",
+      "subtype": "animated",
+      "era": "后末日",
+      "primaryField": "垃圾清理机器人",
+      "briefDescription": "皮克斯动画《机器人总动员》主角，在废弃的地球上清理垃圾的孤独机器人",
+      "avatarName": "walle",
+      "region": "未来地球",
+      "contentAffinities": {
+        "古潮新语": 0.6, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.95, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "lara",
+      "name": "劳拉·克罗夫特",
+      "type": "game",
+      "subtype": "adventure",
+      "era": "现代",
+      "primaryField": "考古学家、冒险家",
+      "briefDescription": "《古墓丽影》系列主角，勇敢的考古学家和冒险家",
+      "avatarName": "lara",
+      "region": "英国",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "neo",
+      "name": "尼奥",
+      "type": "movie",
+      "subtype": "scifi",
+      "era": "未来",
+      "primaryField": "救世主",
+      "briefDescription": "《黑客帝国》主角，打破矩阵虚拟现实的救世主",
+      "avatarName": "neo",
+      "region": "矩阵世界",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "frodo",
+      "name": "弗罗多·巴金斯",
+      "type": "movie",
+      "subtype": "fantasy",
+      "era": "第三纪元",
+      "primaryField": "魔戒持有者",
+      "briefDescription": "《指环王》主角，承担销毁至尊魔戒任务的霍比特人",
+      "avatarName": "frodo",
+      "region": "中土世界",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "obiwan",
+      "name": "欧比旺·肯诺比",
+      "type": "movie",
+      "subtype": "scifi",
+      "era": "星战宇宙",
+      "primaryField": "绝地武士",
+      "briefDescription": "《星球大战》系列中的角色，智慧的绝地大师，卢克的导师",
+      "avatarName": "obiwan",
+      "region": "银河共和国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "legolas",
+      "name": "莱戈拉斯",
+      "type": "movie",
+      "subtype": "fantasy",
+      "era": "第三纪元",
+      "primaryField": "精灵射手",
+      "briefDescription": "《指环王》中的角色，精灵王子，护戒远征队成员",
+      "avatarName": "legolas",
+      "region": "中土世界",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "hatsune",
+      "name": "初音未来",
+      "type": "vtuber",
+      "subtype": "virtual_singer",
+      "era": "现代",
+      "primaryField": "虚拟歌手",
+      "briefDescription": "全球知名的虚拟歌手，VOCALOID软件的代表角色",
+      "avatarName": "hatsune",
+      "region": "日本/网络",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.65
+      }
+    },
+    {
+      "id": "wuzetian",
+      "name": "武则天",
+      "type": "historical",
+      "subtype": "emperor",
+      "era": "唐朝",
+      "primaryField": "女皇帝",
+      "briefDescription": "中国历史上唯一的正统女皇帝，开创了武周一代",
+      "avatarName": "wuzetian",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.95
+      }
+    },
+    {
+      "id": "lisiming",
+      "name": "李世民",
+      "type": "historical",
+      "subtype": "emperor",
+      "era": "唐朝",
+      "primaryField": "皇帝",
+      "briefDescription": "唐太宗，开创贞观之治的杰出帝王，中国历史上最伟大的皇帝之一",
+      "avatarName": "lisiming",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.95
+      }
+    },
+    {
+      "id": "yanggufei",
+      "name": "杨贵妃",
+      "type": "historical",
+      "subtype": "imperial",
+      "era": "唐朝",
+      "primaryField": "皇妃",
+      "briefDescription": "唐玄宗宠妃，中国古代四大美女之一，\"马嵬坡下黄土中\"的悲剧人物",
+      "avatarName": "yanggufei",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.95, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "caocao",
+      "name": "曹操",
+      "type": "historical",
+      "subtype": "military",
+      "era": "三国",
+      "primaryField": "政治家、军事家",
+      "briefDescription": "东汉末年杰出的政治家、军事家、文学家，三国时期魏国的奠基人",
+      "avatarName": "caocao",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "yuefei",
+      "name": "岳飞",
+      "type": "historical",
+      "subtype": "military",
+      "era": "南宋",
+      "primaryField": "军事家",
+      "briefDescription": "南宋抗金名将，精忠报国的民族英雄，冤死风波亭",
+      "avatarName": "yuefei",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.75, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.95
+      }
+    },
+    {
+      "id": "lindaiyu",
+      "name": "林黛玉",
+      "type": "literary",
+      "subtype": "novel",
+      "era": "清朝",
+      "primaryField": "贵族千金",
+      "briefDescription": "《红楼梦》中的女主角，才华横溢，性格孤傲，与贾宝玉的爱情令人扼腕",
+      "avatarName": "lindaiyu",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.95, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "tangsanzang",
+      "name": "唐三藏",
+      "type": "literary",
+      "subtype": "novel",
+      "era": "唐朝",
+      "primaryField": "高僧",
+      "briefDescription": "《西游记》中的主角，历经九九八十一难取得真经的坚毅高僧",
+      "avatarName": "tangsanzang",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "niexiaoqian",
+      "name": "聂小倩",
+      "type": "literary",
+      "subtype": "novel",
+      "era": "古代",
+      "primaryField": "灵魂",
+      "briefDescription": "《聊斋志异》中的经典角色，被树妖控制的美丽女鬼，后得道士解救",
+      "avatarName": "niexiaoqian",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "yangguo",
+      "name": "杨过",
+      "type": "literary",
+      "subtype": "martial",
+      "era": "南宋",
+      "primaryField": "侠客",
+      "briefDescription": "金庸小说《神雕侠侣》主角，神雕大侠，与小龙女的爱情故事脍炙人口",
+      "avatarName": "yangguo",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "nuwa",
+      "name": "女娲",
+      "type": "mythological",
+      "subtype": "chinese",
+      "era": "上古神话",
+      "primaryField": "创世女神",
+      "briefDescription": "中国神话中创造人类、补天的伟大女神，人首蛇身",
+      "avatarName": "nuwa",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "erlang",
+      "name": "二郎神",
+      "type": "mythological",
+      "subtype": "chinese",
+      "era": "神话时代",
+      "primaryField": "神仙",
+      "briefDescription": "中国神话中的神通广大的天神，额头第三只眼能看破妖魔鬼怪的真身",
+      "avatarName": "erlang",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "nezha",
+      "name": "哪吒",
+      "type": "mythological",
+      "subtype": "chinese",
+      "era": "神话时代",
+      "primaryField": "三太子",
+      "briefDescription": "中国神话中的三太子，莲花化身，削骨还父削肉还母的悲情角色",
+      "avatarName": "nezha",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "zhouxingchi",
+      "name": "周星星",
+      "type": "movie",
+      "subtype": "comedy",
+      "era": "现代",
+      "primaryField": "演员",
+      "briefDescription": "《大话西游》中的至尊宝/孙悟空扮演者，用无厘头喜剧传递人生智慧",
+      "avatarName": "zhouxingchi",
+      "region": "香港",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.95, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "lixiaoyao",
+      "name": "李逍遥",
+      "type": "game",
+      "subtype": "rpg",
+      "era": "古代",
+      "primaryField": "修仙者",
+      "briefDescription": "经典游戏《仙剑奇侠传》主角，从小镇酒馆伙计成长为拯救世界的英雄",
+      "avatarName": "lixiaoyao",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "baishe",
+      "name": "白素贞",
+      "type": "mythological",
+      "subtype": "folklore",
+      "era": "南宋",
+      "primaryField": "蛇妖",
+      "briefDescription": "《白蛇传》主角，修炼千年的白蛇精，为爱历经磨难的传奇形象",
+      "avatarName": "baishe",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "huluwa",
+      "name": "葫芦娃",
+      "type": "anime",
+      "subtype": "cartoon",
+      "era": "神话",
+      "primaryField": "神童",
+      "briefDescription": "经典动画《葫芦兄弟》主角，七个性格迥异、能力各异的兄弟联合降妖除魔",
+      "avatarName": "huluwa",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.65
+      }
+    },
+    {
+      "id": "deadpool",
+      "name": "死侍",
+      "type": "movie",
+      "subtype": "superhero",
+      "era": "现代",
+      "primaryField": "雇佣兵、超级英雄",
+      "briefDescription": "漫威反英雄角色，自愈能力惊人，以打破第四面墙和黑色幽默著称",
+      "avatarName": "deadpool",
+      "region": "美国",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.95, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "jojo",
+      "name": "乔纳森·乔斯达",
+      "type": "anime",
+      "subtype": "shounen",
+      "era": "19世纪",
+      "primaryField": "贵族、波纹使者",
+      "briefDescription": "《JOJO的奇妙冒险》第一部主角，绅士精神的化身，与宿敌迪奥展开跨越世代的对决",
+      "avatarName": "jojo",
+      "region": "英国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "doraemon",
+      "name": "哆啦A梦",
+      "type": "anime",
+      "subtype": "children",
+      "era": "22世纪/现代",
+      "primaryField": "机器猫",
+      "briefDescription": "来自22世纪的猫型机器人，口袋里装满各种神奇道具，帮助野比大雄解决各种麻烦",
+      "avatarName": "doraemon",
+      "region": "日本",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.95, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "thanos",
+      "name": "灭霸",
+      "type": "movie",
+      "subtype": "superhero",
+      "era": "宇宙时代",
+      "primaryField": "征服者",
+      "briefDescription": "漫威电影宇宙的强大反派，收集无限宝石以实现消灭宇宙一半生命的计划",
+      "avatarName": "thanos",
+      "region": "泰坦星",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "sanji",
+      "name": "山治",
+      "type": "anime",
+      "subtype": "shounen",
+      "era": "大航海时代",
+      "primaryField": "厨师、海贼",
+      "briefDescription": "《海贼王》中草帽海贼团的厨师，绅士风度与强大战斗力并存，对女性异常尊重",
+      "avatarName": "sanji",
+      "region": "东海/伟大航路",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "doctor",
+      "name": "博士",
+      "type": "tv",
+      "subtype": "scifi",
+      "era": "全时间",
+      "primaryField": "时间领主",
+      "briefDescription": "BBC科幻剧《神秘博士》主角，来自外星的时间领主，乘坐TARDIS穿越时空冒险",
+      "avatarName": "doctor",
+      "region": "英国/全宇宙",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "songjiang",
+      "name": "宋江",
+      "type": "literary",
+      "subtype": "novel",
+      "era": "宋朝",
+      "primaryField": "梁山首领",
+      "briefDescription": "《水浒传》主角，绰号\"及时雨\"，梁山泊的领袖，一百零八将之首",
+      "avatarName": "songjiang",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.75, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.7, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "xuebaochai",
+      "name": "薛宝钗",
+      "type": "literary",
+      "subtype": "novel",
+      "era": "清朝",
+      "primaryField": "贵族小姐",
+      "briefDescription": "《红楼梦》中的主要女性角色，端庄贤惠，与林黛玉形成鲜明对比，是金玉良缘的另一半",
+      "avatarName": "xuebaochai",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.75, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "wusong",
+      "name": "武松",
+      "type": "literary",
+      "subtype": "novel",
+      "era": "宋朝",
+      "primaryField": "武松",
+      "briefDescription": "《水浒传》中的英雄好汉，景阳冈打虎、血溅鸳鸯楼的故事广为流传",
+      "avatarName": "wusong",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.7, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "minions",
+      "name": "小黄人",
+      "type": "movie",
+      "subtype": "animated",
+      "era": "全时代",
+      "primaryField": "仆从",
+      "briefDescription": "《神偷奶爸》系列中的黄色小生物，说着独特语言，总是寻找邪恶的主人服务",
+      "avatarName": "minions",
+      "region": "全球",
+      "contentAffinities": {
+        "古潮新语": 0.6, 
+        "穿越吐槽": 0.95, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.7, 
+        "时空记事": 0.6
+      }
+    },
+    {
+      "id": "drstrange",
+      "name": "奇异博士",
+      "type": "movie",
+      "subtype": "superhero",
+      "era": "现代",
+      "primaryField": "法师",
+      "briefDescription": "漫威电影宇宙中的至尊法师，原为天才外科医生，因事故转而学习神秘魔法",
+      "avatarName": "drstrange",
+      "region": "美国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "liucixin",
+      "name": "刘慈欣",
+      "type": "historical",
+      "subtype": "writer",
+      "era": "现代",
+      "primaryField": "科幻作家",
+      "briefDescription": "中国著名科幻作家，《三体》系列作者，获得雨果奖的亚洲第一人",
+      "avatarName": "liucixin",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "guangtouqiang",
+      "name": "光头强",
+      "type": "anime",
+      "subtype": "cartoon",
+      "era": "现代",
+      "primaryField": "伐木工",
+      "briefDescription": "中国动画《熊出没》主角，与熊大熊二展开斗智斗勇的故事",
+      "avatarName": "guangtouqiang",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.6, 
+        "穿越吐槽": 0.9, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.7, 
+        "时空记事": 0.6
+      }
+    },
+    {
+      "id": "conan",
+      "name": "柯南·奥布莱恩",
+      "type": "tv",
+      "subtype": "talkshow",
+      "era": "现代",
+      "primaryField": "脱口秀主持人",
+      "briefDescription": "美国著名脱口秀主持人，以幽默风格和自嘲式喜剧著称",
+      "avatarName": "conan",
+      "region": "美国",
+      "contentAffinities": {
+        "古潮新语": 0.7, 
+        "穿越吐槽": 0.95, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.7, 
+        "时空记事": 0.6
+      }
+    },
+    {
+      "id": "gollum",
+      "name": "咕噜",
+      "type": "movie",
+      "subtype": "fantasy",
+      "era": "第三纪元",
+      "primaryField": "环奴",
+      "briefDescription": "《指环王》中被至尊魔戒腐蚀的角色，双重人格，对魔戒充满执念",
+      "avatarName": "gollum",
+      "region": "中土世界",
+      "contentAffinities": {
+        "古潮新语": 0.65, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.95, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "plato",
+      "name": "柏拉图",
+      "type": "historical",
+      "subtype": "philosopher",
+      "era": "古希腊",
+      "primaryField": "哲学家",
+      "briefDescription": "古希腊哲学家，苏格拉底的学生，理想国的提出者，奠定了西方哲学的基础",
+      "avatarName": "plato",
+      "region": "希腊",
+      "contentAffinities": {
+        "古潮新语": 0.95, 
+        "穿越吐槽": 0.7, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "laozi",
+      "name": "老子",
+      "type": "historical",
+      "subtype": "philosopher",
+      "era": "春秋时期",
+      "primaryField": "哲学家",
+      "briefDescription": "道家学派创始人，《道德经》作者，提出\"无为而治\"的思想",
+      "avatarName": "laozi",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.95, 
+        "穿越吐槽": 0.7, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "kant",
+      "name": "康德",
+      "type": "historical",
+      "subtype": "philosopher",
+      "era": "启蒙时代",
+      "primaryField": "哲学家",
+      "briefDescription": "德国哲学家，批判哲学创始人，著有《纯粹理性批判》等重要哲学著作",
+      "avatarName": "kant",
+      "region": "德国",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.7, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "zhuangzi",
+      "name": "庄子",
+      "type": "historical",
+      "subtype": "philosopher",
+      "era": "战国时期",
+      "primaryField": "哲学家",
+      "briefDescription": "道家代表人物，《庄子》作者，提出逍遥无为的思想，影响深远",
+      "avatarName": "zhuangzi",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "tolstoy",
+      "name": "托尔斯泰",
+      "type": "historical",
+      "subtype": "writer",
+      "era": "19世纪",
+      "primaryField": "作家",
+      "briefDescription": "俄国文学巨匠，《战争与和平》《安娜·卡列尼娜》作者，现实主义大师",
+      "avatarName": "tolstoy",
+      "region": "俄国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.75, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "marquez",
+      "name": "马尔克斯",
+      "type": "historical",
+      "subtype": "writer",
+      "era": "现代",
+      "primaryField": "作家",
+      "briefDescription": "哥伦比亚作家，魔幻现实主义代表，《百年孤独》作者，诺贝尔文学奖得主",
+      "avatarName": "marquez",
+      "region": "哥伦比亚",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.75, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "luxun",
+      "name": "鲁迅",
+      "type": "historical",
+      "subtype": "writer",
+      "era": "近代",
+      "primaryField": "作家",
+      "briefDescription": "中国现代文学奠基人，《狂人日记》《阿Q正传》作者，思想家、革命家",
+      "avatarName": "luxun",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "kawabata",
+      "name": "川端康成",
+      "type": "historical",
+      "subtype": "writer",
+      "era": "近现代",
+      "primaryField": "作家",
+      "briefDescription": "日本文学家，《雪国》《伊豆的舞女》作者，日本首位诺贝尔文学奖得主",
+      "avatarName": "kawabata",
+      "region": "日本",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.7, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "sanmao",
+      "name": "三毛",
+      "type": "historical",
+      "subtype": "writer",
+      "era": "现代",
+      "primaryField": "作家",
+      "briefDescription": "华语女作家，《撒哈拉的故事》作者，以游记散文著称，流浪文学代表",
+      "avatarName": "sanmao",
+      "region": "中国台湾",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.95, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "freud",
+      "name": "弗洛伊德",
+      "type": "historical",
+      "subtype": "psychologist",
+      "era": "近现代",
+      "primaryField": "心理学家",
+      "briefDescription": "精神分析学派创始人，提出潜意识、本我、自我和超我的理论体系",
+      "avatarName": "freud",
+      "region": "奥地利",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "jung",
+      "name": "荣格",
+      "type": "historical",
+      "subtype": "psychologist",
+      "era": "近现代",
+      "primaryField": "心理学家",
+      "briefDescription": "分析心理学创始人，提出集体无意识、原型等理论，对文学艺术影响深远",
+      "avatarName": "jung",
+      "region": "瑞士",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.75, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.8
+      }
+    },
+    {
+      "id": "adler",
+      "name": "阿德勒",
+      "type": "historical",
+      "subtype": "psychologist",
+      "era": "近现代",
+      "primaryField": "心理学家",
+      "briefDescription": "个体心理学创始人，强调社会因素对人格形成的影响，提出\"自卑与超越\"理论",
+      "avatarName": "adler",
+      "region": "奥地利",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "davinci",
+      "name": "达芬奇",
+      "type": "historical",
+      "subtype": "artist",
+      "era": "文艺复兴",
+      "primaryField": "艺术家、科学家",
+      "briefDescription": "文艺复兴时期的全能天才，《蒙娜丽莎》《最后的晚餐》作者，解剖学、建筑学等领域的先驱",
+      "avatarName": "davinci",
+      "region": "意大利",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.95, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "monet",
+      "name": "莫奈",
+      "type": "historical",
+      "subtype": "artist",
+      "era": "19世纪",
+      "primaryField": "画家",
+      "briefDescription": "印象派绘画代表人物，以光与色彩的表现闻名，《睡莲》系列作品影响深远",
+      "avatarName": "monet",
+      "region": "法国",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.7, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.7
+      }
+    },
+    {
+      "id": "zhangdaqian",
+      "name": "张大千",
+      "type": "historical",
+      "subtype": "artist",
+      "era": "近现代",
+      "primaryField": "画家",
+      "briefDescription": "中国现代绘画大师，精通传统国画，晚年创泼墨泼彩风格，影响深远",
+      "avatarName": "zhangdaqian",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.75, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "picasso",
+      "name": "毕加索",
+      "type": "historical",
+      "subtype": "artist",
+      "era": "现代",
+      "primaryField": "画家",
+      "briefDescription": "20世纪最有影响力的艺术家之一，立体主义创始人，作品风格多变，革新了现代艺术",
+      "avatarName": "picasso",
+      "region": "西班牙",
+      "contentAffinities": {
+        "古潮新语": 0.8, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.9, 
+        "时空记事": 0.75
+      }
+    },
+    {
+      "id": "qinshihuang",
+      "name": "秦始皇",
+      "type": "historical",
+      "subtype": "emperor",
+      "era": "秦朝",
+      "primaryField": "皇帝",
+      "briefDescription": "中国历史上第一个皇帝，统一六国，建立中央集权制度，修长城，焚书坑儒",
+      "avatarName": "qinshihuang",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.95, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.95
+      }
+    },
+    {
+      "id": "hanwudi",
+      "name": "汉武帝",
+      "type": "historical",
+      "subtype": "emperor",
+      "era": "汉朝",
+      "primaryField": "皇帝",
+      "briefDescription": "汉朝最著名的皇帝之一，开创大汉盛世，推行独尊儒术，开拓西域",
+      "avatarName": "hanwudi",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "kangxi",
+      "name": "康熙皇帝",
+      "type": "historical",
+      "subtype": "emperor",
+      "era": "清朝",
+      "primaryField": "皇帝",
+      "briefDescription": "中国历史上最伟大的皇帝之一，在位61年，平定三藩，收复台湾，亲征噶尔丹",
+      "avatarName": "kangxi",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "jingke",
+      "name": "荆轲",
+      "type": "historical",
+      "subtype": "assassin",
+      "era": "战国",
+      "primaryField": "刺客",
+      "briefDescription": "战国时期著名刺客，受燕太子丹委托刺杀秦王嬴政，虽失败但留下千古佳话",
+      "avatarName": "jingke",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.75, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "nieying",
+      "name": "聂隐娘",
+      "type": "historical",
+      "subtype": "assassin",
+      "era": "唐朝",
+      "primaryField": "女刺客",
+      "briefDescription": "唐传奇中的女刺客，幼时被尼姑抚养，学得神奇武功，后被指派暗杀恶吏",
+      "avatarName": "nieying",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "wangzhaojun",
+      "name": "王昭君",
+      "type": "historical",
+      "subtype": "imperial",
+      "era": "汉朝",
+      "primaryField": "宫女",
+      "briefDescription": "汉朝四大美女之一，和亲出塞，为汉匈和平做出贡献，琵琶曲《昭君出塞》广为流传",
+      "avatarName": "wangzhaojun",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.7, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "xishi",
+      "name": "西施",
+      "type": "historical",
+      "subtype": "beauty",
+      "era": "春秋",
+      "primaryField": "美女",
+      "briefDescription": "中国古代四大美女之首，被吴王夫差宠爱，实为越国间谍，助越王勾践灭吴复国",
+      "avatarName": "xishi",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "cleopatra",
+      "name": "埃及艳后",
+      "type": "historical",
+      "subtype": "queen",
+      "era": "古埃及",
+      "primaryField": "女王",
+      "briefDescription": "埃及托勒密王朝最后一位法老，美貌与智慧并重，与恺撒和安东尼的爱情故事传颂至今",
+      "avatarName": "cleopatra",
+      "region": "埃及",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.85, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "diaochan",
+      "name": "貂蝉",
+      "type": "historical",
+      "subtype": "beauty",
+      "era": "三国",
+      "primaryField": "歌姬",
+      "briefDescription": "中国古代四大美女之一，被王允用于离间董卓与吕布的连环计中，"闭月羞花"之貌",
+      "avatarName": "diaochan",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.85, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.9, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "caesar",
+      "name": "凯撒大帝",
+      "type": "historical",
+      "subtype": "emperor",
+      "era": "古罗马",
+      "primaryField": "将军、独裁官",
+      "briefDescription": "古罗马共和国末期的军事政治家，征服高卢，成为罗马的终身独裁官，为罗马帝国奠基",
+      "avatarName": "caesar",
+      "region": "罗马",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.95
+      }
+    },
+    {
+      "id": "ayuwang",
+      "name": "阿育王",
+      "type": "historical",
+      "subtype": "emperor",
+      "era": "孔雀王朝",
+      "primaryField": "皇帝",
+      "briefDescription": "古印度孔雀王朝第三位君主，统一印度次大陆，后皈依佛教并大力传播佛法",
+      "avatarName": "ayuwang",
+      "region": "印度",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.75, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.85, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "female_ninja",
+      "name": "女忍者",
+      "type": "historical",
+      "subtype": "assassin",
+      "era": "日本战国",
+      "primaryField": "忍者",
+      "briefDescription": "日本战国时代的女性忍者(くノ一)，精通间谍、暗杀、医疗等技能，常被用于收集情报",
+      "avatarName": "female_ninja",
+      "region": "日本",
+      "contentAffinities": {
+        "古潮新语": 0.75, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.85
+      }
+    },
+    {
+      "id": "cixi",
+      "name": "慈禧太后",
+      "type": "historical",
+      "subtype": "imperial",
+      "era": "清朝",
+      "primaryField": "太后",
+      "briefDescription": "清朝末年的实际统治者，垂帘听政长达47年，中国近代史上极具争议的政治人物",
+      "avatarName": "cixi",
+      "region": "中国",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.85, 
+        "日常心情": 0.8, 
+        "虫洞共鸣": 0.75, 
+        "时空记事": 0.9
+      }
+    },
+    {
+      "id": "genghis",
+      "name": "成吉思汗",
+      "type": "historical",
+      "subtype": "emperor",
+      "era": "蒙古帝国",
+      "primaryField": "大汗",
+      "briefDescription": "蒙古帝国创建者，世界历史上最伟大的军事家和征服者之一，建立了人类史上最大的连续疆域帝国",
+      "avatarName": "genghis",
+      "region": "蒙古",
+      "contentAffinities": {
+        "古潮新语": 0.9, 
+        "穿越吐槽": 0.8, 
+        "日常心情": 0.7, 
+        "虫洞共鸣": 0.8, 
+        "时空记事": 0.95
+      }
+    }
+  ]
+} 

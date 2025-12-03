@@ -1,0 +1,22 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set password "3Qq123456."
+
+spawn ssh root@121.40.184.29
+expect {
+    "password:" {
+        send "$password\r"
+    }
+    timeout {
+        puts "连接超时"
+        exit 1
+    }
+}
+
+expect "#"
+send "grep -A 2 'express.json' /var/www/chongyu-backend/server.js\r"
+expect "#"
+send "exit\r"
+expect eof
+

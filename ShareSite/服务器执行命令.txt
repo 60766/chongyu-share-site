@@ -1,0 +1,199 @@
+# 在服务器上直接执行以下命令（逐行复制）
+
+# 1. 创建脚本文件
+cat > /root/setup_https_caddy.sh << 'SCRIPT_EOF'
+#!/bin/bash
+# Caddy HTTPS 设置脚本
+
+set -e
+
+echo "🚀 开始设置 Caddy HTTPS..."
+
+# 1. 检查后端服务是否运行
+echo ""
+echo "📋 步骤 1: 检查后端服务状态..."
+if curl -I http://127.0.0.1:3000 >/dev/null 2>&1; then
+    echo "✅ 后端服务在 127.0.0.1:3000 正常运行"
+else
+    echo "⚠️  后端服务未响应，请先启动后端服务"
+    exit 1
+fi
+
+# 2. 检查端口占用
+echo ""
+echo "📋 步骤 2: 检查 80/443 端口占用..."
+if command -v lsof >/dev/null 2>&1; then
+    echo "80 端口占用情况:"
+    sudo lsof -i:80 || echo "  80 端口未被占用"
+    echo "443 端口占用情况:"
+    sudo lsof -i:443 || echo "  443 端口未被占用"
+fi
+
+# 3. 检查系统时间
+echo ""
+echo "📋 步骤 3: 检查系统时间..."
+timedatectl status
+
+# 4. 检测系统类型
+echo ""
+echo "📋 步骤 4: 检测系统类型..."
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    echo "系统: $ID $VERSION_ID"
+    
+    # 5. 安装 Caddy
+    echo ""
+    echo "📋 步骤 5: 安装 Caddy..."
+    
+    if [[ "$ID" == "ubuntu" ]] || [[ "$ID" == "debian" ]]; then
+        echo "检测到 Ubuntu/Debian 系统，使用 apt 安装..."
+        sudo apt update
+        sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
+        
+        curl -1sSf https://dl.cloudsmith.io/public/caddy/stable/gpg.key | sudo tee /usr/share/keyrings/caddy-stable-archive-keyring.gpg >/dev/null
+        curl -1sSf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+        
+        sudo apt update && sudo apt install -y caddy
+        
+    elif [[ "$ID" == "centos" ]] || [[ "$ID" == "rocky" ]] || [[ "$ID" == "rhel" ]]; then
+        echo "检测到 CentOS/Rocky/RHEL 系统，使用 dnf 安装..."
+        sudo dnf install -y 'dnf-command(copr)'
+        sudo dnf copr enable @caddy/caddy -y
+        sudo dnf install -y caddy
+    else
+        echo "⚠️  未识别的系统类型，请手动安装 Caddy"
+        exit 1
+    fi
+    
+    # 6. 配置 Caddyfile
+    echo ""
+    echo "📋 步骤 6: 配置 Caddyfile..."
+    sudo tee /etc/caddy/Caddyfile >/dev/null <<'EOF'
+api.chongyuai.com {
+  encode zstd gzip
+  reverse_proxy 127.0.0.1:3000
+}
+EOF
+    
+    echo "✅ Caddyfile 配置完成"
+    echo "配置内容:"
+    cat /etc/caddy/Caddyfile
+    
+    # 7. 启动 Caddy
+    echo ""
+    echo "📋 步骤 7: 启动 Caddy 服务..."
+    sudo systemctl enable --now caddy
+    sudo systemctl restart caddy
+    
+    # 8. 检查服务状态
+    echo ""
+    echo "📋 步骤 8: 检查 Caddy 服务状态..."
+    sudo systemctl status caddy --no-pager -l || true
+    
+    # 9. 查看日志
+    echo ""
+    echo "📋 步骤 9: 查看 Caddy 日志（最近 50 行）..."
+    sudo journalctl -u caddy -n 50 --no-pager
+    
+    # 10. 测试 HTTPS
+    echo ""
+    echo "📋 步骤 10: 测试 HTTPS 连接..."
+    sleep 3  # 等待证书申请
+    if curl -I https://api.chongyuai.com 2>&1 | head -5; then
+        echo ""
+        echo "✅ HTTPS 设置完成！"
+        echo ""
+        echo "🎉 下一步："
+        echo "1. 在浏览器中访问 https://api.chongyuai.com 确认证书有效"
+        echo "2. 运行测试: curl -I https://api.chongyuai.com"
+        echo "3. 通知我更新 iOS 配置"
+    else
+        echo "⚠️  HTTPS 测试失败，请检查日志"
+    fi
+    
+else
+    echo "⚠️  无法检测系统类型"
+    exit 1
+fi
+SCRIPT_EOF
+
+# 2. 给脚本添加执行权限
+chmod +x /root/setup_https_caddy.sh
+
+# 3. 运行脚本
+/root/setup_https_caddy.sh
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

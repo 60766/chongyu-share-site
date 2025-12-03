@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+set timeout 30
+
+spawn ssh root@47.94.254.130
+expect {
+    "password:" {
+        send "Aa112211\r"
+        exp_continue
+    }
+    "*]#" {
+        send "cd /var/www/chongyu-backend\r"
+    }
+}
+
+expect "*]#"
+send "pm2 logs chongyu-backend --lines 200 --nostream | grep -E 'Vision API.*成功|消耗.*积分|X-Cost-Credits' | tail -30\r"
+
+expect "*]#"
+send "exit\r"
+expect eof

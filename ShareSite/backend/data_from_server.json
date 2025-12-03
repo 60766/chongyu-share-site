@@ -1,0 +1,5 @@
+正在从服务器获取数据...
+spawn ssh root@47.94.254.130 cat /var/www/chongyu-backend/data.json
+root@47.94.254.130's password: 
+Permission denied, please try again.
+root@47.94.254.130's password: 

@@ -1,0 +1,23 @@
+{
+  "images": [
+    {
+      "filename": "spinoza.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "spinoza.png",
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "filename": "spinoza.png",
+      "idiom": "universal",
+      "scale": "3x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

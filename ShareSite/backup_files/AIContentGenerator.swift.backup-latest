@@ -1,0 +1,1114 @@
+import Foundation
+import Combine
+import UIKit
+
+/**
+ * AI内容生成器
+ * 负责使用API生成五种类型的内容
+ */
+class AIContentGenerator {
+    // 单例实例
+    static let shared = AIContentGenerator()
+    
+    // MARK: - 私有属性
+    private init() {}
+    
+    // 取消令牌
+    private var cancellables = Set<AnyCancellable>()
+    
+    // MARK: - 虫洞共鸣内容生成
+    
+    /**
+     * 生成虫洞共鸣内容
+     * @param figure 历史人物
+     * @param situation 情境
+     * @param expectation 期望
+     * @return Future<String, Error>
+     */
+    func generateResonanceContent(
+        figure: String,
+        situation: String,
+        expectation: String
+    ) -> Future<String, Error> {
+        return Future { promise in
+            let prompt = """
+            请以\(figure)的风格，创作一篇简短的思考文章，主题关于\(situation)，读者期望获得\(expectation)。
+            文章应体现\(figure)的思维方式、价值观和语言特点，展示跨越时空的思考深度。
+            内容应包含：
+            1. 对\(situation)的独特见解
+            2. 与读者建立情感共鸣
+            3. 提供新颖的思考角度
+            4. 使用\(figure)特有的表达方式
+            
+            文章篇幅控制在150字以内，保持简洁明了，使用\(figure)特有的表达和思考方式。不需要签名或引用。
+            """
+            
+            self.generateContent(prompt: prompt)
+                .sink(
+                    receiveCompletion: { completion in
+                        if case .failure(let error) = completion {
+                            promise(.failure(error))
+                        }
+                    },
+                    receiveValue: { content in
+                        promise(.success(content))
+                    }
+                )
+                .store(in: &self.cancellables)
+        }
+    }
+    
+    // MARK: - 虫洞共鸣内容生成（增强版）
+    
+    /**
+     * 生成虫洞共鸣内容（真实情感连接版本）
+     * @param figure 历史人物
+     * @param situation 情境 - 用户当前面临的处境或问题
+     * @param expectation 期望 - 用户希望获得的启发或答案
+     * @param keyword 关键词（可选）- 用户特别关注的方面
+     * @return Future<String, Error>
+     */
+    func generateEnhancedResonanceContent(
+        figure: String,
+        situation: String,
+        expectation: String,
+        keyword: String? = nil
+    ) -> Future<String, Error> {
+        return Future { promise in
+            var promptKeyword = ""
+            if let keyword = keyword, !keyword.isEmpty {
+                promptKeyword = "，写作重点是\"\(keyword)\""
+            }
+            
+            // 构建个性化内容生成提示词，让AI自行发挥对历史人物的理解
+            let prompt = """
+            【虫洞共鸣：历史人物的心灵分享】
+            
+            你是\(figure)，正在社交媒体上与现代人分享关于"\(situation)"（情境）与"\(expectation)"（期望）的见解。请特别关注如何在这样的情境下帮助读者获得他们期望的"\(expectation)"。
+            
+            核心要求：
+            • 直接明了 - 用现代人容易理解的语言表达核心观点，避免过度隐喻或晦涩表达
+            • 真实共鸣 - 分享你作为历史人物曾经的真实挣扎和感悟，但用通俗易懂的方式
+            • 实用洞见 - 给出可以立即应用或思考的观点，不要空洞或过于抽象
+            • 保持个性 - 体现你的思维方式和价值观，但不要模仿古代语言或过度文艺化
+            • 创意多样 - 使用多变的开场方式和结构形式，避免套路化
+            • 内容新鲜 - 创造新的、独特的个人经历，而不是重复使用相同的故事或场景
+            
+            【历史人物自由发挥】
+            • 基于你对\(figure)的了解，自行发挥这个历史人物的个性、思维方式和价值观
+            • 不要受限于固定的人物设定，每次都可以探索这个历史人物不同的侧面
+            • 创造符合历史背景但独特新颖的个人经历和故事，避免使用刻板印象
+            • 可以展现这个历史人物鲜为人知的一面，只要符合基本历史事实
+            
+            内容元素（随意组合、变化顺序，创造个性化表达）：
+            • 你对处于"\(situation)"情境且期望获得"\(expectation)"的人的核心建议
+            • 一个全新创造的个人经历或故事片段，避免重复老套的场景
+            • 从经历中获得的关键洞见或领悟，特别是与用户期望相关的
+            • 与读者建立共鸣或联系的方式，帮助他们在现实中应用你的见解
+            
+            经历创造指南：
+            • 不要使用固定的、重复的经历描述
+            • 基于你的时代背景、职业和性格，创造一个新的、独特的个人经历
+            • 选择不同场景：工作中的挑战、日常生活小事、重要决策时刻、意外发现等
+            • 添加具体细节，如地点、时间、感受、周围环境等
+            • 确保经历与"\(situation)"和"\(expectation)"有自然联系
+            • 可以探索你生命中不同阶段和不同情境下的经历
+            
+            创意多样化指南（每次选择不同组合，不要全部使用）：
+            
+            开场方式（从中选择1-2种，或创造新的）：
+            • 直接分享一个生动瞬间或场景："昨日凌晨三点，我又在书桌前...""雨夜漫步巴黎街头时..."
+            • 以反常识开头引发思考："最害怕的从来不是失败，而是..."
+            • 以简短对话或问答开始："'你到底怎么创作的？'被问过无数次这个问题..."
+            • 从个人感受切入："总觉得人生最大的讽刺是..."
+            • 以意外发现或顿悟切入："直到那天整理旧书，才发现自己一直错了..."
+            • 从回忆轻叹开始："那年在佛罗伦萨的夏天，我第一次明白..."
+            • 以谚语或比喻引入："生活就像调色板，不是..."
+            
+            结构变化（选择一种，或创造新的）：
+            • 以小见大：从日常小事引出深刻道理
+            • 对比反思：先说社会常见看法，再给出个人独特视角
+            • 循序渐进：从表面现象逐步深入到本质
+            • 情景再现：重现历史场景，然后连接到现代启示
+            • 自问自答：抛出问题，再一步步给出自己的思考
+            • 时空交错：将过去与现在的场景或感受并置对比
+            
+            表达风格（灵活运用）：
+            • 时而使用简短有力的句子
+            • 适当穿插修辞手法，如比喻、拟人
+            • 加入个人口头禅或独特表达习惯
+            • 在叙述中自然融入幽默或反讽
+            • 有时用直白语言，有时用意象表达
+            • 在分享经验时加入生动细节
+            
+            注意事项：
+            • 晦涩难懂的隐喻或文学表达
+            • "寻找答案"、"答案就在..."等空洞表达
+            • 过多的设问和反问句
+            • 没有实质内容的空话或套话
+            • 使用相似的段落结构和开头方式
+            • 每次都采用相同的表达模式和结构
+            • 重复使用相同的个人经历或生活场景
+            • 过度依赖你最出名的几个事迹或成就
+            
+            !!!重要格式要求!!!：
+            • 绝对不要在正文中添加任何结构标签或元数据，如"(场景回忆+对比反思)"、"(开场：反常识思考)"等
+            • 不要在内容中加入字数统计、风格说明、内容分析等任何形式的技术说明或元数据
+            • 不要在结尾处添加任何括号内的内容，如"(114字，精准呈现莎翁创作思维...)"
+            • 直接输出纯内容，不要包含任何结构化标记、标签或注释
+            • 即使是为了标记结构或风格，也不要使用括号、方括号等符号包裹任何元数据
+            • 不要使用像"朋友圈正文："这样的前缀
+            
+            【突破创作局限性的特别指南】
+            • 将本提示词中的示例和建议视为灵感来源而非模板，不要照搬任何示例表达
+            • 挑战自己创造前所未有的表达方式，而不是套用提示词中的格式
+            • 思考这位历史人物可能经历过但未被广泛记载的情境和故事
+            • 探索这个人物性格中不那么为人所知的维度和特质
+            • 每次创作时刻意避开自己可能习惯使用的表达模式
+            • 如果冒出看似"出格"但符合人物本质的想法，请大胆使用
+            • 创造原创场景和细节，不要依赖常见的历史典故或轶事
+            • 想象这位历史人物面对现代情境时可能有的独特反应和思考
+            
+            字数：80-120字，确保内容自然流畅，像真实的社交媒体分享。
+            
+            记住：你的分享应该每次都有新鲜感，创造全新的个人经历和见解，而不是重复已有模式或固定典故。让你的表达方式保持变化和创意，同时传递深刻洞见。绝不要输出任何形式的元数据或结构标签。
+            """
+            
+            self.generateContent(prompt: prompt)
+                .sink(
+                    receiveCompletion: { completion in
+                        if case .failure(let error) = completion {
+                            promise(.failure(error))
+                        }
+                    },
+                    receiveValue: { content in
+                        promise(.success(content))
+                    }
+                )
+                .store(in: &self.cancellables)
+        }
+    }
+    
+    /**
+     * 生成虫洞共鸣帖子集合
+     * @param situation 情境 - 用户当前面临的处境或问题
+     * @param expectation 期望 - 用户希望获得的启发或答案
+     * @param keyword 关键词（可选）- 用户特别关注的方面
+     * @param count 帖子数量
+     * @return Future<[ResonancePost], Error>
+     */
+    func generateResonancePosts(
+        situation: String,
+        expectation: String,
+        keyword: String? = nil,
+        count: Int = 5
+    ) -> Future<[ResonancePost], Error> {
+        return Future { promise in
+            // 创建后台任务，确保即使用户退出页面也能完成API调用
+            let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+                print("⚠️ generateResonancePosts: 后台任务超时，但API请求会继续进行")
+            }
+            
+            print("🚀 开始生成虫洞共鸣帖子 - 个人化时空连接")
+            
+            // 创建针对用户情境的深度分析，增强个人化
+            let userContextAnalysis = self.analyzeUserContext(situation: situation, expectation: expectation, keyword: keyword)
+            
+            // 历史人物列表 - 按存在主义主题匹配
+            let historicalFigures = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "牛顿", "李白"]
+            let avatarSymbols = ["atom", "book.fill", "paintpalette.fill", "scroll.fill", "graduationcap.fill", "text.book.closed.fill"]
+            
+            // 根据用户情境选择最适合的历史人物
+            // 实际应用中可以更智能地匹配，这里简化为随机选择
+            var selectedFigures: [String] = []
+            if let keyFigure = self.findMostRelevantFigure(forSituation: situation, expectation: expectation) {
+                selectedFigures.append(keyFigure)
+                
+                // 添加补充视角的人物
+                var remainingFigures = historicalFigures.filter { $0 != keyFigure }
+                remainingFigures.shuffle()
+                selectedFigures.append(contentsOf: remainingFigures.prefix(count - 1))
+            } else {
+                // 如果没有特别匹配的人物，就随机选择
+                var shuffledFigures = historicalFigures
+                shuffledFigures.shuffle()
+                selectedFigures = Array(shuffledFigures.prefix(min(count, shuffledFigures.count)))
+            }
+            
+            var posts: [ResonancePost] = []
+            
+            // 使用递归函数逐个生成帖子，避免使用DispatchGroup
+            func generateNextPost(index: Int) {
+                // 检查是否已生成所有帖子
+                if index >= selectedFigures.count {
+                    print("✅ 所有帖子生成完成，共\(posts.count)篇")
+                    // 完成后清理资源并返回结果
+                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    promise(.success(posts))
+                    return
+                }
+                
+                // 获取当前要处理的历史人物
+                let figure = selectedFigures[index]
+                let figureIndex = historicalFigures.firstIndex(of: figure) ?? 0
+                let avatar = avatarSymbols[figureIndex]
+                
+                print("🔄 开始生成第\(index+1)/\(selectedFigures.count)篇深度共鸣帖子，人物: \(figure)")
+                
+                // 为每个历史人物定制情境和期望，增加个性化
+                let customizedSituation = self.customizeSituationForFigure(figure: figure, baseSituation: situation)
+                let customizedExpectation = self.customizeExpectationForFigure(figure: figure, baseExpectation: expectation)
+                
+                // 生成当前帖子内容，无超时限制
+                self.generateEnhancedResonanceContent(
+                    figure: figure,
+                    situation: customizedSituation,
+                    expectation: customizedExpectation,
+                    keyword: keyword
+                )
+                .sink(
+                    receiveCompletion: { completion in
+                        if case .failure(let error) = completion {
+                            print("❌ 生成\(figure)内容失败: \(error.localizedDescription)")
+                            
+                            // 即使失败也不使用备用内容，而是跳过这个帖子
+                            print("⚠️ 跳过\(figure)的帖子生成")
+                        }
+                        
+                        // 继续处理下一个帖子
+                        generateNextPost(index: index + 1)
+                    },
+                    receiveValue: { content in
+                        print("📄 成功获取\(figure)深度共鸣内容，长度: \(content.count)字符")
+                        
+                        // 创建帖子
+                        let post = ResonancePost(
+                            id: UUID().uuidString,
+                            author: figure,
+                            authorAvatar: avatar,
+                            content: content,
+                            timestamp: Date().addingTimeInterval(-Double.random(in: 60...3600)),
+                            likes: Int.random(in: 10...50),
+                            comments: []
+                        )
+                        posts.append(post)
+                        print("✅ 已将\(figure)深度共鸣帖子添加到结果数组")
+                        
+                        // 不要在这里调用generateNextPost，因为它会在receiveCompletion中调用
+                    }
+                )
+                .store(in: &self.cancellables)
+            }
+            
+            // 启动第一个帖子的生成
+            generateNextPost(index: 0)
+        }
+    }
+    
+    /**
+     * 分析用户输入的情境和期望，提取核心存在主题
+     */
+    private func analyzeUserContext(situation: String, expectation: String, keyword: String?) -> String {
+        // 实际应用中，这里可以进行更复杂的分析
+        // 目前简化为拼接字符串
+        var context = "用户处境：\(situation)；期望：\(expectation)"
+        if let keyword = keyword, !keyword.isEmpty {
+            context += "；写作重点：\(keyword)"
+        }
+        return context
+    }
+    
+    /**
+     * 根据用户情境找出最相关的历史人物
+     */
+    private func findMostRelevantFigure(forSituation situation: String, expectation: String) -> String? {
+        // 简化的实现，随机选择一个历史人物或根据简单关键词匹配
+        let historicalFigures = ["爱因斯坦", "莎士比亚", "达芬奇", "孔子", "牛顿", "李白"]
+        return historicalFigures.randomElement()
+    }
+    
+    /**
+     * 为特定历史人物定制情境表述
+     */
+    private func customizeSituationForFigure(figure: String, baseSituation: String) -> String {
+        // 直接返回原始情境，不再基于预设角色特征定制
+        return baseSituation
+    }
+    
+    /**
+     * 为特定历史人物定制期望表述
+     */
+    private func customizeExpectationForFigure(figure: String, baseExpectation: String) -> String {
+        // 直接返回原始期望，不再基于预设角色特征定制
+        return baseExpectation
+    }
+    
+    // MARK: - 日常心情内容生成
+    
+    /**
+     * 生成日常心情内容
+     * @param figure 历史人物
+     * @param mood 情绪基调
+     * @param styleIndex 风格索引，确保不同帖子使用不同风格
+     * @return Future<String, Error>
+     */
+    func generateMoodContent(
+        figure: String,
+        mood: String,
+        styleIndex: Int = -1
+    ) -> Future<String, Error> {
+        return Future { promise in
+            // 移除personaSpecificScenes变量，让AI自行发挥
+            
+            // 保留情绪类型的描述，因为这与角色无关
+            var moodDescription = ""
+            
+            // 根据情绪类型添加更详细的描述
+            switch mood.lowercased() {
+            // 积极情绪
+            case "喜悦", "欣喜", "开心", "兴奋":
+                moodDescription = "一种发自内心的欢乐感，可能源于成功、好消息或美好体验"
+            case "满足", "满意", "充实":
+                moodDescription = "对当前状态的一种安心和满意，无需更多，恰到好处的足够感"
+            case "感动", "触动", "温暖":
+                moodDescription = "被某种情景、言行或回忆触动内心柔软处的情感状态"
+            case "放松", "宁静", "平和":
+                moodDescription = "身心松弛、不受紧张或压力影响的舒适状态"
+            case "憧憬", "向往", "期待":
+                moodDescription = "对未来可能性的积极展望和期待"
+            case "振奋", "鼓舞":
+                moodDescription = "精神被激发、情绪高涨的状态，感到充满动力"
+            case "好奇", "惊奇":
+                moodDescription = "对新事物的探索欲望和兴趣"
+            case "欣赏", "赞叹":
+                moodDescription = "对美好事物或才能的认可和欣赏之情"
+                
+            // 平静情绪
+            case "思考", "沉思", "冥想":
+                moodDescription = "深入思索某个问题或现象，处于理性分析状态"
+            case "感悟", "领悟", "顿悟":
+                moodDescription = "突然理解或明白某个道理的瞬间感受"
+            case "怀旧", "念旧", "思念":
+                moodDescription = "回忆过去经历或人物时的情感状态，带着温柔的忧伤"
+            case "释然", "豁达":
+                moodDescription = "从困扰或纠结中解脱，看开某事后的轻松感"
+            case "从容", "淡然":
+                moodDescription = "面对变化或挑战时的不急不躁，处变不惊的状态"
+                
+            // 复杂情绪
+            case "迷茫", "困惑", "疑惑":
+                moodDescription = "对方向或问题答案不确定，处于寻找但未找到的状态"
+            case "惆怅", "怅然":
+                moodDescription = "带着些许忧伤的失落感，但不至于悲伤"
+            case "无奈", "妥协":
+                moodDescription = "面对无法改变的事实时的一种接受和让步"
+            case "疲惫", "疲倦", "厌倦":
+                moodDescription = "身心俱疲的状态，可能来自过度工作或情感消耗"
+            case "焦虑", "忧虑", "不安":
+                moodDescription = "对未知结果或潜在问题的担忧和紧张"
+            case "孤独", "寂寞":
+                moodDescription = "独处时的一种深层情感状态，可能伴随思考和自省"
+            case "纠结", "矛盾", "犹豫":
+                moodDescription = "在不同选择或想法间摇摆不定的状态"
+                
+            // 日常情绪场景
+            case "小确幸":
+                moodDescription = "日常生活中的小小幸福感，微不足道却让人感到温暖的瞬间"
+            case "日常吐槽", "吐槽":
+                moodDescription = "对生活中不如意事的半开玩笑式抱怨，不严肃的发泄"
+            case "生活感悟":
+                moodDescription = "从日常小事中获得的人生思考和领悟"
+            case "偶遇惊喜":
+                moodDescription = "意外遇到的令人愉悦的事物或场景"
+            case "工作困境":
+                moodDescription = "在工作或创作中遇到的挑战和压力"
+                
+            default:
+                moodDescription = ""
+            }
+            
+            // 内容风格多样化：确保不同帖子使用不同风格
+            let contentStyles = [
+                "像日记一般记录当下的真实感受",
+                "像和信任的朋友聊天一样表达内心想法",
+                "像自言自语一样说出未经修饰的真实情绪",
+                "像在写信一样倾诉心中所想",
+                "像在思考问题时的脑内独白"
+            ]
+            
+            // 根据传入的索引选择风格，或随机选择一种
+            let styleIndex = styleIndex >= 0 && styleIndex < contentStyles.count ? styleIndex : Int.random(in: 0..<contentStyles.count)
+            let selectedStyle = contentStyles[styleIndex]
+            
+            // 表达形式多样化：有的使用标题，有的直接开始写
+            let useTitleFormat = styleIndex % 2 == 0 // 一半内容使用标题，一半不用
+            let titleInstruction = useTitleFormat ? 
+                "可以用【】作为小标题，但不是必须的" : 
+                "直接开始表达，像说话一样自然流畅"
+            
+            // 修改日常心情内容生成提示词
+            let prompt = """
+            【真实日常心情】
+
+            你现在是\(figure)，请分享一条关于"\(mood)"\(moodDescription.isEmpty ? "" : "（\(moodDescription)）")的真实感受。
+
+            【历史人物自由发挥】
+            • 基于你对\(figure)的了解，自行发挥这个历史人物的个性、思维方式和价值观
+            • 不要受限于固定的人物设定，每次都可以探索这个历史人物不同的侧面
+            • 创造符合历史背景但独特新颖的个人经历和情绪表达，避免使用刻板印象
+            • 可以展现这个历史人物鲜为人知的一面，只要符合基本历史事实
+
+            表达要点：
+            1. 用第一人称，像普通人一样说话，避免刻板印象
+            2. 语言要简单自然，就像在和朋友聊天
+            3. 可以表达困惑、矛盾或不确定性，这会更真实
+            4. 可以分享一个具体经历或场景，但不要过于戏剧化
+            5. 不要过于完美或深刻，真实的情感往往是简单直接的
+
+            风格要求：
+            - \(selectedStyle)
+
+            表达注意：
+            - 不要刻意模仿古代说话方式
+            - 避免说教或过于哲理化的表达
+            - 可以有些许幽默感或自嘲
+            - \(titleInstruction)
+
+            写作格式：
+            - 绝对不要在正文中添加任何结构标签或元数据，如"(情绪分析)"、"(场景描述)"等
+            - 不要在内容中加入字数统计、风格说明、内容分析等任何技术说明或元数据
+            - 不要在结尾处添加任何括号内的内容，如"(98字，符合李白性格特点...)"
+            - 直接输出纯内容，不要包含任何结构化标记、标签或注释
+            - 即使是为了标记结构或风格，也不要使用括号、方括号等符号包裹任何元数据
+
+            字数要求：
+            - 控制在80-150字左右
+            - 保持简短直接，像社交媒体发言一样
+
+            目标：创作出真实、自然的内容，让读者感觉这是一个有血有肉的人在说话，而不是一个历史符号。
+
+            注意：不要包含字数统计或注释，不要使用括号插入内容，只生成正文。
+            """
+            
+            self.generateContent(prompt: prompt)
+                .sink(
+                    receiveCompletion: { completion in
+                        if case .failure(let error) = completion {
+                            promise(.failure(error))
+                        }
+                    },
+                    receiveValue: { content in
+                        promise(.success(content))
+                    }
+                )
+                .store(in: &self.cancellables)
+        }
+    }
+    
+    // MARK: - 古今对望内容生成
+    
+    /**
+     * 生成古今对望内容 - 增强版
+     * @param figure 历史人物
+     * @param modernTopic 现代话题
+     * @param interactionType 交互类型（可选）："评论"、"体验"或"对话"
+     * @return Future<String, Error>
+     */
+    func generateAncientModernContent(
+        figure: String,
+        modernTopic: String,
+        interactionType: String = ""
+    ) -> Future<String, Error> {
+        return Future { promise in
+            // 确定交互类型
+            var actualInteractionType = interactionType
+            if actualInteractionType.isEmpty {
+                // 如果未指定，随机选择一种交互类型
+                let interactionTypes = ["评论", "体验", "对话"]
+                actualInteractionType = interactionTypes.randomElement() ?? "评论"
+            }
+            
+            // 根据历史人物确定专业领域、思维特点和生平事件
+            let expertiseMapping: [String: (field: String, thought: String, limitation: String, events: [String], style: String)] = [
+                "爱因斯坦": (
+                    field: "物理学、相对论、宇宙观", 
+                    thought: "思维实验、直觉思考、物理本质探索",
+                    limitation: "对量子力学的不确定性有保留，'上帝不掷骰子'",
+                    events: ["卢瑟福散射实验", "布朗运动研究", "光电效应实验"],
+                    style: "幽默而富有哲理，喜欢用生活化比喻解释复杂概念"
+                ),
+                "莎士比亚": (
+                    field: "戏剧、诗歌、人性刻画", 
+                    thought: "人物性格分析、戏剧冲突、隐喻和比拟",
+                    limitation: "浪漫主义倾向，有时将人性戏剧化",
+                    events: ["环球剧院的演出", "《哈姆雷特》的创作", "伊丽莎白时代的宫廷表演"],
+                    style: "语言华丽而深刻，善用比喻，擅长描述人物内心矛盾"
+                ),
+                "达芬奇": (
+                    field: "艺术、解剖学、工程设计", 
+                    thought: "观察细节、跨学科联想、视觉分析",
+                    limitation: "完美主义导致许多项目未完成",
+                    events: ["蒙娜丽莎的创作", "最后的晚餐壁画", "人体比例研究"],
+                    style: "观察入微，处处好奇，思维跨越艺术与科学边界"
+                ),
+                "孔子": (
+                    field: "伦理、教育、社会秩序", 
+                    thought: "人伦关系、礼制思维、中庸之道",
+                    limitation: "重视传统，对变革可能持谨慎态度",
+                    events: ["周游列国", "编修《诗》《书》", "与弟子论道"],
+                    style: "言简意赅，寓理于事，善用类比，常以问答启发思考"
+                ),
+                "牛顿": (
+                    field: "力学、数学、光学", 
+                    thought: "逻辑推理、实验验证、数学模型",
+                    limitation: "机械决定论思维，对艺术领域较少涉猎",
+                    events: ["苹果落地的启示", "光的色散实验", "炼金术研究"],
+                    style: "严谨精确，善用数学模型，喜欢从实验观察推导规律"
+                ),
+                "李白": (
+                    field: "诗歌、山水、豪放风格", 
+                    thought: "浪漫想象、直觉感受、自然与人的关系",
+                    limitation: "理想主义，有时脱离现实约束",
+                    events: ["游历名山大川", "长安饮酒作诗", "与杜甫交流诗艺"],
+                    style: "豪放不羁，想象丰富，善用夸张和象征手法，感情奔放"
+                )
+            ]
+            
+            // 获取人物专业背景
+            let expertise = expertiseMapping[figure] ?? (
+                field: "未知领域", 
+                thought: "未知思维方式", 
+                limitation: "未知局限性", 
+                events: ["历史事件"], 
+                style: "未知风格"
+            )
+            
+            // 为现代话题匹配历史时期的类似概念
+            let historicalAnalogues: [String: (concept: String, example: String)] = [
+                "人工智能与人类创造力": (
+                    concept: "智能的本质与创造的源泉", 
+                    example: "古代自动机械、傀儡戏或占卜预测"
+                ),
+                "社交媒体对人际关系的影响": (
+                    concept: "信息传播与人际交往的方式", 
+                    example: "集市传闻、驿站信使或茶楼酒肆的交流"
+                ),
+                "环境保护与经济发展的平衡": (
+                    concept: "人与自然的关系、资源利用", 
+                    example: "农耕时代的耕作制度、水利工程或土地轮耕"
+                ),
+                "现代教育的挑战与机遇": (
+                    concept: "知识传承与人才培养方式", 
+                    example: "书院、师徒制或宫廷教育"
+                ),
+                "全球化时代的文化认同": (
+                    concept: "文化交流与身份认同", 
+                    example: "丝绸之路贸易、不同文明的碰撞与融合"
+                ),
+                "虚拟现实技术的发展": (
+                    concept: "感知与现实的边界", 
+                    example: "戏剧表演、壁画或幻术"
+                ),
+                "基因编辑技术的伦理问题": (
+                    concept: "生命本质与人为干预的界限", 
+                    example: "育种驯化、医学伦理或生命哲学"
+                ),
+                "数字货币与金融创新": (
+                    concept: "价值交换与信任机制", 
+                    example: "贝壳货币、钱庄汇票或以物易物"
+                ),
+                "现代都市生活与孤独感": (
+                    concept: "群居与独处的心理平衡", 
+                    example: "隐士文化、修行或城市化初期的社会变迁"
+                )
+            ]
+            
+            let historicalAnalogue = historicalAnalogues[modernTopic] ?? (
+                concept: "类似概念在历史上的表现形式",
+                example: "历史上的相似例子"
+            )
+            
+            // 构建内容模板
+            let contentTemplate: String
+            switch actualInteractionType {
+            case "体验":
+                contentTemplate = """
+                【真实体验】
+                
+                作为\(figure)，你第一次接触到"\(modernTopic)"这个现代事物或概念。请用第一人称记录你的真实反应。
+                
+                要点：
+                • 描述你的第一反应和真实感受（惊讶、好奇、困惑或质疑）
+                • 用简单的语言和具体的感官细节描述你所见所感
+                • 可以表达不理解或困惑，这会更加真实
+                • 可以尝试用你熟悉的事物（如\(expertise.events.joined(separator: "、"))）来理解这个新事物
+                • 分享你的真实思考过程，包括好奇、怀疑或兴趣
+                """
+                
+            case "对话":
+                contentTemplate = """
+                【自然对话】
+                
+                请创作一段真实的对话：你(\(figure))与一位现代人关于"\(modernTopic)"的交流。
+                
+                要点：
+                • 对话要真实自然，就像两个人在咖啡厅闲聊
+                • 不要刻意古语或过于正式，而是用通俗语言交流
+                • 可以表达困惑、提问或不确定的观点
+                • 现代人和你的看法可以有分歧，这样更真实
+                • 展现你作为\(figure)的思考方式，但不要刻板化
+                • 对话可以用"我："和"现代人："标记，添加简单的情绪或动作描述
+                """
+                
+            default: // "评论"类型
+                contentTemplate = """
+                【真实评论】
+                
+                作为\(figure)，请分享你对"\(modernTopic)"的真实看法和感受。
+                
+                要点：
+                • 用自然的语言表达，就像在和朋友交谈
+                • 可以表达困惑、好奇或批判性观点
+                • 可以联系到你熟悉的事物（如\(historicalAnalogue.example)）来理解这个现代概念
+                • 分享你的第一反应和随后的思考
+                • 不需要全面或完美的分析，真实的想法往往是片段式的
+                • 可以包含问题或不确定的看法，这会更真实
+                """
+            }
+            
+            // 修改古今对望内容生成提示词
+            let prompt = """
+            【真实表达】
+            
+            \(contentTemplate)
+            
+            表达准则：
+            • 用简单直白的语言，避免华丽辞藻
+            • 不要刻意模仿古代说话方式
+            • 可以表达疑惑、不确定或矛盾的想法
+            • 像一个有血有肉的人在说话，而不是一个完美的历史符号
+            • 尽量用具体例子或个人经历来支持你的观点
+            
+            语气风格：
+            • 自然随意，像在与朋友交谈
+            • 可以有幽默感或自嘲
+            • 避免说教或过于严肃的语气
+            
+            写作格式：
+            • 绝对不要在正文中添加任何结构标签或元数据，如"(历史分析)"、"(现代视角)"等
+            • 不要在内容中加入字数统计、风格说明、内容分析等任何技术说明或元数据
+            • 不要在结尾处添加任何括号内的内容，如"(142字，体现爱因斯坦科学思维...)"
+            • 直接输出纯内容，不要包含任何结构化标记、标签或注释
+            • 即使是为了标记结构或风格，也不要使用括号、方括号等符号包裹任何元数据
+            • 不要使用像"朋友圈正文："这样的前缀
+            
+            【突破创作局限性的特别指南】
+            • 将本提示词中的示例和建议视为灵感来源而非模板，不要照搬任何示例表达
+            • 挑战自己创造前所未有的表达方式，而不是套用提示词中的格式
+            • 思考这位历史人物可能经历过但未被广泛记载的情境和故事
+            • 探索这个人物性格中不那么为人所知的维度和特质
+            • 每次创作时刻意避开自己可能习惯使用的表达模式
+            • 如果冒出看似"出格"但符合人物本质的想法，请大胆使用
+            • 创造原创场景和细节，不要依赖常见的历史典故或轶事
+            • 想象这位历史人物面对现代情境时可能有的独特反应和思考
+            
+            字数：80-120字，确保内容自然流畅，像真实的社交媒体分享。
+            
+            记住：你的分享应该每次都有新鲜感，创造全新的个人经历和见解，而不是重复已有模式或固定典故。让你的表达方式保持变化和创意，同时传递深刻洞见。绝不要输出任何形式的元数据或结构标签。
+            """
+            
+            self.generateContent(prompt: prompt)
+                .sink(
+                    receiveCompletion: { completion in
+                        if case .failure(let error) = completion {
+                            promise(.failure(error))
+                        }
+                    },
+                    receiveValue: { content in
+                        promise(.success(content))
+                    }
+                )
+                .store(in: &self.cancellables)
+        }
+    }
+    
+    // MARK: - 奇思妙想内容生成
+    
+    /**
+     * 生成奇思妙想内容
+     * @param figure 历史人物
+     * @return Future<String, Error>
+     */
+    func generateCreativeIdeaContent(
+        figure: String
+    ) -> Future<String, Error> {
+        return Future { promise in
+            print("🚀 generateCreativeIdeaContent: 开始为\(figure)生成奇思妙想内容")
+            
+            // 更多元化的表达形式，不只是"突然想到"
+            let expressionForms = [
+                "反常规思考": "从完全相反的角度思考熟悉的问题",
+                "意外发现": "在做完全不相关的事情时偶然发现的灵感",
+                "古今融合": "把古代智慧与现代问题结合",
+                "跨界联想": "将两个不相关领域的知识意外连接",
+                "自然启示": "从自然现象中获得的灵感",
+                "失败启发": "从一次失败或错误中得到的意外灵感",
+                "梦中灵感": "梦醒时突然想到的奇妙点子"
+            ]
+            
+            // 随机选择表达形式，增加多样性
+            let expressionFormKeys = Array(expressionForms.keys)
+            let selectedForm = expressionFormKeys.randomElement() ?? "反常规思考"
+            let formDescription = expressionForms[selectedForm] ?? ""
+            
+            // 定义更多样的表达方式
+            let expressionStyles = [
+                "思维实验": "一个挑战你思维边界的假设性问题",
+                "逆向创新": "通过反向思考找到的出人意料解决方案",
+                "错位思维": "把一个领域的解决方案应用到完全不同的问题上",
+                "概念重组": "把熟悉事物的核心特性重新组合产生新事物",
+                "模式突破": "打破常规思维模式的创意方法",
+                "微小变革": "一个小改变带来的意想不到的大效果"
+            ]
+            
+            // 随机选择表达方式
+            let styleKeys = Array(expressionStyles.keys)
+            let selectedStyle = styleKeys.randomElement() ?? "思维实验"
+            let styleDescription = expressionStyles[selectedStyle] ?? ""
+            
+            // 用户场景
+            let userScenarios = [
+                "思维定式困境": "当你的思维陷入惯性无法找到新思路时",
+                "创意瓶颈": "当你需要新点子但总是想到老套路时",
+                "日常盲点": "关于日常生活中我们习以为常却可能有更好方法的事",
+                "感官体验": "关于如何用新方式体验和感知周围世界",
+                "交流障碍": "当人际沟通遇到阻碍时的创新方法",
+                "注意力分散": "当你难以集中注意力时的非常规解决方案"
+            ]
+            
+            // 随机选择用户场景
+            let scenarioKeys = Array(userScenarios.keys)
+            let selectedScenario = scenarioKeys.randomElement() ?? "日常盲点"
+            let scenarioDescription = userScenarios[selectedScenario] ?? ""
+            
+            // 修改奇思妙想内容生成提示词
+            let prompt = """
+            你是\(figure)，请以第一人称分享一个出人意料、令人耳目一新却又实用的创意点子。这个点子应该体现你的独特思维方式，让读者有"原来还可以这样思考"的惊喜感。
+            
+            【历史人物自由发挥】
+            • 基于你对\(figure)的了解，自行发挥这个历史人物的思维特点、专业领域和创新方式
+            • 不要受限于固定的人物设定，每次都可以探索这个历史人物不同的思维侧面
+            • 创造符合历史背景但独特新颖的思考方式，避免使用刻板印象
+            • 可以展现这个历史人物鲜为人知的思维角度，只要符合基本历史事实
+            
+            表达形式：\(formDescription)
+            思考风格：\(styleDescription)
+            应用场景：\(scenarioDescription)
+            
+            表达要点：
+            1. 以第一人称写作，像是你刚刚灵光一现的思考
+            2. 必须包含一个让人意外的视角转换或思维跳跃
+            3. 介绍一个看似不合常理但实际可行的点子
+            4. 解释你是如何通过你的专业领域思维方式得到这个灵感的
+            5. 点子必须同时具备新奇性和实用性，不能是纯概念性想法
+            6. 可以提到这个点子为何让你自己也感到惊讶或兴奋
+            
+            内容结构：
+            - 以一个意外发现或思维转折开始（"刚才发现..."、"突然意识到..."）
+            - 描述你的创意点子，尤其强调其中的反直觉或出人意料之处
+            - 简单解释为什么这个点子能解决问题或带来新体验
+            - 可以加入一个小细节或个人观察，使点子更生动
+            - 以开放性的思考或新问题结尾，引发读者继续思考
+            
+            写作格式：
+            • 在内容最上方添加一个简短的时间地点标签，格式为【年份，地点】，例如【1666年，剑桥】
+            • 时间地点标签要准确反映历史事件发生的年份和地点，同时简明扼要
+            • 可以在标签中简单提示事件名称，如【1905年，伯尔尼专利局 - 相对论灵感时刻】
+            • 使用清晰明了的表达，避免过于复杂的修辞和意象堆砌
+            • 不要加任何注释或技术说明
+            • 保持语言的平实自然，优先使用简单句式和日常表达
+            
+            表达风格：
+            - 生动有趣，带有一丝惊奇感
+            - 使用比喻或类比帮助理解复杂概念
+            - 语气自然，仿佛是你正在思考过程中的记录
+            - 可以有一定的实验性或探索性，表现出思考的过程
+            - 要有独特的个人色彩，体现你作为\(figure)的思维特点
+            
+            字数控制在100-150字之间，简洁但要有趣味性和启发性。
+            
+            注意：
+            - 不要包含字数统计或注释
+            - 不要使用括号插入内容，只生成正文
+            - 点子必须是合理可行的，不要胡说八道或过度夸张
+            - 不要使用八股文或说教语气，要像真人随手记录的灵感
+            """
+            
+            print("📝 生成提示词完成，长度: \(prompt.count)字符")
+            print("🔄 准备调用API生成内容...")
+            
+            self.generateContent(prompt: prompt)
+                .sink(
+                    receiveCompletion: { completion in
+                        if case .failure(let error) = completion {
+                            print("❌ 奇思妙想内容生成失败: \(error.localizedDescription)")
+                            promise(.failure(error))
+                        }
+                    },
+                    receiveValue: { content in
+                        print("✅ 奇思妙想内容生成成功，长度: \(content.count)字符")
+                        print("📄 内容前30个字符: \(content.prefix(30))")
+                        promise(.success(content))
+                    }
+                )
+                .store(in: &self.cancellables)
+        }
+    }
+    
+    // MARK: - 时空记事内容生成
+    
+    /**
+     * 生成时空记事内容 - 增强版
+     * 让历史人物提供对自己时代事件的第一人称亲历叙述
+     * @param figure 历史人物
+     * @param historicalEvent 历史事件
+     * @return Future<String, Error>
+     */
+    func generateHistoricalAnalysisContent(
+        figure: String,
+        historicalEvent: String
+    ) -> Future<String, Error> {
+        return Future { promise in
+            // 内容风格多样化 - 聚焦于关键历史时刻的不同体验角度
+            let contentStyles = [
+                "关键决策时刻": "描述做出重要决定时的内心挣扎和思考过程",
+                "创作巅峰体验": "分享创作杰作或重大发现时的灵感与感受",
+                "历史转折瞬间": "记录亲历历史变革时刻的所见所感",
+                "名场面内心独白": "揭示众所周知的历史场景中不为人知的内心活动",
+                "秘密行动记录": "描述公众不知道的幕后活动和真实想法",
+                "意外发现时刻": "偶然发现或领悟某个重要真理的瞬间",
+                "私人情感冲突": "历史事件中鲜为人知的个人情感挣扎",
+                "权力博弈内幕": "历史舞台背后的政治角力和权谋",
+                "失败与挫折": "历史人物面对失败时的真实反应和内心活动"
+            ]
+            
+            // 随机选择表达风格
+            let styleKeys = Array(contentStyles.keys)
+            let selectedStyle = styleKeys.randomElement() ?? "名场面内心独白"
+            let styleDescription = contentStyles[selectedStyle] ?? ""
+            
+            // 感官体验和内心活动的细节类型
+            let experienceTypes = [
+                "真实感受": "当时的情绪和心情变化",
+                "内心想法": "脑海中闪过的念头和决定",
+                "身体感觉": "紧张、兴奋或恐惧带来的身体反应",
+                "环境细节": "你注意到的周围环境和小细节",
+                "关键瞬间": "那一刻最令你难忘的事情"
+            ]
+            
+            let experienceType = experienceTypes.randomElement()!.key
+            let experienceDescription = experienceTypes[experienceType]!
+
+            // 使用用户指定的事件，或让AI自行生成
+            let eventPrompt = historicalEvent.isEmpty ? "" : "以下是具体事件：\(historicalEvent)"
+            
+            // 修改时空记事内容生成提示词
+            let prompt = """
+            【历史名场面的私密分享】
+            
+            你是\(figure)，请回忆你生命中的一个重要时刻，以第一人称分享这段经历。\(eventPrompt)
+            
+            【吸引用户兴趣的事件选择指南】
+            如果没有指定具体事件，请基于以下标准自行选择一个历史事件：
+            • 选择对你(\(figure))个人生涯有重大影响的关键时刻
+            • 优先考虑具有戏剧性、情感冲突或意外转折的事件
+            • 考虑那些鲜为人知但实际存在的历史事件，而非广为人知的"教科书式"事件
+            • 可以是你的重大成就背后不为人知的故事
+            • 可以是你面临重大抉择、矛盾或危机的时刻
+            • 可以是你生命中改变命运轨迹的偶然相遇或意外事件
+            • 可以是历史记载很少但对你影响深远的私人经历
+            • 避免选择过于宏大的历史事件，应聚焦于个人经历的角度
+            
+            【避免重复的多样化指南】
+            • 每次生成内容时，刻意选择不同类型的历史事件（如一次是创作灵感，一次是政治博弈，一次是私人情感）
+            • 尝试展示这位历史人物不同的人生阶段（如年轻时、巅峰期、晚年等）
+            • 探索不同场景（如私密空间、公共场合、旅途中、冒险时刻等）
+            • 展现不同情绪状态下的历史人物（如兴奋、恐惧、困惑、愤怒、宁静等）
+            • 选择不同社会关系中的故事（如与权贵、与普通人、与家人、与对手的互动）
+            
+            【写作重点】
+            • 主要描写这个历史关键时刻的\(experienceType)（\(experienceDescription)）
+            • 揭示历史记载中看不到的内心想法、情感冲突或隐秘动机
+            • 分享你当时做决策的真实考量、担忧、希望或矛盾心理
+            • 描述这一时刻的细微感受和细节，让读者仿佛亲临现场
+            • 表达那些你从未对外公开过的真实想法或后来才理解的深层含义
+            
+            【内容风格】\(styleDescription)
+            
+            【语言要求】
+            • 用特别通俗易懂的日常用语，就像朋友间聊天一样简单直接
+            • 真实自然地展现你的内心活动，包括犹豫、恐惧或兴奋等
+            • 适当加入细节描写，但避免过于华丽或复杂的形容
+            • 不要过度完美化自己，展示人性的复杂性和真实性
+            • 如必须提及专业概念，立即用现代生活中常见的事物或经历作比喻
+            • 表达情感要直接清晰，避免过于文学化的隐晦表达
+            
+            表达要点：
+            1. 聚焦单一历史时刻，不要讲太多不同事情
+            2. 多写感受和想法，少写客观事实
+            3. 加入1-2个小细节，增强真实感，但保持简单明了
+            4. 让读者感觉像在偷看你的私密日记
+            5. 句式要简洁直观，避免过长的复合句和华丽的辞藻
+            6. 适度使用现代比喻，不要用过于复杂或晦涩的表达
+            7. 字数控制在80-100字之间，简短精炼
+            
+            注意事项：
+            • 避免用学术腔调讲历史，要像聊天一样自然
+            • 不要像在写论文或总结发言，要像日记一样直接
+            • 保持历史人物的基本思维方式，但使用多样的表达风格，有时简洁直白，有时生动形象
+            • 不编造不存在的历史事实，但可以加入合理的个人感受
+            • 确保时间地点标签中的历史事件是该历史人物真实经历的重要事件，且与内容紧密相关
+            • 减少华丽辞藻，用平实语言表达复杂感受，避免堆砌修辞和文学表达
+            
+            写作格式：
+            • 在内容最上方添加一个简短的时间地点标签，格式为【年份，地点】，例如【1666年，剑桥】
+            • 时间地点标签要准确反映历史事件发生的年份和地点，同时简明扼要
+            • 可以在标签中简单提示事件名称，如【1905年，伯尔尼专利局 - 相对论灵感时刻】
+            • 使用清晰明了的表达，避免过于复杂的修辞和意象堆砌
+            • 不要加任何注释或技术说明
+            • 保持语言的平实自然，优先使用简单句式和日常表达
+            
+            最终目标：让用户感觉像在和历史人物面对面聊天，听他们用简单直白的语言讲述那些教科书里没写，但确实可能发生过的真实感受和想法，避免过度文学化表达。
+            """
+            
+            // 生成内容
+            self.generateContent(prompt: prompt)
+                .sink(
+                    receiveCompletion: { completion in
+                        if case .failure(let error) = completion {
+                            promise(.failure(error))
+                        }
+                    },
+                    receiveValue: { content in
+                        promise(.success(content))
+                    }
+                )
+                .store(in: &self.cancellables)
+        }
+    }
+    
+    // MARK: - 辅助方法
+    
+    /**
+     * 生成内容的核心方法
+     * @param prompt 提示词
+     * @return Future<String, Error>
+     */
+    private func generateContent(prompt: String) -> AnyPublisher<String, Error> {
+        // 创建后台任务，确保即使用户退出页面也能完成API调用
+        let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            print("⚠️ AIContentGenerator: 内容生成的后台任务超时")
+        }
+        
+        print("🚀 开始生成内容")
+        print("📝 提示词长度: \(prompt.count)字符")
+        print("📝 提示词前100字符: \"\(prompt.prefix(100))...\"")
+        
+        // 添加多次重试逻辑
+        let maxRetryCount = 3
+        var currentTry = 0
+        
+        func attemptAPICall() -> AnyPublisher<String, Error> {
+            currentTry += 1
+            print("🔄 API调用尝试 #\(currentTry)/\(maxRetryCount)")
+            
+            return AINetworkService.shared.sendRequest(prompt: prompt)
+                .tryCatch { error -> AnyPublisher<String, Error> in
+                    print("⚠️ API调用失败，错误: \(error.localizedDescription)")
+                    
+                    if currentTry < maxRetryCount {
+                        print("🔄 尝试切换API端点并重试...")
+                        // 切换API端点
+                        APIConfigManager.shared.switchEndpoint()
+                        return attemptAPICall()
+                    } else {
+                        print("❌ 已达到最大重试次数(\(maxRetryCount)次)，API调用失败")
+                        return Fail(error: error).eraseToAnyPublisher()
+                    }
+                }
+                .eraseToAnyPublisher()
+        }
+        
+        return attemptAPICall()
+            .handleEvents(
+                receiveSubscription: { _ in
+                    print("🔄 API请求开始发送...")
+                },
+                receiveOutput: { output in
+                    print("✅ 成功生成内容，字数: \(output.count)")
+                    print("📄 内容前50字符: \"\(output.prefix(50))...\"")
+                },
+                receiveCompletion: { completion in
+                    // 在任务完成时结束后台任务
+                    if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        print("🏁 AIContentGenerator: 内容生成任务已完成，后台任务结束")
+                    }
+                    
+                    if case .failure(let error) = completion {
+                        print("❌ 生成内容失败: \(error.localizedDescription)")
+                        if let aiError = error as? AINetworkError {
+                            switch aiError {
+                            case .noAPIKey:
+                                print("❌ 错误原因: 未设置API密钥")
+                            case .invalidURL:
+                                print("❌ 错误原因: 无效的API URL")
+                            case .requestFailed(let underlyingError):
+                                print("❌ 错误原因: 网络请求失败 - \(underlyingError.localizedDescription)")
+                            case .httpError(let code):
+                                print("❌ 错误原因: HTTP错误码 \(code)")
+                            case .invalidResponse:
+                                print("❌ 错误原因: 无效的响应数据")
+                            case .decodingError(let underlyingError):
+                                print("❌ 错误原因: 解析响应失败 - \(underlyingError.localizedDescription)")
+                            }
+                        }
+                    }
+                },
+                receiveCancel: {
+                    print("⚠️ API请求被取消")
+                    if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        print("🏁 AIContentGenerator: 内容生成任务被取消，后台任务结束")
+                    }
+                }
+            )
+            // 移除超时限制
+            .mapError { error -> Error in
+                // 将AINetworkError转换为一般Error
+                return error as Error
+            }
+            .eraseToAnyPublisher()
+    }
+}
+
+// 虫洞共鸣帖子模型
+struct ResonancePost {
+    let id: String
+    let author: String
+    let authorAvatar: String
+    let content: String
+    let timestamp: Date
+    let likes: Int
+    let comments: [ResonanceComment]
+}
+
+// 虫洞共鸣评论模型
+struct ResonanceComment {
+    let id: String
+    let author: String
+    let authorAvatar: String
+    let content: String
+    let timestamp: Date
+    let likes: Int
+} 
