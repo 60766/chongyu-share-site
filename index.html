@@ -218,7 +218,7 @@
             <p><strong>版本：</strong>1.0</p>
             <p><strong>更新时间：</strong>2024年10月</p>
             <p><strong>官网地址：</strong>https://share.chongyuai.com</p>
-            <p><strong>联系邮箱：</strong>shilong111234@icloud.com</p>
+            <p><strong>联系邮箱：</strong>li2410669277@gmail.com</p>
           </div>
         </section>
 
@@ -260,7 +260,7 @@
             <p><strong>开发者：</strong>李世龙（个人开发者）</p>
             <p><strong>开发理念：</strong>通过AI技术连接历史与现代，为用户创造独特的跨时空社交体验</p>
             <p><strong>技术栈：</strong>Swift, SwiftUI, AI大语言模型, iOS原生开发</p>
-            <p><strong>联系方式：</strong>shilong111234@icloud.com</p>
+            <p><strong>联系方式：</strong>li2410669277@gmail.com</p>
             <p><strong>反馈建议：</strong>欢迎用户通过邮件或App内反馈功能提出建议</p>
           </div>
         </section>
@@ -293,13 +293,84 @@
 
       <footer class="footer">
         <p>&copy; 2024 虫遇 - 穿越时空的社交. 保留所有权利.</p>
-        <p>联系邮箱: shilong111234@icloud.com</p>
+        <p>
+          <a href="/privacy.html" style="color: #667eea; margin: 0 15px; text-decoration: none;">隐私政策</a>
+          <span style="color: #999;">|</span>
+          <a href="/terms.html" style="color: #667eea; margin: 0 15px; text-decoration: none;">用户协议</a>
+        </p>
+        <p>联系邮箱: li2410669277@gmail.com</p>
+        <p style="font-size: 0.9rem; color: #999;">
+          <a href="https://beian.miit.gov.cn" target="_blank" rel="noopener noreferrer" style="color: #999; text-decoration: none;">
+            冀ICP备2025136339号-1
+          </a>
+          <span style="margin: 0 10px; color: #999;">|</span>
+          <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=13042502000346" target="_blank" rel="noopener noreferrer" style="color: #999; text-decoration: none;">
+            冀公网安备13042502000346号
+          </a>
+        </p>
       </footer>
     </div>
     <script>
       // 处理动态路由
       function handleRouting() {
         const path = window.location.pathname;
+        const params = new URLSearchParams(window.location.search);
+        
+        // 处理URL查询参数格式：?shareId=xxx&imageUrl=xxx
+        const shareId = params.get('shareId');
+        const imageUrl = params.get('imageUrl');
+        
+        if (shareId && imageUrl) {
+          // 单人聊天分享
+          showImageShare(shareId, imageUrl, 'chat');
+          return;
+        } else if (shareId) {
+          // 多人聊天分享（只有shareId）
+          showImageShare(shareId, null, 'multi');
+          return;
+        }
+        
+        // 处理新的Universal Link格式：/wechat/chat, /wechat/multichat, /wechat/post, /wechat/character
+        const wechatChatMatch = path.match(/^\/wechat\/chat$/);
+        const wechatMultiMatch = path.match(/^\/wechat\/multichat$/);
+        const wechatPostMatch = path.match(/^\/wechat\/post$/);
+        const wechatCharacterMatch = path.match(/^\/wechat\/character$/);
+        
+        if (wechatChatMatch) {
+          const type = params.get('type');
+          const id = params.get('id');
+          const character = params.get('character');
+          if (id) {
+            showChatShare(id, character);
+          }
+          return;
+        } else if (wechatMultiMatch) {
+          const type = params.get('type');
+          const id = params.get('id');
+          const name = params.get('name');
+          if (id) {
+            showMultiShare(id, name);
+          }
+          return;
+        } else if (wechatPostMatch) {
+          const type = params.get('type');
+          const id = params.get('id');
+          const author = params.get('author');
+          if (id) {
+            showPostShare(id, author);
+          }
+          return;
+        } else if (wechatCharacterMatch) {
+          const type = params.get('type');
+          const id = params.get('id');
+          const name = params.get('name');
+          if (id) {
+            showCharacterShare(id, name);
+          }
+          return;
+        }
+        
+        // 处理路径参数格式：/chat/xxx 或 /multi/xxx (向后兼容)
         const chatMatch = path.match(/^\/chat\/(.+)$/);
         const multiMatch = path.match(/^\/multi\/(.+)$/);
         
@@ -312,9 +383,68 @@
         }
       }
       
-      function showChatShare(chatId) {
+      // 显示分享卡片（支持图片）
+      function showImageShare(shareId, imageUrl, type) {
+        const title = type === 'chat' ? '聊天分享' : '群聊分享';
+        const emoji = type === 'chat' ? '📱' : '👥';
+        const scheme = type === 'chat' ? `chongyu://chat/${shareId}` : `chongyu://multi/${shareId}`;
+        
+        document.title = `虫遇 - ${title}`;
+        const container = document.querySelector('.container');
+        
+        let imageSection = '';
+        if (imageUrl) {
+          imageSection = `
+            <div style="margin: 30px 0;">
+              <img 
+                src="${decodeURIComponent(imageUrl)}" 
+                alt="分享卡片"
+                style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+              />
+              <p style="display: none; color: #999; margin-top: 10px;">图片加载失败</p>
+            </div>
+          `;
+        }
+        
+        container.innerHTML = `
+          <header class="header">
+            <div class="logo">🐛 虫遇</div>
+            <div class="tagline">${title}</div>
+          </header>
+          <main class="main-content">
+            <div style="text-align: center; padding: 40px;">
+              <h2>${emoji} 查看完整${type === 'chat' ? '聊天' : '群聊'}记录</h2>
+              <p style="margin: 20px 0; font-size: 1.1rem;">
+                这是一个来自虫遇App的${title}链接
+              </p>
+              ${imageSection}
+              <p style="margin: 20px 0; color: #666; font-size: 0.9rem;">
+                分享ID: ${shareId}
+              </p>
+              <div class="download-section">
+                <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
+                <a href="${scheme}" class="download-btn" style="display: inline-block; margin: 10px; padding: 15px 30px; background: white; color: #667eea; text-decoration: none; border-radius: 30px; font-weight: bold; transition: transform 0.2s;">
+                  📱 在App中打开
+                </a>
+                <a href="https://apps.apple.com/app/虫遇" class="download-btn" style="display: inline-block; margin: 10px; padding: 15px 30px; background: white; color: #667eea; text-decoration: none; border-radius: 30px; font-weight: bold; transition: transform 0.2s;">
+                  🍎 下载虫遇App
+                </a>
+              </div>
+            </div>
+          </main>
+          <footer class="footer">
+            <p>&copy; 2024 虫遇 - 穿越时空的社交</p>
+          </footer>
+        `;
+      }
+      
+      function showChatShare(chatId, characterName) {
         document.title = '虫遇 - 聊天分享';
         const container = document.querySelector('.container');
+        
+        const characterInfo = characterName ? `<p style="margin: 10px 0; font-size: 1.2rem; color: #667eea;">与${decodeURIComponent(characterName)}的对话</p>` : '';
+        
         container.innerHTML = `
           <header class="header">
             <div class="logo">🐛 虫遇</div>
@@ -323,11 +453,12 @@
           <main class="main-content">
             <div style="text-align: center; padding: 40px;">
               <h2>📱 查看完整聊天记录</h2>
+              ${characterInfo}
               <p style="margin: 20px 0; font-size: 1.1rem;">
                 这是一个来自虫遇App的聊天分享链接
               </p>
-              <p style="margin: 20px 0; color: #666;">
-                聊天ID: ${chatId}
+              <p style="margin: 20px 0; color: #666; font-size: 0.9rem;">
+                分享ID: ${chatId}
               </p>
               <div class="download-section">
                 <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
@@ -346,9 +477,12 @@
         `;
       }
       
-      function showMultiShare(multiId) {
+      function showMultiShare(multiId, sessionName) {
         document.title = '虫遇 - 群聊分享';
         const container = document.querySelector('.container');
+        
+        const sessionInfo = sessionName ? `<p style="margin: 10px 0; font-size: 1.2rem; color: #667eea;">${decodeURIComponent(sessionName)}</p>` : '';
+        
         container.innerHTML = `
           <header class="header">
             <div class="logo">🐛 虫遇</div>
@@ -357,15 +491,92 @@
           <main class="main-content">
             <div style="text-align: center; padding: 40px;">
               <h2>👥 查看完整群聊记录</h2>
+              ${sessionInfo}
               <p style="margin: 20px 0; font-size: 1.1rem;">
                 这是一个来自虫遇App的群聊分享链接
               </p>
-              <p style="margin: 20px 0; color: #666;">
-                群聊ID: ${multiId}
+              <p style="margin: 20px 0; color: #666; font-size: 0.9rem;">
+                分享ID: ${multiId}
               </p>
               <div class="download-section">
                 <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
                 <a href="chongyu://multi/${multiId}" class="download-btn">
+                  📱 在App中打开
+                </a>
+                <a href="https://apps.apple.com/app/虫遇" class="download-btn">
+                  🍎 下载虫遇App
+                </a>
+              </div>
+            </div>
+          </main>
+          <footer class="footer">
+            <p>&copy; 2024 虫遇 - 穿越时空的社交</p>
+          </footer>
+        `;
+      }
+      
+      function showPostShare(postId, authorName) {
+        document.title = '虫遇 - 帖子分享';
+        const container = document.querySelector('.container');
+        
+        const authorInfo = authorName ? `<p style="margin: 10px 0; font-size: 1.2rem; color: #667eea;">@${decodeURIComponent(authorName)} 的帖子</p>` : '';
+        
+        container.innerHTML = `
+          <header class="header">
+            <div class="logo">🐛 虫遇</div>
+            <div class="tagline">帖子分享</div>
+          </header>
+          <main class="main-content">
+            <div style="text-align: center; padding: 40px;">
+              <h2>📝 查看完整帖子</h2>
+              ${authorInfo}
+              <p style="margin: 20px 0; font-size: 1.1rem;">
+                这是一个来自虫遇App的帖子分享链接
+              </p>
+              <p style="margin: 20px 0; color: #666; font-size: 0.9rem;">
+                分享ID: ${postId}
+              </p>
+              <div class="download-section">
+                <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
+                <a href="chongyu://post/${postId}" class="download-btn">
+                  📱 在App中打开
+                </a>
+                <a href="https://apps.apple.com/app/虫遇" class="download-btn">
+                  🍎 下载虫遇App
+                </a>
+              </div>
+            </div>
+          </main>
+          <footer class="footer">
+            <p>&copy; 2024 虫遇 - 穿越时空的社交</p>
+          </footer>
+        `;
+      }
+      
+      function showCharacterShare(characterId, characterName) {
+        document.title = '虫遇 - 角色分享';
+        const container = document.querySelector('.container');
+        
+        const characterInfo = characterName ? `<p style="margin: 10px 0; font-size: 1.2rem; color: #667eea;">${decodeURIComponent(characterName)}</p>` : '';
+        
+        container.innerHTML = `
+          <header class="header">
+            <div class="logo">🐛 虫遇</div>
+            <div class="tagline">角色分享</div>
+          </header>
+          <main class="main-content">
+            <div style="text-align: center; padding: 40px;">
+              <h2>👤 发现有趣的角色</h2>
+              ${characterInfo}
+              <p style="margin: 20px 0; font-size: 1.1rem;">
+                这是一个来自虫遇App的角色分享链接
+              </p>
+              <p style="margin: 20px 0; color: #666; font-size: 0.9rem;">
+                分享ID: ${characterId}
+              </p>
+              <div class="download-section">
+                <h3 style="color: white; margin-bottom: 20px;">在虫遇App中查看完整内容</h3>
+                <a href="chongyu://character/${characterId}" class="download-btn">
                   📱 在App中打开
                 </a>
                 <a href="https://apps.apple.com/app/虫遇" class="download-btn">
@@ -395,4 +606,5 @@
 <!-- Force redeploy Wed Oct 22 15:21:11 CST 2025 -->
 <!-- Trigger redeploy Wed Oct 22 15:34:27 CST 2025 -->
 <!-- Force cache clear 1761118555 -->
-<!-- Deploy 1761123580 -->
+<!-- Force update 1761119003 -->
+<!-- Universal Links support added: 1729580000 -->
