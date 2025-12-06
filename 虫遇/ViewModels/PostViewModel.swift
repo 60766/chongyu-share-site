@@ -2290,6 +2290,7 @@ class PostViewModel: ObservableObject {
                     isLikedByCurrentUser: false,
                     isBookmarkedByCurrentUser: false,
                     contentType: ContentGeneratorService.ContentType.resonance.rawValue,
+                    characterID: item.characterID, // 🔒 修复：设置characterID以便正确显示角色信息
                     source: "wormhole" // 添加来源标识，表示来自虫洞探索
                 )
                 userPosts.append(userPost)
@@ -2427,6 +2428,7 @@ class PostViewModel: ObservableObject {
                             isLikedByCurrentUser: false,
                             isBookmarkedByCurrentUser: false,
                             contentType: contentType.rawValue,
+                            characterID: result.characterID, // 🔒 修复：设置characterID以便正确显示角色信息
                             source: "wormhole" // 添加来源标识，表示来自虫洞探索
                         )
                         
@@ -2498,6 +2500,8 @@ class PostViewModel: ObservableObject {
                     return .movie // CharacterType没有filmCharacter，使用movie
                 case .mythCharacter:
                     return .mythological
+                case .myCreation:
+                    return .historical // 用户创建的角色默认使用历史人物类型
                 case .all:
                     return .historical
                 }
@@ -2995,14 +2999,26 @@ class PostViewModel: ObservableObject {
         
         // 第二步：先创建所有DetailedCommentModel实例
         let initialComments = commentItems.map { commentItem -> (DetailedCommentModel, String?) in
+            // 🔒 修复：对于用户创建的角色，确保characterID正确传递
+            let characterID = commentItem.characterId
+            let userAvatar: String = {
+                // 如果characterID是custom_开头，使用characterID作为avatar（Avatar组件会处理）
+                if characterID.hasPrefix("custom_") {
+                    return characterID
+                } else {
+                    // 其他角色使用原始avatar值
+                    return commentItem.characterAvatar ?? "person.circle.fill"
+                }
+            }()
+            
             let comment = DetailedCommentModel(
                 id: UUID(uuidString: commentItem.id) ?? UUID(),
                 username: commentItem.characterName,
-                userAvatar: commentItem.characterAvatar ?? "person.circle.fill",
+                userAvatar: userAvatar,
                 content: commentItem.content,
                 datePosted: commentItem.timestamp,
                 isVirtualCharacter: true,
-                characterID: commentItem.characterId,
+                characterID: characterID, // 🔒 确保characterID正确传递
                 parentCommentId: nil, // 先设置为nil，后续处理
                 replyToUsername: nil, // 先设置为nil，后续处理
                 likes: commentItem.likes,

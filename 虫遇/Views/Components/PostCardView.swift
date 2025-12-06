@@ -703,8 +703,13 @@ struct PostCardView: View {
     
     // 计算属性：判断是否为用户发布的动态
     private var isUserPost: Bool {
-        // 🔧 修复：如果帖子有characterID，说明是AI角色发布的，不是用户发布的
+        // 🔒 修复：如果帖子有characterID（包括用户创建的角色），说明是角色发布的，不是用户发布的
         if let characterID = post.characterID, !characterID.isEmpty {
+            return false
+        }
+        
+        // 🔒 修复：如果帖子来源是AI生成（wormhole等），说明是角色发布的
+        if post.source == "wormhole" || post.source == "ai_generated" {
             return false
         }
         
@@ -973,10 +978,34 @@ struct PostCardView: View {
                     size: 46.0
                 )
             } else {
+                // 🔒 修复：对于用户创建的角色，使用characterID作为url，以便正确加载头像
+                let avatarURL: String = {
+                    // 优先使用characterID（如果是custom_或user_avatar_开头）
+                    if let characterID = post.characterID, 
+                       (characterID.hasPrefix("custom_") || characterID.hasPrefix("user_avatar_")) {
+                        // 用户创建的角色：使用角色ID作为url，CustomAvatarLoader会根据ID加载头像
+                        return characterID
+                    } else {
+                        // 其他角色：使用原始avatar值
+                        return post.userAvatar
+                    }
+                }()
+                
+                // 🔒 修复：确保使用角色的名字，而不是"用户"
+                let displayName: String = {
+                    // 如果有characterID，说明是角色发布的，使用post.username（应该是角色名）
+                    if let characterID = post.characterID, !characterID.isEmpty {
+                        return post.username
+                    } else {
+                        // 否则使用post.username（可能是角色名或用户名）
+                        return post.username
+                    }
+                }()
+                
                 // 其他用户或历史人物发布的动态使用原始数据
                 Avatar(
-                    url: post.userAvatar,
-                    name: post.username,
+                    url: avatarURL,
+                    name: displayName, // 🔒 使用修复后的displayName
                     category: post.username.contains("探索") ? "历史爱好者" : "",
                     size: 46.0
                 )

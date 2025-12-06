@@ -261,6 +261,18 @@ struct PurchaseView: View {
                     }
                 }
             }
+            // 模拟器测试模式：显示测试购买按钮
+            else if storeKitManager.isSimulatorFallback {
+                #if DEBUG
+                #if targetEnvironment(simulator)
+                simulatorTestPurchaseView
+                #else
+                loadingStateView
+                #endif
+                #else
+                loadingStateView
+                #endif
+            }
             // 加载中状态
             else {
                 loadingStateView
@@ -439,26 +451,117 @@ struct PurchaseView: View {
     }
     
     #if DEBUG
+    // 模拟器测试购买视图
+    private var simulatorTestPurchaseView: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Image(systemName: "testtube.2")
+                    .foregroundColor(.yellow.opacity(0.9))
+                Text("模拟器测试模式")
+                    .font(.headline.weight(.semibold))
+                    .foregroundColor(.white.opacity(0.9))
+                Spacer()
+            }
+            
+            Text("在模拟器中可以直接测试购买，无需真实支付")
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.7))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 18),
+                GridItem(.flexible(), spacing: 18)
+            ], spacing: 18) {
+                ForEach(Array(storeKitManager.productIds).sorted(), id: \.self) { productId in
+                    if let fallbackInfo = storeKitManager.getFallbackProductInfo(for: productId) {
+                        FallbackPurchaseOptionCard(
+                            productId: productId,
+                            displayName: fallbackInfo.displayName,
+                            price: fallbackInfo.price,
+                            description: fallbackInfo.description,
+                            isPurchasing: isPurchasing,
+                            onPurchase: {
+                                devTopup(productId: productId)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        .padding(24)
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 46/255, green: 28/255, blue: 80/255).opacity(0.88),
+                            Color(red: 30/255, green: 18/255, blue: 48/255).opacity(0.94)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(Color.yellow.opacity(0.3), lineWidth: 2)
+                )
+        )
+    }
+    
+    // 开发测试充值（模拟器专用）
     private func devTopup(productId: String) {
         guard !isPurchasing else { return }
         isPurchasing = true
+        purchaseError = nil
+        purchaseStatusPhase = .requesting
+        
         Task {
             do {
-                let txId = "dev-" + UUID().uuidString
-                _ = try await WalletService.shared.confirmPurchase(
+                // 生成模拟交易ID
+                let txId = "simulator-test-\(UUID().uuidString)"
+                
+                // 直接调用后端API确认购买（绕过StoreKit）
+                let walletBalance = try await WalletService.shared.confirmPurchase(
                     appAccountToken: AppAccountManager.shared.appAccountToken,
                     productId: productId,
                     transactionId: txId,
-                    receipt: nil
+                    receipt: nil  // 模拟器测试不需要receipt
                 )
+                
                 await walletManager.refreshBalance()
-                await MainActor.run { isPurchasing = false }
+                
+                await MainActor.run {
+                    isPurchasing = false
+                    purchaseStatusPhase = .idle
+                    
+                    // 创建模拟的购买确认信息
+                    let mockConfirmation = PurchaseConfirmation(
+                        transactionId: txId,
+                        productId: productId,
+                        purchasedAt: Date()
+                    )
+                    
+                    lastPurchaseDetails = PurchaseSuccessDetails(
+                        confirmation: mockConfirmation,
+                        coinAmount: coinQuantity(for: productId)
+                    )
+                    showSuccess = true
+                }
+                
+                #if DEBUG
+                print("[IAP] ✅ 模拟器测试购买成功: \(productId), 交易ID: \(txId)")
+                print("[IAP] 💰 余额更新: \(walletBalance.balance) 虫洞币")
+                #endif
             } catch {
                 await MainActor.run {
                     isPurchasing = false
-                    purchaseError = error.localizedDescription
+                    purchaseStatusPhase = .idle
+                    purchaseError = "测试购买失败: \(error.localizedDescription)"
                     showError = true
                 }
+                #if DEBUG
+                print("[IAP] ❌ 模拟器测试购买失败: \(error)")
+                #endif
             }
         }
     }

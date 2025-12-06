@@ -1346,25 +1346,45 @@ struct CommentItemView: View {
                     Button(action: {
                         onAvatarTap?()
                     }) {
-                Avatar(url: {
-                        return comment.characterID ?? comment.userAvatar
-                        }(), 
-                        name: {
-                            return comment.username
-                        }(),
+                        // 🔒 修复：对于用户创建的角色，使用characterID作为url，以便正确加载头像
+                        let avatarURL: String = {
+                            // 优先使用characterID（如果是custom_开头）
+                            if characterID.hasPrefix("custom_") {
+                                // 用户创建的角色：使用角色ID作为url，CustomAvatarLoader会根据ID加载头像
+                                #if DEBUG
+                                print("🔍 CommentItemView: 用户创建的角色 - characterID: \(characterID)")
+                                #endif
+                                return characterID
+                            } else {
+                                // 其他角色：使用characterID或userAvatar
+                                return characterID
+                            }
+                        }()
+                        
+                        Avatar(url: avatarURL, 
+                               name: comment.username,
                               category: getCharacterTag(for: characterID),
                               size: 38)
                             .frame(width: 38, height: 38)
                     }
                     .buttonStyle(PlainButtonStyle())
                 } else {
-                    Avatar(url: {
+                    // 🔒 修复：对于非虚拟角色，也要检查是否是用户创建的角色
+                    let avatarURL: String = {
                         if comment.isCurrentUser {
                         return UserProfileManager.shared.getCurrentAvatarURL()
+                        } else if let characterID = comment.characterID, characterID.hasPrefix("custom_") {
+                            // 用户创建的角色：使用角色ID作为url
+                            #if DEBUG
+                            print("🔍 CommentItemView: 非虚拟角色的用户创建角色 - characterID: \(characterID)")
+                            #endif
+                            return characterID
                     } else {
                         return comment.userAvatar
                     }
-                }(), 
+                    }()
+                    
+                    Avatar(url: avatarURL, 
                 name: {
                     if comment.isCurrentUser {
                         return UserProfileManager.shared.getCurrentUsername()

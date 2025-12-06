@@ -18,6 +18,9 @@ enum CharacterCategory: String, CaseIterable, Codable {
     case filmCharacter = "影视角色"  // 合并电影和电视剧角色
     case mythCharacter = "神话角色"
     
+    // 用户创建分类
+    case myCreation = "我的创建"
+    
     /// 类别显示名称
     var displayName: String {
         switch self {
@@ -35,6 +38,8 @@ enum CharacterCategory: String, CaseIterable, Codable {
             return "影视角色"
         case .mythCharacter:
             return "神话角色"
+        case .myCreation:
+            return "我的创建"
         case .all:
             return "全部"
         }
@@ -58,6 +63,8 @@ enum CharacterCategory: String, CaseIterable, Codable {
             return Color(red: 205/255, green: 128/255, blue: 123/255)  // 影视角色颜色（使用原电影角色的红色）
         case .mythCharacter:
             return Color(red: 178/255, green: 135/255, blue: 210/255)  // 稍微增强的紫罗兰
+        case .myCreation:
+            return Color(red: 255/255, green: 140/255, blue: 0/255)  // 橙色，表示用户创建
         }
     }
     
@@ -80,6 +87,8 @@ enum CharacterCategory: String, CaseIterable, Codable {
             return "film.fill"
         case .mythCharacter:
             return "sparkles"
+        case .myCreation:
+            return "person.badge.plus.fill"
         }
     }
     

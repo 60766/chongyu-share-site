@@ -2196,17 +2196,33 @@ struct FullscreenPostDetailView: View {
             // 头像 - 使用我们统一的Avatar组件
             // 如果是虚拟角色发布的帖子，头像可点击进入角色详情页
             // 使用与评论中完全相同的方式：Button + PlainButtonStyle + frame
+            
+            // 🔒 修复：对于用户创建的角色，使用characterID作为url，以便正确加载头像
+            let avatarURL: String = {
+                // 优先使用characterID（如果是custom_开头）
+                if let characterID = viewModel.post.characterID, characterID.hasPrefix("custom_") {
+                    // 用户创建的角色：使用角色ID作为url，CustomAvatarLoader会根据ID加载头像
+                    #if DEBUG
+                    print("🔍 FullscreenPostDetailView: 用户创建的角色 - characterID: \(characterID)")
+                    #endif
+                    return characterID
+                } else {
+                    // 其他角色：使用原始avatar值
+                    return viewModel.post.userAvatar
+                }
+            }()
+            
             if isVirtualCharacter, let character = foundCharacter {
                 Button(action: {
                     // 直接使用找到的角色
                     navigateToCharacterDetail = character
                 }) {
-                    Avatar(url: viewModel.post.userAvatar, size: 40)
+                    Avatar(url: avatarURL, size: 40)
                         .frame(width: 40, height: 40)
                 }
                 .buttonStyle(PlainButtonStyle())
             } else {
-                Avatar(url: viewModel.post.userAvatar, size: 40)
+                Avatar(url: avatarURL, size: 40)
             }
             
             // 用户名和时间

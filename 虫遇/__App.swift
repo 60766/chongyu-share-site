@@ -20,6 +20,9 @@ struct ChongYuApp: App {
     // 添加 StoreKit 管理器
     @StateObject private var storeKitManager = StoreKitManager.shared
     
+    // 隐私政策同意状态
+    @State private var hasAcceptedPrivacy = PrivacyPolicyManager.shared.hasAccepted()
+    
     var sharedModelContainer: ModelContainer = {
         // 🔍 诊断模式：逐个测试每个Model类
         #if DEBUG
@@ -273,6 +276,8 @@ struct ChongYuApp: App {
     }
     var body: some Scene {
         WindowGroup {
+            Group {
+                if hasAcceptedPrivacy {
             AppTabView()
                 .environmentObject(CreationTypeManager.shared)
                 .environmentObject(storeKitManager)
@@ -290,6 +295,14 @@ struct ChongYuApp: App {
                     // 延迟执行，确保 ModelContext 已准备好
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         performAutoBackupIfNeeded()
+                            }
+                        }
+                } else {
+                    PrivacyPolicyAgreementView()
+                        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PrivacyPolicyAccepted"))) { _ in
+                            // 用户同意后，更新状态并显示主界面
+                            hasAcceptedPrivacy = true
+                        }
                     }
                 }
         }

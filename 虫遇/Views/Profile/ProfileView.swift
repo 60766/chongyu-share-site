@@ -660,9 +660,7 @@ struct ProfileView: View {
             }
             .onDisappear {
                 // 性能优化：清理资源，避免内存泄漏
-                #if DEBUG
-                print("🧹 ProfileView: 页面消失，开始清理资源")
-                #endif
+                // 已移除调试日志
                 
                 // 停止正在进行的计算任务
                 isCalculating = false

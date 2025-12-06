@@ -107,9 +107,6 @@ struct PrivacySettingsView: View {
                     }
                     
                     Spacer()
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
     }
@@ -125,13 +122,13 @@ struct PrivacySettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("客服邮箱")
                         .foregroundColor(.primary)
-                    Text("support@chongyuai.com")
+                    Text("li2410669277@gmail.com")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 Spacer()
                 Button("写信") {
-                    if let url = URL(string: "mailto:support@chongyuai.com") {
+                    if let url = URL(string: "mailto:li2410669277@gmail.com") {
                     UIApplication.shared.open(url)
         }
     }

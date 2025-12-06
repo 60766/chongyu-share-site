@@ -107,6 +107,7 @@ struct NotificationModel: Identifiable, Codable {
             case .gameCharacter: return "pattern_game"
             case .filmCharacter: return "pattern_movie"
             case .mythCharacter: return "pattern_myth"
+            case .myCreation: return "pattern_default" // 用户创建的角色使用默认纹理
             case .all: return "pattern_default"
             }
         }

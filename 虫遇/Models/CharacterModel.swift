@@ -246,14 +246,72 @@ struct CharacterModel: Identifiable, Hashable {
     
     // 从JSON文件加载所有角色（应用分类过滤，用于帖子生成）
     static func getAllCharacters() -> [CharacterModel] {
+        // 加载系统角色
+        var allCharacters = loadAllCharactersFromJSON()
+        
+        // 🔒 加载用户创建的角色并合并
+        let userCreatedCharacters = loadUserCreatedCharacters()
+        allCharacters.append(contentsOf: userCreatedCharacters)
+        
         // 应用分类过滤（如果用户屏蔽了某些分类）
-        let allCharacters = loadAllCharactersFromJSON()
         return BlockedCategoriesManager.shared.filterCharacters(allCharacters)
+    }
+    
+    /**
+     * 加载用户创建的角色（从UserDefaults）
+     * @return 用户创建的角色列表
+     */
+    private static func loadUserCreatedCharacters() -> [CharacterModel] {
+        guard let data = UserDefaults.standard.data(forKey: "CustomCharactersData") else {
+            return []
+        }
+        
+        do {
+            if let customCharacters = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                return customCharacters.compactMap { characterDict -> CharacterModel? in
+                    guard let id = characterDict["id"] as? String,
+                          let name = characterDict["name"] as? String else {
+                        return nil
+                    }
+                    
+                    // 解析分类
+                    let categoryString = characterDict["category"] as? String ?? "历史人物"
+                    let category = CharacterCategory(rawValue: categoryString) ?? .historical
+                    
+                    // 创建CharacterModel
+                    return CharacterModel(
+                        id: id,
+                        name: name,
+                        avatar: characterDict["avatar"] as? String ?? "person.circle.fill",
+                        era: characterDict["era"] as? String ?? "",
+                        profession: characterDict["profession"] as? String ?? "",
+                        bio: characterDict["bio"] as? String ?? "",
+                        category: category,
+                        universe: characterDict["universe"] as? String,
+                        famousQuotes: characterDict["famousQuotes"] as? [String],
+                        characterID: id
+                    )
+                }
+            }
+        } catch {
+            #if DEBUG
+            print("⚠️ 加载用户创建的角色失败: \(error)")
+            #endif
+        }
+        
+        return []
     }
     
     // 从JSON文件加载所有角色（不应用过滤，用于探索页面显示）
     static func loadAllCharactersWithoutFilter() -> [CharacterModel] {
-        return loadAllCharactersFromJSON()
+        // 加载系统角色
+        var allCharacters = loadAllCharactersFromJSON()
+        
+        // 🔒 加载用户创建的角色并合并（不应用过滤，用于统计显示）
+        let userCreatedCharacters = loadUserCreatedCharacters()
+        allCharacters.append(contentsOf: userCreatedCharacters)
+        
+        return allCharacters
     }
     
     // 从JSON文件加载所有角色（不应用过滤）

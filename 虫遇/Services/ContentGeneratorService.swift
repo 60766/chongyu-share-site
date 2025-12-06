@@ -490,20 +490,40 @@ class ContentGeneratorService: ObservableObject {
             print("🔄 生成带评论的内容: 角色ID=\(characterID), 类型=\(contentType.rawValue), 评论数=\(commentersCount)")
             #endif
             
-            // 获取角色信息
-            self.characterSystem.getCharacter(characterID)
-                .sink(
-                    receiveCompletion: { completion in
-                        if case .failure(let error) = completion {
-                            #if DEBUG
-                            print("❌ 获取角色信息失败: \(error.localizedDescription)")
-                            #endif
-                            promise(.failure(error))
-                        }
-                    },
-                    receiveValue: { character in
+            // 🔒 优先从CharacterModel获取角色信息（包含用户创建的角色）
+            // 如果CharacterModel中没有，再从CharacterSystem获取
+            let allCharacterModels = CharacterModel.getAllCharacters()
+            if let characterModel = allCharacterModels.first(where: { $0.id == characterID }) {
+                // 将CharacterModel转换为CharacterIdentity
+                let characterType: CharacterSystem.CharacterType = {
+                    switch characterModel.category {
+                    case .historical: return .historical
+                    case .philosopher: return .historical
+                    case .writer: return .literary
+                    case .animeCharacter: return .anime
+                    case .gameCharacter: return .game
+                    case .filmCharacter: return .movie
+                    case .mythCharacter: return .mythological
+                    case .myCreation: return .custom // 用户创建的角色使用custom类型
+                    case .all: return .historical
+                    }
+                }()
+                
+                let character = CharacterSystem.CharacterIdentity(
+                    id: characterModel.id,
+                    name: characterModel.name,
+                    type: characterType,
+                    era: characterModel.era,
+                    primaryField: characterModel.profession,
+                    briefDescription: characterModel.bio,
+                    avatarName: characterModel.avatar,
+                    region: "",
+                    contentAffinities: [:],
+                    subtype: nil
+                )
+                
                         #if DEBUG
-                        print("👤 获取角色成功: \(character.name)")
+                print("👤 从CharacterModel获取角色成功: \(character.name)")
                         #endif
                         
                         // 将ContentType转换为字符串表示
@@ -552,13 +572,24 @@ class ContentGeneratorService: ObservableObject {
                                 print("✅ AI成功生成内容和\(result.comments.count)条评论")
                                 #endif
                                 
+                                // 🔒 修复：对于用户创建的角色，使用characterID作为avatar（确保使用最新头像）
+                                let avatarName: String = {
+                                    // 如果是用户创建的角色，使用characterID作为avatar路径
+                                    if characterID.hasPrefix("custom_") || characterID.hasPrefix("user_avatar_") {
+                                        return characterID
+                                    } else {
+                                        // 其他角色使用原始avatarName
+                                        return character.avatarName
+                                    }
+                                }()
+                                
                                 // 创建内容项
                                 let contentItem = ContentItem(
                                     id: UUID().uuidString,
                                     characterID: characterID,
-                                    characterName: character.name,
+                                    characterName: character.name, // 🔒 确保使用角色名称，不是用户名
                                     characterType: character.type.rawValue,
-                                    characterAvatar: character.avatarName,
+                                    characterAvatar: avatarName, // 🔒 使用修复后的avatar
                                     contentType: contentType.rawValue,
                                     content: result.content,
                                     timestamp: Date(),
@@ -592,8 +623,76 @@ class ContentGeneratorService: ObservableObject {
                                 for (index, commentData) in result.comments.enumerated() {
                                     dispatchGroup.enter()
                                     
-                                    // 尝试查找评论者角色
-                                    let commenter = self.characterSystem.findCharacterByName(commentData.character)
+                                    // 🔒 修复：优先从CharacterModel查找评论者角色（包含用户创建的角色）
+                                    var commenter: CharacterSystem.CharacterIdentity? = nil
+                                    var commenterCharacterModel: CharacterModel? = nil
+                                    
+                                    // 首先尝试从CharacterModel查找（包含用户创建的角色）
+                                    let allCharacterModels = CharacterModel.getAllCharacters()
+                                    if let characterModel = allCharacterModels.first(where: { $0.name == commentData.character }) {
+                                        commenterCharacterModel = characterModel
+                                        
+                                        // 将CharacterModel转换为CharacterIdentity
+                                        let characterType: CharacterSystem.CharacterType = {
+                                            switch characterModel.category {
+                                            case .historical: return .historical
+                                            case .philosopher: return .historical
+                                            case .writer: return .literary
+                                            case .animeCharacter: return .anime
+                                            case .gameCharacter: return .game
+                                            case .filmCharacter: return .movie
+                                            case .mythCharacter: return .mythological
+                                            case .myCreation: return .custom
+                                            case .all: return .historical
+                                            }
+                                        }()
+                                        
+                                        commenter = CharacterSystem.CharacterIdentity(
+                                            id: characterModel.id,
+                                            name: characterModel.name,
+                                            type: characterType,
+                                            era: characterModel.era,
+                                            primaryField: characterModel.profession,
+                                            briefDescription: characterModel.bio,
+                                            avatarName: characterModel.avatar,
+                                            region: "",
+                                            contentAffinities: [:],
+                                            subtype: nil
+                                        )
+                                    } else {
+                                        // 如果CharacterModel中找不到，从CharacterSystem查找（备用方案）
+                                        commenter = self.characterSystem.findCharacterByName(commentData.character)
+                                    }
+                            
+                            // 🔒 检查评论者角色是否被屏蔽（自动生成的评论需要应用屏蔽过滤）
+                            if let commenter = commenter {
+                                // 检查是否为用户创建的角色（ID以"custom_"开头）
+                                let isUserCreated = commenter.id.hasPrefix("custom_")
+                                
+                                // 🔒 用户创建的角色：只受"我的创建"分类的屏蔽影响
+                                if isUserCreated {
+                                    if BlockedCategoriesManager.shared.isCategoryBlocked(.myCreation) {
+                                        #if DEBUG
+                                        print("🚫 跳过被屏蔽的用户创建角色: \(commenter.name)")
+                                        #endif
+                                        dispatchGroup.leave()
+                                        continue
+                                    }
+                                    // 用户创建的角色不受其他分类屏蔽影响，继续处理
+                                } else {
+                                    // 🔒 非用户创建的角色：检查分类是否被屏蔽
+                                    if let characterModel = commenterCharacterModel ?? CharacterModel.getAllCharacters().first(where: { $0.id == commenter.id }) {
+                                        let isBlocked = BlockedCategoriesManager.shared.isCategoryBlocked(characterModel.category)
+                                        if isBlocked {
+                                            #if DEBUG
+                                            print("🚫 跳过被屏蔽分类的评论者: \(commenter.name) (分类: \(characterModel.category.rawValue))")
+                                            #endif
+                                            dispatchGroup.leave()
+                                            continue
+                                        }
+                                    }
+                                }
+                            }
                                     
                                     // 创建评论，设置递减的时间戳（最早的评论在最前面）
                                     let timestamp = now.addingTimeInterval(-Double((result.comments.count - index) * 120))
@@ -601,11 +700,31 @@ class ContentGeneratorService: ObservableObject {
                                     // 只有当评论内容不为空时才创建评论项
                                     if !commentData.comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                         let commentId = UUID()
+                                        
+                                        // 🔒 修复：对于用户创建的角色，使用characterID作为avatar（确保使用最新头像）
+                                        let avatarName: String = {
+                                            if let characterModel = commenterCharacterModel {
+                                                // 如果是用户创建的角色，使用characterID作为avatar路径
+                                                if characterModel.id.hasPrefix("custom_") || characterModel.id.hasPrefix("user_avatar_") {
+                                                    return characterModel.id
+                                                } else {
+                                                    return characterModel.avatar
+                                                }
+                                            } else {
+                                                // 如果找不到CharacterModel，使用commenter的avatarName
+                                                if let commenter = commenter, (commenter.id.hasPrefix("custom_") || commenter.id.hasPrefix("user_avatar_")) {
+                                                    return commenter.id
+                                                } else {
+                                                    return commenter?.avatarName ?? "person.circle.fill"
+                                                }
+                                            }
+                                        }()
+                                        
                                         let commentItem = CommentItem(
                                             id: commentId.uuidString,
                                             characterId: commenter?.id ?? "unknown",
                                             characterName: commenter?.name ?? commentData.character,
-                                            characterAvatar: commenter?.avatarName ?? "person.circle.fill",
+                                            characterAvatar: avatarName,
                                             characterRole: commenter?.primaryField ?? "unknown",
                                             content: commentData.comment,
                                             timestamp: timestamp,
@@ -641,9 +760,213 @@ class ContentGeneratorService: ObservableObject {
                             }
                         )
                         .store(in: &self.cancellables)
+            } else {
+                // 🔒 如果CharacterModel中没有找到，从CharacterSystem获取（备用方案）
+                #if DEBUG
+                print("⚠️ CharacterModel中未找到角色，尝试从CharacterSystem获取: \(characterID)")
+                #endif
+                
+                self.characterSystem.getCharacter(characterID)
+                    .sink(
+                        receiveCompletion: { completion in
+                            if case .failure(let error) = completion {
+                                #if DEBUG
+                                print("❌ 获取角色信息失败: \(error.localizedDescription)")
+                                #endif
+                                promise(.failure(error))
+                            }
+                        },
+                        receiveValue: { character in
+                            #if DEBUG
+                            print("👤 从CharacterSystem获取角色成功: \(character.name)")
+                            #endif
+                            
+                            // 将ContentType转换为字符串表示
+                            let contentTypeString = self.contentTypeToString(contentType)
+                            
+                            // 使用AI内容生成器生成内容和评论
+                            self.aiContentGenerator.generateContentWithComments(
+                                contentType: contentTypeString,
+                                character: character,
+                                commentersCount: commentersCount,
+                                topic: topic ?? "未指定主题"
+                            )
+                            .sink(
+                                receiveCompletion: { completion in
+                                    if case .failure(let error) = completion {
+                                        #if DEBUG
+                                        print("❌ AI生成内容和评论失败: \(error.localizedDescription)")
+                                        #endif
+                                        
+                                        // 显示友好的错误提示给用户
+                                        Task { @MainActor in
+                                            if let aiError = error as? AINetworkError {
+                                                var is403Error = false
+                                                if case .httpError(let code) = aiError {
+                                                    is403Error = (code == 403)
+                                                }
+                                                
+                                                if !is403Error {
+                                                    ToastManager.shared.showToast(message: aiError.localizedDescription)
+                                                }
+                                            } else {
+                                                ToastManager.shared.showToast(message: "生成失败，请稍后重试")
+                                            }
+                                        }
+                                        
+                                        promise(.failure(error))
+                                    }
+                                },
+                                receiveValue: { result in
+                                    #if DEBUG
+                                    print("✅ AI成功生成内容和\(result.comments.count)条评论")
+                                    #endif
+                                    
+                                    // 创建内容项
+                                    let contentItem = ContentItem(
+                                        id: UUID().uuidString,
+                                        characterID: characterID,
+                                        characterName: character.name,
+                                        characterType: character.type.rawValue,
+                                        characterAvatar: character.avatarName,
+                                        contentType: contentType.rawValue,
+                                        content: result.content,
+                                        timestamp: Date(),
+                                        likes: Int.random(in: 10...200),
+                                        comments: [],
+                                        topics: self.extractTopicFromContent(result.content)
+                                    )
+                                    
+                                    // 如果没有评论，直接返回结果
+                                    if result.comments.isEmpty {
+                                        #if DEBUG
+                                        print("⚠️ 警告：AI没有生成任何评论")
+                                        #endif
+                                        promise(.success((contentItem, [])))
+                                        return
+                                    }
+                                    
+                                    // 创建评论项（使用相同的评论处理逻辑）
+                                    var comments: [CommentItem] = []
+                                    let now = Date()
+                                    let dispatchGroup = DispatchGroup()
+                                    
+                                    #if DEBUG
+                                    print("🔄 开始处理\(result.comments.count)条评论...")
+                                    #endif
+                                    
+                                    var baseCommentIdMap: [String: String] = [:]
+                                    
+                                    for (index, commentData) in result.comments.enumerated() {
+                                        dispatchGroup.enter()
+                                        
+                                        // 🔒 修复：优先从CharacterModel查找评论者角色（包含用户创建的角色）
+                                        var commenter: CharacterSystem.CharacterIdentity? = nil
+                                        var commenterCharacterModel: CharacterModel? = nil
+                                        
+                                        // 首先尝试从CharacterModel查找（包含用户创建的角色）
+                                        let allCharacterModels = CharacterModel.getAllCharacters()
+                                        if let characterModel = allCharacterModels.first(where: { $0.name == commentData.character }) {
+                                            commenterCharacterModel = characterModel
+                                            
+                                            // 将CharacterModel转换为CharacterIdentity
+                                            let characterType: CharacterSystem.CharacterType = {
+                                                switch characterModel.category {
+                                                case .historical: return .historical
+                                                case .philosopher: return .historical
+                                                case .writer: return .literary
+                                                case .animeCharacter: return .anime
+                                                case .gameCharacter: return .game
+                                                case .filmCharacter: return .movie
+                                                case .mythCharacter: return .mythological
+                                                case .myCreation: return .custom
+                                                case .all: return .historical
+                                                }
+                                            }()
+                                            
+                                            commenter = CharacterSystem.CharacterIdentity(
+                                                id: characterModel.id,
+                                                name: characterModel.name,
+                                                type: characterType,
+                                                era: characterModel.era,
+                                                primaryField: characterModel.profession,
+                                                briefDescription: characterModel.bio,
+                                                avatarName: characterModel.avatar,
+                                                region: "",
+                                                contentAffinities: [:],
+                                                subtype: nil
+                                            )
+                                        } else {
+                                            // 如果CharacterModel中找不到，从CharacterSystem查找（备用方案）
+                                            commenter = self.characterSystem.findCharacterByName(commentData.character)
+                                        }
+                                        
+                                        // 🔒 检查评论者角色是否被屏蔽
+                                        if let commenter = commenter {
+                                            let isUserCreated = commenter.id.hasPrefix("custom_")
+                                            
+                                            if isUserCreated {
+                                                if BlockedCategoriesManager.shared.isCategoryBlocked(.myCreation) {
+                                                    dispatchGroup.leave()
+                                                    continue
+                                                }
+                                            } else {
+                                                if let characterModel = commenterCharacterModel ?? CharacterModel.getAllCharacters().first(where: { $0.id == commenter.id }) {
+                                                    if BlockedCategoriesManager.shared.isCategoryBlocked(characterModel.category) {
+                                                        dispatchGroup.leave()
+                                                        continue
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+                                        let timestamp = now.addingTimeInterval(-Double((result.comments.count - index) * 120))
+                                        
+                                        if !commentData.comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                            let commentId = UUID()
+                                            
+                                            // 🔒 修复：使用CharacterModel的avatar（如果是用户创建的角色）
+                                            let avatarName: String = {
+                                                if let characterModel = commenterCharacterModel {
+                                                    return characterModel.avatar
+                                                } else {
+                                                    return commenter?.avatarName ?? "person.circle.fill"
+                                                }
+                                            }()
+                                            
+                                            let commentItem = CommentItem(
+                                                id: commentId.uuidString,
+                                                characterId: commenter?.id ?? "unknown",
+                                                characterName: commenter?.name ?? commentData.character,
+                                                characterAvatar: avatarName,
+                                                characterRole: commenter?.primaryField ?? "unknown",
+                                                content: commentData.comment,
+                                                timestamp: timestamp,
+                                                likes: Int.random(in: 5...50),
+                                                parentCommentId: commentData.isReply ? baseCommentIdMap[commentData.replyTo ?? ""] : nil
+                                            )
+                                            
+                                            baseCommentIdMap[commentData.character] = commentId.uuidString
+                                            comments.append(commentItem)
+                                        }
+                                        
+                                        dispatchGroup.leave()
+                                    }
+                                    
+                                    dispatchGroup.notify(queue: .main) {
+                                        #if DEBUG
+                                        print("✅ 所有评论处理完成，共\(comments.count)条评论")
+                                        #endif
+                                        let sortedComments = comments.sorted { $0.timestamp > $1.timestamp }
+                                        promise(.success((contentItem, sortedComments)))
+                                    }
                     }
                 )
                 .store(in: &self.cancellables)
+                        }
+                    )
+                    .store(in: &self.cancellables)
+            }
         }
     }
     

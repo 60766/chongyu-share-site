@@ -319,7 +319,27 @@ class UserDataManager: ObservableObject {
             #endif
         }
         
-        // 9. 导出信息
+        // 9. 🔒 直接备份CustomCharactersData（确保完整备份）
+        if let customCharactersData = UserDefaults.standard.data(forKey: "CustomCharactersData") {
+            do {
+                if let customCharactersArray = try JSONSerialization.jsonObject(with: customCharactersData) as? [[String: Any]] {
+                    exportData["CustomCharactersData"] = customCharactersArray
+                    #if DEBUG
+                    print("✅ [备份] 已直接备份CustomCharactersData: \(customCharactersArray.count) 个角色")
+                    #endif
+                }
+            } catch {
+                #if DEBUG
+                print("⚠️ [备份] 备份CustomCharactersData失败: \(error)")
+                #endif
+            }
+        } else {
+            #if DEBUG
+            print("⚠️ [备份] CustomCharactersData不存在，跳过直接备份")
+            #endif
+        }
+        
+        // 10. 导出信息
         exportData["exportInfo"] = [
             "exportDate": formatDate(Date()),
             "version": "3.3",
@@ -637,6 +657,7 @@ class UserDataManager: ObservableObject {
     }
     
     /// 加载角色头像图片数据（base64编码）
+    /// 🔒 修复：支持custom_和user_avatar_两种前缀，以及多种图片格式
     private func loadCharacterAvatar(characterId: String) -> String? {
         let fileManager = FileManager.default
         guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
@@ -646,30 +667,43 @@ class UserDataManager: ObservableObject {
             return nil
         }
         
-        let avatarURL = documentsDirectory.appendingPathComponent("\(characterId).jpg")
+        // 🔒 修复：尝试多种可能的文件名和格式
+        var possibleFileNames: [String] = [
+            "\(characterId).jpg",
+            "\(characterId).jpeg",
+            "\(characterId).png"
+        ]
         
-        // 检查文件是否存在
-        guard fileManager.fileExists(atPath: avatarURL.path) else {
-            #if DEBUG
-            print("⚠️ [备份] 头像文件不存在: \(avatarURL.path)")
-            #endif
-            return nil
+        // 如果characterId是user_avatar_开头，也尝试直接使用characterId作为文件名
+        if characterId.hasPrefix("user_avatar_") {
+            possibleFileNames.insert(characterId, at: 0) // 优先尝试
         }
         
+        for fileName in possibleFileNames {
+            let avatarURL = documentsDirectory.appendingPathComponent(fileName)
+        
+        // 检查文件是否存在
+            if fileManager.fileExists(atPath: avatarURL.path) {
         // 读取图片数据
-        guard let imageData = try? Data(contentsOf: avatarURL) else {
+                if let imageData = try? Data(contentsOf: avatarURL) {
+                    // 转换为base64编码
+                    let base64String = imageData.base64EncodedString()
+                    #if DEBUG
+                    print("✅ [备份] 成功加载头像: \(characterId), 文件: \(fileName), 大小: \(imageData.count) bytes, base64长度: \(base64String.count)")
+                    #endif
+                    return base64String
+                } else {
             #if DEBUG
             print("⚠️ [备份] 无法读取头像文件: \(avatarURL.path)")
             #endif
-            return nil
+                }
+            }
         }
         
-        // 转换为base64编码
-        let base64String = imageData.base64EncodedString()
         #if DEBUG
-        print("✅ [备份] 成功加载头像: \(characterId), 大小: \(imageData.count) bytes, base64长度: \(base64String.count)")
+        print("⚠️ [备份] 头像文件不存在: characterId=\(characterId), 尝试的文件: \(possibleFileNames.joined(separator: ", "))")
         #endif
-        return base64String
+        return nil
     }
     
     /// 获取私聊对话数据
@@ -992,8 +1026,17 @@ class UserDataManager: ObservableObject {
         }
         
         // 恢复自定义角色
-        if let myCreations = backupData["myCreations"] as? [String: Any],
+        // 🔒 修复：优先从CustomCharactersData恢复（完整数据），如果没有则从myCreations恢复（简化数据）
+        if let customCharactersData = backupData["CustomCharactersData"] as? [[String: Any]] {
+            #if DEBUG
+            print("📥 [恢复] 从CustomCharactersData恢复: \(customCharactersData.count) 个角色")
+            #endif
+            restoreCustomCharacters(customCharactersData)
+        } else if let myCreations = backupData["myCreations"] as? [String: Any],
            let characters = myCreations["customCharacters"] as? [[String: Any]] {
+            #if DEBUG
+            print("📥 [恢复] 从myCreations恢复: \(characters.count) 个角色")
+            #endif
             restoreCustomCharacters(characters)
         }
         
@@ -1207,8 +1250,14 @@ class UserDataManager: ObservableObject {
                 if characterToSave["personality"] == nil {
                     characterToSave["personality"] = ""
                 }
+                // 🔒 修复：对于用户创建的角色，avatar字段应该设置为characterId（与创建时保持一致）
                 if characterToSave["avatar"] == nil {
+                    // 如果是用户创建的角色（custom_或user_avatar_开头），使用characterId作为avatar
+                    if characterId.hasPrefix("custom_") || characterId.hasPrefix("user_avatar_") {
+                        characterToSave["avatar"] = "\(characterId).jpg" // 与创建时的格式保持一致
+                    } else {
                     characterToSave["avatar"] = ""
+                    }
                 }
                 if characterToSave["era"] == nil {
                     characterToSave["era"] = ""
@@ -1298,8 +1347,14 @@ class UserDataManager: ObservableObject {
                 if characterToSave["personality"] == nil {
                     characterToSave["personality"] = ""
                 }
+                // 🔒 修复：对于用户创建的角色，avatar字段应该设置为characterId（与创建时保持一致）
                 if characterToSave["avatar"] == nil {
+                    // 如果是用户创建的角色（custom_或user_avatar_开头），使用characterId作为avatar
+                    if characterId.hasPrefix("custom_") || characterId.hasPrefix("user_avatar_") {
+                        characterToSave["avatar"] = "\(characterId).jpg" // 与创建时的格式保持一致
+                    } else {
                     characterToSave["avatar"] = ""
+                    }
                 }
                 
                 // 确保其他字段存在（匹配 CreateCharacterView 的保存格式）
@@ -1371,10 +1426,11 @@ class UserDataManager: ObservableObject {
     }
     
     /// 保存角色头像图片文件
+    /// 🔒 修复：确保保存的头像文件能被CustomAvatarLoader正确加载
     private func saveCharacterAvatar(characterId: String, base64Data: String) {
         guard let imageData = Data(base64Encoded: base64Data) else {
             #if DEBUG
-            print("⚠️ 无法解码base64头像数据: \(characterId)")
+            print("⚠️ [恢复] 无法解码base64头像数据: \(characterId)")
             #endif
             return
         }
@@ -1382,12 +1438,21 @@ class UserDataManager: ObservableObject {
         let fileManager = FileManager.default
         guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             #if DEBUG
-            print("⚠️ 无法获取Documents目录")
+            print("⚠️ [恢复] 无法获取Documents目录")
             #endif
             return
         }
         
-        let avatarURL = documentsDirectory.appendingPathComponent("\(characterId).jpg")
+        // 🔒 修复：使用characterId作为文件名（与CustomAvatarLoader保持一致）
+        // 优先保存为.jpg格式，但如果characterId本身包含扩展名，也支持
+        let avatarURL: URL
+        if characterId.hasSuffix(".jpg") || characterId.hasSuffix(".jpeg") || characterId.hasSuffix(".png") {
+            // 如果characterId已经包含扩展名，直接使用
+            avatarURL = documentsDirectory.appendingPathComponent(characterId)
+        } else {
+            // 否则添加.jpg扩展名
+            avatarURL = documentsDirectory.appendingPathComponent("\(characterId).jpg")
+        }
         
         do {
             // 确保目录存在
@@ -1399,9 +1464,12 @@ class UserDataManager: ObservableObject {
             // 写入图片数据
             try imageData.write(to: avatarURL)
             #if DEBUG
-            print("✅ 头像恢复成功: \(avatarURL.lastPathComponent)")
+            print("✅ [恢复] 头像恢复成功: \(avatarURL.lastPathComponent), characterId: \(characterId)")
             #endif
         } catch {
+            #if DEBUG
+            print("❌ [恢复] 保存头像文件失败: \(error.localizedDescription), characterId: \(characterId)")
+            #endif
             Logger.error("保存头像文件失败", error: error, log: Logger.data)
         }
     }

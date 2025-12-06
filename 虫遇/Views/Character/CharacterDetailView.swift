@@ -54,6 +54,7 @@ import UIKit
 import SwiftData
 import Foundation // 确保Foundation已导入
 import Combine  
+import PhotosUI  
 // 移除FlowLayout导入，因为它现在在同一个模块中
 
 /**
@@ -229,6 +230,13 @@ struct CharacterDetailView: View {
     @State private var isFavorited: Bool = false
     /// 自定义头像
     @State private var customImage: UIImage? = nil
+    /// 是否显示图片选择器
+    @State private var isShowingImagePicker = false
+    /// 是否正在加载图片
+    @State private var isLoadingImage = false
+    /// 图片选择器错误信息
+    @State private var imagePickerErrorMessage = ""
+    @State private var showingImagePickerError = false
     
     // 环境值
     @Environment(\.presentationMode) var presentationMode
@@ -398,6 +406,31 @@ struct CharacterDetailView: View {
                 }
             }
         }
+        .sheet(isPresented: $isShowingImagePicker) {
+            CharacterImagePicker(
+                selectedImage: Binding(
+                    get: { customImage },
+                    set: { newImage in
+                        if let newImage = newImage {
+                            updateCharacterAvatar(newImage)
+                        }
+                    }
+                ),
+                isPresented: $isShowingImagePicker,
+                avatarSelected: .constant(true),
+                isLoadingImage: $isLoadingImage,
+                onError: { errorMessage in
+                    self.isLoadingImage = false
+                    self.imagePickerErrorMessage = errorMessage
+                    self.showingImagePickerError = true
+                }
+            )
+        }
+        .alert("更换头像失败", isPresented: $showingImagePickerError) {
+            Button("确定", role: .cancel) { }
+        } message: {
+            Text(imagePickerErrorMessage)
+        }
         .onAppear {
             // 调用loadData方法
             loadData()
@@ -493,7 +526,15 @@ struct CharacterDetailView: View {
             // 头像和基本信息区 - 水平布局以提高空间效率
             HStack(alignment: .center, spacing: 14) {
                 // 头像 - 左侧放置，符合图一设计
-                ZStack {
+                // 🔒 修复：如果是用户创建的角色，头像可点击更换
+                let isUserCreated = character.id.hasPrefix("custom_") || character.id.hasPrefix("user_avatar_")
+                
+                Button(action: {
+                    if isUserCreated {
+                        isShowingImagePicker = true
+                    }
+                }) {
+                    ZStack(alignment: .bottomTrailing) {
                     if let customImage = customImage {
                         // 显示从文档目录加载的自定义头像
                         Image(uiImage: customImage)
@@ -526,10 +567,26 @@ struct CharacterDetailView: View {
                             )
                         }
                     }
+                        
+                        // 如果是用户创建的角色，显示编辑图标
+                        if isUserCreated {
+                            Circle()
+                                .fill(Color(hex: "6A7FDB"))
+                                .frame(width: 20, height: 20)
+                                .overlay(
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(.white)
+                                )
+                                .offset(x: 2, y: 2)
+                        }
+                    }
                 }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(!isUserCreated)
                 .onAppear {
                     #if DEBUG
-                    print("🔍 CharacterDetailView - 显示角色头像: \(character.avatarUrl), 名称: \(character.name)")
+                    print("🔍 CharacterDetailView - 显示角色头像: \(character.avatarUrl), 名称: \(character.name), 是否用户创建: \(isUserCreated)")
                     #endif
                     // 确保在onAppear时加载自定义头像
                     loadCustomAvatar()
@@ -1464,48 +1521,158 @@ struct CharacterDetailView: View {
      * 从文档目录加载用户创建的角色头像
      */
     private func loadCustomAvatar() {
-        // 检查角色ID是否是自定义角色（以"custom_"开头）
+        // 检查角色ID是否是自定义角色（以"custom_"或"user_avatar_"开头）
         let characterId = character.id
-        if characterId.hasPrefix("custom_") || character.avatarUrl == "default_avatar" {
-            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileURL = documentsDirectory.appendingPathComponent("\(characterId).jpg")
-            
-            #if DEBUG
-            print("📁 CharacterDetailView - 尝试加载自定义头像: \(fileURL.path)")
-            #endif
-            
-            // 检查文件是否存在
-            if FileManager.default.fileExists(atPath: fileURL.path) {
-                if let imageData = try? Data(contentsOf: fileURL),
-                   let image = UIImage(data: imageData) {
-                    DispatchQueue.main.async {
-                        self.customImage = image
-                        #if DEBUG
-                        print("✅ CharacterDetailView - 成功加载自定义头像: \(fileURL.path)")
-                        #endif
-                    }
-        } else {
+        if characterId.hasPrefix("custom_") || characterId.hasPrefix("user_avatar_") || character.avatarUrl == "default_avatar" {
+            // 使用CustomAvatarLoader加载头像
+            if let image = CustomAvatarLoader.shared.loadCustomAvatar(characterId: characterId, avatarName: character.avatarUrl) {
+                DispatchQueue.main.async {
+                    self.customImage = image
                     #if DEBUG
-                    print("❌ CharacterDetailView - 无法加载自定义头像数据: \(fileURL.path)")
+                    print("✅ CharacterDetailView - 成功加载自定义头像: \(characterId)")
                     #endif
                 }
             } else {
                 #if DEBUG
-                print("⚠️ CharacterDetailView - 自定义头像文件不存在: \(fileURL.path)")
+                print("⚠️ CharacterDetailView - 自定义头像文件不存在: \(characterId)")
                 #endif
-                // 尝试从备份目录加载
-                let backupURL = URL(fileURLWithPath: "/Users/lishilong/IOS开发/虫遇/虫遇/backup_images/default_avatar.png")
-                if FileManager.default.fileExists(atPath: backupURL.path),
-                   let imageData = try? Data(contentsOf: backupURL),
-                   let image = UIImage(data: imageData) {
+            }
+        }
+    }
+    
+    // MARK: - 更新角色头像
+    /**
+     * 更新角色头像
+     * 保存新头像到文档目录并更新CharacterModel
+     */
+    private func updateCharacterAvatar(_ image: UIImage) {
+        let characterId = character.id
+            
+            #if DEBUG
+        print("🔄 CharacterDetailView - 开始更新角色头像: \(characterId)")
+            #endif
+            
+        // 保存图片到文档目录
+        DispatchQueue.global(qos: .background).async {
+            self.safelySaveImage(image, forCharacterId: characterId)
+            
+            // 更新UI
                     DispatchQueue.main.async {
                         self.customImage = image
+                
+                // 更新CharacterModel中的头像信息
+                self.updateCharacterModelAvatar(characterId: characterId)
+                
                         #if DEBUG
-                        print("✅ CharacterDetailView - 从备份目录加载头像成功")
+                print("✅ CharacterDetailView - 头像更新成功: \(characterId)")
+                        #endif
+                    }
+        }
+    }
+    
+    /**
+     * 安全保存图片
+     * 将图片保存到文档目录
+     */
+    private func safelySaveImage(_ image: UIImage, forCharacterId: String) {
+        // 调整图片大小（可选，避免图片过大）
+        let maxSize: CGFloat = 500
+        let resizedImage: UIImage
+        if image.size.width > maxSize || image.size.height > maxSize {
+            let scale = min(maxSize / image.size.width, maxSize / image.size.height)
+            let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+            resizedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
+            UIGraphicsEndImageContext()
+        } else {
+            resizedImage = image
+        }
+        
+        // 将图片转换为JPEG数据
+        guard let data = resizedImage.jpegData(compressionQuality: 0.8) else {
+                    #if DEBUG
+            print("❌ CharacterDetailView - 无法将图片转换为JPEG数据")
+                    #endif
+            return
+        }
+        
+        // 获取文档目录
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        
+        // 确保目录存在
+        do {
+            try FileManager.default.createDirectory(at: documentsDirectory, withIntermediateDirectories: true, attributes: nil)
+        } catch {
+                #if DEBUG
+            print("❌ CharacterDetailView - 创建目录失败: \(error)")
+                #endif
+            return
+        }
+        
+        // 创建保存路径
+        let fileURL = documentsDirectory.appendingPathComponent("\(forCharacterId).jpg")
+        
+        // 写入数据
+        do {
+            try data.write(to: fileURL)
+                        #if DEBUG
+            print("✅ CharacterDetailView - 头像已保存到: \(fileURL.path), 尺寸: \(Int(resizedImage.size.width))x\(Int(resizedImage.size.height))")
+            #endif
+        } catch {
+            #if DEBUG
+            print("❌ CharacterDetailView - 保存头像失败: \(error)")
                         #endif
                     }
                 }
+    
+    /**
+     * 更新CharacterModel中的头像信息
+     * 更新UserDefaults中存储的角色数据
+     */
+    private func updateCharacterModelAvatar(characterId: String) {
+        guard let data = UserDefaults.standard.data(forKey: "CustomCharactersData") else {
+            #if DEBUG
+            print("⚠️ CharacterDetailView - 未找到CustomCharactersData")
+            #endif
+            return
+        }
+        
+        do {
+            guard var customCharacters = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+                return
             }
+            
+            // 查找并更新对应的角色
+            if let index = customCharacters.firstIndex(where: { ($0["id"] as? String) == characterId }) {
+                // 更新头像字段（保持原有格式）
+                customCharacters[index]["avatar"] = "\(characterId).jpg"
+                
+                // 保存回UserDefaults
+                let updatedData = try JSONSerialization.data(withJSONObject: customCharacters)
+                UserDefaults.standard.set(updatedData, forKey: "CustomCharactersData")
+                
+                // 发送通知，通知其他视图更新
+                NotificationCenter.default.post(
+                    name: Notification.Name("CharacterAvatarUpdated"),
+                    object: nil,
+                    userInfo: ["characterId": characterId]
+                )
+                
+                // 🔒 修复：通知CharacterModel重新加载用户创建的角色数据
+                NotificationCenter.default.post(
+                    name: Notification.Name("ReloadUserCreatedCharacters"),
+                    object: nil
+                )
+                
+                #if DEBUG
+                print("✅ CharacterDetailView - CharacterModel头像信息已更新: \(characterId)")
+                #endif
+            }
+        } catch {
+            #if DEBUG
+            print("❌ CharacterDetailView - 更新CharacterModel失败: \(error)")
+            #endif
         }
         }
         

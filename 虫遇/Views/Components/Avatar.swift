@@ -34,6 +34,8 @@ struct Avatar: View {
     
     // 自定义头像
     @State private var customImage: UIImage? = nil
+    // 标记是否已尝试加载自定义头像
+    @State private var hasTriedLoadingCustomAvatar: Bool = false
     
     // 缓存计算结果，避免重复计算
     @State private var cachedCleanCharacterId: String = ""
@@ -86,7 +88,8 @@ struct Avatar: View {
     
     // 判断是否为自定义角色
     private var isCustomCharacter: Bool {
-        return cleanCharacterId.hasPrefix("custom_")
+        // 🔒 修复：支持custom_和user_avatar_开头的角色ID
+        return cleanCharacterId.hasPrefix("custom_") || cleanCharacterId.hasPrefix("user_avatar_")
     }
     
     // 当组件出现时预加载头像
@@ -124,6 +127,11 @@ struct Avatar: View {
                     )
                     .contentShape(Circle()) // 确保头像可点击
                     .allowsHitTesting(true) // 明确允许点击事件
+            } else if isCustomCharacter {
+                // 🔒 修复：用户创建的角色，在加载头像时显示占位符
+                placeholderImage
+                    .contentShape(Circle())
+                    .allowsHitTesting(true)
             } else if isKnownCharacter {
                 // 已知角色交由服务处理
                 avatarService.getAvatarView(for: cleanCharacterId, name: name, category: category, size: size, useCaching: useCaching)
@@ -157,9 +165,22 @@ struct Avatar: View {
             }
         }
         .onAppear {
-            // 🚀 性能优化：仅在必要时加载自定义头像，移除日志输出
-            if isCustomCharacter || url == "default_avatar" || url == UserProfileManager.shared.getCurrentAvatarName() {
+            // 🔒 修复：用户创建的角色，立即加载自定义头像（只加载一次）
+            if !hasTriedLoadingCustomAvatar {
+                if isCustomCharacter {
+                    loadCustomAvatar()
+                    hasTriedLoadingCustomAvatar = true
+                } else if url == "default_avatar" || url == UserProfileManager.shared.getCurrentAvatarName() {
+                    loadCustomAvatar()
+                    hasTriedLoadingCustomAvatar = true
+                }
+            }
+        }
+        .task {
+            // 🔒 修复：在任务开始时也尝试加载自定义头像（SwiftUI 5.0+）
+            if isCustomCharacter && !hasTriedLoadingCustomAvatar {
                 loadCustomAvatar()
+                hasTriedLoadingCustomAvatar = true
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .userProfileUpdated)) { _ in
@@ -310,13 +331,31 @@ struct Avatar: View {
     private func loadCustomAvatar() {
         // 对于自定义角色，尝试从文档目录加载头像
         let characterId = cleanCharacterId
+        
+        #if DEBUG
+        print("🔄 Avatar: 尝试加载自定义头像 - characterId: \(characterId), url: \(url)")
+        #endif
+        
         if let image = CustomAvatarLoader.shared.loadCustomAvatar(characterId: characterId, avatarName: url) {
+            #if DEBUG
+            print("✅ Avatar: 成功加载自定义头像 - characterId: \(characterId)")
+            #endif
+            DispatchQueue.main.async {
             self.customImage = image
-        } else if url != "person.crop.circle.fill" && url != "default_avatar" {
+            }
+        } else {
+            #if DEBUG
+            print("⚠️ Avatar: 加载自定义头像失败 - characterId: \(characterId), url: \(url)")
+            #endif
+            
             // 尝试加载用户头像（从UserProfileManager）
+            if url != "person.crop.circle.fill" && url != "default_avatar" {
             if let userImage = UserProfileManager.shared.getCurrentAvatarImage(), 
                url == UserProfileManager.shared.getCurrentAvatarName() {
+                    DispatchQueue.main.async {
                 self.customImage = userImage
+                    }
+                }
             }
         }
     }

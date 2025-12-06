@@ -103,17 +103,37 @@ class CharacterRotationSystem {
     
     /**
      * 刷新全部角色ID缓存
-     * 当角色库更新时调用此方法
+     * 当角色库更新或屏蔽设置改变时调用此方法
      * 注意：帖子生成应该应用分类过滤，所以使用CharacterModel.getAllCharacters()
      */
     func refreshAllCharacterIds() {
         // 使用CharacterModel以应用分类过滤（用于帖子生成）
         let allCharacters = CharacterModel.getAllCharacters()
-        allCharacterIds = Set(allCharacters.map { $0.id })
+        let newAllCharacterIds = Set(allCharacters.map { $0.id })
+        
+        // 清理 currentCycleUsedIds，移除已经被屏蔽的角色ID
+        // 这样可以确保严格轮换模式只在过滤后的角色列表上工作
+        currentCycleUsedIds = currentCycleUsedIds.filter { newAllCharacterIds.contains($0) }
+        
+        // 清理 currentSelectionIds，移除已经被屏蔽的角色ID
+        currentSelectionIds = currentSelectionIds.filter { newAllCharacterIds.contains($0) }
+        
+        // 清理 recentlyUsedCharacterIds，移除已经被屏蔽的角色ID
+        recentlyUsedCharacterIds = recentlyUsedCharacterIds.filter { newAllCharacterIds.contains($0) }
+        
+        // 更新缓存
+        allCharacterIds = newAllCharacterIds
         
         // 如果发现之前未记录的角色，在严格轮换模式下需要重置周期
-        if currentMode == .strictRotation && !allCharacterIds.isSubset(of: currentCycleUsedIds) {
+        // 或者如果当前周期已使用的角色数量超过了过滤后的角色总数，也需要重置
+        if currentMode == .strictRotation {
+            if !allCharacterIds.isSubset(of: currentCycleUsedIds) {
+                // 有新角色加入，重置周期
+                startNewCycle()
+            } else if currentCycleUsedIds.count >= allCharacterIds.count {
+                // 所有过滤后的角色都已使用过，重置周期
             startNewCycle()
+            }
         }
     }
     
@@ -138,6 +158,8 @@ class CharacterRotationSystem {
                 return .movie // CharacterType没有filmCharacter，使用movie
             case .mythCharacter:
                 return .mythological
+            case .myCreation:
+                return .historical // 用户创建的角色默认使用历史人物类型
             case .all:
                 return .historical
             }
@@ -293,7 +315,16 @@ class CharacterRotationSystem {
             allCharacters.filter { !currentSelectionIds.contains($0.id) } : availableCharacters
         
         // 如果候选角色仍然不足，则使用所有角色（作为最后的备选）
+        // 这样可以确保即使角色数量很少（比如用户创建的角色很少），也能正常生成内容
         let finalCandidates = candidateCharacters.isEmpty ? allCharacters : candidateCharacters
+        
+        // 🔒 如果最终候选角色仍然不足所需数量，允许重复使用（但优先使用未使用的角色）
+        // 这对于"我的创建"角色数量少的情况特别重要
+        if finalCandidates.count < count {
+            #if DEBUG
+            print("⚠️ 可用角色数量(\(finalCandidates.count))少于所需数量(\(count))，将允许重复使用角色")
+            #endif
+        }
         
         // 1. 按使用次数排序（使用较少的排前面）
         let sortedByUsage = finalCandidates.sorted { char1, char2 in
@@ -378,9 +409,20 @@ class CharacterRotationSystem {
     /**
      * 获取严格轮换的角色
      * 确保所有角色都被展示一遍后，才开始新的周期
+     * 注意：帖子生成应该应用分类过滤，所以使用CharacterModel.getAllCharacters()
      */
     func getStrictRotationCharacters(count: Int) -> [CharacterSystem.CharacterIdentity] {
-        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        // 使用CharacterModel以应用分类过滤（用于帖子生成）
+        let allCharacterModels = CharacterModel.getAllCharacters()
+        let allCharacters = allCharacterModels.map { convertToCharacterIdentity($0) }
+        
+        // 🔒 如果过滤后没有可用角色，返回空数组并记录警告
+        if allCharacters.isEmpty {
+            #if DEBUG
+            print("⚠️ 严格轮换模式：过滤后没有可用角色，请检查屏蔽设置")
+            #endif
+            return []
+        }
         
         // 如果是一个新的生成会话，清除当前选择
         // 降低阈值，使会话更频繁地重置，增加角色多样性
@@ -392,7 +434,12 @@ class CharacterRotationSystem {
         let unusedInCurrentCycle = allCharacters.filter { !currentCycleUsedIds.contains($0.id) }
         
         // 如果当前周期中未使用的角色已经不足，则开始新的周期
-        if unusedInCurrentCycle.count < count && unusedInCurrentCycle.count < allCharacters.count / 3 {
+        // 🔒 特殊处理：如果角色总数很少（比如只有1-2个），允许重复使用
+        if unusedInCurrentCycle.isEmpty && allCharacters.count <= count {
+            // 角色数量很少，重置周期以允许重复使用
+            startNewCycle()
+            return getStrictRotationCharacters(count: count) // 递归调用，使用新周期的状态
+        } else if unusedInCurrentCycle.count < count && unusedInCurrentCycle.count < max(1, allCharacters.count / 3) {
             startNewCycle()
             return getStrictRotationCharacters(count: count) // 递归调用，使用新周期的状态
         }
@@ -415,6 +462,24 @@ class CharacterRotationSystem {
             let selectedIds = Set(result.map { $0.id })
             let remainingCharacters = allCharacters.filter { !selectedIds.contains($0.id) }
             
+            // 🔒 如果剩余角色仍然不足，允许重复使用已选角色（对于角色数量很少的情况）
+            if remainingCharacters.count < neededMore {
+                #if DEBUG
+                print("⚠️ 角色数量不足(需要\(neededMore)个，可用\(remainingCharacters.count)个)，允许重复使用角色")
+                #endif
+                // 从所有角色中选择（包括已选角色），优先选择使用次数最少的
+                let allAvailable = allCharacters.sorted { char1, char2 in
+                    let usage1 = usageCount[char1.id] ?? 0
+                    let usage2 = usageCount[char2.id] ?? 0
+                    if usage1 == usage2 {
+                        let time1 = lastUsedTime[char1.id] ?? Date.distantPast
+                        let time2 = lastUsedTime[char2.id] ?? Date.distantPast
+                        return time1 < time2
+                    }
+                    return usage1 < usage2
+                }
+                result.append(contentsOf: allAvailable.prefix(neededMore))
+            } else {
             // 按最近使用时间排序，优先选择最久未使用的
             let sortedRemaining = remainingCharacters.sorted { char1, char2 in
                 let time1 = lastUsedTime[char1.id] ?? Date.distantPast
@@ -423,6 +488,7 @@ class CharacterRotationSystem {
             }
             
             result.append(contentsOf: sortedRemaining.prefix(neededMore))
+            }
         }
         
         // 记录使用情况
@@ -430,11 +496,13 @@ class CharacterRotationSystem {
             markCharacterUsed(characterId: character.id, type: character.type)
         }
         
+        // 使用当前过滤后的角色数量（而不是缓存的allCharacterIds）
+        // 这样可以确保在用户改变屏蔽设置后，统计信息是准确的
         let usedCount = currentCycleUsedIds.count
-        let totalCount = allCharacterIds.count
+        let totalCount = allCharacters.count
         let remainingCount = totalCount - usedCount
         #if DEBUG
-        print("🔄 严格轮换模式：选择了\(result.count)个角色，当前周期#\(currentCycleNumber)已使用\(usedCount)/\(totalCount)个角色，剩余\(remainingCount)个")
+        print("🔄 严格轮换模式：选择了\(result.count)个角色，当前周期#\(currentCycleNumber)已使用\(usedCount)/\(totalCount)个角色（过滤后），剩余\(remainingCount)个")
         #endif
         
         return result
@@ -550,6 +618,7 @@ class CharacterRotationSystem {
     
     /**
      * 基于用户偏好的推荐算法（第二阶段实现）
+     * 注意：帖子生成应该应用分类过滤，所以使用CharacterModel.getAllCharacters()
      */
     private func getPreferenceBasedCharacters(count: Int) -> [CharacterSystem.CharacterIdentity] {
         guard count > 0 else { return [] }
@@ -558,7 +627,9 @@ class CharacterRotationSystem {
             beginNewGenerationSession()
         }
         
-        let allCharacters = CharacterSystem.shared.getAllCharacters()
+        // 使用CharacterModel以应用分类过滤（用于帖子生成）
+        let allCharacterModels = CharacterModel.getAllCharacters()
+        let allCharacters = allCharacterModels.map { convertToCharacterIdentity($0) }
         let availableFavorites = allCharacters.filter { userFavorites.contains($0.id) && !userDislikes.contains($0.id) }
         let availableOthers = allCharacters.filter { !userFavorites.contains($0.id) && !userDislikes.contains($0.id) }
         

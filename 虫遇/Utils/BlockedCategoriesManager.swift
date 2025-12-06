@@ -56,6 +56,8 @@ class BlockedCategoriesManager {
         if blockedCategories.contains(category.rawValue) {
             blockedCategories.remove(category.rawValue)
             saveBlockedCategories()
+            // 通知角色轮换系统刷新（因为可用角色列表改变了）
+            CharacterRotationSystem.shared.refreshAllCharacterIds()
             return true
         }
         
@@ -69,6 +71,8 @@ class BlockedCategoriesManager {
         // 可以屏蔽
         blockedCategories.insert(category.rawValue)
         saveBlockedCategories()
+        // 通知角色轮换系统刷新（因为可用角色列表改变了）
+        CharacterRotationSystem.shared.refreshAllCharacterIds()
         return true
     }
     
@@ -94,6 +98,8 @@ class BlockedCategoriesManager {
     func unblockAllCategories() {
         blockedCategories.removeAll()
         saveBlockedCategories()
+        // 通知角色轮换系统刷新（因为可用角色列表改变了）
+        CharacterRotationSystem.shared.refreshAllCharacterIds()
     }
     
     /**
@@ -117,8 +123,38 @@ class BlockedCategoriesManager {
      */
     func filterCharacters(_ characters: [CharacterModel]) -> [CharacterModel] {
         return characters.filter { character in
-            isCategoryAvailableForPostGeneration(character.category)
+            let isUserCreated = character.id.hasPrefix("custom_")
+            
+            // 🔒 用户创建的角色：只受"我的创建"分类的屏蔽影响，不受其他分类屏蔽影响
+            if isUserCreated {
+                // 如果"我的创建"被屏蔽，过滤掉所有用户创建的角色
+                if isCategoryBlocked(.myCreation) {
+                    return false
+                }
+                // 用户创建的角色不受其他分类屏蔽影响，直接通过
+                return true
+            }
+            
+            // 🔒 非用户创建的角色：检查分类是否被屏蔽
+            return isCategoryAvailableForPostGeneration(character.category)
         }
+    }
+    
+    /**
+     * 检查角色是否可用（用于帖子生成）
+     * @param character - 要检查的角色
+     * @return 是否可用
+     */
+    func isCharacterAvailable(_ character: CharacterModel) -> Bool {
+        let isUserCreated = character.id.hasPrefix("custom_")
+        
+        // 🔒 用户创建的角色：只受"我的创建"分类的屏蔽影响
+        if isUserCreated {
+            return !isCategoryBlocked(.myCreation)
+        }
+        
+        // 🔒 非用户创建的角色：检查分类是否被屏蔽
+        return isCategoryAvailableForPostGeneration(character.category)
     }
 }
 

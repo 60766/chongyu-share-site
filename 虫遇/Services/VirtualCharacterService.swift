@@ -80,9 +80,7 @@ class CharacterDataManager {
             return value
         }
         
-        #if DEBUG
-        print("⚠️ 无法获取角色 \(id) 的 \(attribute) 属性")
-        #endif
+        // 已移除调试日志
         return nil
     }
     

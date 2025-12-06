@@ -164,15 +164,6 @@ struct SettingsView: View {
                         )
                     }
                     
-                    NavigationLink(destination: ReviewGuideView()) {
-                        SettingRowView(
-                            icon: "checkmark.shield.fill",
-                            title: "审核使用说明",
-                            subtitle: "提供测试账号与操作路径",
-                            iconColor: getIconColor("security")
-                        )
-                    }
-                    
                     // 关于我们
                     Button(action: { showingAbout = true }) {
                         SettingRowView(
@@ -537,7 +528,7 @@ struct CharacterDistributionModeView: View {
                             }
                         }
                         
-                        Text("生成帖子时，优先展示您关注的虚拟角色，同时保持一定程度的多样性（尚未完全开放）")
+                        Text("生成帖子时，优先展示您关注的虚拟角色，同时保持一定程度的多样性")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)

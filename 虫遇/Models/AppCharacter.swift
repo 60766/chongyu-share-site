@@ -93,9 +93,7 @@ struct CharacterLibrary: Codable {
         // 尝试解析角色数组，如果失败则提供空数组
         do {
             characters = try container.decode([AppCharacter].self, forKey: .characters)
-            #if DEBUG
-            print("✅ CharacterLibrary已加载，共\(characters.count)个角色")
-            #endif
+            // 已移除调试日志
         } catch {
             #if DEBUG
             print("⚠️ 解析角色数组失败: \(error)")

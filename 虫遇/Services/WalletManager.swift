@@ -70,8 +70,6 @@ class WalletManager: ObservableObject {
         isLoading = true
         Task {
             do {
-                #if DEBUG
-                print("💰 [WalletManager] 开始加载余额...")
                 // 测试模式：如果设置了测试余额，直接使用测试余额
                 if let testBalance = UserDefaults.standard.object(forKey: "DEBUG_TEST_BALANCE") as? Int {
                     await MainActor.run {
@@ -79,19 +77,14 @@ class WalletManager: ObservableObject {
                         self.currency = "虫洞币"
                         self.isLoading = false
                     }
-                    print("🧪 [测试模式] 使用测试余额: \(testBalance)")
                     return
                 }
-                #endif
                 let walletBalance = try await WalletService.shared.fetchBalance()
                 await MainActor.run {
                     self.balance = walletBalance.balance
                     self.currency = walletBalance.currency
                     self.isLoading = false
                     self.hasLoadedBalance = true // 标记已加载
-                    #if DEBUG
-                    print("💰 [WalletManager] 余额加载成功: \(walletBalance.balance) 虫洞币")
-                    #endif
                 }
             } catch {
                 // 错误日志：使用Logger记录，生产环境也会记录

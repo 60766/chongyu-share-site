@@ -37,11 +37,14 @@ struct CreateCharacterView: View {
     // 图像选择
     @State private var selectedImage: UIImage?
     @State private var isShowingImagePicker = false
+    @State private var isLoadingImage = false
     
     // 错误处理
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var showingQuickCreateHelp = false
+    @State private var showingImagePickerError = false
+    @State private var imagePickerErrorMessage = ""
     
     // 分类选择
     @State private var selectedCategory: CharacterCategory = .animeCharacter
@@ -188,6 +191,11 @@ struct CreateCharacterView: View {
                 VStack(alignment: .center, spacing: 10) {
                     // 头像预览 - 调整大小和样式
                     if selectedImage != nil {
+                        // 🔒 修复：已选择头像时，头像可点击重新选择
+                        Button(action: {
+                            isShowingImagePicker = true
+                        }) {
+                            ZStack(alignment: .bottomTrailing) {
                         Image(uiImage: selectedImage!)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -195,7 +203,40 @@ struct CreateCharacterView: View {
                             .clipShape(Circle())
                             .overlay(Circle().stroke(Color(hex: "6A7FDB").opacity(0.6), lineWidth: 2))
                             .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                                
+                                // 添加编辑图标提示可以修改
+                                Circle()
+                                    .fill(Color(hex: "6A7FDB"))
+                                    .frame(width: 24, height: 24)
+                                    .overlay(
+                                        Image(systemName: "pencil")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(.white)
+                                    )
+                                    .offset(x: 2, y: 2)
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
                             .padding(.vertical, 5)
+                        
+                        // 显示重新选择按钮
+                        Button(action: {
+                            isShowingImagePicker = true
+                        }) {
+                            HStack(spacing: 6) {
+                                if isLoadingImage {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "photo.badge.plus")
+                                }
+                                Text(isLoadingImage ? "正在加载..." : "重新选择头像")
+                            }
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                        .foregroundColor(isLoadingImage ? .gray : Color(hex: "6A7FDB"))
+                        .disabled(isLoadingImage)
+                        .font(.system(size: 14, weight: .medium))
                     } else {
                         ZStack {
                             Circle()
@@ -214,18 +255,39 @@ struct CreateCharacterView: View {
                                 isShowingImagePicker = true
                             }) {
                                 HStack(spacing: 6) {
+                                    if isLoadingImage {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                    } else {
                                     Image(systemName: "photo")
-                                    Text("从相册选择")
+                                    }
+                                    Text(isLoadingImage ? "正在加载..." : "从相册选择")
                                 }
                             }
                             .buttonStyle(BorderlessButtonStyle())
-                            .foregroundColor(Color(hex: "6A7FDB"))
+                            .foregroundColor(isLoadingImage ? .gray : Color(hex: "6A7FDB"))
+                            .disabled(isLoadingImage)
                         }
                         .font(.system(size: 14, weight: .medium))
                     }
                 }
                 .sheet(isPresented: $isShowingImagePicker) {
-                    CharacterImagePicker(selectedImage: $selectedImage, isPresented: $isShowingImagePicker, avatarSelected: .constant(true))
+                    CharacterImagePicker(
+                        selectedImage: $selectedImage,
+                        isPresented: $isShowingImagePicker,
+                        avatarSelected: .constant(true),
+                        isLoadingImage: $isLoadingImage,
+                        onError: { errorMessage in
+                            self.isLoadingImage = false
+                            self.imagePickerErrorMessage = errorMessage
+                            self.showingImagePickerError = true
+                        }
+                    )
+                }
+                .alert("选择头像失败", isPresented: $showingImagePickerError) {
+                    Button("确定", role: .cancel) { }
+                } message: {
+                    Text(imagePickerErrorMessage)
                 }
             }
             
@@ -961,6 +1023,8 @@ struct CharacterImagePicker: UIViewControllerRepresentable {
     @Binding var selectedImage: UIImage?
     @Binding var isPresented: Bool
     @Binding var avatarSelected: Bool
+    @Binding var isLoadingImage: Bool
+    var onError: ((String) -> Void)? = nil
     
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var configuration = PHPickerConfiguration()
@@ -986,19 +1050,106 @@ struct CharacterImagePicker: UIViewControllerRepresentable {
         }
         
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            // 如果用户取消了选择，直接关闭
+            if results.isEmpty {
             parent.isPresented = false
+                parent.isLoadingImage = false
+                return
+            }
             
-            guard let provider = results.first?.itemProvider else { return }
+            guard let provider = results.first?.itemProvider else {
+                parent.isPresented = false
+                parent.isLoadingImage = false
+                parent.onError?("无法获取选中的图片，请重试")
+                return
+            }
             
             if provider.canLoadObject(ofClass: UIImage.self) {
-                provider.loadObject(ofClass: UIImage.self) { [weak self] image, error in
+                // 🔒 修复：显示加载状态
+                DispatchQueue.main.async {
+                    self.parent.isLoadingImage = true
+                }
+                
+                // 🔒 修复：添加超时处理和错误处理
+                let timeoutWorkItem = DispatchWorkItem { [weak self] in
+                    guard let self = self else { return }
                     DispatchQueue.main.async {
-                        if let image = image as? UIImage {
-                            self?.parent.selectedImage = image
-                            self?.parent.avatarSelected = true
+                        if self.parent.isLoadingImage {
+                            self.parent.isLoadingImage = false
+                            self.parent.isPresented = false
+                            self.parent.onError?("加载图片超时。这可能是由于：\n1. iCloud照片库同步较慢\n2. 网络连接不稳定\n\n建议：将图片保存到本地相册后再选择")
                         }
                     }
                 }
+                
+                // 设置30秒超时
+                DispatchQueue.main.asyncAfter(deadline: .now() + 30, execute: timeoutWorkItem)
+                
+                provider.loadObject(ofClass: UIImage.self) { [weak self] image, error in
+                    // 取消超时任务
+                    timeoutWorkItem.cancel()
+                    
+                    DispatchQueue.main.async {
+                        guard let self = self else { return }
+                        
+                        self.parent.isLoadingImage = false
+                        
+                        if let error = error {
+                            let nsError = error as NSError
+                            
+                            #if DEBUG
+                            print("❌ 加载图片失败: \(error.localizedDescription)")
+                            print("   错误域: \(nsError.domain), 错误码: \(nsError.code)")
+                            print("   用户信息: \(nsError.userInfo)")
+                            #endif
+                            
+                            // 根据错误类型提供友好的错误信息
+                            var errorMessage = "无法加载选中的图片"
+                            // iCloud照片库错误
+                            if nsError.domain == "CloudPhotoLibraryErrorDomain" {
+                                errorMessage = "无法从iCloud照片库加载图片。请确保：\n1. 已登录iCloud\n2. iCloud照片库已开启\n3. 网络连接正常\n\n或者尝试将图片保存到本地相册后再选择"
+                            }
+                            // 照片导出错误
+                            else if nsError.domain == "PHAssetExportRequestErrorDomain" {
+                                errorMessage = "无法导出图片。这可能是由于：\n1. 图片格式不支持\n2. 图片文件损坏\n3. iCloud照片库同步问题\n\n请尝试选择其他图片"
+                            }
+                            // 文件提供者错误
+                            else if nsError.domain == "NSCocoaErrorDomain" && nsError.code == 4097 {
+                                errorMessage = "无法访问图片文件。请确保：\n1. 已授予照片访问权限\n2. 图片不在iCloud中（或已下载到本地）\n\n建议：将图片保存到本地相册后再选择"
+                            }
+                            // 其他错误
+                            else {
+                                errorMessage = "加载图片时出错：\(nsError.localizedDescription)\n\n请尝试：\n1. 选择其他图片\n2. 将图片保存到本地相册后再选择"
+                            }
+                            
+                            self.parent.isPresented = false
+                            self.parent.onError?(errorMessage)
+                            return
+                        }
+                        
+                        if let image = image as? UIImage {
+                            #if DEBUG
+                            print("✅ 成功加载图片，尺寸: \(image.size)")
+                            #endif
+                            self.parent.selectedImage = image
+                            self.parent.avatarSelected = true
+                            self.parent.isPresented = false
+                        } else {
+                            #if DEBUG
+                            print("⚠️ 加载的对象不是UIImage类型")
+                            #endif
+                            self.parent.isPresented = false
+                            self.parent.onError?("选中的文件不是有效的图片格式，请选择其他图片")
+                    }
+                }
+                }
+            } else {
+                #if DEBUG
+                print("⚠️ 无法加载UIImage类型的对象")
+                #endif
+                parent.isLoadingImage = false
+                parent.isPresented = false
+                parent.onError?("无法加载选中的图片，请选择其他图片")
             }
         }
     }

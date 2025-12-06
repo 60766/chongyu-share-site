@@ -1694,8 +1694,45 @@ class AIContentGenerator {
         topic: String? = nil
     ) -> Future<(content: String, comments: [(character: String, comment: String, isReply: Bool, replyTo: String?)]), Error> {
         return Future { promise in
-            // 获取随机评论者
-            let commenters = CharacterSystem.shared.getRandomCharacters(count: commentersCount, excludeID: character.id)
+            // 🔒 获取随机评论者（使用CharacterRotationSystem以应用分类过滤）
+            // 排除帖子作者角色
+            let allAvailableCharacters = CharacterModel.getAllCharacters().filter { $0.id != character.id }
+            let availableCharacterIdentities = allAvailableCharacters.map { charModel in
+                // 将CharacterModel转换为CharacterIdentity
+                let characterType: CharacterSystem.CharacterType = {
+                    switch charModel.category {
+                    case .historical: return .historical
+                    case .philosopher: return .historical
+                    case .writer: return .literary
+                    case .animeCharacter: return .anime
+                    case .gameCharacter: return .game
+                    case .filmCharacter: return .movie
+                    case .mythCharacter: return .mythological
+                    case .myCreation: return .historical // 用户创建的角色默认使用历史人物类型
+                    case .all: return .historical
+                    }
+                }()
+                return CharacterSystem.CharacterIdentity(
+                    id: charModel.id,
+                    name: charModel.name,
+                    type: characterType,
+                    era: charModel.era,
+                    primaryField: charModel.profession,
+                    briefDescription: charModel.bio,
+                    avatarName: charModel.avatar,
+                    region: "",
+                    contentAffinities: [:],
+                    subtype: nil
+                )
+            }
+            
+            // 从可用角色中随机选择评论者
+            let shuffled = availableCharacterIdentities.shuffled()
+            let commenters = Array(shuffled.prefix(commentersCount))
+            
+            #if DEBUG
+            print("🔒 评论者选择（已应用分类过滤）: 从\(allAvailableCharacters.count)个可用角色中选择\(commenters.count)个")
+            #endif
             
             // 构建提示词
             let prompt = self.buildContentWithCommentsPrompt(

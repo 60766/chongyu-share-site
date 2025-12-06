@@ -184,6 +184,13 @@ struct BlockedCategoriesView: View {
     private func getCharacterCount(for category: CharacterCategory) -> Int {
         // 显示所有角色数量，不受分类屏蔽影响
         let allCharacters = CharacterModel.loadAllCharactersWithoutFilter()
+        
+        // 🔒 特殊处理"我的创建"分类：统计所有用户创建的角色（ID以"custom_"开头）
+        if category == .myCreation {
+            return allCharacters.filter { $0.id.hasPrefix("custom_") }.count
+        }
+        
+        // 其他分类：按category属性统计
         return allCharacters.filter { $0.category == category }.count
     }
 }

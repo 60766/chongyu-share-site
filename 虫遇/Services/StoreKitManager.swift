@@ -21,7 +21,7 @@ final class StoreKitManager: NSObject, ObservableObject {
     
     // 商品ID - 生产环境配置
     // Bundle ID: com.lishilong.chongyu
-    private let productIds: Set<String> = [
+    let productIds: Set<String> = [
         "com.lishilong.chongyu.100energy",   // ¥6 = 1800虫洞币
         "com.lishilong.chongyu.300energy",   // ¥18 = 6000虫洞币
         "com.lishilong.chongyu.700energy",   // ¥38 = 13800虫洞币

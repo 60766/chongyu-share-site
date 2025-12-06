@@ -969,8 +969,8 @@ struct MultiChatMergedCardView: View {
             return Color(hex: "7ED321")
         case .mythCharacter:
             return Color(hex: "417505")
-        case .historical:
-            return Color(hex: "8B4513")
+        case .myCreation:
+            return Color(hex: "FF8C00")  // 橙色，表示用户创建
         case .all:
             return Color(hex: "9A8BB0")
         }
@@ -1359,8 +1359,8 @@ struct MultiChatShareCardView: View {
             return Color(hex: "7ED321")
         case .mythCharacter:
             return Color(hex: "417505")
-        case .historical:
-            return Color(hex: "8B4513")
+        case .myCreation:
+            return Color(hex: "FF8C00")  // 橙色，表示用户创建
         case .all:
             return Color(hex: "9A8BB0")
         }
