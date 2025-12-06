@@ -83,16 +83,9 @@ class PostViewModel: ObservableObject {
         
         // ⚡️ 优化：先加载少量关键帖子，快速显示UI
         let samplePosts = ModelData.samplePosts
-        let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
         
-        // 先显示示例帖子，让UI快速响应（过滤掉已看过的欢迎帖子）
-        let filteredSamplePosts = samplePosts.filter { post in
-            if post.source == "welcome" && hasSeenWelcomePost {
-                return false
-            }
-            return true
-        }
-        self.posts = filteredSamplePosts
+        // 🔒 修复：欢迎帖子始终显示，不过滤
+        self.posts = samplePosts
         
         #if DEBUG
         print("⚡️ PostViewModel快速初始化完成，先显示 \(samplePosts.count) 条示例帖子")
@@ -137,24 +130,28 @@ class PostViewModel: ObservableObject {
                 }
             }
             
-            // 添加示例帖子（如果ID不冲突）- 只在首次使用时显示欢迎帖子
-            let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
+            // 🔒 修复：欢迎帖子始终显示在最底部，不因已看过而消失
             for post in samplePosts {
-                // 如果是欢迎帖子且用户已经看过，则跳过
-                if post.source == "welcome" && hasSeenWelcomePost {
-                    continue
-                }
                 if allPostsDict[post.id] == nil {
                     allPostsDict[post.id] = post
-                    // 如果是欢迎帖子，标记为已看过
-                    if post.source == "welcome" {
-                        UserDefaults.standard.set(true, forKey: "hasSeenWelcomePost")
-                    }
                 }
             }
             
-            // 按时间倒序排列
-            let uniquePosts = Array(allPostsDict.values).sorted { $0.datePosted > $1.datePosted }
+            // 按时间倒序排列，但欢迎帖子始终在最底部
+            let uniquePosts = Array(allPostsDict.values).sorted { post1, post2 in
+                // 如果一个是欢迎帖子，另一个不是，欢迎帖子排在最后
+                let isPost1Welcome = post1.source == "welcome"
+                let isPost2Welcome = post2.source == "welcome"
+                
+                if isPost1Welcome && !isPost2Welcome {
+                    return false // post1 是欢迎帖子，排在后面
+                } else if !isPost1Welcome && isPost2Welcome {
+                    return true // post2 是欢迎帖子，排在后面
+                } else {
+                    // 都是或都不是欢迎帖子，按时间倒序
+                    return post1.datePosted > post2.datePosted
+                }
+            }
             
             let loadTime = (CFAbsoluteTimeGetCurrent() - loadStartTime) * 1000
             #if DEBUG
@@ -440,18 +437,10 @@ class PostViewModel: ObservableObject {
         
         // 防止在恢复过程中内存错误，我们使用示例帖子作为基础数据
         let samplePosts = ModelData.samplePosts
-        let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
         
-        // 过滤掉已看过的欢迎帖子
-        let filteredSamplePosts = samplePosts.filter { post in
-            if post.source == "welcome" && hasSeenWelcomePost {
-                return false
-            }
-            return true
-        }
-        
-        if !filteredSamplePosts.isEmpty {
-            self.posts = filteredSamplePosts
+        // 🔒 修复：欢迎帖子始终显示，不过滤
+        if !samplePosts.isEmpty {
+            self.posts = samplePosts
             
             // 使用存根信息验证数据完整性
             // 如果存在不匹配的情况，可能需要重新加载示例数据
@@ -519,20 +508,11 @@ class PostViewModel: ObservableObject {
      */
     private func loadSamplePosts() {
         let samplePosts = ModelData.samplePosts
-        let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
         
-        // 添加示例帖子到现有帖子列表，避免重复（跳过已看过的欢迎帖子）
+        // 🔒 修复：欢迎帖子始终显示，不过滤
         for samplePost in samplePosts {
-            // 如果是欢迎帖子且用户已经看过，则跳过
-            if samplePost.source == "welcome" && hasSeenWelcomePost {
-                continue
-            }
             if !posts.contains(where: { $0.id == samplePost.id }) {
                 posts.append(samplePost)
-                // 如果是欢迎帖子，标记为已看过
-                if samplePost.source == "welcome" {
-                    UserDefaults.standard.set(true, forKey: "hasSeenWelcomePost")
-                }
             }
         }
         

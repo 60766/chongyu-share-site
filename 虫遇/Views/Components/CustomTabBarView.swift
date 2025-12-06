@@ -366,7 +366,8 @@ struct ExploreIcon: View {
                 path.addLine(to: CGPoint(x: 8, y: 15))
                 path.addLine(to: CGPoint(x: 5, y: 5))
             }
-            .stroke(isSelected ? tabBarSelectedPurple.opacity(isAnimating ? lineGlow : 0.6) : Color.gray.opacity(0.4), lineWidth: 1.2)
+            // 🔒 修复：限制 lineGlow 最大值，避免闪白效果
+            .stroke(isSelected ? tabBarSelectedPurple.opacity(isAnimating ? min(lineGlow, 0.85) : 0.6) : Color.gray.opacity(0.4), lineWidth: 1.2)
             
             // 星点 - 添加闪烁效果
             ForEach(0..<5) { index in
@@ -416,9 +417,9 @@ struct ExploreIcon: View {
                     }
                 }
                 
-                // 连线光效动画
+                // 🔒 修复：连线光效动画，限制最大值避免闪白
                 withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                    lineGlow = 1.0
+                    lineGlow = 0.85  // 限制最大值，避免闪白
                 }
                 
                 // 放大镜轻微放大动画
@@ -449,9 +450,9 @@ struct ExploreIcon: View {
                     }
                 }
                 
-                // 连线光效动画
+                // 🔒 修复：连线光效动画，限制最大值避免闪白
                 withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                    lineGlow = 1.0
+                    lineGlow = 0.85  // 限制最大值，避免闪白
                 }
                 
                 // 放大镜轻微放大动画

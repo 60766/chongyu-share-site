@@ -1337,17 +1337,10 @@ showCharacterPicker = true
                 
                 // 延迟执行重型操作，不阻塞页面切换
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    // 二次确认数据存在（过滤掉已看过的欢迎帖子）
+                    // 二次确认数据存在（欢迎帖子始终显示）
                     if postViewModel.posts.isEmpty {
                         let samplePosts = ModelData.samplePosts
-                        let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
-                        let filteredSamplePosts = samplePosts.filter { post in
-                            if post.source == "welcome" && hasSeenWelcomePost {
-                                return false
-                            }
-                            return true
-                        }
-                        postViewModel.posts = filteredSamplePosts
+                        postViewModel.posts = samplePosts
                     }
                     
                     // 延迟注册订阅，避免阻塞主线程
@@ -2101,14 +2094,8 @@ showCharacterPicker = true
             print("📋 HomeView.loadSampleData: 帖子为空，加载示例帖子")
             #endif
             let samplePosts = ModelData.samplePosts
-            let hasSeenWelcomePost = UserDefaults.standard.bool(forKey: "hasSeenWelcomePost")
-            let filteredSamplePosts = samplePosts.filter { post in
-                if post.source == "welcome" && hasSeenWelcomePost {
-                    return false
-                }
-                return true
-            }
-            postViewModel.posts = filteredSamplePosts
+            // 🔒 修复：欢迎帖子始终显示，不过滤
+            postViewModel.posts = samplePosts
             #if DEBUG
             print("📋 HomeView.loadSampleData: 示例帖子加载完成，数量: \(postViewModel.posts.count)")
             #endif

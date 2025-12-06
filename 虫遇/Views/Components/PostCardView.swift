@@ -874,7 +874,9 @@ struct PostCardView: View {
                 
             // 图片部分 - 只在有图片时显示
             if !post.images.isEmpty {
+                let isWelcomeBanner = post.images.count == 1 && post.images[0] == "welcome_banner"
                 imageGallerySection
+                    .padding(.horizontal, isWelcomeBanner ? -DesignSystem.Spacing.m : 0) // 欢迎横幅突破水平内边距，占满页面
             }
             
             // 评论预览部分 - 调整上方间距，减少空白
@@ -1135,9 +1137,10 @@ struct PostCardView: View {
             switch post.images.count {
             case 1:
                 // 单张图片布局 - 保持原比例但有最大尺寸限制
+                let isWelcomeBanner = post.images[0] == "welcome_banner"
                 singleImageScrollView(post.images[0])
-                    .padding(.top, 2) // 减少图片区域的顶部内边距 (原为4或0)
-                    .padding(.bottom, 2) // 减少图片区域的底部内边距 (原为4或0)
+                    .padding(.top, isWelcomeBanner ? 0 : 2) // 欢迎横幅不添加顶部内边距
+                    .padding(.bottom, isWelcomeBanner ? 0 : 2) // 欢迎横幅不添加底部内边距
             case 2:
                 // 两张图片布局 - 微信风格的方形网格
                 wechatStyleGridLayout(columns: 2)
@@ -1171,7 +1174,13 @@ struct PostCardView: View {
     
     // 单张图片视图 - 微信朋友圈风格，靠左对齐
     private func singleImageScrollView(_ imageName: String) -> some View {
-        GeometryReader { geometry in
+        // 🔒 修复：欢迎横幅图片占满页面宽度
+        let isWelcomeBanner = imageName == "welcome_banner"
+        
+        return GeometryReader { geometry in
+            // 欢迎横幅使用全屏宽度（包括突破padding的部分），其他图片使用85%宽度
+            let imageWidth = isWelcomeBanner ? UIScreen.main.bounds.width : geometry.size.width * 0.85
+            
             HStack(alignment: .top, spacing: 0) {
                     Button(action: {
             selectedImageIndex = 0
@@ -1183,52 +1192,54 @@ struct PostCardView: View {
                         PostImageView(
                             imageId: imageName,
                             contentMode: .fit,
-                            height: calculateSingleImageHeight(for: imageName, width: geometry.size.width * 0.85),
-                            cornerRadius: 3
+                            height: calculateSingleImageHeight(for: imageName, width: imageWidth),
+                            cornerRadius: isWelcomeBanner ? 0 : 3
                         )
                         .id("thumbnail_\(imageName)")
-                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                        .clipShape(RoundedRectangle(cornerRadius: isWelcomeBanner ? 0 : 3))
                                 .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 3)
-                                .stroke(Color(.systemGray5), lineWidth: 0.5)
+                            RoundedRectangle(cornerRadius: isWelcomeBanner ? 0 : 3)
+                                .stroke(Color(.systemGray5), lineWidth: isWelcomeBanner ? 0 : 0.5)
                         )
                     } else if let uiImage = UIImage(named: imageName) {
                         // 内置图片资源
                     Image(uiImage: uiImage)
                     .resizable()
                             .aspectRatio(contentMode: .fit)
-                                .frame(maxWidth: geometry.size.width * 0.85)
-                            .frame(maxHeight: calculateSingleImageHeight(for: imageName, width: geometry.size.width * 0.85))
+                                .frame(maxWidth: imageWidth)
+                            .frame(maxHeight: isWelcomeBanner ? nil : calculateSingleImageHeight(for: imageName, width: imageWidth))
                             .id("thumbnail_\(imageName)")
-                                .cornerRadius(3)
-                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                                .cornerRadius(isWelcomeBanner ? 0 : 3)
+                            .clipShape(RoundedRectangle(cornerRadius: isWelcomeBanner ? 0 : 3))
                                 .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
                     .overlay(
-                                RoundedRectangle(cornerRadius: 3)
-                                .stroke(Color(.systemGray5), lineWidth: 0.5)
+                                RoundedRectangle(cornerRadius: isWelcomeBanner ? 0 : 3)
+                                .stroke(Color(.systemGray5), lineWidth: isWelcomeBanner ? 0 : 0.5)
                         )
                     } else {
                         // 占位图
                     generateMockImage(for: imageName)
-                                .frame(maxWidth: geometry.size.width * 0.85)
+                                .frame(maxWidth: imageWidth)
                             .frame(height: 200)
                             .id("thumbnail_\(imageName)")
-                                .cornerRadius(3)
-                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                                .cornerRadius(isWelcomeBanner ? 0 : 3)
+                            .clipShape(RoundedRectangle(cornerRadius: isWelcomeBanner ? 0 : 3))
                                 .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
                         .overlay(
-                                RoundedRectangle(cornerRadius: 3)
-                                .stroke(Color(.systemGray5), lineWidth: 0.5)
+                                RoundedRectangle(cornerRadius: isWelcomeBanner ? 0 : 3)
+                                .stroke(Color(.systemGray5), lineWidth: isWelcomeBanner ? 0 : 0.5)
                         )
             }
         }
         .buttonStyle(PlainButtonStyle())
                 
+                if !isWelcomeBanner {
                 Spacer()
             }
         }
-        .frame(height: calculateSingleImageHeight(for: imageName, width: (UIScreen.main.bounds.width - 40) * 0.85))
+        }
+        .frame(height: isWelcomeBanner ? calculateWelcomeBannerHeight() : calculateSingleImageHeight(for: imageName, width: (UIScreen.main.bounds.width - 40) * 0.85))
     }
     
     // 为单图计算适合的高度，保持图片原始比例但限制最大高度
@@ -1262,6 +1273,14 @@ struct PostCardView: View {
         }
         
         return calculatedHeight
+    }
+    
+    // 🔒 修复：计算欢迎横幅图片的高度（占满页面宽度）
+    private func calculateWelcomeBannerHeight() -> CGFloat {
+        // 获取屏幕宽度（减去可能的边距）
+        let screenWidth = UIScreen.main.bounds.width
+        // 16:9 比例，计算高度
+        return screenWidth / (16.0 / 9.0)
     }
     
     // 微信风格的网格布局 - 适用于2-9张图片

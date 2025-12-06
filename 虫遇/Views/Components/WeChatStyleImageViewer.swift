@@ -144,39 +144,9 @@ struct WeChatStyleImageViewer: View {
     private func imageView(for index: Int) -> some View {
         GeometryReader { geometry in
             ZStack {
-                // 加载指示器 - 使用更微信风格的加载指示器
-                if isLoading[index] == true {
-                    VStack(spacing: 12) {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(1.2)
-                        
-                        Text("加载中...")
-                            .font(.system(size: 13))
-                            .foregroundColor(.white.opacity(0.8))
-                    }
-                }
-                
-                // 错误提示
-                if loadingError[index] == true {
-                    VStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 32))
-                            .foregroundColor(.white)
-                        Text("图片加载失败")
-                            .foregroundColor(.white)
-                        Button("重试") {
-                            loadImage(at: index)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-                        .background(Color.white.opacity(0.2))
-                        .cornerRadius(20)
-                    }
-                }
-                
-                // 图片显示 - 简化动画和过渡效果
+                // 🔒 修复：确保在图片未加载时显示加载指示器或错误提示
                 if let image = loadedImages[index] {
+                    // 图片显示 - 简化动画和过渡效果
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
@@ -278,6 +248,48 @@ struct WeChatStyleImageViewer: View {
                                 Label("保存图片", systemImage: "square.and.arrow.down")
                             }
                         }
+                } else {
+                    // 🔒 修复：图片未加载时显示加载指示器或错误提示
+                    if isLoading[index] == true {
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.2)
+                            
+                            Text("加载中...")
+                                .font(.system(size: 13))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                    } else if loadingError[index] == true {
+                        VStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.system(size: 32))
+                                .foregroundColor(.white)
+                            Text("图片加载失败")
+                                .foregroundColor(.white)
+                            Button("重试") {
+                                loadImage(at: index)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(20)
+                        }
+                    } else {
+                        // 🔒 修复：如果状态都不明确，显示加载指示器并尝试加载
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.2)
+                            
+                            Text("加载中...")
+                                .font(.system(size: 13))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        .onAppear {
+                            loadImage(at: index)
+                            }
+                        }
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
@@ -321,18 +333,43 @@ struct WeChatStyleImageViewer: View {
                 }
             }
         } else {
-            // 加载内置图片资源
-            if let image = UIImage(named: imageName) {
-                loadedImages[index] = image
-                isLoading[index] = false
+            // 🔒 优化：对于 Assets 中的图片，UIImage(named:) 是同步的且很快（使用缓存）
+            // 但对于大图片（如 welcome_banner 811KB），解码可能需要时间
+            // 使用异步加载避免阻塞主线程，但保持 UIImage(named:) 的调用
+            DispatchQueue.global(qos: .userInitiated).async {
+                
+                var loadedImage: UIImage?
+                
+                // 优先尝试 UIImage(named:) - 最快的方式，从缓存读取
+                // 注意：UIImage(named:) 虽然是同步的，但对于大图片，解码可能需要时间
+                loadedImage = UIImage(named: imageName)
+                
+                // 如果 UIImage(named:) 失败，尝试其他方式
+                if loadedImage == nil {
+                    if let imagePath = Bundle.main.path(forResource: imageName, ofType: nil),
+                       let image = UIImage(contentsOfFile: imagePath) {
+                        loadedImage = image
+                    } else if let image = UIImage(named: imageName, in: Bundle.main, compatibleWith: nil) {
+                        loadedImage = image
+                    }
+                }
+                
+                // 在主线程更新UI
+                DispatchQueue.main.async {
+                    if let image = loadedImage {
+                        self.loadedImages[index] = image
+                        self.isLoading[index] = false
+                        self.loadingError[index] = false
             } else {
-                loadingError[index] = true
-                isLoading[index] = false
+                        self.loadingError[index] = true
+                        self.isLoading[index] = false
                 
                 // 尝试使用占位图
                 if let placeholderImage = UIImage(systemName: "photo") {
                     self.loadedImages[index] = placeholderImage
                     self.loadingError[index] = false
+                        }
+                    }
                 }
             }
         }
