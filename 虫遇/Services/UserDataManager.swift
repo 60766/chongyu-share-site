@@ -539,9 +539,6 @@ class UserDataManager: ObservableObject {
                         // 添加头像图片数据（base64编码）
                         if let avatarData = loadCharacterAvatar(characterId: characterId) {
                             character["avatarImageData"] = avatarData
-                            #if DEBUG
-                            print("✅ 已备份角色头像: \(characterId)")
-                            #endif
                         }
                         
                         characters.append(character)
@@ -575,9 +572,6 @@ class UserDataManager: ObservableObject {
                         // 添加头像图片数据（base64编码）
                         if let avatarData = loadCharacterAvatar(characterId: characterId) {
                             character["avatarImageData"] = avatarData
-                            #if DEBUG
-                            print("✅ 已备份角色头像: \(characterId)")
-                            #endif
                         }
                         
                         // 添加其他可能存在的字段
@@ -1026,18 +1020,48 @@ class UserDataManager: ObservableObject {
         }
         
         // 恢复自定义角色
-        // 🔒 修复：优先从CustomCharactersData恢复（完整数据），如果没有则从myCreations恢复（简化数据）
-        if let customCharactersData = backupData["CustomCharactersData"] as? [[String: Any]] {
-            #if DEBUG
-            print("📥 [恢复] 从CustomCharactersData恢复: \(customCharactersData.count) 个角色")
-            #endif
-            restoreCustomCharacters(customCharactersData)
-        } else if let myCreations = backupData["myCreations"] as? [String: Any],
+        // 🔒 修复：优先从myCreations恢复（包含avatarImageData），如果没有则从CustomCharactersData恢复
+        // 同时尝试从两个数据源恢复，确保不丢失数据
+        var charactersToRestore: [[String: Any]] = []
+        
+        // 优先使用myCreations（包含头像数据）
+        if let myCreations = backupData["myCreations"] as? [String: Any],
            let characters = myCreations["customCharacters"] as? [[String: Any]] {
-            #if DEBUG
-            print("📥 [恢复] 从myCreations恢复: \(characters.count) 个角色")
-            #endif
-            restoreCustomCharacters(characters)
+            charactersToRestore = characters
+        }
+        
+        // 如果CustomCharactersData存在，也尝试使用它（可能包含更完整的数据）
+        if let customCharactersData = backupData["CustomCharactersData"] as? [[String: Any]] {
+            // 如果myCreations中没有数据，使用CustomCharactersData
+            if charactersToRestore.isEmpty {
+                charactersToRestore = customCharactersData
+            } else {
+                // 合并数据：对于CustomCharactersData中的角色，如果myCreations中没有，则添加
+                // 同时，对于myCreations中缺少avatarImageData的角色，尝试从CustomCharactersData补充
+                var mergedCharacters: [[String: Any]] = charactersToRestore
+                for customChar in customCharactersData {
+                    if let customId = customChar["id"] as? String {
+                        // 检查是否已存在
+                        if let existingIndex = mergedCharacters.firstIndex(where: { ($0["id"] as? String) == customId }) {
+                            // 如果已存在但缺少avatarImageData，尝试补充
+                            if mergedCharacters[existingIndex]["avatarImageData"] == nil {
+                                // 尝试从文件加载头像（如果文件存在）
+                                if let avatarData = loadCharacterAvatar(characterId: customId) {
+                                    mergedCharacters[existingIndex]["avatarImageData"] = avatarData
+                                }
+                            }
+                        } else {
+                            // 新角色，添加
+                            mergedCharacters.append(customChar)
+                        }
+                    }
+                }
+                charactersToRestore = mergedCharacters
+            }
+        }
+        
+        if !charactersToRestore.isEmpty {
+            restoreCustomCharacters(charactersToRestore)
         }
         
         // 恢复成就系统数据
@@ -1168,19 +1192,10 @@ class UserDataManager: ObservableObject {
             do {
                 if let charactersArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
                     existingCharacters = charactersArray
-                    #if DEBUG
-                    print("📥 [恢复] 当前已有 \(existingCharacters.count) 个自定义角色")
-                    #endif
                 }
             } catch {
-                #if DEBUG
-                print("⚠️ [恢复] 加载现有自定义角色失败: \(error)")
-                #endif
+                // 已移除调试日志
             }
-        } else {
-            #if DEBUG
-            print("📥 [恢复] 当前没有自定义角色")
-            #endif
         }
         
         // 将备份的角色添加到现有列表中（避免重复）
@@ -1199,17 +1214,16 @@ class UserDataManager: ObservableObject {
             // 检查是否已存在（通过ID匹配）
             if let existingIndex = existingCharacters.firstIndex(where: { ($0["id"] as? String) == characterId }) {
                 // 角色已存在，但可能需要更新数据（使用备份中的完整数据）
-                #if DEBUG
-                print("🔄 [恢复] 角色已存在，更新数据: \(characterData["name"] as? String ?? "未命名"), ID: \(characterId)")
-                #endif
                 
                 // 恢复头像图片文件（如果备份中有）
                 if let avatarImageData = characterData["avatarImageData"] as? String {
                     saveCharacterAvatar(characterId: characterId, base64Data: avatarImageData)
                     restoredAvatarCount += 1
-                    #if DEBUG
-                    print("✅ [恢复] 已恢复角色头像: \(characterId)")
-                    #endif
+                } else {
+                    // 🔒 修复：如果备份中没有头像数据，尝试从现有文件加载（可能文件还在）
+                    if let existingAvatarData = loadCharacterAvatar(characterId: characterId) {
+                        saveCharacterAvatar(characterId: characterId, base64Data: existingAvatarData)
+                    }
                 }
                 
                 // 移除头像图片数据（不保存到UserDefaults，已单独保存为文件）
@@ -1251,13 +1265,13 @@ class UserDataManager: ObservableObject {
                     characterToSave["personality"] = ""
                 }
                 // 🔒 修复：对于用户创建的角色，avatar字段应该设置为characterId（与创建时保持一致）
-                if characterToSave["avatar"] == nil {
-                    // 如果是用户创建的角色（custom_或user_avatar_开头），使用characterId作为avatar
-                    if characterId.hasPrefix("custom_") || characterId.hasPrefix("user_avatar_") {
-                        characterToSave["avatar"] = "\(characterId).jpg" // 与创建时的格式保持一致
-                    } else {
+                // 重要：无论备份中的avatar值是什么，对于用户创建的角色，都应该使用characterId
+                if characterId.hasPrefix("custom_") || characterId.hasPrefix("user_avatar_") {
+                    // 用户创建的角色：始终使用characterId作为avatar，确保能正确加载头像
+                    characterToSave["avatar"] = characterId // 使用characterId，CustomAvatarLoader会根据ID加载
+                } else if characterToSave["avatar"] == nil {
+                    // 非用户创建的角色：如果没有avatar，设置为空
                     characterToSave["avatar"] = ""
-                    }
                 }
                 if characterToSave["era"] == nil {
                     characterToSave["era"] = ""
@@ -1292,17 +1306,16 @@ class UserDataManager: ObservableObject {
                 #endif
             } else {
                 // 新角色，添加到列表
-                #if DEBUG
-                print("📥 [恢复] 恢复自定义角色: \(characterData["name"] as? String ?? "未命名"), ID: \(characterId)")
-                #endif
                 
                 // 恢复头像图片文件
                 if let avatarImageData = characterData["avatarImageData"] as? String {
                     saveCharacterAvatar(characterId: characterId, base64Data: avatarImageData)
                     restoredAvatarCount += 1
-                    #if DEBUG
-                    print("✅ [恢复] 已恢复角色头像: \(characterId)")
-                    #endif
+                } else {
+                    // 🔒 修复：如果备份中没有头像数据，尝试从现有文件加载（可能文件还在）
+                    if let existingAvatarData = loadCharacterAvatar(characterId: characterId) {
+                        saveCharacterAvatar(characterId: characterId, base64Data: existingAvatarData)
+                    }
                 }
                 
                 // 移除头像图片数据（不保存到UserDefaults，已单独保存为文件）
@@ -1348,13 +1361,13 @@ class UserDataManager: ObservableObject {
                     characterToSave["personality"] = ""
                 }
                 // 🔒 修复：对于用户创建的角色，avatar字段应该设置为characterId（与创建时保持一致）
-                if characterToSave["avatar"] == nil {
-                    // 如果是用户创建的角色（custom_或user_avatar_开头），使用characterId作为avatar
-                    if characterId.hasPrefix("custom_") || characterId.hasPrefix("user_avatar_") {
-                        characterToSave["avatar"] = "\(characterId).jpg" // 与创建时的格式保持一致
-                    } else {
+                // 重要：无论备份中的avatar值是什么，对于用户创建的角色，都应该使用characterId
+                if characterId.hasPrefix("custom_") || characterId.hasPrefix("user_avatar_") {
+                    // 用户创建的角色：始终使用characterId作为avatar，确保能正确加载头像
+                    characterToSave["avatar"] = characterId // 使用characterId，CustomAvatarLoader会根据ID加载
+                } else if characterToSave["avatar"] == nil {
+                    // 非用户创建的角色：如果没有avatar，设置为空
                     characterToSave["avatar"] = ""
-                    }
                 }
                 
                 // 确保其他字段存在（匹配 CreateCharacterView 的保存格式）
@@ -1383,11 +1396,6 @@ class UserDataManager: ObservableObject {
                     characterToSave["famousQuotes"] = []
                 }
                 
-                #if DEBUG
-                print("📥 [恢复] 准备保存角色: \(characterToSave["name"] as? String ?? "未命名"), ID: \(characterId)")
-                print("📋 [恢复] 角色字段: \(characterToSave.keys.joined(separator: ", "))")
-                print("📋 [恢复] 关键字段检查: name=\(characterToSave["name"] != nil), bio=\(characterToSave["bio"] != nil), avatar=\(characterToSave["avatar"] != nil), era=\(characterToSave["era"] != nil), profession=\(characterToSave["profession"] != nil), category=\(characterToSave["category"] != nil)")
-                #endif
                 existingCharacters.append(characterToSave)
                 newlyRestoredCount += 1
             }
@@ -1419,6 +1427,8 @@ class UserDataManager: ObservableObject {
             // 发送通知，让UI刷新自定义角色列表
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: NSNotification.Name("CustomCharactersRestored"), object: nil)
+                // 🔒 修复：同时发送ReloadUserCreatedCharacters通知，确保头像刷新
+                NotificationCenter.default.post(name: NSNotification.Name("ReloadUserCreatedCharacters"), object: nil)
             }
         } catch {
             Logger.error("保存恢复的自定义角色失败", error: error, log: Logger.data)
@@ -1429,17 +1439,11 @@ class UserDataManager: ObservableObject {
     /// 🔒 修复：确保保存的头像文件能被CustomAvatarLoader正确加载
     private func saveCharacterAvatar(characterId: String, base64Data: String) {
         guard let imageData = Data(base64Encoded: base64Data) else {
-            #if DEBUG
-            print("⚠️ [恢复] 无法解码base64头像数据: \(characterId)")
-            #endif
             return
         }
         
         let fileManager = FileManager.default
         guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            #if DEBUG
-            print("⚠️ [恢复] 无法获取Documents目录")
-            #endif
             return
         }
         
@@ -1463,13 +1467,7 @@ class UserDataManager: ObservableObject {
             
             // 写入图片数据
             try imageData.write(to: avatarURL)
-            #if DEBUG
-            print("✅ [恢复] 头像恢复成功: \(avatarURL.lastPathComponent), characterId: \(characterId)")
-            #endif
         } catch {
-            #if DEBUG
-            print("❌ [恢复] 保存头像文件失败: \(error.localizedDescription), characterId: \(characterId)")
-            #endif
             Logger.error("保存头像文件失败", error: error, log: Logger.data)
         }
     }
