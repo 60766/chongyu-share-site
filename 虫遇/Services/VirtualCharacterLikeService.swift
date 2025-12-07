@@ -27,20 +27,10 @@ class VirtualCharacterLikeService {
         #endif
         DispatchQueue.main.async {
             // 1. 更新评论的点赞数
-            #if DEBUG
-            print("🔧 开始更新评论点赞数...")
-            #endif
             self.updateCommentLikeCount(postId: postId, commentId: commentId)
             
             // 2. 发送点赞通知到虫洞
-            #if DEBUG
-            print("🔧 开始发送点赞通知...")
-            #endif
             self.sendLikeNotification(characterId: characterId, postId: postId, userComment: userComment)
-            
-            #if DEBUG
-            print("❤️ 虚拟角色\(characterId)已对用户评论\(commentId)点赞")
-            #endif
         }
     }
     
@@ -51,28 +41,12 @@ class VirtualCharacterLikeService {
      * @param userPostContent 用户的帖子内容（用于通知）
      */
     func processPostLike(characterId: String, postId: String, userPostContent: String? = nil) {
-        #if DEBUG
-        print("🔧 VirtualCharacterLikeService.processPostLike 开始（帖子点赞）")
-        #endif
-        #if DEBUG
-        print("🔧 参数 - 角色:\(characterId), 帖子:\(postId)")
-        #endif
         DispatchQueue.main.async {
             // 1. 更新帖子的点赞数
-            #if DEBUG
-            print("🔧 开始更新帖子点赞数...")
-            #endif
             self.updatePostLikeCount(postId: postId)
             
             // 2. 发送点赞通知到虫洞
-            #if DEBUG
-            print("🔧 开始发送帖子点赞通知...")
-            #endif
             self.sendPostLikeNotification(characterId: characterId, postId: postId, userPostContent: userPostContent)
-            
-            #if DEBUG
-            print("❤️ 虚拟角色\(characterId)已对用户帖子\(postId)点赞")
-            #endif
         }
     }
     
@@ -110,9 +84,6 @@ class VirtualCharacterLikeService {
                 
                 // 验证这是一条用户评论（不是虚拟角色评论）
                 if !targetComment.isVirtualCharacter {
-                    #if DEBUG
-                    print("✅ 找到目标用户评论 - ID: \(targetComment.id), 用户: \(targetComment.username), 内容: \"\(targetComment.content.prefix(20))...\"")
-                    #endif
                     
                     // 更新这条评论的点赞数
                     let currentComment = currentPost.comments[commentIndex]
@@ -342,9 +313,6 @@ class VirtualCharacterLikeService {
                     ]
                 )
                 
-                #if DEBUG
-                print("📈 帖子\(postId)点赞数已更新: \(currentPost.likes) -> \(updatedPost.likes)")
-                #endif
             } else {
                 #if DEBUG
                 print("⚠️ 指定的帖子ID \(postId) 对应的是虚拟角色帖子，不能点赞")

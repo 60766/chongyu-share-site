@@ -285,8 +285,36 @@ class CharacterRotationSystem {
      */
     func getBalancedCharacters(count: Int) -> [CharacterSystem.CharacterIdentity] {
         // 使用CharacterModel以应用分类过滤（用于帖子生成）
-        let allCharacterModels = CharacterModel.getAllCharacters()
+        // 注意：CharacterModel.getAllCharacters() 已经应用了 BlockedCategoriesManager 的过滤
+        var allCharacterModels = CharacterModel.getAllCharacters()
+        
+        // 🔒 双重保险：再次应用过滤，确保被屏蔽分类的角色被移除
+        allCharacterModels = BlockedCategoriesManager.shared.filterCharacters(allCharacterModels)
+        
         let allCharacters = allCharacterModels.map { convertToCharacterIdentity($0) }
+        
+        #if DEBUG
+        // 调试：验证过滤是否正确工作
+        let blockedCategories = BlockedCategoriesManager.shared.getBlockedCategories()
+        if !blockedCategories.isEmpty {
+            print("🔒 当前屏蔽的分类: \(blockedCategories.map { $0.displayName }.joined(separator: ", "))")
+            print("📊 过滤后的角色数量: \(allCharacters.count)")
+            
+            // 按分类统计过滤后的角色
+            let categoryCounts = Dictionary(grouping: allCharacterModels) { $0.category }
+                .mapValues { $0.count }
+            print("📈 过滤后各分类角色数量: \(categoryCounts)")
+            
+            // 验证：确保被屏蔽分类的角色不在列表中
+            for category in blockedCategories {
+                let charactersInBlockedCategory = allCharacterModels.filter { $0.category == category }
+                if !charactersInBlockedCategory.isEmpty {
+                    print("⚠️ 警告：发现被屏蔽分类「\(category.displayName)」的角色仍在列表中: \(charactersInBlockedCategory.map { $0.name }.joined(separator: ", "))")
+                }
+            }
+        }
+        #endif
+        
         var result: [CharacterSystem.CharacterIdentity] = []
         
         // 如果是一个新的生成会话，清除当前选择
@@ -339,34 +367,28 @@ class CharacterRotationSystem {
             return usage1 < usage2
         }
         
-        // 2. 确保类型平衡
-        var typeQuota: [CharacterSystem.CharacterType: Int] = [:]
+        // 2. 类型信息（用于调试，但不强制按类型配额选择）
         let typeCount = Dictionary(grouping: allCharacters) { $0.type }.mapValues { $0.count }
         
-        // 按比例分配类型配额
-        for (type, charCount) in typeCount {
-            let typeRatio = Double(charCount) / Double(allCharacters.count)
-            typeQuota[type] = max(1, Int(Double(count) * typeRatio))
-        }
+        #if DEBUG
+        print("📊 可用角色类型分布: \(typeCount)")
+        print("📊 将按照角色分配模式选择角色，不强制类型配额")
+        #endif
         
-        // 3. 选择角色
+        // 3. 选择角色 - 按照原来的角色分配模式（使用次数、轮换等），不强制类型配额
         // 首先优先考虑未使用过的角色
         let unusedCharacters = sortedByUsage.filter { usageCount[$0.id] == nil }
         for character in unusedCharacters {
             if result.count >= count { break }
-            if (typeQuota[character.type] ?? 0) > 0 {
                 result.append(character)
-                typeQuota[character.type] = (typeQuota[character.type] ?? 1) - 1
-            }
         }
         
         // 然后是使用次数较少的角色
         if result.count < count {
             for character in sortedByUsage {
                 if result.count >= count { break }
-                if !result.contains(where: { $0.id == character.id }) && (typeQuota[character.type] ?? 0) > 0 {
+                if !result.contains(where: { $0.id == character.id }) {
                     result.append(character)
-                    typeQuota[character.type] = (typeQuota[character.type] ?? 1) - 1
                 }
             }
         }
@@ -376,32 +398,101 @@ class CharacterRotationSystem {
             let remainingCharacters = sortedByUsage.filter { character in !result.contains(where: { resultChar in resultChar.id == character.id }) }
             let additionalCount = min(count - result.count, remainingCharacters.count)
             result.append(contentsOf: remainingCharacters.prefix(additionalCount))
+            
+            #if DEBUG
+            if result.count < count {
+                print("⚠️ 选择后角色数量仍不足: 需要 \(count) 个，但只有 \(result.count) 个（可用角色总数: \(finalCandidates.count)，剩余角色: \(remainingCharacters.count)）")
+            } else {
+                print("✅ 通过最后补充阶段，成功选择 \(result.count) 个角色")
+            }
+            #endif
+        }
+        
+        // 🔒 最终验证：确保所选角色都来自未被屏蔽的分类
+        let finalResult = result.filter { characterIdentity in
+            // 找到对应的 CharacterModel
+            if let characterModel = allCharacterModels.first(where: { $0.id == characterIdentity.id }) {
+                // 检查角色是否可用（未被屏蔽）
+                let isAvailable = BlockedCategoriesManager.shared.isCharacterAvailable(characterModel)
+                if !isAvailable {
+        #if DEBUG
+                    print("⚠️ 过滤掉被屏蔽分类的角色: \(characterModel.name) (分类: \(characterModel.category.displayName))")
+        #endif
+                }
+                return isAvailable
+            }
+            return true // 如果找不到对应的 CharacterModel，保留（可能是用户创建的角色）
+        }
+        
+        #if DEBUG
+        if finalResult.count < result.count {
+            print("🔒 从 \(result.count) 个角色中过滤掉 \(result.count - finalResult.count) 个被屏蔽分类的角色")
+        }
+        if finalResult.count < count {
+            print("⚠️ 过滤后角色数量不足: 需要 \(count) 个，但只有 \(finalResult.count) 个可用角色")
+        }
+        #endif
+        
+        // 如果过滤后角色数量不足，尝试补充（但只从可用角色中选择）
+        var finalResultWithSupplement = finalResult
+        if finalResultWithSupplement.count < count {
+            let usedIds = Set(finalResultWithSupplement.map { $0.id })
+            let neededCount = count - finalResultWithSupplement.count
+            
+            // 从所有可用角色中选择（排除已使用的），按使用次数排序，优先选择使用较少的
+            let availableForSupplement = allCharacters
+                .filter { !usedIds.contains($0.id) }
+                .filter { characterIdentity in
+                    if let characterModel = allCharacterModels.first(where: { $0.id == characterIdentity.id }) {
+                        return BlockedCategoriesManager.shared.isCharacterAvailable(characterModel)
+                    }
+                    return true
+                }
+                .sorted { char1, char2 in
+                    // 按使用次数排序，使用较少的优先
+                    let usage1 = usageCount[char1.id] ?? 0
+                    let usage2 = usageCount[char2.id] ?? 0
+                    if usage1 == usage2 {
+                        // 使用次数相同时，优先选择最久未使用的
+                        let time1 = lastUsedTime[char1.id] ?? Date.distantPast
+                        let time2 = lastUsedTime[char2.id] ?? Date.distantPast
+                        return time1 < time2
+                    }
+                    return usage1 < usage2
+                }
+            
+            // 选择需要的数量
+            let availableSupplement = Array(availableForSupplement.prefix(neededCount))
+            finalResultWithSupplement.append(contentsOf: availableSupplement)
+            
+        #if DEBUG
+            if finalResultWithSupplement.count < count {
+                print("⚠️ 补充后仍然不足: 需要 \(count) 个，补充后只有 \(finalResultWithSupplement.count) 个")
+                print("📊 可用角色总数: \(allCharacters.count)，已使用: \(usedIds.count)，可补充: \(availableForSupplement.count)，实际补充: \(availableSupplement.count)")
+            } else {
+                print("✅ 成功补充到 \(finalResultWithSupplement.count) 个角色（目标: \(count) 个）")
+            }
+        #endif
         }
         
         // 4. 记录使用情况
-        for character in result {
+        for character in finalResultWithSupplement {
             markCharacterUsed(characterId: character.id, type: character.type)
         }
         
-        // 添加详细的调试信息
+        #if DEBUG
+        // 调试信息：显示最终选择的角色
+        let selectedIds = finalResultWithSupplement.map { $0.id }
+        let uniqueTypes = Set(finalResultWithSupplement.map { $0.type })
         let coolingCount = min(recentlyUsedCharacterIds.count, max(5, allCharacters.count / 8))
-        let selectedIds = result.map { $0.id }
-        let uniqueTypes = Set(result.map { $0.type })
         
-        #if DEBUG
-        print("🔄 角色轮换系统选择了\(result.count)个角色：\(selectedIds.joined(separator: ", "))")
-        #endif
-        #if DEBUG
+        print("🔄 角色轮换系统选择了\(finalResultWithSupplement.count)个角色：\(selectedIds.joined(separator: ", "))")
         print("📊 角色类型分布：\(uniqueTypes.map { "\($0)" }.joined(separator: ", "))")
-        #endif
-        #if DEBUG
         print("❄️ 冷却期角色数量：\(coolingCount)/\(recentlyUsedCharacterIds.count)")
-        #endif
-        #if DEBUG
         print("📈 总角色库大小：\(allCharacters.count)，当前可用：\(allCharacters.count - coolingCount)")
         #endif
         
-        return result
+        return finalResultWithSupplement
     }
     
     // MARK: - 严格轮换模式

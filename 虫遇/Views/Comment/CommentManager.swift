@@ -174,10 +174,11 @@ class CommentManager: ObservableObject {
         isRestoringDraft = true
         
         // 检查用户是否已明确清除了当前帖子的草稿
-        if userClearedDictionary[currentPost.id] == true {
-            #if DEBUG
-            print("⚠️ 用户已明确清除该帖子的草稿，不恢复草稿")
-            #endif
+        // 🔧 关键修复：同时检查内存字典和UserDefaults中的清除标记
+        let userClearedKey = "user_cleared_draft_\(currentPost.id.uuidString)"
+        let isUserCleared = userClearedDictionary[currentPost.id] == true || UserDefaults.standard.bool(forKey: userClearedKey)
+        
+        if isUserCleared {
             commentText = ""
             isRestoringDraft = false
             return
@@ -186,14 +187,15 @@ class CommentManager: ObservableObject {
         // 从内存字典中获取草稿
         if let draft = draftDictionary[currentPost.id] {
             commentText = draft
-            #if DEBUG
-            print("📝 已加载帖子 \(currentPost.id.uuidString) 的草稿: \(draft.prefix(20))...")
-            #endif
         } else {
-            commentText = ""
-            #if DEBUG
-            print("📝 帖子 \(currentPost.id.uuidString) 没有草稿")
-            #endif
+            // 如果内存字典中没有，尝试从UserDefaults加载
+            let draftKey = "comment_draft_\(currentPost.id.uuidString)"
+            if let savedDraft = UserDefaults.standard.string(forKey: draftKey), !savedDraft.isEmpty {
+                commentText = savedDraft
+                draftDictionary[currentPost.id] = savedDraft
+            } else {
+                commentText = ""
+            }
         }
         
         isRestoringDraft = false
@@ -442,12 +444,9 @@ class CommentManager: ObservableObject {
         // 记录评论ID以便后续跟踪
         var newCommentId: UUID = UUID()
         
-        #if DEBUG
-        print("🔄 开始提交评论 - 内容: \"\(processedContent.prefix(30))...\"")
-        #endif
-        #if DEBUG
-        print("🔄 是否为回复: \(replyingToComment != nil)")
-        #endif
+        // 🔧 关键修复：在发送评论时立即清除草稿，防止草稿被重新加载
+        // 先清除草稿，确保用户已明确清除的标记被设置
+        clearDraft()
         
         // 先重置状态，避免UI卡住
         isRestoringDraft = true // 标记为恢复草稿状态，避免触发保存
@@ -458,9 +457,6 @@ class CommentManager: ObservableObject {
         
         isRestoringDraft = false // 重置标记
         replyingToComment = nil
-        
-        // 清除草稿
-        clearDraft()
         
         // 使用Task异步处理评论提交和虚拟角色回复生成
         Task { @MainActor in
@@ -480,9 +476,6 @@ class CommentManager: ObservableObject {
                     // 如果回复的是子评论，找到其根评论
                     if let rootComment = findRootComment(for: replyTo, in: currentPost.comments) {
                         rootCommentId = rootComment.id
-                        #if DEBUG
-                        print("🔍 找到根评论ID: \(rootCommentId) (回复的是子评论)")
-                        #endif
                     } else {
                         // 如果找不到根评论，使用被回复评论的父评论ID
                         rootCommentId = parentId
@@ -493,9 +486,6 @@ class CommentManager: ObservableObject {
                 } else {
                     // 如果回复的是顶级评论，直接使用其ID
                     rootCommentId = replyTo.id
-                    #if DEBUG
-                    print("🔍 回复的是顶级评论，根评论ID: \(rootCommentId)")
-                    #endif
                 }
                 
                 // 添加评论，确保正确设置parentCommentId
@@ -510,15 +500,6 @@ class CommentManager: ObservableObject {
                 commentId: newCommentId  // 🔧 传递预先生成的ID
             )
             
-            #if DEBUG
-            print("✅ 已添加回复评论 - ID: \(newCommentId), 回复给: \(replyTo.username), 内容: \"\(processedContent.prefix(30))...\"")
-            #endif
-            #if DEBUG
-            print("✅ 父评论ID: \(replyTo.id)")
-            #endif
-                #if DEBUG
-                print("✅ 根评论ID: \(rootCommentId)")
-                #endif
         
         // 更新评论列表
         updateCommentLists()
@@ -557,7 +538,6 @@ class CommentManager: ObservableObject {
                 // 检查是否回复的是虚拟角色的评论
                 if replyTo.isVirtualCharacter {
                     #if DEBUG
-                    print("🤖 检测到回复的是虚拟角色评论，将触发针对性回复")
                     #endif
                     
                     // 发送显示加载动画的通知
@@ -581,7 +561,6 @@ class CommentManager: ObservableObject {
                 } else {
                     // 如果回复的不是虚拟角色，走普通的虚拟角色回复生成逻辑 - 🔧 传递刚刚提交的评论ID
                     #if DEBUG
-                    print("🤖 开始生成虚拟角色回复")
                     #endif
                     await generateVirtualReply(forCommentId: newCommentId)
                 }
@@ -598,7 +577,6 @@ class CommentManager: ObservableObject {
                 )
                 
                 #if DEBUG
-                print("✅ 已添加顶级评论 - ID: \(newCommentId), 内容: \"\(processedContent.prefix(30))...\"")
                 #endif
                 
                 // 更新评论列表
@@ -624,7 +602,6 @@ class CommentManager: ObservableObject {
         
         // 生成虚拟角色回复 - 🔧 传递刚刚提交的评论ID
             #if DEBUG
-            print("🤖 开始生成虚拟角色回复")
             #endif
             await generateVirtualReply(forCommentId: newCommentId)
             }
@@ -1012,7 +989,6 @@ class CommentManager: ObservableObject {
                                     }
                                     
                                     #if DEBUG
-                                    print("✅ 虚拟角色回复已添加 - 角色: \(CharacterDataManager.shared.getName(for: characterID) ?? characterID), 回复给: \(targetUsername), 评论ID: \(targetCommentID)")
                                     #endif
                                     
                                     // 确保评论可见（展开评论链）
@@ -1089,7 +1065,6 @@ class CommentManager: ObservableObject {
         originalComment: String
     ) async {
         #if DEBUG
-        print("🤖 开始生成虚拟角色(\(characterID))对用户回复的回应")
         #endif
         
         // 检查是否已经对此评论生成过回复
@@ -1169,7 +1144,6 @@ class CommentManager: ObservableObject {
                         // 清理API返回的内容
                         let cleanedResponse = self.cleanResponseContent(response)
                         #if DEBUG
-                        print("✅ 生成虚拟角色回复成功: \"\(cleanedResponse.prefix(30))...\"")
                         #endif
                         
                         // 标记此评论已被回复
@@ -1270,7 +1244,6 @@ class CommentManager: ObservableObject {
                             )
                             
                             #if DEBUG
-                            print("✅ 虚拟角色回复已添加 - 角色: \(characterName), 回复给: \(replyToUsername)")
                             #endif
                         }
                     }

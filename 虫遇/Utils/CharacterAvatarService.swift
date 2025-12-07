@@ -803,6 +803,11 @@ class CharacterAvatarService {
      * 获取角色类别标签
      */
     func getCharacterCategoryTag(for characterId: String) -> String {
+        // 🔧 首先检查是否是用户创建的角色（ID以 custom_ 开头）
+        if characterId.hasPrefix("custom_") {
+            return "我的角色"
+        }
+        
         let characterMap: [String: String] = [
             "philosopher": "哲学家",
             "scientist": "科学家",
@@ -814,7 +819,7 @@ class CharacterAvatarService {
             "acg": "动漫游戏",
             "film": "影视角色",
             "entrepreneur": "企业家",
-            "custom": "自定义角色"
+            "custom": "我的角色"  // 修复：用户创建的角色显示为"我的角色"
         ]
         
         let category = getCategory(for: characterId)
@@ -825,6 +830,12 @@ class CharacterAvatarService {
      * 获取角色标签颜色
      */
     func getCharacterTagColor(for characterId: String) -> Color {
+        // 🔧 首先检查是否是用户创建的角色（ID以 custom_ 开头）
+        if characterId.hasPrefix("custom_") {
+            // 使用"我的角色"分类的颜色（橙色）
+            return Color(red: 255/255, green: 140/255, blue: 0/255)
+        }
+        
         let colorMap: [String: Color] = [
             "philosopher": .green,
             "scientist": .blue,
@@ -836,7 +847,7 @@ class CharacterAvatarService {
             "acg": .pink,
             "film": .indigo,
             "entrepreneur": .teal,
-            "custom": .gray
+            "custom": Color(red: 255/255, green: 140/255, blue: 0/255)  // 修复：使用"我的角色"分类的颜色（橙色）
         ]
         
         let category = getCategory(for: characterId)

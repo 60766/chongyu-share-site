@@ -798,33 +798,33 @@ struct PublishPanelView: View {
     
     // 随机选择角色 - 使用完整角色库
     private func selectRandomCharacters() -> [CharacterModel] {
-        // 从CharacterDataManager获取所有角色信息，转换为CharacterModel
-        let allCharacterInfos = CharacterDataManager.shared.getAllCharactersInfo()
-        let allCharacters = allCharacterInfos.map { characterInfo in
-            CharacterModel(
-                id: characterInfo.id,
-                name: characterInfo.name,
-                avatar: characterInfo.avatar, // 使用真实的头像名称
-                era: characterInfo.era, // 使用真实的时代信息
-                profession: characterInfo.primaryField, // 使用真实的职业信息
-                bio: "暂无描述", // 暂时使用默认值
-                category: mapToCharacterCategory(type: characterInfo.type, subtype: characterInfo.subtype), // 使用映射的分类
-                famousQuotes: [], // 暂时使用默认值
-                characterID: characterInfo.id
-            )
-        }
+        // 🔒 使用 CharacterModel.getAllCharacters() 获取角色，它已经应用了屏蔽过滤
+        // 这样随机选择时就不会选择到被屏蔽分类的角色
+        let allCharacters = CharacterModel.getAllCharacters()
         
         var tempSelectedCharacters: [CharacterModel] = []
         
-        // 确保选择来自不同类别的角色
-        let categories = CharacterCategory.allCases
-        for category in categories {
+        // 确保选择来自不同类别的角色（只从未被屏蔽的分类中选择）
+        let availableCategories = CharacterCategory.allCases.filter { category in
+            category != .all && BlockedCategoriesManager.shared.isCategoryAvailableForPostGeneration(category)
+        }
+        
+        for category in availableCategories {
             if let character = allCharacters.filter({ $0.category == category }).randomElement() {
                 tempSelectedCharacters.append(character)
                 if tempSelectedCharacters.count >= 3 {
                     break
                 }
             }
+        }
+        
+        // 如果从不同分类中选择的角色不足3个，从所有可用角色中随机补充
+        if tempSelectedCharacters.count < 3 {
+            let remainingNeeded = 3 - tempSelectedCharacters.count
+            let selectedIds = Set(tempSelectedCharacters.map { $0.id })
+            let availableCharacters = allCharacters.filter { !selectedIds.contains($0.id) }
+            let additionalCharacters = Array(availableCharacters.shuffled().prefix(remainingNeeded))
+            tempSelectedCharacters.append(contentsOf: additionalCharacters)
         }
         
         // 如果还不足3个，继续随机添加
@@ -1261,17 +1261,49 @@ struct PublishPanelView: View {
         
         // 如果用户选择了角色
         if !manuallySelectedCharacters.isEmpty {
-            // 如果用户选择的角色数量在合理范围内（1-5个），直接使用
-            if manuallySelectedCharacters.count <= maxCharacters {
-                return Array(manuallySelectedCharacters.prefix(maxCharacters))
-            } else {
-                // 如果用户选择了超过5个，限制为5个（保证质量）
+            // 🔒 过滤用户手动选择的角色，移除被屏蔽分类的角色
+            let allCharacterModels = CharacterModel.getAllCharacters()
+            let availableCharacterIds = Set(allCharacterModels.map { $0.id })
+            let filteredManuallySelected = manuallySelectedCharacters.filter { characterId in
+                if let characterModel = allCharacterModels.first(where: { $0.id == characterId }) {
+                    let isAvailable = BlockedCategoriesManager.shared.isCharacterAvailable(characterModel)
+                    if !isAvailable {
                 #if DEBUG
-                print("⚠️ 用户选择了\(manuallySelectedCharacters.count)个角色，限制为\(maxCharacters)个以保证生成质量")
+                        print("🔒 过滤掉用户选择的被屏蔽分类角色: \(characterModel.name) (分类: \(characterModel.category.displayName))")
                 #endif
-                return Array(manuallySelectedCharacters.prefix(maxCharacters))
+                    }
+                    return isAvailable
+                }
+                // 如果找不到角色模型，检查是否在可用角色列表中
+                return availableCharacterIds.contains(characterId)
             }
+            
+            #if DEBUG
+            if filteredManuallySelected.count < manuallySelectedCharacters.count {
+                print("🔒 从用户选择的\(manuallySelectedCharacters.count)个角色中过滤掉\(manuallySelectedCharacters.count - filteredManuallySelected.count)个被屏蔽分类的角色")
+            }
+            #endif
+            
+            // 如果过滤后角色数量在合理范围内（1-5个），使用过滤后的列表
+            if filteredManuallySelected.count <= maxCharacters && filteredManuallySelected.count > 0 {
+                return Array(filteredManuallySelected.prefix(maxCharacters))
+            } else if filteredManuallySelected.count > maxCharacters {
+                // 如果过滤后仍然超过5个，限制为5个（保证质量）
+                #if DEBUG
+                print("⚠️ 用户选择了\(manuallySelectedCharacters.count)个角色，过滤后剩余\(filteredManuallySelected.count)个，限制为\(maxCharacters)个以保证生成质量")
+                #endif
+                return Array(filteredManuallySelected.prefix(maxCharacters))
         } else {
+                // 如果过滤后没有可用角色，使用自动选择
+                #if DEBUG
+                print("⚠️ 用户选择的所有角色都被屏蔽，改用自动选择")
+                #endif
+                // 继续执行自动选择逻辑
+            }
+        }
+        
+        // 用户没有选择角色，或者用户选择的所有角色都被屏蔽，使用自动选择
+        if finalSelectedCharacters.isEmpty {
             // 用户没有选择角色，自动补充到3个
             let additionalNeeded = minCharacters
             let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: additionalNeeded)
@@ -1284,50 +1316,58 @@ struct PublishPanelView: View {
         }
         }
         
+        // 🔒 最终验证：确保所有角色都来自未被屏蔽的分类
+        let allCharacterModels = CharacterModel.getAllCharacters()
+        let finalFilteredResult = finalSelectedCharacters.filter { characterId in
+            if let characterModel = allCharacterModels.first(where: { $0.id == characterId }) {
+                let isAvailable = BlockedCategoriesManager.shared.isCharacterAvailable(characterModel)
+                if !isAvailable {
+                    #if DEBUG
+                    print("🔒 最终过滤：移除被屏蔽分类的角色 \(characterModel.name) (分类: \(characterModel.category.displayName))")
+                    #endif
+                }
+                return isAvailable
+            }
+            // 如果找不到角色模型，检查是否在可用角色列表中
+            let availableCharacterIds = Set(allCharacterModels.map { $0.id })
+            return availableCharacterIds.contains(characterId)
+        }
+        
         // 最终限制：最多5个角色
-        let result = Array(finalSelectedCharacters.prefix(maxCharacters))
+        let result = Array(finalFilteredResult.prefix(maxCharacters))
         
         #if DEBUG
-        print("✅ 最终选择\(result.count)个角色进行评论生成")
+        let blockedCategories = BlockedCategoriesManager.shared.getBlockedCategories()
+        if !blockedCategories.isEmpty {
+            print("🔒 当前屏蔽的分类: \(blockedCategories.map { $0.displayName }.joined(separator: ", "))")
+        }
+        print("✅ 最终选择\(result.count)个角色进行评论生成: \(result.joined(separator: ", "))")
+        let characterModels = result.compactMap({ id in allCharacterModels.first(where: { $0.id == id }) })
+        if !characterModels.isEmpty {
+            let categoryInfo = characterModels.map { "\($0.name)(\($0.category.displayName))" }.joined(separator: ", ")
+            print("📊 选择的角色分类: \(categoryInfo)")
+        }
         #endif
         
         return result
     }
     
     // 处理生成的AI评论
+    // 🔧 修复：MultiCharacterCommentService 已经通过 directlyAddCommentsToPost 添加了评论
+    // 这里不需要再次添加，只需要触发UI更新即可，避免重复添加
     private static func handleGeneratedComments(_ commentsDict: [String: String], for userPost: UserPostModel) {
-        var newComments: [DetailedCommentModel] = []
-        
-        for (characterID, commentContent) in commentsDict {
-            // 获取角色信息
-            let characterDataManager = CharacterDataManager.shared
-            let characterName = characterDataManager.getName(for: characterID) ?? characterID.capitalized
-            let characterAvatar = CharacterAvatarService.shared.getAvatarName(for: characterID)
-            
-            // 创建评论
-            let comment = DetailedCommentModel(
-                id: UUID(),
-                username: characterName,
-                userAvatar: characterAvatar,
-                content: commentContent,
-                datePosted: Date(),
-                isVirtualCharacter: true,
-                characterID: characterID,
-                likes: 0,
-                isLikedByCurrentUser: false
-            )
-            
-            newComments.append(comment)
-        }
-        
-        // 添加评论到帖子
-        if !newComments.isEmpty {
-            DispatchQueue.main.async {
-                if let postIndex = PostViewModel.shared.posts.firstIndex(where: { $0.id == userPost.id }) {
-                    PostViewModel.shared.posts[postIndex].comments.append(contentsOf: newComments)
-                } else {
-                    // 未找到对应的帖子进行评论更新
-                }
+        // 🔧 评论已经由 MultiCharacterCommentService.directlyAddCommentsToPost 添加
+        // 这里只需要触发UI更新，不需要再次添加评论
+        DispatchQueue.main.async {
+            if let postIndex = PostViewModel.shared.posts.firstIndex(where: { $0.id == userPost.id }) {
+                // 只触发UI更新，不添加评论
+                PostViewModel.shared.posts[postIndex].objectWillChange.send()
+                
+                #if DEBUG
+                print("✅ handleGeneratedComments: 评论已由 MultiCharacterCommentService 添加，只触发UI更新")
+                #endif
+            } else {
+                // 未找到对应的帖子进行评论更新
             }
         }
     }
@@ -2334,21 +2374,9 @@ struct CharacterSelectorView: View {
     
     // 过滤后的角色列表 - 使用完整的角色库而不是硬编码的示例角色
     private var filteredCharacters: [CharacterModel] {
-        // 从CharacterDataManager获取所有角色信息，转换为CharacterModel
-        let allCharacterInfos = CharacterDataManager.shared.getAllCharactersInfo()
-        var characters = allCharacterInfos.map { characterInfo in
-            CharacterModel(
-                id: characterInfo.id,
-                name: characterInfo.name,
-                avatar: characterInfo.avatar, // 使用真实的头像名称
-                era: characterInfo.era, // 使用真实的时代信息
-                profession: characterInfo.primaryField, // 使用真实的职业信息
-                bio: "暂无描述", // 暂时使用默认值
-                category: mapToCharacterCategory(type: characterInfo.type, subtype: characterInfo.subtype), // 使用映射的分类
-                famousQuotes: [], // 暂时使用默认值
-                characterID: characterInfo.id
-            )
-        }
+        // 🔒 使用 CharacterModel.getAllCharacters() 获取角色，它已经应用了屏蔽过滤
+        // 这样用户在选择时就不会看到被屏蔽分类的角色
+        var characters = CharacterModel.getAllCharacters()
         
         // 按分类筛选
         if selectedCategory != nil && selectedCategory != .all {
@@ -2362,6 +2390,13 @@ struct CharacterSelectorView: View {
                 character.profession.lowercased().contains(searchText.lowercased())
             }
         }
+        
+        #if DEBUG
+        let blockedCategories = BlockedCategoriesManager.shared.getBlockedCategories()
+        if !blockedCategories.isEmpty {
+            print("🔒 CharacterSelectorView: 已过滤被屏蔽分类 \(blockedCategories.map { $0.displayName }.joined(separator: ", "))，显示 \(characters.count) 个可用角色")
+        }
+        #endif
         
         return characters
     }

@@ -868,9 +868,6 @@ struct FullscreenPostDetailView: View {
                         let speedAbsolute = abs(velocityX)
                         
                         // 在手势结束时检查是否为最后一篇帖子
-                        #if DEBUG
-                        print("⭐️ 滑动结束前边界检查: 当前帖子ID: \(viewModel.post.id)")
-                        #endif
                         checkBoundaries()
                         
                         // 简化滑动有效性判断 - 降低触发阈值以避免卡住
@@ -883,11 +880,6 @@ struct FullscreenPostDetailView: View {
                         // 重置拖动状态 - 提前重置，防止状态锁定
                         isDragging = false
                         
-                        // 添加详细调试日志
-                        #if DEBUG
-                        print("⭐️ 滑动结束 - validLeftSwipe=\(validLeftSwipe), validRightSwipe=\(validRightSwipe), isLastPost=\(isLastPost), dragOffset=\(finalOffset), velocityX=\(velocityX)")
-                        #endif
-                        
                         // 防卡住保障 - 如果页面在滑出一半以上时卡住，强制进行翻页
                         let forceTransitionThreshold = screenWidth * 0.4
                         let forceLeftTransition = finalOffset < -forceTransitionThreshold
@@ -895,10 +887,6 @@ struct FullscreenPostDetailView: View {
                         
                         // 虫洞探索页面右滑返回
                         if showAddContentView && (validRightSwipe || forceRightTransition) {
-                            #if DEBUG
-                            print("⭐️ 虫洞探索页面右滑返回")
-                            #endif
-                            
                             // 振动反馈
                             let feedback = UIImpactFeedbackGenerator(style: .light)
                             feedback.impactOccurred()
@@ -922,10 +910,6 @@ struct FullscreenPostDetailView: View {
                         
                         // 最后一篇帖子左滑 - 显示添加内容页面
                         if (validLeftSwipe || forceLeftTransition) && isLastPost {
-                            #if DEBUG
-                            print("⭐️ 准备显示虫洞探索页面 - 确认为最后一篇")
-                            #endif
-                            
                             // 添加振动反馈
                             let feedback = UIImpactFeedbackGenerator(style: .medium)
                             feedback.impactOccurred()
@@ -934,23 +918,13 @@ struct FullscreenPostDetailView: View {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                 dragOffset = 0
                                 showAddContentView = true
-                                #if DEBUG
-                                print("⭐️ 已设置showAddContentView = true")
-                                #endif
                             }
                             return
                         }
                         // 普通左滑 - 切换到下一篇帖子
                         else if validLeftSwipe || forceLeftTransition {
-                            #if DEBUG
-                            print("⭐️ 处理普通左滑动作")
-                            #endif
-                            
                             // 直接尝试获取并显示下一篇帖子，简化决策
                             if let onNextPost = onNextPost, let directNextPost = onNextPost(viewModel.post.id) {
-                                #if DEBUG
-                                print("⭐️ 成功获取下一篇帖子，执行转换")
-                                #endif
                                 hasNextPost = true
                                 isLastPost = false
                                 
@@ -961,19 +935,12 @@ struct FullscreenPostDetailView: View {
                             }
                             // 如果没有找到下一篇但有缓存
                             else if let nextPost = nextPagePost {
-                                #if DEBUG
-                                print("⭐️ 使用缓存的下一篇帖子: \(nextPost.id)")
-                                #endif
                                 let generator = UIImpactFeedbackGenerator(style: .light)
                                 generator.impactOccurred()
                                 performPageTransition(direction: .left, nextPost: nextPost, velocity: speedAbsolute)
                             }
                             // 真的是最后一篇
                             else if isLastPost {
-                                #if DEBUG
-                                print("⭐️ 再次确认是最后一篇，显示添加内容页面")
-                                #endif
-                                
                                 // 添加振动反馈
                                 let feedback = UIImpactFeedbackGenerator(style: .medium)
                                 feedback.impactOccurred()
@@ -986,25 +953,13 @@ struct FullscreenPostDetailView: View {
                             }
                             // 状态不一致，复位
                             else {
-                                #if DEBUG
-                                print("⭐️ 状态不一致，恢复原位")
-                                #endif
                                 resetPosition()
                             }
                         }
                         // 普通右滑 - 切换到上一篇帖子
                         else if validRightSwipe || forceRightTransition {
-                            // 处理右滑动作
-                            #if DEBUG
-                            print("⭐️ 处理普通右滑动作")
-                            #endif
-                            
                             // 检查是否为第一篇帖子，如果是也显示探索虫洞深处页面
                             if isFirstPost {
-                                #if DEBUG
-                                print("⭐️ 第一篇帖子右滑，显示虫洞探索页面")
-                                #endif
-                                
                                 // 添加振动反馈
                                 let feedback = UIImpactFeedbackGenerator(style: .medium)
                                 feedback.impactOccurred()
@@ -1019,27 +974,18 @@ struct FullscreenPostDetailView: View {
                             // 对于非首篇帖子，保持原有的向前翻页逻辑
                             // 直接尝试获取并显示上一篇帖子，简化决策
                             else if let onPrevPost = onPrevPost, let directPrevPost = onPrevPost(viewModel.post.id) {
-                                #if DEBUG
-                                print("⭐️ 使用上一篇帖子: \(directPrevPost.id)")
-                                #endif
                                 let generator = UIImpactFeedbackGenerator(style: .light)
                                 generator.impactOccurred()
                                 performPageTransition(direction: .right, nextPost: directPrevPost, velocity: speedAbsolute)
                             }
                             // 如果没有找到上一篇但有缓存
                             else if let prevPost = nextPagePost {
-                                #if DEBUG
-                                print("⭐️ 使用缓存的上一篇帖子: \(prevPost.id)")
-                                #endif
                                 let generator = UIImpactFeedbackGenerator(style: .light)
                                 generator.impactOccurred()
                                 performPageTransition(direction: .right, nextPost: prevPost, velocity: speedAbsolute)
                             }
                             // 没有上一篇
                             else {
-                                #if DEBUG
-                                print("⭐️ 没有上一篇帖子，恢复原位")
-                                #endif
                                 resetPosition()
                             }
                         } 
@@ -1407,7 +1353,6 @@ struct FullscreenPostDetailView: View {
                             
                             // 记录详细调试日志
                             #if DEBUG
-                            print("⭐️ 虫洞探索页面滑动结束 - validRightSwipe=\(validRightSwipe), validLeftSwipe=\(validLeftSwipe), dragOffset=\(finalOffset), velocityX=\(velocityX)")
                             #endif
                             
                             // 强制过渡阈值，与主视图保持一致
@@ -1418,7 +1363,6 @@ struct FullscreenPostDetailView: View {
                             // 右滑返回
                             if validRightSwipe || forceRightTransition {
                                 #if DEBUG
-                                print("⭐️ 虫洞探索页面右滑返回")
                                 #endif
                                 
                                 // 提供相同的触觉反馈
@@ -1470,7 +1414,6 @@ struct FullscreenPostDetailView: View {
                             // 左滑返回
                             else if validLeftSwipe || forceLeftTransition {
                                 #if DEBUG
-                                print("⭐️ 虫洞探索页面左滑返回")
                                 #endif
                                 
                                 // 提供相同的触觉反馈
@@ -1592,14 +1535,12 @@ struct FullscreenPostDetailView: View {
                     ) {
                         // 特效完成后的回调
                         #if DEBUG
-                        print("⭐️ 时空特效完成，准备生成帖子并返回主页面")
                         #endif
                         
                         // 获取选中的创作类型索引
                         let typeIndex = CreationTypeManager.shared.selectedIndex
                         let contentTypeName = CreationTypeManager.shared.types[typeIndex]
                         #if DEBUG
-                        print("⭐️ 当前选中的创作类型: \(contentTypeName)")
                         #endif
                         
                         // 触发内容生成状态
@@ -1615,7 +1556,6 @@ struct FullscreenPostDetailView: View {
                         // 使用Task在异步上下文中生成帖子
                         Task {
                             #if DEBUG
-                            print("⭐️ 开始生成帖子...")
                             #endif
                             
                             // 添加加载状态
@@ -1628,7 +1568,6 @@ struct FullscreenPostDetailView: View {
                             
                             // 简化帖子生成逻辑，移除超时限制
                             #if DEBUG
-                            print("⭐️ 开始生成帖子，无超时限制...")
                             #endif
                             var newPosts: [UserPostModel] = []
                             
@@ -1668,19 +1607,16 @@ struct FullscreenPostDetailView: View {
                             }
                             
                             #if DEBUG
-                            print("⭐️ 生成过程完成，获得 \(newPosts.count) 篇新帖子")
                             #endif
                             
                             // 添加到数据模型
                             if !newPosts.isEmpty {
                                 #if DEBUG
-                                print("⭐️ 将新帖子添加到数据模型")
                                 #endif
                                 postViewModel.addPosts(newPosts)
                                 
                                 // 发送通知，通知主页刷新
                                 #if DEBUG
-                                print("⭐️ 发送通知刷新主页")
                                 #endif
                                 NotificationCenter.default.post(name: NSNotification.Name("NewPostsGenerated"), object: nil)
                                 NotificationCenter.default.post(name: NSNotification.Name("PostsUpdated"), object: nil)
@@ -1788,7 +1724,6 @@ struct FullscreenPostDetailView: View {
                 // 使用isFullyHidden检查是否完全隐藏，如果不是则重新隐藏
                 if !tabBarManager.isFullyHidden {
                     #if DEBUG
-                    print("⭐️ 发现TabBar未完全隐藏，重新隐藏")
                     #endif
                     tabBarManager.pushHideState()
                 }
@@ -1806,7 +1741,6 @@ struct FullscreenPostDetailView: View {
                let postId = UUID(uuidString: postIdString) {
                 
                 #if DEBUG
-                print("⭐️ 收到HistoricalFiguresInvited通知，为帖子ID: \(postIdString) 设置生成状态")
                 #endif
                 
                 // 使用动画添加帖子ID
@@ -1824,7 +1758,6 @@ struct FullscreenPostDetailView: View {
                let postId = UUID(uuidString: postIdString) {
                 
                 #if DEBUG
-                print("⭐️ 收到CommentsGenerated通知，为帖子ID: \(postIdString) 清除生成状态")
                 #endif
                 
                 // 使用动画移除帖子ID
@@ -1840,7 +1773,6 @@ struct FullscreenPostDetailView: View {
                postIdString == viewModel.post.id.uuidString {
                 
                 #if DEBUG
-                print("❤️ 收到PostLikeUpdated通知，当前帖子点赞数需要更新")
                 #endif
                 
                 // 从PostViewModel获取最新的帖子数据
@@ -2751,7 +2683,6 @@ struct FullscreenPostDetailView: View {
         .padding(.bottom, 45)
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshCommentsList"))) { notification in
             #if DEBUG
-            print("📣 收到刷新评论列表通知，立即刷新")
             #endif
             
             // 检查通知中是否包含保持展开状态的标志
@@ -2802,7 +2733,6 @@ struct FullscreenPostDetailView: View {
         let currentPostId = viewModel.post.id.uuidString
         let nextPostId = nextPost.id.uuidString
         #if DEBUG
-        print("⭐️ 页面过渡: 从 \(currentPostId) 到 \(nextPostId), 方向: \(direction == .left ? "左" : "右")")
         #endif
         
         // 检查是否就是当前帖子，避免不必要的过渡
@@ -2846,7 +2776,6 @@ struct FullscreenPostDetailView: View {
         
         // 记录完成状态
         #if DEBUG
-        print("⭐️ 页面过渡完成: 当前帖子ID已更新为 \(nextPost.id.uuidString)")
         #endif
         
         // 立即重置关键状态
@@ -2981,9 +2910,6 @@ struct FullscreenPostDetailView: View {
         
         // 边界检查，确定是否有下一篇或上一篇帖子
         checkBoundaries()
-        #if DEBUG
-        print("⭐️ 边界检查后状态: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost), isLastPost=\(isLastPost)")
-        #endif
         
         // 当确认为最后一篇时，强制禁止预加载下一篇
         if isLastPost {
@@ -2992,9 +2918,6 @@ struct FullscreenPostDetailView: View {
             
             // 清除可能已缓存的下一篇帖子
             if viewModel.getNextPostCache() != nil {
-                #if DEBUG
-                print("⭐️ 清除错误缓存的下一篇帖子")
-                #endif
                 viewModel.clearNextPostCache()
             }
             
@@ -3018,7 +2941,6 @@ struct FullscreenPostDetailView: View {
                 // 避免加载当前帖子本身（错误情况）
                 if nextPost.id.uuidString == currentPostId.uuidString {
                     #if DEBUG
-                    print("⭐️⭐️⭐️ 严重错误：onNextPost() 返回了当前帖子，应为最后一篇")
                     #endif
                     hasNextPost = false
                     isLastPost = true
@@ -3042,7 +2964,6 @@ struct FullscreenPostDetailView: View {
             } else {
                 // 如果onNextPost()返回nil但hasNextPost为true，说明状态不同步
                 #if DEBUG
-                print("⭐️ 警告：hasNextPost=true但onNextPost()返回nil，修正状态")
                 #endif
                 hasNextPost = false
                 isLastPost = true
@@ -3064,9 +2985,6 @@ struct FullscreenPostDetailView: View {
             if let prevPost = getPrevPostWrapper() {
                 // 避免加载当前帖子本身（错误情况）
                 if prevPost.id.uuidString == currentPostId.uuidString {
-                    #if DEBUG
-                    print("⭐️⭐️⭐️ 严重错误：onPrevPost() 返回了当前帖子")
-                    #endif
                     hasPrevPost = false
                     return
                 }
@@ -3089,14 +3007,12 @@ struct FullscreenPostDetailView: View {
             } else {
                 // 如果onPrevPost()返回nil但hasPrevPost为true，说明状态不同步
                 #if DEBUG
-                print("⭐️ 警告：hasPrevPost=true但onPrevPost()返回nil，修正状态")
                 #endif
                 hasPrevPost = false
             }
         }
         
         #if DEBUG
-        print("⭐️ preloadAdjacentPosts 完成，最终状态: hasNextPost=\(hasNextPost), hasPrevPost=\(hasPrevPost), isLastPost=\(isLastPost)")
         #endif
     }
     
@@ -3109,12 +3025,9 @@ struct FullscreenPostDetailView: View {
         let oldHasPrevPost = hasPrevPost
         let oldIsLastPost = isLastPost
         
-        // 记录当前帖子ID，用于调试
+        // 记录当前帖子ID
         let currentPostId = viewModel.post.id
         let currentPostUUID = currentPostId.uuidString
-        #if DEBUG
-        print("⭐️ 开始检查边界 - 当前帖子ID: \(currentPostId)")
-        #endif
         
         // 硬编码检查是否是最后一篇帖子 (第三篇)
         let knownLastPostId = "33333333-3333-3333-3333-333333333333"
@@ -3198,9 +3111,6 @@ struct FullscreenPostDetailView: View {
             }
         } else {
             // 如果没有提供回调，默认设置为没有下一篇
-            #if DEBUG
-            print("⭐️ 警告：未提供onNextPost回调，默认视为最后一篇")
-            #endif
             nextPostExists = false
             reallyLastPost = isKnownLastPost // 只有是已知的最后一篇时才认为是最后一篇
         }
@@ -3213,9 +3123,6 @@ struct FullscreenPostDetailView: View {
             func getPrevPostWithRetry(currentRetry: Int = 0) -> UserPostModel? {
                 // 如果重试次数过多，中止并返回nil
                 if currentRetry >= 2 {
-                    #if DEBUG
-                    print("⭐️ 已重试获取上一篇帖子2次，放弃")
-                    #endif
                     return nil
                 }
                 
@@ -3229,13 +3136,6 @@ struct FullscreenPostDetailView: View {
     
                     
                     if prevPostUUID == currentPostUUID {
-                        #if DEBUG
-                        print("⭐️⭐️⭐️ 警告：onPrevPost()返回了当前帖子ID，尝试再次获取")
-                        #endif
-                        #if DEBUG
-                        print("⭐️ 当前帖子ID: \(currentPostId), 错误返回的上一篇ID: \(prevPost.id)")
-                        #endif
-                        
                         // 🚀 性能优化：移除同步阻塞
                         // 递归尝试再次获取
                         return getPrevPostWithRetry(currentRetry: currentRetry + 1)
@@ -3352,9 +3252,6 @@ struct FullscreenPostDetailView: View {
             return true
         }
         
-        #if DEBUG
-        print("⭐️ 经过多次尝试，无法确定是否为最后一篇帖子，默认非最后一篇")
-        #endif
         return false
     }
     

@@ -26,6 +26,11 @@ class MultiCharacterCommentService {
     private let insightService = CharacterChatInsightService.shared
     private var cancellables = Set<AnyCancellable>()
     
+    // 🔧 第一性原理：使用串行队列确保对同一个帖子ID的添加操作是串行的，防止并发导致的重复
+    // 使用帖子ID作为key，每个帖子有独立的串行队列
+    private var postQueues: [String: DispatchQueue] = [:]
+    private let queueLock = NSLock()
+    
     // 存储当前请求的上下文信息
     private struct CommentRequestContext {
         let userComment: String?
@@ -37,6 +42,20 @@ class MultiCharacterCommentService {
     
     // 私有初始化方法
     private init() {}
+    
+    /// 🔧 第一性原理：获取或创建帖子专用的串行队列
+    private func getQueue(for postId: String) -> DispatchQueue {
+        queueLock.lock()
+        defer { queueLock.unlock() }
+        
+        if let queue = postQueues[postId] {
+            return queue
+        }
+        
+        let queue = DispatchQueue(label: "comment.add.\(postId)", qos: .userInitiated)
+        postQueues[postId] = queue
+        return queue
+    }
     
     /**
      * 批量生成多个角色的评论
@@ -629,7 +648,6 @@ class MultiCharacterCommentService {
      */
     private func parseAPIResponse(response: String, characterIDs: [String]) -> [String: CharacterResponse] {
         #if DEBUG
-        print("🔍 开始解析批量API响应（包括点赞判断）")
         print("📄 原始响应内容预览: \(response.prefix(100))...")
         
         print("📄 AI原始响应（前500字符）:")
@@ -812,7 +830,6 @@ class MultiCharacterCommentService {
                                              .trimmingCharacters(in: .whitespacesAndNewlines)
                 shouldLike = (likeDecision == "是")
                 #if DEBUG
-                print("📝 解析点赞判断: 原文='\(trimmedLine)', 提取='\(likeDecision)', 结果=\(shouldLike ? "✅是" : "❌否")")
                 #endif
             } else if !trimmedLine.isEmpty {
                 // 普通评论行
@@ -984,7 +1001,8 @@ class MultiCharacterCommentService {
      * @param requestContext 请求上下文，包含用户评论和帖子信息
      */
     private func sendCommentsNotifications(postId: String, commentsMap: [String: CharacterResponse], isInvited: Bool, requestContext: CommentRequestContext) {
-        // 首先，直接将评论添加到帖子模型中，确保数据层面的更新
+        // 🔧 第一性原理：直接将评论添加到帖子模型中，确保数据层面的更新
+        // 使用串行队列确保不会重复添加
         self.directlyAddCommentsToPost(
             postId: postId, 
             commentsMap: commentsMap, 
@@ -1038,11 +1056,27 @@ class MultiCharacterCommentService {
     /**
      * 直接将评论添加到帖子模型中，并处理点赞逻辑
      * 这是一个关键修复，确保评论在数据层面已经添加到帖子中
+     * 🔧 第一性原理：使用串行队列确保对同一个帖子ID的操作是串行的，防止并发导致的重复
      * @param postId 帖子ID
      * @param commentsMap 角色ID到CharacterResponse的映射
      * @param requestContext 请求上下文，包含用户评论ID等信息
      */
     private func directlyAddCommentsToPost(postId: String, commentsMap: [String: CharacterResponse], requestContext: CommentRequestContext) {
+        // 🔧 第一性原理：使用串行队列确保对同一个帖子ID的操作是串行的
+        let queue = getQueue(for: postId)
+        
+        queue.async { [weak self] in
+            guard let self = self else { return }
+            
+            // 在主线程上执行，因为需要访问UI相关的数据
+            DispatchQueue.main.async {
+                self._directlyAddCommentsToPost(postId: postId, commentsMap: commentsMap, requestContext: requestContext)
+            }
+        }
+    }
+    
+    /// 🔧 内部实现：实际执行添加评论的逻辑（必须在主线程调用）
+    private func _directlyAddCommentsToPost(postId: String, commentsMap: [String: CharacterResponse], requestContext: CommentRequestContext) {
         let viewModel = PostViewModel.shared
         
         guard let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) else {
@@ -1054,6 +1088,9 @@ class MultiCharacterCommentService {
         
         // 创建评论模型并添加到帖子
         var newComments: [DetailedCommentModel] = []
+        
+        // 🔧 第一性原理：在开始处理前，先获取当前评论列表的快照，确保检查的一致性
+        let currentCommentsSnapshot = viewModel.posts[postIndex].comments
         
         for (characterID, response) in commentsMap {
             // 🔧 修复：获取角色名称，优先从CharacterSystem获取用户创建的角色名称
@@ -1088,11 +1125,9 @@ class MultiCharacterCommentService {
             let avatarPath = CharacterAvatarService.shared.getAvatarName(for: characterID)
             
             // 🔧 第一性原理：检查是否已存在相同内容和角色的评论，避免重复添加
+            // 使用快照进行检查，确保检查的一致性
             // 递归检查所有评论（包括回复），而不仅仅是顶级评论
-            if hasExistingComment(characterID: characterID, content: response.content, in: viewModel.posts[postIndex].comments) {
-                #if DEBUG
-                print("⚠️ 已存在相同内容的评论，跳过添加: \(characterName) - \(response.content.prefix(30))...")
-                #endif
+            if hasExistingComment(characterID: characterID, content: response.content, in: currentCommentsSnapshot) {
                 continue
             }
             
@@ -1139,49 +1174,23 @@ class MultiCharacterCommentService {
             
             // 处理点赞逻辑 - 🔧 使用传入的目标评论ID，确保点赞精确性
             // 延迟点赞，模拟虚拟角色先回复再点赞的真实行为
-            #if DEBUG
-            print("=" + String(repeating: "=", count: 60))
-            print("🚨 【点赞诊断】角色: \(characterName) (\(characterID))")
-            print("   📝 评论内容: \(response.content)")
-            print("   ❤️ 点赞判断: \(response.shouldLike ? "✅ 是" : "❌ 否")")
-            print("   🎯 用户评论ID: \(requestContext.userCommentId ?? "无（这是对帖子的评论）")")
-            print("   📄 帖子ID: \(postId)")
-            print("=" + String(repeating: "=", count: 60))
-            #endif
-            
             if response.shouldLike {
                 // 延迟2-8秒再进行点赞，模拟真实的点赞时机
                 let likeDelay = Double.random(in: 2...8)
                 
                 if let userCommentId = requestContext.userCommentId {
                     // 有用户评论ID，说明是对用户评论的点赞
-                    #if DEBUG
-                    print("❤️ \(characterName)将对用户评论\(userCommentId)点赞（使用精确传递的ID）")
-                    print("🔧 评论点赞详情 - 角色:\(characterID), 帖子:\(postId), 评论ID:\(userCommentId)")
-                    #endif
-                    
-                DispatchQueue.main.asyncAfter(deadline: .now() + likeDelay) {
-                        #if DEBUG
-                        print("🕐 \(characterName)延迟\(String(format: "%.1f", likeDelay))秒后开始对评论点赞")
-                        #endif
-                    VirtualCharacterLikeService.shared.processCharacterLike(
-                        characterId: characterID,
-                        postId: postId,
-                        commentId: userCommentId,
-                        userComment: requestContext.userComment
-                    )
-                }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + likeDelay) {
+                        VirtualCharacterLikeService.shared.processCharacterLike(
+                            characterId: characterID,
+                            postId: postId,
+                            commentId: userCommentId,
+                            userComment: requestContext.userComment
+                        )
+                    }
                 } else {
                     // 没有用户评论ID，说明是虚拟角色对用户帖子的评论，应该对帖子点赞
-                    #if DEBUG
-                    print("❤️ \(characterName)将对用户帖子\(postId)点赞（虚拟角色评论用户帖子）")
-                    print("🔧 帖子点赞详情 - 角色:\(characterID), 帖子:\(postId)")
-                    #endif
-                    
                     DispatchQueue.main.asyncAfter(deadline: .now() + likeDelay) {
-                        #if DEBUG
-                        print("🕐 \(characterName)延迟\(String(format: "%.1f", likeDelay))秒后开始对帖子点赞")
-                        #endif
                         VirtualCharacterLikeService.shared.processPostLike(
                             characterId: characterID,
                             postId: postId,
@@ -1202,9 +1211,14 @@ class MultiCharacterCommentService {
         }
         
         // 🔧 第一性原理：批量添加评论，避免多次触发刷新
-        // 先检查所有评论是否已存在，只添加新的评论
-        // 检查逻辑：1. 检查ID是否已存在 2. 检查内容和角色ID的组合是否已存在（递归检查所有评论包括回复）
-        let existingCommentIds = Set(viewModel.posts[postIndex].comments.map { $0.id })
+        // 关键：在添加前再次获取最新的评论列表，确保检查的是最新状态
+        // 因为可能有其他线程/队列也在添加评论
+        let currentComments = viewModel.posts[postIndex].comments
+        let existingCommentIds = Set(currentComments.map { $0.id })
+        
+        // 🔧 第一性原理：双重检查，确保不会重复添加
+        // 第一次检查：在创建评论之前（已在上面的循环中完成）
+        // 第二次检查：在添加之前，再次检查（这里）
         let commentsToAdd = newComments.filter { comment in
             // 检查1：ID是否已存在
             if existingCommentIds.contains(comment.id) {
@@ -1212,7 +1226,7 @@ class MultiCharacterCommentService {
             }
             // 检查2：内容和角色ID的组合是否已存在（递归检查）
             if comment.isVirtualCharacter, let characterID = comment.characterID {
-                if hasExistingComment(characterID: characterID, content: comment.content, in: viewModel.posts[postIndex].comments) {
+                if hasExistingComment(characterID: characterID, content: comment.content, in: currentComments) {
                     return false
                 }
             }
@@ -1220,20 +1234,33 @@ class MultiCharacterCommentService {
         }
         
         if commentsToAdd.isEmpty {
-            #if DEBUG
-            print("⚠️ 所有评论都已存在，跳过添加")
-            #endif
             return
         }
         
-        // 🔧 优化：批量添加评论，减少刷新次数
+        // 🔧 第一性原理：逐个添加评论，并在每次添加前再次检查，确保不会重复
+        // 因为 addComment 方法内部也有检查，但我们需要在这里也做检查，双重保险
+        // 关键：使用同步锁确保添加操作的原子性
         for comment in commentsToAdd {
+            // 🔧 关键：在添加前再次检查，使用最新的评论列表
+            // 因为可能有其他操作在同时进行（虽然使用了串行队列，但为了安全还是检查）
+            let latestComments = viewModel.posts[postIndex].comments
+            
+            // 检查1：ID是否已存在
+            if latestComments.contains(where: { $0.id == comment.id }) {
+                continue
+            }
+            
+            // 检查2：内容和角色ID的组合是否已存在
+            if comment.isVirtualCharacter, let characterID = comment.characterID {
+                if hasExistingComment(characterID: characterID, content: comment.content, in: latestComments) {
+                    continue
+                }
+            }
+            
+            // 🔧 关键：调用 addComment，它内部也会检查，双重保险
+            // addComment 方法内部有 hasDuplicateComment 检查，这是最后一道防线
             viewModel.posts[postIndex].addComment(comment)
         }
-        
-        #if DEBUG
-        print("✅ 已添加 \(commentsToAdd.count) 条新评论（共 \(newComments.count) 条，跳过 \(newComments.count - commentsToAdd.count) 条重复评论）")
-        #endif
         
         // 🔧 重要修复：保存帖子数据到持久化存储
         NotificationCenter.default.post(
@@ -1242,9 +1269,6 @@ class MultiCharacterCommentService {
             userInfo: ["postID": postId]
         )
         
-        #if DEBUG
-        print("✅ 已直接添加 \(newComments.count) 条评论到帖子模型，并保持原有排序方式")
-        #endif
     }
     
     // 🔧 优化：移除延迟刷新通知，避免多次刷新导致重影
@@ -1318,9 +1342,6 @@ class MultiCharacterCommentService {
      * @return 评论模型
      */
     private func createComment(content: String, id: String, name: String, parentCommentId: UUID? = nil, replyToUsername: String? = nil) -> DetailedCommentModel {
-        #if DEBUG
-        print("🔍 MultiCharacterCommentService.createComment - 创建评论 for id: \(id), name: \(name)")
-        #endif
 
         // **核心修复**: 统一使用CharacterAvatarService获取头像路径
         // 移除所有本地、硬编码的头像路径查找逻辑。

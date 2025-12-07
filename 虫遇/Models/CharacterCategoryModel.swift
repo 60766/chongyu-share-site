@@ -19,7 +19,7 @@ enum CharacterCategory: String, CaseIterable, Codable {
     case mythCharacter = "神话角色"
     
     // 用户创建分类
-    case myCreation = "我的创建"
+    case myCreation = "我的角色"
     
     /// 类别显示名称
     var displayName: String {
@@ -39,7 +39,7 @@ enum CharacterCategory: String, CaseIterable, Codable {
         case .mythCharacter:
             return "神话角色"
         case .myCreation:
-            return "我的创建"
+            return "我的角色"
         case .all:
             return "全部"
         }
