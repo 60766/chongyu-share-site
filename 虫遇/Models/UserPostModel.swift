@@ -791,10 +791,17 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
      * 直接添加一个DetailedCommentModel对象作为评论
      */
     func addComment(_ comment: DetailedCommentModel) {
-        // 移除调试输出，避免在视图渲染时重复打印
+        // 🔧 第一性原理：防止重复添加评论
+        // 检查逻辑：1. 检查ID是否已存在 2. 检查内容和角色ID的组合是否已存在（防止相同内容重复添加）
         
         if let parentId = comment.parentCommentId {
-            // 移除调试输出，避免在视图渲染时重复打印
+            // 这是回复，检查是否已存在相同的回复
+            if hasDuplicateComment(comment, in: comments) {
+                #if DEBUG
+                print("⚠️ 检测到重复回复，跳过添加: \(comment.username) - \(comment.content.prefix(30))...")
+                #endif
+                return
+            }
             addReplyToParent(parentId: parentId, reply: comment)
             // 关键：强制刷新 comments 数组，确保 UI 刷新
             self.comments = self.comments.map { $0 } // 触发 SwiftUI 刷新
@@ -804,23 +811,63 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
             let isInvitedVirtualComment = comment.isVirtualCharacter && comment.replyToUsername == nil
             
             if !comment.isVirtualCharacter || isInvitedVirtualComment {
-                if isInvitedVirtualComment {
-                    // 移除调试输出，避免在视图渲染时重复打印
-                } else {
-                    // 移除调试输出，避免在视图渲染时重复打印
+                // 🔧 第一性原理：检查是否已存在相同的评论（通过ID或内容和角色ID的组合）
+                if hasDuplicateComment(comment, in: comments) {
+                    #if DEBUG
+                    print("⚠️ 检测到重复评论，跳过添加: \(comment.username) - \(comment.content.prefix(30))...")
+                    #endif
+                    return
                 }
-            // 🔧 优化：检查是否已存在相同ID的评论，避免重复添加
-            if !comments.contains(where: { $0.id == comment.id }) {
-            comments.insert(comment, at: 0)
+                
+                comments.insert(comment, at: 0)
                 // 🔧 优化：只发送一次对象变更通知，避免多次刷新
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-                }
+                DispatchQueue.main.async {
+                    self.objectWillChange.send()
                 }
             } else {
                 // 移除调试输出，避免在视图渲染时重复打印
             }
         }
+    }
+    
+    /// 🔧 第一性原理：检查是否存在重复评论
+    /// 检查逻辑：1. 检查ID是否已存在 2. 检查内容和角色ID的组合是否已存在
+    private func hasDuplicateComment(_ comment: DetailedCommentModel, in comments: [DetailedCommentModel]) -> Bool {
+        // 检查1：通过ID检查（最快）
+        if comments.contains(where: { $0.id == comment.id }) {
+            return true
+        }
+        
+        // 检查2：通过内容和角色ID的组合检查（防止相同内容重复添加）
+        // 对于虚拟角色评论，检查内容和角色ID的组合
+        if comment.isVirtualCharacter, let characterID = comment.characterID {
+            // 递归检查所有评论（包括回复）
+            if hasCommentWithContentAndCharacter(content: comment.content, characterID: characterID, in: comments) {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    /// 递归检查是否存在相同内容和角色ID的评论
+    private func hasCommentWithContentAndCharacter(content: String, characterID: String, in comments: [DetailedCommentModel]) -> Bool {
+        for existingComment in comments {
+            // 检查当前评论
+            if existingComment.isVirtualCharacter,
+               existingComment.characterID == characterID,
+               existingComment.content == content {
+                return true
+            }
+            
+            // 递归检查回复
+            if !existingComment.replies.isEmpty {
+                if hasCommentWithContentAndCharacter(content: content, characterID: characterID, in: existingComment.replies) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 }
 

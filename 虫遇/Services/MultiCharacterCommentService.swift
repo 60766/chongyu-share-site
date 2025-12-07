@@ -1087,14 +1087,11 @@ class MultiCharacterCommentService {
             // 获取角色头像
             let avatarPath = CharacterAvatarService.shared.getAvatarName(for: characterID)
             
-            // 🔧 优化：先检查是否已存在相同内容和角色的评论，避免重复添加
-            let existingComment = viewModel.posts[postIndex].comments.first {
-                $0.characterID == characterID && $0.content == response.content
-            }
-            
-            if existingComment != nil {
+            // 🔧 第一性原理：检查是否已存在相同内容和角色的评论，避免重复添加
+            // 递归检查所有评论（包括回复），而不仅仅是顶级评论
+            if hasExistingComment(characterID: characterID, content: response.content, in: viewModel.posts[postIndex].comments) {
                 #if DEBUG
-                print("⚠️ 已存在相同内容的评论，跳过添加: \(characterName)")
+                print("⚠️ 已存在相同内容的评论，跳过添加: \(characterName) - \(response.content.prefix(30))...")
                 #endif
                 continue
             }
@@ -1204,10 +1201,23 @@ class MultiCharacterCommentService {
             return
         }
         
-        // 🔧 优化：批量添加评论，避免多次触发刷新
+        // 🔧 第一性原理：批量添加评论，避免多次触发刷新
         // 先检查所有评论是否已存在，只添加新的评论
+        // 检查逻辑：1. 检查ID是否已存在 2. 检查内容和角色ID的组合是否已存在（递归检查所有评论包括回复）
         let existingCommentIds = Set(viewModel.posts[postIndex].comments.map { $0.id })
-        let commentsToAdd = newComments.filter { !existingCommentIds.contains($0.id) }
+        let commentsToAdd = newComments.filter { comment in
+            // 检查1：ID是否已存在
+            if existingCommentIds.contains(comment.id) {
+                return false
+            }
+            // 检查2：内容和角色ID的组合是否已存在（递归检查）
+            if comment.isVirtualCharacter, let characterID = comment.characterID {
+                if hasExistingComment(characterID: characterID, content: comment.content, in: viewModel.posts[postIndex].comments) {
+                    return false
+                }
+            }
+            return true
+        }
         
         if commentsToAdd.isEmpty {
             #if DEBUG
@@ -1240,6 +1250,32 @@ class MultiCharacterCommentService {
     // 🔧 优化：移除延迟刷新通知，避免多次刷新导致重影
     // 评论已经通过 directlyAddCommentsToPost 添加到数据模型中，
     // SwiftUI 会自动检测数据变化并更新视图，不需要额外的刷新通知
+    
+    /**
+     * 🔧 第一性原理：递归检查是否存在相同内容和角色ID的评论
+     * @param characterID 角色ID
+     * @param content 评论内容
+     * @param comments 评论列表（包括回复）
+     * @return 是否存在重复评论
+     */
+    private func hasExistingComment(characterID: String, content: String, in comments: [DetailedCommentModel]) -> Bool {
+        for comment in comments {
+            // 检查当前评论
+            if comment.isVirtualCharacter,
+               comment.characterID == characterID,
+               comment.content == content {
+                return true
+            }
+            
+            // 递归检查回复
+            if !comment.replies.isEmpty {
+                if hasExistingComment(characterID: characterID, content: content, in: comment.replies) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
     
     /**
      * 移除重复的评论
