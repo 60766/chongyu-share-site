@@ -234,7 +234,121 @@ struct ExploreView: View {
                             .padding(.bottom, 4) // 进一步减小底部间距
                             
                             // 分类筛选
-                            VStack(alignment: .leading, spacing: 6) { // 进一步减小分类区域内部间距
+                            // 🔒 修复：在 iPad 上所有按钮排成一排，在 iPhone 上保持两排布局
+                            let isIPad = UIDevice.current.userInterfaceIdiom == .pad
+                            
+                            if isIPad {
+                                // iPad 布局：所有按钮排成一排，使用水平滚动
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 20) {
+                                        // 最近互动按钮
+                                        Button(action: {
+                                            handleRecentInteractionsTap()
+                                        }) {
+                                            VStack(spacing: 8) {
+                                                ZStack {
+                                                    Circle()
+                                                    .fill(Color(red: 185/255, green: 145/255, blue: 235/255).opacity(showingRecentInteractions ? 0.9 : 0.15))
+                                                        .frame(width: 56, height: 56)
+                                                    
+                                                    Image(systemName: "clock.badge.checkmark")
+                                                        .font(.system(size: 22))
+                                                    .foregroundColor(showingRecentInteractions ? .white : Color(red: 185/255, green: 145/255, blue: 235/255))
+                                                }
+                                                .shadow(
+                                                color: Color(red: 185/255, green: 145/255, blue: 235/255).opacity(showingRecentInteractions ? 0.2 : 0), 
+                                                radius: 5,
+                                                    x: 0,
+                                                y: 2
+                                                )
+                                                
+                                                Text("最近互动")
+                                                    .font(.system(size: 11))
+                                                    .foregroundColor(showingRecentInteractions ? .primary : Color(.secondaryLabel))
+                                                    .lineLimit(1)
+                                                    .minimumScaleFactor(0.8)
+                                            }
+                                        }
+                                        
+                                        // 我的关注按钮
+                                        Button(action: {
+                                        handleFavoritesTap()
+                                        }) {
+                                            VStack(spacing: 8) {
+                                                ZStack {
+                                                    Circle()
+                                                    .fill(Color(red: 214/255, green: 114/255, blue: 114/255).opacity(showingFavorites ? 0.9 : 0.15))
+                                                        .frame(width: 56, height: 56)
+                                                    
+                                                Image(systemName: "heart.fill")
+                                                        .font(.system(size: 22))
+                                                    .foregroundColor(showingFavorites ? .white : Color(red: 214/255, green: 114/255, blue: 114/255))
+                                                }
+                                                .shadow(
+                                                color: Color(red: 214/255, green: 114/255, blue: 114/255).opacity(showingFavorites ? 0.2 : 0), 
+                                                radius: 5,
+                                                    x: 0,
+                                                y: 2
+                                                )
+                                                
+                                            Text("我的关注")
+                                                    .font(.system(size: 11))
+                                                .foregroundColor(showingFavorites ? .primary : Color(.secondaryLabel))
+                                                    .lineLimit(1)
+                                                    .minimumScaleFactor(0.8)
+                                            }
+                                        }
+                                        
+                                        // 所有分类按钮
+                                        let allCategories: [CharacterCategory] = [.animeCharacter, .historical, .filmCharacter, .gameCharacter, .writer, .philosopher, .mythCharacter]
+                                        ForEach(allCategories, id: \.self) { category in
+                                            Button(action: {
+                                                withAnimation(.easeInOut) {
+                                                    selectedCategory = category
+                                                    showingRecentInteractions = false
+                                                    showingFavorites = false
+                                                    showingUserCharacters = false
+                                                }
+                                            }) {
+                                                categoryView(for: category)
+                                            }
+                                        }
+                                        
+                                        // 我的角色按钮
+                                        Button(action: {
+                                        handleUserCharactersTap()
+                                    }) {
+                                        VStack(spacing: 8) {
+                                            ZStack {
+                                                Circle()
+                                                .fill(Color(red: 95/255, green: 158/255, blue: 225/255).opacity(showingUserCharacters ? 0.9 : 0.15))
+                                                    .frame(width: 56, height: 56)
+                                                
+                                            Image(systemName: "person.crop.circle")
+                                                    .font(.system(size: 22))
+                                                .foregroundColor(showingUserCharacters ? .white : Color(red: 95/255, green: 158/255, blue: 225/255))
+                                            }
+                                            .shadow(
+                                            color: Color(red: 95/255, green: 158/255, blue: 225/255).opacity(showingUserCharacters ? 0.2 : 0), 
+                                            radius: 5,
+                                                x: 0,
+                                            y: 2
+                                            )
+                                            
+                                        Text("我的角色")
+                                                .font(.system(size: 11))
+                                            .foregroundColor(showingUserCharacters ? .primary : Color(.secondaryLabel))
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.8)
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal, 16)
+                                }
+                                .padding(.vertical, 2)
+                            } else {
+                                // iPhone 布局：保持原有的两排布局
+                                VStack(alignment: .leading, spacing: 6) {
                                 // 第一排显示个人相关按钮和前几个分类
                                     HStack(spacing: 20) {
                                         // 最近互动按钮
@@ -266,7 +380,7 @@ struct ExploreView: View {
                                             }
                                         }
                                         
-                                    // 我的关注按钮 (交换位置)
+                                        // 我的关注按钮
                                         Button(action: {
                                         handleFavoritesTap()
                                         }) {
@@ -296,23 +410,14 @@ struct ExploreView: View {
                                         }
                                         
                                     // 显示热门分类按钮（固定在第一排）
-                                    // 第一排：最近互动 | 我的关注 | 动漫角色 | 历史人物 | 影视角色
                                     let firstRowCategories: [CharacterCategory] = [.animeCharacter, .historical, .filmCharacter]
                                     ForEach(firstRowCategories, id: \.self) { category in
                                         Button(action: {
                                             withAnimation(.easeInOut) {
-                                                // 设置选中的分类
                                                 selectedCategory = category
-                                                
-                                                // 重置特殊显示模式，确保包括我的角色模式
                                                 showingRecentInteractions = false
                                                 showingFavorites = false
                                                 showingUserCharacters = false
-                                                
-                                                // 打印调试信息
-                                                #if DEBUG
-                                                print("选中分类: \(category.displayName)")
-                                                #endif
                                             }
                                         }) {
                                             categoryView(for: category)
@@ -320,37 +425,26 @@ struct ExploreView: View {
                                     }
                                     }
                                     .padding(.horizontal, 16)
-                                    .padding(.top, 2) // 减小顶部内边距
-                                }
+                                    .padding(.top, 2)
                                 
-                                // 第二排分类按钮 - 显示中低频分类和我的角色
-                                // 第二排：游戏角色 | 文学世界 | 哲学家 | 神话角色 | 我的角色
+                                    // 第二排分类按钮
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 20) {
-                                    // 显示第二排的分类按钮（按推荐顺序）
                                     let secondRowCategories: [CharacterCategory] = [.gameCharacter, .writer, .philosopher, .mythCharacter]
                                     ForEach(secondRowCategories, id: \.self) { category in
                                             Button(action: {
                                                 withAnimation(.easeInOut) {
-                                            // 设置选中的分类
                                                 selectedCategory = category
-                                            
-                                            // 重置特殊显示模式，确保包括我的角色模式
                                             showingRecentInteractions = false
                                             showingFavorites = false
                                             showingUserCharacters = false
-                                            
-                                            // 打印调试信息
-                                                #if DEBUG
-                                                print("选中分类: \(category.displayName)")
-                                                #endif
                                         }
                                     }) {
                                             categoryView(for: category)
                                     }
                                     }
                                     
-                                    // 我的角色按钮（放在第二排末尾）
+                                            // 我的角色按钮
                                         Button(action: {
                                         handleUserCharactersTap()
                                     }) {
@@ -381,7 +475,9 @@ struct ExploreView: View {
                                     }
                                     .padding(.horizontal, 16)
                             }
-                            .padding(.vertical, 2) // 进一步减小分类区域整体间距
+                                }
+                                .padding(.vertical, 2)
+                            }
                             
                             // 视觉分隔线 - 位于选项卡上方
                             Rectangle()

@@ -22,6 +22,9 @@ struct MultiPersonChatSetupView: View {
     /// 搜索文本
     @State private var searchText: String = ""
     
+    /// 选中的分类
+    @State private var selectedCategory: CharacterCategory? = nil
+    
     /// 历史对话是否展开
     @State private var isChatHistoryExpanded: Bool = false
     
@@ -156,13 +159,35 @@ struct MultiPersonChatSetupView: View {
         return orderedIDs.compactMap { id in allCharacters.first { $0.id == id } }
     }
     
-    /// 根据搜索文本过滤后的角色列表
+    /// 根据搜索文本和分类过滤后的角色列表
     private var filteredCharacters: [CharacterModel] {
-        if searchText.isEmpty {
-            return allCharacters
-        } else {
-            return allCharacters.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        var result = allCharacters
+        
+        // 先按分类过滤
+        if let category = selectedCategory {
+            result = result.filter { $0.category == category }
         }
+        
+        // 再按搜索文本过滤
+        if !searchText.isEmpty {
+            result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        }
+        
+        return result
+    }
+    
+    /// 所有可用的分类（排除"全部"）
+    private var availableCategories: [CharacterCategory] {
+        return [
+            .historical,
+            .philosopher,
+            .writer,
+            .animeCharacter,
+            .gameCharacter,
+            .filmCharacter,
+            .mythCharacter,
+            .myCreation
+        ]
     }
     
     /// "下一步"按钮是否可用
@@ -613,13 +638,27 @@ struct MultiPersonChatSetupView: View {
     private var allCharactersSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             // 显示筛选结果数量
-            if !searchText.isEmpty {
+            if !searchText.isEmpty || selectedCategory != nil {
                 HStack {
                     Text("找到\(filteredCharacters.count)个角色")
                         .font(.system(size: 14))
                         .foregroundColor(Color.warmTextSecondary)
                     
                     Spacer()
+                    
+                    // 清除筛选按钮
+                    if selectedCategory != nil || !searchText.isEmpty {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedCategory = nil
+                                searchText = ""
+                            }
+                        }) {
+                            Text("清除筛选")
+                                .font(.system(size: 14))
+                                .foregroundColor(Color.warmAccent)
+                        }
+                    }
                 }
                 .padding(.horizontal)
             }
@@ -628,10 +667,46 @@ struct MultiPersonChatSetupView: View {
             LocalSearchBar(text: $searchText)
                 .padding(.horizontal)
             
+            // 分类筛选栏
+            categoryFilterSection
+                .padding(.top, 4)
+            
             // 角色网格
             characterGrid
                 .padding(.top, 8)
                 .padding(.bottom, 20)
+        }
+    }
+    
+    /// 分类筛选区域
+    private var categoryFilterSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                // "全部"按钮
+                CategoryFilterButton(
+                    title: "全部",
+                    isSelected: selectedCategory == nil,
+                    color: .gray
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedCategory = nil
+                    }
+                }
+                
+                // 分类按钮
+                ForEach(availableCategories, id: \.self) { category in
+                    CategoryFilterButton(
+                        title: category.displayName,
+                        isSelected: selectedCategory == category,
+                        color: category.color
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedCategory = category
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal)
         }
     }
     
@@ -1139,6 +1214,8 @@ struct HistoricalChatView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarHidden(true) // 隐藏导航栏，避免显示关闭按钮
         }
+        // 🔒 修复：在 iPad 上强制使用 stack 样式，避免侧边栏布局导致内容显示不完整
+        .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
             loadHistoricalChat()
         }
@@ -1190,5 +1267,33 @@ struct HistoricalChatView: View {
             print("❌ 未找到会话ID为 \(chatId) 的历史会话")
             #endif
         }
+    }
+}
+
+// MARK: - 分类筛选按钮组件
+
+struct CategoryFilterButton: View {
+    let title: String
+    let isSelected: Bool
+    let color: Color
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
+                .foregroundColor(isSelected ? .white : color)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(isSelected ? color : color.opacity(0.1))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(isSelected ? Color.clear : color.opacity(0.3), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 } 

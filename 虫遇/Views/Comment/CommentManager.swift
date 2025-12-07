@@ -231,38 +231,13 @@ class CommentManager: ObservableObject {
                 return
             }
             
-            #if DEBUG
-            print("📥 接收到批量生成评论通知，共\(commentsMap.count)条评论，批次ID: \(batchId)")
-            #endif
-            
             // 检查是否为邀请的角色评论
             let isInvited = userInfo["isInvited"] as? Bool ?? false
             
             if isInvited {
-                // 邀请的角色评论应作为顶级评论添加
-                for (characterID, content) in commentsMap {
-                    // 创建虚拟角色评论
-                    let virtualComment = DetailedCommentModel(
-                        username: self.getCharacterName(for: characterID),
-                        userAvatar: self.getCharacterAvatar(for: characterID),
-                        content: content,
-                        datePosted: Date().addingTimeInterval(Double.random(in: 15...60)),
-                        isVirtualCharacter: true,
-                        characterID: characterID
-                    )
-                    
-                    // 添加到帖子作为顶级评论
-                    self.currentPost.addComment(virtualComment)
-                    
-                    // 🔧 重要修复：保存帖子数据到持久化存储
-                    self.savePostData()
-                    
-                    #if DEBUG
-                    print("✅ 邀请的虚拟角色评论已添加为顶级评论 - 角色: \(characterID)")
-                    #endif
-                }
-                
-                // 更新评论列表
+                // 🔧 修复：邀请的评论已经在 MultiCharacterCommentService.directlyAddCommentsToPost 中添加了
+                // 这里只需要更新视图，不需要再次添加评论，避免重复
+                // 只更新评论列表视图，不添加评论
                 self.updateCommentLists()
             } else {
                 // 这是对用户评论的回复，已经在generateVirtualReply方法中处理

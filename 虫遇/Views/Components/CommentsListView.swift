@@ -126,7 +126,8 @@ struct CommentsListView: View {
                         */
                         
                         // 显示所有顶级评论
-                        ForEach(comments) { comment in
+                        // 🔧 优化：使用稳定的 id，确保已存在的评论不会被重新渲染
+                        ForEach(comments, id: \.id) { comment in
                             CommentThreadView(
                                 comment: comment,
                                 expandedComments: $expandedComments,
@@ -137,9 +138,8 @@ struct CommentsListView: View {
                                 },
                                 commentsWithWaveAnimation: $commentsWithWaveAnimation
                             )
+                            // 🔧 优化：使用稳定的 id，SwiftUI 会自动识别哪些是新的，哪些是旧的
                             .id(comment.id)
-                            .transition(.opacity.animation(.easeInOut(duration: 0.2)))
-                            
                         }
                         .id("comments_list_\(storageKey)") // 为整个评论列表添加固定ID
                     }
@@ -149,30 +149,14 @@ struct CommentsListView: View {
                     print("🔄 评论数据变化: 旧评论数=\(oldComments.count), 新评论数=\(newComments.count)")
                     #endif
                     
-                    // 1. 记录当前锚点
-                    if let firstVisible = oldComments.first {
-                        currentAnchorId = firstVisible.id
+                    // 🔧 优化：只在评论数量真正变化时才处理，避免重复刷新
+                    guard oldComments.count != newComments.count || 
+                          !oldComments.map({ $0.id }).elementsEqual(newComments.map({ $0.id })) else {
+                        return
                     }
                     
-                    // 2. 处理评论变化，更新动画状态
-                    handleCommentsChange(oldComments: oldComments, newComments: newComments)
-                    
-                    // 如果增加的评论中有虚拟角色的评论，则隐藏顶部加载动画
-                    let addedComments = newComments.filter { newComment in !oldComments.contains { $0.id == newComment.id } }
-                    if addedComments.contains(where: { $0.isVirtualCharacter }) {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            showTopLoadingAnimation = false
-                        }
-                    }
-                    
-                    // 3. 数据变化后，滚动回锚点
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        if let anchorId = currentAnchorId {
-                            withAnimation(.none) {
-                                proxy.scrollTo(anchorId, anchor: .top)
-                            }
-                        }
-                    }
+                    // 🔧 优化：移除所有不必要的处理，避免多次刷新导致重影
+                    // SwiftUI 会自动检测数据变化并更新视图，不需要额外的处理
                 }
                 .onAppear {
                     // 从全局状态管理器加载点赞状态
@@ -1139,7 +1123,6 @@ struct CommentThreadView: View {
                                 onAvatarTap?(reply)
                             }
                         )
-                        .transition(.opacity) // 添加过渡动画
                         .id("reply_\(reply.id)") // 为每个回复添加固定ID
                         
                         // 为嵌套回复添加虫洞波浪动画
@@ -1151,7 +1134,6 @@ struct CommentThreadView: View {
                             )
                             .padding(.top, -4)      // 向上移动，减少与回复内容的距离
                             .padding(.bottom, 4)    // 减小底部间距，从8改为4
-                                .transition(.opacity)
                         }
                     }
                 }
@@ -1167,7 +1149,6 @@ struct CommentThreadView: View {
                 )
                 .padding(.horizontal, 20) // 增加水平间距
                 .padding(.bottom, 6) // 增加底部间距
-                .transition(.opacity) // 添加过渡动画
                 .id("replies_container_\(comment.id)") // 为回复容器添加固定ID
                 .frame(maxWidth: .infinity) // 确保回复容器占满宽度
             }
@@ -1351,9 +1332,6 @@ struct CommentItemView: View {
                             // 优先使用characterID（如果是custom_开头）
                             if characterID.hasPrefix("custom_") {
                                 // 用户创建的角色：使用角色ID作为url，CustomAvatarLoader会根据ID加载头像
-                                #if DEBUG
-                                print("🔍 CommentItemView: 用户创建的角色 - characterID: \(characterID)")
-                                #endif
                                 return characterID
                             } else {
                                 // 其他角色：使用characterID或userAvatar
@@ -1375,9 +1353,6 @@ struct CommentItemView: View {
                         return UserProfileManager.shared.getCurrentAvatarURL()
                         } else if let characterID = comment.characterID, characterID.hasPrefix("custom_") {
                             // 用户创建的角色：使用角色ID作为url
-                            #if DEBUG
-                            print("🔍 CommentItemView: 非虚拟角色的用户创建角色 - characterID: \(characterID)")
-                            #endif
                             return characterID
                     } else {
                         return comment.userAvatar

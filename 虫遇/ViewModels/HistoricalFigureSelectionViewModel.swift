@@ -421,6 +421,9 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
             #endif
             loadFallbackCharacters()
         }
+        
+        // 加载用户创建的角色
+        loadUserCreatedCharacters()
     }
     
     /**
@@ -581,7 +584,7 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         print("当前帖子作者: \(postAuthor?.name ?? "未设置")")
         #endif
         
-        // 获取所有可用的历史人物
+        // 重新创建所有可用的历史人物（包括用户创建的角色）
         var allFigures: [CommentHistoricalFigure] = []
         
         // 遍历allCharacters并创建CommentHistoricalFigure对象
@@ -946,6 +949,7 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
     
     /**
      * 根据搜索文本和分类筛选历史人物
+     * 使用 CharacterCategory 枚举，与探索页面保持一致
      */
     func filteredFigures(searchText: String, category: String) -> [CommentHistoricalFigure] {
         // 确保有可用角色
@@ -972,26 +976,30 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
                 // 获取用户关注的历史人物
                 filtered = getFollowedFigures()
             } else {
-                // 根据角色类型筛选
-                let typeMapping = [
-                    "历史人物": "historical",
-                    "文学角色": "literary",
-                    "电影角色": "movie",
-                    "动漫角色": "anime",
-                    "神话角色": "mythological",
-                    "电视剧角色": "tv",
-                    "游戏角色": "game",
-                    "虚拟主播": "vtuber"
-                ]
-                
-                if let typeFilter = typeMapping[category] {
+                // 使用 CharacterCategory 枚举进行过滤，与探索页面保持一致
+                if let selectedCategory = CharacterCategory(rawValue: category) {
                     filtered = filtered.filter { figure in
-                        // 查找对应的AppCharacter以获取type
+                        // 查找对应的 AppCharacter，然后转换为 CharacterModel 以获取 category
                         if let character = allCharacters.first(where: { $0.name == figure.name }) {
-                            return character.type == typeFilter
+                            // 将 AppCharacter 转换为 CharacterModel 的 category
+                            let characterCategory = convertAppCharacterToCategory(character)
+                            
+                            #if DEBUG
+                            if selectedCategory == .myCreation {
+                                print("筛选我的创建分类 - 角色: \(character.name), ID: \(character.id), type: \(character.type), 识别为: \(characterCategory)")
+                            }
+                            #endif
+                            
+                            return characterCategory == selectedCategory
                         }
                         return false
                     }
+                    
+                    #if DEBUG
+                    if selectedCategory == .myCreation {
+                        print("我的创建分类筛选结果: \(filtered.count) 个角色")
+                    }
+                    #endif
                 }
             }
         } else {
@@ -1027,6 +1035,129 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         #endif
         
         return result
+    }
+    
+    /**
+     * 将 AppCharacter 转换为 CharacterCategory
+     * 根据 AppCharacter 的 type 和 subtype 映射到 CharacterCategory 枚举
+     */
+    private func convertAppCharacterToCategory(_ character: AppCharacter) -> CharacterCategory {
+        // 首先检查是否是用户创建的角色（ID以 custom_ 开头或 type 为 custom）
+        if character.id.hasPrefix("custom_") || character.type == "custom" {
+            return .myCreation
+        }
+        
+        // 根据 type 和 subtype 映射到 CharacterCategory
+        switch (character.type, character.subtype) {
+        case ("historical", "philosopher"):
+            return .philosopher
+        case ("historical", "writer"), ("literary", _):
+            return .writer
+        case ("historical", _):
+            return .historical
+        case ("anime", _), ("animeCharacter", _):
+            return .animeCharacter
+        case ("game", _), ("gameCharacter", _):
+            return .gameCharacter
+        case ("movie", _), ("filmCharacter", _), ("film", _):
+            return .filmCharacter
+        case ("mythological", _), ("mythCharacter", _), ("myth", _):
+            return .mythCharacter
+        default:
+            // 默认返回历史人物
+            return .historical
+        }
+    }
+    
+    /**
+     * 加载用户创建的角色
+     */
+    private func loadUserCreatedCharacters() {
+        // 尝试从UserDefaults加载自定义角色
+        guard let data = UserDefaults.standard.data(forKey: "CustomCharactersData") else {
+            #if DEBUG
+            print("没有找到用户创建的角色数据")
+            #endif
+            return
+        }
+        
+        do {
+            if let characterDicts = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                var loadedCharacters: [AppCharacter] = []
+                
+                for dict in characterDicts {
+                    if let id = dict["id"] as? String,
+                       let name = dict["name"] as? String,
+                       let avatar = dict["avatar"] as? String,
+                       let profession = dict["profession"] as? String,
+                       let bio = dict["bio"] as? String,
+                       let categoryRawValue = dict["category"] as? String,
+                       let era = dict["era"] as? String {
+                        
+                        // 确保 ID 以 custom_ 开头，这样 convertAppCharacterToCategory 才能正确识别
+                        let characterId = id.hasPrefix("custom_") ? id : "custom_\(id)"
+                        
+                        // 用户创建的角色，无论原始分类是什么，都设置为 custom 类型
+                        // 这样在筛选时能正确识别为 .myCreation
+                        let character = AppCharacter(
+                            id: characterId,
+                            name: name,
+                            type: "custom",  // 强制设置为 custom，确保能被识别为用户创建的角色
+                            subtype: "myCreation",
+                            era: era,
+                            primaryField: profession,
+                            briefDescription: bio,
+                            avatarName: avatar,
+                            region: "",
+                            contentAffinities: [:]
+                        )
+                        
+                        loadedCharacters.append(character)
+                        
+                        #if DEBUG
+                        print("加载用户创建的角色: \(name), ID: \(characterId), type: custom")
+                        #endif
+                    }
+                }
+                
+                // 将用户创建的角色添加到 allCharacters
+                allCharacters.append(contentsOf: loadedCharacters)
+                
+                #if DEBUG
+                print("成功加载了\(loadedCharacters.count)个用户创建的角色")
+                #endif
+            }
+        } catch {
+            #if DEBUG
+            print("加载自定义角色失败: \(error)")
+            #endif
+        }
+    }
+    
+    /**
+     * 将 CharacterCategory 转换为 AppCharacter 的 type 和 subtype
+     */
+    private func convertCategoryToTypeAndSubtype(_ category: CharacterCategory) -> (type: String, subtype: String) {
+        switch category {
+        case .historical:
+            return ("historical", "historical")
+        case .philosopher:
+            return ("historical", "philosopher")
+        case .writer:
+            return ("historical", "writer")
+        case .animeCharacter:
+            return ("anime", "animeCharacter")
+        case .gameCharacter:
+            return ("game", "gameCharacter")
+        case .filmCharacter:
+            return ("movie", "filmCharacter")
+        case .mythCharacter:
+            return ("mythological", "mythCharacter")
+        case .myCreation:
+            return ("custom", "myCreation")
+        default:
+            return ("historical", "historical")
+        }
     }
     
     /**

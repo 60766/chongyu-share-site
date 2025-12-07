@@ -989,9 +989,14 @@ struct HomeView: View {
                         VStack(spacing: 0) {
                             // 历史人物横向滚动区 - 移到顶部位置，添加适当顶部间距
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 25) {
+                                // 🔒 修复：在 iPad 上使用更大的间距，让 10 个角色铺满屏幕
+                                let isIPad = UIDevice.current.userInterfaceIdiom == .pad
+                                let spacing: CGFloat = isIPad ? 45 : 25 // iPad 使用更大的间距 45，iPhone 保持 25
+                                let characterCount = isIPad ? 10 : 5 // iPad 显示 10 个，iPhone 显示 5 个
+                                
+                                HStack(spacing: spacing) {
                                     // 角色卡片 - 使用 topCharacters
-                                    ForEach(topCharacters.prefix(5)) { character in
+                                    ForEach(topCharacters.prefix(characterCount)) { character in
                                         characterCard(for: character)
                                             .id(character.id)
                                             .offset(y: contentAppeared ? 0 : 20)
@@ -2118,16 +2123,20 @@ showCharacterPicker = true
         // 第一性原理：获取最近互动角色，不足则用默认角色补充
         let recentChatCharacters = getRecentChatCharacters()
         
-        if recentChatCharacters.count >= 5 {
-            // 足够的最近互动角色，取前5个
-            self.topCharacters = Array(recentChatCharacters.prefix(5))
+        // 🔒 修复：在 iPad 上显示更多角色以铺满屏幕
+        let isIPad = UIDevice.current.userInterfaceIdiom == .pad
+        let targetCount = isIPad ? 10 : 5 // iPad 显示 10 个，iPhone 显示 5 个
+        
+        if recentChatCharacters.count >= targetCount {
+            // 足够的最近互动角色，取前 targetCount 个
+            self.topCharacters = Array(recentChatCharacters.prefix(targetCount))
         } else {
-            // 不足5个，用默认角色补充，确保去重
+            // 不足 targetCount 个，用默认角色补充，确保去重
             let defaultCharacters = CharacterModel.sampleCharacters
             let usedIds = Set(recentChatCharacters.map { $0.id })
             let supplementCharacters = defaultCharacters.filter { !usedIds.contains($0.id) }
             
-            let neededCount = 5 - recentChatCharacters.count
+            let neededCount = targetCount - recentChatCharacters.count
             let finalSupplementCharacters = Array(supplementCharacters.prefix(neededCount))
             
             // 最近互动角色排在前面

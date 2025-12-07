@@ -809,12 +809,13 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                 } else {
                     // 移除调试输出，避免在视图渲染时重复打印
                 }
+            // 🔧 优化：检查是否已存在相同ID的评论，避免重复添加
+            if !comments.contains(where: { $0.id == comment.id }) {
             comments.insert(comment, at: 0)
-            // 移除调试输出，避免在视图渲染时重复打印
-            // 简化通知机制 - 只发送对象变更通知
+                // 🔧 优化：只发送一次对象变更通知，避免多次刷新
             DispatchQueue.main.async {
-                // 直接发送对象变更通知，让SwiftUI自动刷新
                 self.objectWillChange.send()
+                }
                 }
             } else {
                 // 移除调试输出，避免在视图渲染时重复打印

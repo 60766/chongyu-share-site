@@ -332,9 +332,6 @@ struct Avatar: View {
         // 对于自定义角色，尝试从文档目录加载头像
         let characterId = cleanCharacterId
         
-        #if DEBUG
-        print("🔄 Avatar: 尝试加载自定义头像 - characterId: \(characterId), url: \(url)")
-        #endif
         
         if let image = CustomAvatarLoader.shared.loadCustomAvatar(characterId: characterId, avatarName: url) {
             #if DEBUG

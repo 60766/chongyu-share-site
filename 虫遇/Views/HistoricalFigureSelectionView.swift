@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /**
  * 历史人物选择视图
@@ -13,14 +14,24 @@ struct HistoricalFigureSelectionView: View {
     // 状态变量
     @StateObject private var viewModel: HistoricalFigureSelectionViewModel
     @State private var searchText: String = ""
-    @State private var selectedCategory: String = "全部"
+    @State private var selectedCategory: CharacterCategory? = nil
     
     // 常量 - 设计系统
     private let spacing: CGFloat = 8
     private let cornerRadius: CGFloat = 12
     
-    // UI常量
-    private let categories = ["全部", "最近", "关注", "历史人物", "文学角色", "电影角色", "动漫角色", "神话角色", "电视剧角色", "游戏角色", "虚拟主播"]
+    // UI常量 - 使用与探索页面一致的分类
+    private var availableCategories: [CharacterCategory] {
+        return [
+            .animeCharacter,
+            .historical,
+            .filmCharacter,
+            .gameCharacter,
+            .writer,
+            .philosopher,
+            .mythCharacter
+        ]
+    }
     private let gridColumns = [
         GridItem(.flexible(), spacing: 12),
         GridItem(.flexible(), spacing: 12),
@@ -49,12 +60,11 @@ struct HistoricalFigureSelectionView: View {
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
-                // 顶部区域和分类，不滚动
+                // 顶部区域，不滚动
                 headerSection
                     .padding(.top, 8) // 增加顶部间距
-                categorySection
                 
-                // 角色列表，可滚动
+                // 角色列表，可滚动（包含分类区域）
                 figuresListView
                     .frame(maxHeight: .infinity)
                 
@@ -83,6 +93,9 @@ struct HistoricalFigureSelectionView: View {
     private var figuresListView: some View {
         ScrollView {
             VStack(spacing: 0) {
+                // 分类区域 - 放在 ScrollView 内部，这样水平滚动不会触发垂直滚动
+                categorySection
+                
                 if viewModel.isLoading {
                     // 加载中状态
                     ProgressView("加载中...")
@@ -91,7 +104,8 @@ struct HistoricalFigureSelectionView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                         .padding(.vertical, 50)
                 } else {
-                    let figures = viewModel.filteredFigures(searchText: searchText, category: selectedCategory)
+                    let categoryString = selectedCategory?.rawValue ?? "全部"
+                    let figures = viewModel.filteredFigures(searchText: searchText, category: categoryString)
                     
                     if figures.isEmpty {
                         // 空状态
@@ -197,41 +211,39 @@ struct HistoricalFigureSelectionView: View {
         .padding(.bottom, spacing / 2)
     }
     
-    // 分类标签栏
+    // 分类标签栏 - 使用与多人对话选择角色页面一致的样式
     private var categorySection: some View {
         VStack(spacing: 0) {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: spacing * 1.5) {
-                ForEach(categories, id: \.self) { category in
-                    Button(action: {
-                        selectedCategory = category
-                    }) {
-                        Text(category)
-                            .font(.system(size: 13, weight: selectedCategory == category ? .medium : .regular))
-                            .foregroundColor(selectedCategory == category ? primaryColor : secondaryColor.opacity(0.8))
-                            .padding(.bottom, spacing * 0.75)
-                            .overlay(
-                                selectedCategory == category ?
-                                Rectangle()
-                                    .frame(height: 1.5)
-                                    .foregroundColor(primaryColor)
-                                    .offset(y: spacing / 4)
-                                : nil,
-                                alignment: .bottom
-                            )
+                HStack(spacing: 12) {
+                    // "全部"按钮
+                    CategoryFilterButton(
+                        title: "全部",
+                        isSelected: selectedCategory == nil,
+                        color: .gray
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedCategory = nil
+                        }
                     }
-                    .padding(.horizontal, spacing / 2)
+                    
+                    // 分类按钮
+                    ForEach(availableCategories, id: \.self) { category in
+                        CategoryFilterButton(
+                            title: category.displayName,
+                            isSelected: selectedCategory == category,
+                            color: category.color
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedCategory = category
+                            }
+                    }
                 }
             }
             .padding(.horizontal, spacing * 2)
             .padding(.vertical, spacing * 0.75)
         }
         .background(backgroundColor)
-            
-            // 角色数量指示器
-            HStack {
-                Spacer()
-            }
         }
     }
     
@@ -332,25 +344,28 @@ struct HistoricalFigureSelectionView: View {
                         HStack(spacing: spacing * 1.5) {
                             ForEach(viewModel.selectedFigures) { figure in
                                 ZStack(alignment: .topTrailing) {
-                                     // 头像 - 使用CharacterAvatarService确保显示首字母头像
+                                     // 头像 - 增大尺寸，从22改为36，更容易看清
                                      CharacterAvatarService.shared.getAvatarView(
                                          for: figure.avatarUrl,
                                          name: figure.name,
                                          category: "历史人物",
-                                         size: 22
+                                         size: 36
                                      )
                                     
                                     Button(action: {
                                         viewModel.toggleSelection(figure)
                                     }) {
                                         Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(secondaryColor)
-                                            .background(backgroundColor)
-                                            .clipShape(Circle())
+                                            .font(.system(size: 14)) // 增大叉号尺寸，从10改为14
+                                            .foregroundColor(.white)
+                                            .background(
+                                                Circle()
+                                                    .fill(secondaryColor)
+                                                    .frame(width: 18, height: 18)
+                                            )
                                     }
-                                    .offset(x: 2, y: -2)
-                                    .padding(2)
+                                    .offset(x: 4, y: -4) // 调整偏移量以适应更大的按钮
+                                    .padding(4) // 增加内边距，增大点击区域
                                 }
                                 .padding(.horizontal, spacing / 2)
                             }
@@ -367,7 +382,33 @@ struct HistoricalFigureSelectionView: View {
                 .padding(.top, spacing / 4)
             }
             
-            // 邀请按钮 - 增强视觉效果
+            // 按钮组 - 邀请和取消按钮
+            HStack(spacing: spacing) {
+                // 取消按钮 - 增大尺寸，更容易点击
+                Button(action: {
+                    // 添加触觉反馈
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred()
+                    
+                    presentationMode.wrappedValue.dismiss()
+                }) {
+                    Text("取消")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(secondaryColor)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50) // 增大高度，更容易点击
+                        .background(
+                            RoundedRectangle(cornerRadius: 25)
+                                .fill(surfaceColor.opacity(0.8))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 25)
+                                .stroke(secondaryColor.opacity(0.3), lineWidth: 1)
+                        )
+                }
+                .padding(.leading, spacing * 2)
+                
+                // 邀请按钮 - 增大尺寸，更容易点击
             Button(action: {
                 // 添加触觉反馈
                 let generator = UIImpactFeedbackGenerator(style: .medium)
@@ -380,7 +421,7 @@ struct HistoricalFigureSelectionView: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 42) // 固定高度
+                        .frame(height: 50) // 增大高度，更容易点击
                     .background(
                         viewModel.selectedFigures.isEmpty
                         ? AnyView(Color.gray.opacity(0.5))
@@ -390,12 +431,13 @@ struct HistoricalFigureSelectionView: View {
                             endPoint: .bottomTrailing
                           ))
                     )
-                    .cornerRadius(21) // 更圆润的按钮，半径为高度的一半
+                        .cornerRadius(25) // 更圆润的按钮，半径为高度的一半
                     .shadow(color: viewModel.selectedFigures.isEmpty ? Color.clear : primaryColor.opacity(0.4), radius: 6, x: 0, y: 3)
             }
             .disabled(viewModel.selectedFigures.isEmpty)
-            .padding(.horizontal, spacing * 2)
-            .padding(.vertical, spacing / 4)
+                .padding(.trailing, spacing * 2)
+            }
+            .padding(.vertical, spacing)
         }
         .padding(.bottom, 16) // 增加底部间距，让按钮位置稍微高一些
     }

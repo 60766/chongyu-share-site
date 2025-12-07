@@ -375,6 +375,8 @@ struct CharacterDetailView: View {
                     )
                 )
             }
+            // 🔒 修复：在 iPad 上强制使用 stack 样式，避免侧边栏布局导致内容显示不完整
+            .navigationViewStyle(StackNavigationViewStyle())
         }
         .onDisappear {
             // 清理导航状态

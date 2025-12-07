@@ -985,12 +985,6 @@ class MultiCharacterCommentService {
      */
     private func sendCommentsNotifications(postId: String, commentsMap: [String: CharacterResponse], isInvited: Bool, requestContext: CommentRequestContext) {
         // 首先，直接将评论添加到帖子模型中，确保数据层面的更新
-        #if DEBUG
-        print("🔧 传递给directlyAddCommentsToPost的目标评论ID: \(requestContext.userCommentId ?? "nil")")
-        print("🔧 DEBUG: sendCommentsNotifications中的requestContext状态:")
-        print("  - userCommentId: \(requestContext.userCommentId ?? "nil")")
-        print("  - userComment: \(requestContext.userComment ?? "nil")")
-        #endif
         self.directlyAddCommentsToPost(
             postId: postId, 
             commentsMap: commentsMap, 
@@ -999,15 +993,6 @@ class MultiCharacterCommentService {
         
             // 生成一个唯一的批次ID，用于区分不同的评论批次
             let batchId = UUID().uuidString
-            
-        #if DEBUG
-        print("📤 MultiCharacterCommentService: 准备发送通知")
-        print("📤 userComment参数: '\(requestContext.userComment ?? "nil")'")
-        print("📤 userComment是否为nil: \(requestContext.userComment == nil)")
-        print("📤 userComment是否为空: \(requestContext.userComment?.isEmpty ?? true)")
-        print("📤 originalPost: \(requestContext.originalPost?.prefix(30) ?? "nil")")
-        print("📤 originalPostAuthor: \(requestContext.originalPostAuthor ?? "nil")")
-        #endif
             
         // 在主线程上执行UI更新
         DispatchQueue.main.async {
@@ -1026,13 +1011,6 @@ class MultiCharacterCommentService {
             // 添加用户评论和原帖信息
             if let userComment = requestContext.userComment {
                 userInfo["userComment"] = userComment
-                #if DEBUG
-                print("✅ 添加userComment到通知userInfo: '\(userComment)'")
-                #endif
-            } else {
-                #if DEBUG
-                print("⚠️ userComment为nil，不添加到通知userInfo")
-                #endif
             }
             if let originalPost = requestContext.originalPost {
                 userInfo["originalPost"] = originalPost
@@ -1041,75 +1019,19 @@ class MultiCharacterCommentService {
                 userInfo["originalPostAuthor"] = originalPostAuthor
             }
             
-            #if DEBUG
-            print("📤 最终userInfo内容:")
-            print("📤   userComment: '\(userInfo["userComment"] as? String ?? "nil")'")
-            print("📤   commentsMap: \(contentOnlyMap)")
-            #endif
-            
+            // 🔧 优化：只发送一个主要的通知，避免多次刷新导致重影
             NotificationCenter.default.post(
                 name: NSNotification.Name("CommentsGenerated"),
                 object: nil,
                 userInfo: userInfo
             )
             
-            // 直接触发 PostViewModel 中的帖子刷新
+            // 🔧 优化：只更新数据，不强制触发多次刷新
             let viewModel = PostViewModel.shared
             if let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) {
-                // 强制触发 objectWillChange 通知
+                // 只触发一次 objectWillChange，让 SwiftUI 自然更新
                 viewModel.posts[postIndex].objectWillChange.send()
-                
-                    // 创建一个临时副本并重新赋值，强制 SwiftUI 刷新
-                    let tempPost = viewModel.posts[postIndex]
-                    viewModel.posts[postIndex] = tempPost
             }
-            
-            // 发送全局帖子刷新通知
-            NotificationCenter.default.post(
-                name: NSNotification.Name("GlobalPostsRefresh"),
-                object: nil
-            )
-                    
-            // 发送评论更新通知
-            NotificationCenter.default.post(
-                name: NSNotification.Name("PostCommentsUpdated"),
-                object: nil,
-                userInfo: ["postID": postId, "batchId": batchId, "forceUpdate": true]
-            )
-            
-            // 确保UI刷新
-            NotificationCenter.default.post(
-                name: NSNotification.Name("RefreshPostComments"),
-                        object: nil,
-                        userInfo: [
-                            "postID": postId, 
-                            "batchId": batchId,
-                            "immediateDisplay": true,
-                    "preventScroll": true,
-                    "forceUpdate": true
-                        ]
-                    )
-                    
-                    // 添加额外的强制刷新通知，确保评论立即显示
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("ForceRefreshComments"),
-                        object: nil,
-                        userInfo: [
-                            "keepExpandState": true,
-                            "preventScroll": true,
-                    "immediateDisplay": true,
-                    "forceUpdate": true
-                        ]
-                    )
-            
-            #if DEBUG
-            print("📣 已发送所有通知，批量评论内容已生成，批次ID: \(batchId)")
-            #endif
-            
-            // 延迟一段时间后再次刷新，确保在用户返回页面时能看到评论
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                self.sendDelayedRefreshNotifications(postId: postId, batchId: batchId)
-                }
         }
     }
     
@@ -1140,8 +1062,7 @@ class MultiCharacterCommentService {
             // 获取角色头像
             let avatarPath = CharacterAvatarService.shared.getAvatarName(for: characterID)
             
-            // 检查是否已存在相同内容和角色的评论
-            // 防止重复添加相同的评论
+            // 🔧 优化：先检查是否已存在相同内容和角色的评论，避免重复添加
             let existingComment = viewModel.posts[postIndex].comments.first {
                 $0.characterID == characterID && $0.content == response.content
             }
@@ -1152,6 +1073,47 @@ class MultiCharacterCommentService {
                 #endif
                 continue
             }
+            
+            // 创建评论模型，使用稍微延后的时间戳，确保虚拟角色回复在用户评论之后
+            // 生成一个稍微晚于当前时间的时间戳（1-5秒之间的随机值）
+            let randomOffset = Double.random(in: 1...5)
+            let commentDate = Date().addingTimeInterval(randomOffset)
+            
+            // 🔧 关键修复：设置正确的父评论ID和回复对象
+            // 如果这是对用户评论的回复，应该设置parentCommentId和replyToUsername
+            let parentCommentId: UUID?
+            let replyToUsername: String?
+            
+            if let userCommentId = requestContext.userCommentId {
+                // 这是对用户评论的回复，设置父评论ID
+                parentCommentId = UUID(uuidString: userCommentId)
+                replyToUsername = "当前用户"
+                #if DEBUG
+                print("🔧 设置虚拟角色回复的父评论ID: \(userCommentId)")
+                #endif
+            } else {
+                // 这是邀请的虚拟角色评论，或者是虚拟角色对帖子的评论
+                parentCommentId = nil
+                replyToUsername = nil
+                #if DEBUG
+                print("🔧 虚拟角色评论作为顶级评论（邀请评论或帖子评论）")
+                #endif
+            }
+            
+            // 🔧 优化：为每个评论生成稳定的ID，确保不会重复
+            let commentId = UUID() // 每次生成新的唯一ID
+            let comment = DetailedCommentModel(
+                id: commentId, // 🔧 使用明确的ID
+                username: characterName,
+                userAvatar: avatarPath,
+                content: response.content,
+                datePosted: commentDate,
+                isVirtualCharacter: true,
+                characterID: characterID,
+                parentCommentId: parentCommentId,
+                replyToUsername: replyToUsername,
+                likes: 0
+            )
             
             // 处理点赞逻辑 - 🔧 使用传入的目标评论ID，确保点赞精确性
             // 延迟点赞，模拟虚拟角色先回复再点赞的真实行为
@@ -1207,44 +1169,6 @@ class MultiCharacterCommentService {
                 }
             }
             
-            // 创建评论模型，使用稍微延后的时间戳，确保虚拟角色回复在用户评论之后
-            // 生成一个稍微晚于当前时间的时间戳（1-5秒之间的随机值）
-            let randomOffset = Double.random(in: 1...5)
-            let commentDate = Date().addingTimeInterval(randomOffset)
-            
-            // 🔧 关键修复：设置正确的父评论ID和回复对象
-            // 如果这是对用户评论的回复，应该设置parentCommentId和replyToUsername
-            let parentCommentId: UUID?
-            let replyToUsername: String?
-            
-            if let userCommentId = requestContext.userCommentId {
-                // 这是对用户评论的回复，设置父评论ID
-                parentCommentId = UUID(uuidString: userCommentId)
-                replyToUsername = "当前用户"
-                #if DEBUG
-                print("🔧 设置虚拟角色回复的父评论ID: \(userCommentId)")
-                #endif
-            } else {
-                // 这是邀请的虚拟角色评论，或者是虚拟角色对帖子的评论
-                parentCommentId = nil
-                replyToUsername = nil
-                #if DEBUG
-                print("🔧 虚拟角色评论作为顶级评论（邀请评论或帖子评论）")
-                #endif
-            }
-            
-            let comment = DetailedCommentModel(
-                username: characterName,
-                userAvatar: avatarPath,
-                content: response.content,
-                datePosted: commentDate,
-                isVirtualCharacter: true,
-                characterID: characterID,
-                parentCommentId: parentCommentId,
-                replyToUsername: replyToUsername,
-                likes: 0
-            )
-            
             newComments.append(comment)
         }
         
@@ -1255,11 +1179,26 @@ class MultiCharacterCommentService {
             return
         }
         
-        // 🔧 关键修复：使用addComment方法正确添加评论，确保回复被添加到父评论中
-        // 而不是直接操作评论数组
-        for comment in newComments {
+        // 🔧 优化：批量添加评论，避免多次触发刷新
+        // 先检查所有评论是否已存在，只添加新的评论
+        let existingCommentIds = Set(viewModel.posts[postIndex].comments.map { $0.id })
+        let commentsToAdd = newComments.filter { !existingCommentIds.contains($0.id) }
+        
+        if commentsToAdd.isEmpty {
+            #if DEBUG
+            print("⚠️ 所有评论都已存在，跳过添加")
+            #endif
+            return
+        }
+        
+        // 🔧 优化：批量添加评论，减少刷新次数
+        for comment in commentsToAdd {
             viewModel.posts[postIndex].addComment(comment)
         }
+        
+        #if DEBUG
+        print("✅ 已添加 \(commentsToAdd.count) 条新评论（共 \(newComments.count) 条，跳过 \(newComments.count - commentsToAdd.count) 条重复评论）")
+        #endif
         
         // 🔧 重要修复：保存帖子数据到持久化存储
         NotificationCenter.default.post(
@@ -1273,52 +1212,9 @@ class MultiCharacterCommentService {
         #endif
     }
     
-    /**
-     * 发送延迟的刷新通知
-     * 确保在用户返回页面时能看到评论
-     * @param postId 帖子ID
-     * @param batchId 批次ID
-     */
-    private func sendDelayedRefreshNotifications(postId: String, batchId: String) {
-        // 直接触发 PostViewModel 中的帖子刷新 - 只刷新视图，不添加新评论
-        let viewModel = PostViewModel.shared
-        if let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) {
-            // 确保评论按时间排序（较新的评论在前）并去重
-            let uniqueComments = removeDuplicateComments(viewModel.posts[postIndex].comments)
-            viewModel.posts[postIndex].comments = uniqueComments
-            
-            // 强制触发 objectWillChange 通知
-            viewModel.posts[postIndex].objectWillChange.send()
-            
-            // 创建一个临时副本并重新赋值，强制 SwiftUI 刷新
-            let tempPost = viewModel.posts[postIndex]
-            viewModel.posts[postIndex] = tempPost
-            
-            // 🎯 关键节点5：虚拟角色评论刷新后保存
-            viewModel.saveAtCriticalPoint(reason: "虚拟角色评论刷新")
-            
-            #if DEBUG
-            print("🔍 延迟刷新时检查到 \(viewModel.posts[postIndex].comments.count) 条评论")
-            #endif
-        }
-        
-        // 发送全局帖子刷新通知
-        NotificationCenter.default.post(
-            name: NSNotification.Name("GlobalPostsRefresh"),
-            object: nil
-        )
-        
-                // 发送评论更新通知
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("PostCommentsUpdated"),
-                object: nil,
-            userInfo: ["postID": postId, "batchId": batchId, "forceUpdate": true]
-            )
-                
-        #if DEBUG
-        print("📣 已发送延迟刷新通知，确保用户返回页面时能看到评论")
-        #endif
-    }
+    // 🔧 优化：移除延迟刷新通知，避免多次刷新导致重影
+    // 评论已经通过 directlyAddCommentsToPost 添加到数据模型中，
+    // SwiftUI 会自动检测数据变化并更新视图，不需要额外的刷新通知
     
     /**
      * 移除重复的评论

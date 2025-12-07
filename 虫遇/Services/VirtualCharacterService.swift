@@ -980,7 +980,8 @@ class VirtualCharacterService {
         #if DEBUG
         print("🔄 使用批量评论生成服务处理\(characterIDs.count)个角色")
         #endif
-        MultiCharacterCommentService.shared.generateMultiCharacterComments(
+        let commentService = MultiCharacterCommentService.shared
+        commentService.generateMultiCharacterComments(
             characterIDs: characterIDs,
             postId: postId,
             postContent: postContent,

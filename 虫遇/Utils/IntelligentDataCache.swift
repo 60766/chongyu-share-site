@@ -96,9 +96,6 @@ class IntelligentDataCache: ObservableObject {
                 self.evictOldestPost()
             }
             
-            #if DEBUG
-            print("💾 已缓存帖子: \(post.id)")
-            #endif
         }
     }
     
@@ -168,9 +165,6 @@ class IntelligentDataCache: ObservableObject {
                 self.evictOldestComments()
             }
             
-            #if DEBUG
-            print("💾 已缓存评论: \(postId), 数量: \(comments.count)")
-            #endif
         }
     }
     

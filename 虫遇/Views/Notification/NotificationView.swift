@@ -300,6 +300,7 @@ struct NotificationView: View {
     }
     
     var body: some View {
+        // 🔒 修复：在 iPad 上使用 stack 导航样式，避免侧边栏布局导致内容显示不完整
         NavigationView {
             GeometryReader { geometry in
                 ZStack(alignment: .top) {
@@ -446,6 +447,8 @@ struct NotificationView: View {
                 .edgesIgnoringSafeArea(.bottom)
             }
         }
+        // 🔒 修复：在 iPad 上强制使用 stack 样式，避免侧边栏布局
+        .navigationViewStyle(StackNavigationViewStyle())
     }
     
     // 创建额外的测试通知来展示不同的格式 - 已删除预设数据

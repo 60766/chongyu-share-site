@@ -259,11 +259,6 @@ struct FullscreenPostDetailView: View {
         self.onNextPost = onNextPost
         self.onPrevPost = onPrevPost
         
-        // 打印初始化信息以便调试
-        #if DEBUG
-        print("🔄 初始化FullscreenPostDetailView - 帖子ID: \(post.id.uuidString)")
-        #endif
-        
         // Phase 2优化 - 初始化时缓存当前帖子
         intelligentCache.cachePost(post)
     }
@@ -2297,7 +2292,9 @@ struct FullscreenPostDetailView: View {
                     .font(DesignSystem.Typography.postContent)
                     .foregroundColor(DesignSystem.Colors.primaryText)
                     .lineSpacing(6.0)
+                    .multilineTextAlignment(.leading) // 🔒 修复：用户发布的文字帖子左对齐
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading) // 🔒 修复：确保文字左对齐
                     .padding(.leading, textLeadingPadding)
                     .padding(.trailing, 16)
                     .padding(.vertical, 12)
