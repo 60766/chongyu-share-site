@@ -2,6 +2,17 @@ import Foundation
 import SwiftUI
 import Combine
 
+// 扩展String以支持正则表达式匹配
+extension String {
+    func matches(pattern: String) -> Bool {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return false
+        }
+        let range = NSRange(location: 0, length: self.utf16.count)
+        return regex.firstMatch(in: self, options: [], range: range) != nil
+    }
+}
+
 /**
  * 本地通知服务
  * 基于用户真实行为生成对应的通知，完全本地存储
@@ -685,9 +696,113 @@ class NotificationService: ObservableObject {
     }
     
     private func getCharacterInfo(characterId: String) -> NotificationModel.CharacterInfo? {
-        // 从CharacterSystem获取角色信息
+        // 🔧 修复：优先从CharacterSystem获取角色信息，包括用户创建的角色
         let allCharacters = CharacterSystem.shared.getAllCharacters()
-        guard let character = allCharacters.first(where: { $0.id == characterId }) else {
+        // 🔧 修复：使用不区分大小写的比较，因为ID可能有大小写差异
+        var character = allCharacters.first(where: { $0.id.lowercased() == characterId.lowercased() })
+        
+        // 如果CharacterSystem中没有找到，尝试多种方式查找用户创建的角色
+        if character == nil {
+            // 方法1: 检查是否是custom_开头的ID，从UserDefaults获取
+            if characterId.lowercased().hasPrefix("custom_") {
+                if let data = UserDefaults.standard.data(forKey: "CustomCharactersData"),
+                   let characterDicts = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                    
+                    // 🔧 修复：使用不区分大小写的ID匹配，支持多种ID格式
+                    let characterDict = characterDicts.first(where: {
+                        let id = ($0["id"] as? String ?? "").lowercased()
+                        let targetId = characterId.lowercased()
+                        // 支持完全匹配、去掉custom_前缀匹配、添加custom_前缀匹配
+                        return id == targetId || 
+                               id == targetId.replacingOccurrences(of: "custom_", with: "") ||
+                               "custom_\(id)" == targetId
+                    })
+                    
+                    if let characterDict = characterDict,
+                       let name = characterDict["name"] as? String,
+                       let profession = characterDict["profession"] as? String,
+                       let era = characterDict["era"] as? String {
+                        
+                        // 创建临时的CharacterIdentity对象，保持原始ID的大小写
+                        let finalId = (characterDict["id"] as? String ?? characterId).hasPrefix("custom_") ? 
+                            (characterDict["id"] as? String ?? characterId) : "custom_\(characterDict["id"] as? String ?? characterId)"
+                        
+                        // 🔧 修复：对于用户创建的角色，直接使用角色ID作为头像路径，Avatar组件会处理加载
+                        // 这样Avatar组件可以使用角色ID从文档目录加载头像
+                        let avatarPath = finalId
+                        
+                        // 🔧 修复：创建CharacterIdentity而不是AppCharacter
+                        character = CharacterSystem.CharacterIdentity(
+                            id: finalId,
+                            name: name,
+                            type: .historical, // 用户创建的角色暂时使用historical类型
+                            era: era,
+                            primaryField: profession,
+                            briefDescription: characterDict["bio"] as? String ?? "",
+                            avatarName: avatarPath, // 使用角色ID，Avatar组件会处理加载
+                            region: "",
+                            contentAffinities: [:],
+                            subtype: "myCreation"
+                        )
+                    }
+                }
+            }
+            
+            // 方法2: 如果还是没找到，尝试去掉或添加custom_前缀再次查找
+            if character == nil {
+                let alternativeId: String
+                if characterId.lowercased().hasPrefix("custom_") {
+                    alternativeId = String(characterId.dropFirst(7)) // 去掉"custom_"
+                } else {
+                    alternativeId = "custom_\(characterId)"
+                }
+                
+                // 在CharacterSystem中查找
+                character = allCharacters.first(where: { $0.id.lowercased() == alternativeId.lowercased() })
+                
+                // 如果还是没找到，从UserDefaults查找
+                if character == nil {
+                    if let data = UserDefaults.standard.data(forKey: "CustomCharactersData"),
+                       let characterDicts = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                        
+                        let characterDict = characterDicts.first(where: {
+                            let id = ($0["id"] as? String ?? "").lowercased()
+                            let targetId = alternativeId.lowercased()
+                            return id == targetId || 
+                                   id == targetId.replacingOccurrences(of: "custom_", with: "") ||
+                                   "custom_\(id)" == targetId
+                        })
+                        
+                        if let characterDict = characterDict,
+                           let name = characterDict["name"] as? String,
+                           let profession = characterDict["profession"] as? String,
+                           let era = characterDict["era"] as? String {
+                            
+                            let finalId = (characterDict["id"] as? String ?? alternativeId).hasPrefix("custom_") ? 
+                                (characterDict["id"] as? String ?? alternativeId) : "custom_\(characterDict["id"] as? String ?? alternativeId)"
+                            
+                            // 🔧 修复：对于用户创建的角色，直接使用角色ID作为头像路径
+                            let avatarPath = finalId
+                            
+                            character = CharacterSystem.CharacterIdentity(
+                                id: finalId,
+                                name: name,
+                                type: .historical,
+                                era: era,
+                                primaryField: profession,
+                                briefDescription: characterDict["bio"] as? String ?? "",
+                                avatarName: avatarPath,
+                                region: "",
+                                contentAffinities: [:],
+                                subtype: "myCreation"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        guard let character = character else {
             #if DEBUG
             print("⚠️ NotificationService: 未找到角色ID: \(characterId)")
             #endif
@@ -696,6 +811,11 @@ class NotificationService: ObservableObject {
         
         // 根据角色类型映射到通知类别
         let category: CharacterCategory = {
+            // 用户创建的角色
+            if character.id.hasPrefix("custom_") || character.subtype == "myCreation" {
+                return .myCreation
+            }
+            
             switch character.type {
             case .historical:
                 // 根据领域进一步分类
@@ -721,11 +841,22 @@ class NotificationService: ObservableObject {
             }
         }()
         
+        // 🔧 修复：对于用户创建的角色，直接使用角色ID作为头像路径，Avatar组件会处理加载
+        // 对于预设角色，使用CharacterAvatarService获取头像路径
+        let avatarPath: String
+        if character.id.hasPrefix("custom_") || character.subtype == "myCreation" {
+            // 用户创建的角色：直接使用角色ID，Avatar组件会从文档目录加载
+            avatarPath = character.id
+        } else {
+            // 预设角色：使用CharacterAvatarService获取头像路径
+            avatarPath = CharacterAvatarService.shared.getAvatarName(for: character.id)
+        }
+        
         return NotificationModel.CharacterInfo(
             name: character.name,
             era: character.era,
             category: category,
-            image: character.avatarName
+            image: avatarPath
         )
     }
     
@@ -804,11 +935,105 @@ class NotificationService: ObservableObject {
             print("📂 加载了 \(notifications.count) 条本地通知")
             #endif
             
+            // 🔧 修复：加载后修复角色信息（如果角色名称是角色ID格式）
+            fixCharacterInfoInNotifications()
+            
             // 加载后清理重复通知
             cleanupDuplicateNotifications()
         } catch {
             Logger.error("加载通知失败", error: error, log: Logger.data)
             notifications = []
+        }
+    }
+    
+    // 🔧 修复：修复通知中的角色信息
+    private func fixCharacterInfoInNotifications() {
+        var hasChanges = false
+        
+        for index in notifications.indices {
+            let notification = notifications[index]
+            
+            // 检查角色名称是否是角色ID格式（custom_开头或看起来像ID）
+            let characterName = notification.character?.name ?? notification.username
+            // 🔧 增强检测：更准确地识别角色ID格式
+            let isCharacterId = characterName.lowercased().hasPrefix("custom_") || 
+                               characterName.lowercased().hasPrefix("user_avatar_") ||
+                               (characterName.count > 8 && characterName.uppercased().contains("CUSTOM")) ||
+                               (characterName.matches(pattern: "^custom_[A-F0-9]{8,}$"))
+            
+            if isCharacterId {
+                // 尝试重新获取角色信息
+                if let fixedCharacter = getCharacterInfo(characterId: characterName) {
+                    // 更新通知的角色信息
+                    // 如果username也是角色ID，更新为正确的名称
+                    if notification.username == characterName || notification.username.lowercased().hasPrefix("custom_") {
+                        // 注意：NotificationModel是struct，需要重新创建
+                        notifications[index] = NotificationModel(
+                            id: notification.id,
+                            type: notification.type,
+                            avatar: fixedCharacter.image,
+                            username: fixedCharacter.name,
+                            content: notification.content,
+                            time: notification.time,
+                            createdAt: notification.createdAt,
+                            isOnline: notification.isOnline,
+                            actionText: notification.actionText,
+                            character: fixedCharacter,
+                            previewContent: notification.previewContent,
+                            relatedPostId: notification.relatedPostId,
+                            relatedCommentId: notification.relatedCommentId,
+                            triggeredByAction: notification.triggeredByAction,
+                            isGenerated: notification.isGenerated,
+                            userComment: notification.userComment,
+                            userPost: notification.userPost,
+                            originalPost: notification.originalPost,
+                            originalPostAuthor: notification.originalPostAuthor
+                        )
+                        hasChanges = true
+                        #if DEBUG
+                        print("🔧 修复通知角色信息: \(characterName) -> \(fixedCharacter.name)")
+                        #endif
+                    } else {
+                        // 只更新character字段和avatar字段
+                        notifications[index] = NotificationModel(
+                            id: notification.id,
+                            type: notification.type,
+                            avatar: fixedCharacter.image,
+                            username: notification.username,
+                            content: notification.content,
+                            time: notification.time,
+                            createdAt: notification.createdAt,
+                            isOnline: notification.isOnline,
+                            actionText: notification.actionText,
+                            character: fixedCharacter,
+                            previewContent: notification.previewContent,
+                            relatedPostId: notification.relatedPostId,
+                            relatedCommentId: notification.relatedCommentId,
+                            triggeredByAction: notification.triggeredByAction,
+                            isGenerated: notification.isGenerated,
+                            userComment: notification.userComment,
+                            userPost: notification.userPost,
+                            originalPost: notification.originalPost,
+                            originalPostAuthor: notification.originalPostAuthor
+                        )
+                        hasChanges = true
+                        #if DEBUG
+                        print("🔧 修复通知角色信息（仅character）: \(characterName) -> \(fixedCharacter.name)")
+                        #endif
+                    }
+                } else {
+                    #if DEBUG
+                    print("⚠️ 无法获取角色信息: \(characterName)")
+                    #endif
+                }
+            }
+        }
+        
+        if hasChanges {
+            saveNotifications()
+            #if DEBUG
+            print("✅ 已修复通知中的角色信息")
+            #endif
         }
     }
     

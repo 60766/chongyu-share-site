@@ -243,12 +243,39 @@ class VirtualCharacterLikeService {
             }
         }
         
-        // 获取角色信息
-        guard let characterName = CharacterDataManager.shared.getName(for: characterId) else {
+        // 🔧 修复：获取角色信息，优先从CharacterSystem获取用户创建的角色名称
+        let characterName: String
+        if characterId.hasPrefix("custom_") {
+            // 用户创建的角色：从CharacterSystem获取
+            let allCharacters = CharacterSystem.shared.getAllCharacters()
+            if let customCharacter = allCharacters.first(where: { $0.id.lowercased() == characterId.lowercased() }) {
+                characterName = customCharacter.name
+            } else {
+                // 如果CharacterSystem中没有，尝试从UserDefaults获取
+                if let data = UserDefaults.standard.data(forKey: "CustomCharactersData"),
+                   let characterDicts = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+                   let characterDict = characterDicts.first(where: {
+                       let id = ($0["id"] as? String ?? "").lowercased()
+                       return id == characterId.lowercased() || id == characterId.lowercased().replacingOccurrences(of: "custom_", with: "")
+                   }),
+                   let name = characterDict["name"] as? String {
+                    characterName = name
+                } else {
+                    #if DEBUG
+                    print("❌ 无法获取角色\(characterId)的名称")
+                    #endif
+                    return
+                }
+            }
+        } else {
+            // 预设角色：使用CharacterDataManager
+            guard let name = CharacterDataManager.shared.getName(for: characterId) else {
             #if DEBUG
             print("❌ 无法获取角色\(characterId)的名称")
             #endif
             return
+            }
+            characterName = name
         }
         
         let characterAvatar = CharacterAvatarService.shared.getAvatarName(for: characterId)
@@ -351,12 +378,39 @@ class VirtualCharacterLikeService {
             }
         }
         
-        // 获取角色信息
-        guard let characterName = CharacterDataManager.shared.getName(for: characterId) else {
+        // 🔧 修复：获取角色信息，优先从CharacterSystem获取用户创建的角色名称
+        let characterName: String
+        if characterId.hasPrefix("custom_") {
+            // 用户创建的角色：从CharacterSystem获取
+            let allCharacters = CharacterSystem.shared.getAllCharacters()
+            if let customCharacter = allCharacters.first(where: { $0.id.lowercased() == characterId.lowercased() }) {
+                characterName = customCharacter.name
+            } else {
+                // 如果CharacterSystem中没有，尝试从UserDefaults获取
+                if let data = UserDefaults.standard.data(forKey: "CustomCharactersData"),
+                   let characterDicts = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+                   let characterDict = characterDicts.first(where: {
+                       let id = ($0["id"] as? String ?? "").lowercased()
+                       return id == characterId.lowercased() || id == characterId.lowercased().replacingOccurrences(of: "custom_", with: "")
+                   }),
+                   let name = characterDict["name"] as? String {
+                    characterName = name
+                } else {
+                    #if DEBUG
+                    print("❌ 无法获取角色\(characterId)的名称")
+                    #endif
+                    return
+                }
+            }
+        } else {
+            // 预设角色：使用CharacterDataManager
+            guard let name = CharacterDataManager.shared.getName(for: characterId) else {
             #if DEBUG
             print("❌ 无法获取角色\(characterId)的名称")
             #endif
             return
+            }
+            characterName = name
         }
         
         let characterAvatar = CharacterAvatarService.shared.getAvatarName(for: characterId)

@@ -1056,8 +1056,33 @@ class MultiCharacterCommentService {
         var newComments: [DetailedCommentModel] = []
         
         for (characterID, response) in commentsMap {
-            // 获取角色名称
-            let characterName = characterDataManager.getAttribute(id: characterID, attribute: "name") ?? characterID
+            // 🔧 修复：获取角色名称，优先从CharacterSystem获取用户创建的角色名称
+            let characterName: String
+            if characterID.hasPrefix("custom_") {
+                // 用户创建的角色：从CharacterSystem获取名称
+                let allCharacters = CharacterSystem.shared.getAllCharacters()
+                if let customCharacter = allCharacters.first(where: { $0.id == characterID }) {
+                    characterName = customCharacter.name
+                } else {
+                    // 如果CharacterSystem中没有，尝试从UserDefaults获取
+                    // CustomCharactersData 的结构是 [[String: Any]]，是角色数组
+                    if let data = UserDefaults.standard.data(forKey: "CustomCharactersData"),
+                       let characterDicts = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+                       let characterDict = characterDicts.first(where: { 
+                           let id = $0["id"] as? String ?? ""
+                           return id == characterID || id == characterID.replacingOccurrences(of: "custom_", with: "")
+                       }),
+                       let name = characterDict["name"] as? String {
+                        characterName = name
+                    } else {
+                        // 如果都找不到，使用角色ID作为后备
+                        characterName = characterID
+                    }
+                }
+            } else {
+                // 预设角色：使用CharacterDataManager
+                characterName = characterDataManager.getAttribute(id: characterID, attribute: "name") ?? characterID
+            }
             
             // 获取角色头像
             let avatarPath = CharacterAvatarService.shared.getAvatarName(for: characterID)

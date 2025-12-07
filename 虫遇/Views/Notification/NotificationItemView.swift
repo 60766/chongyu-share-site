@@ -725,16 +725,32 @@ struct NotificationCharacterView: View {
                 )
                 .frame(width: 50, height: 50)
             
-            // 角色头像图片或占位符
-            if UIImage(named: character.image) != nil {
+            // 🔧 修复：角色头像图片或占位符，支持用户创建的角色
+            // 检查是否是用户创建的角色（custom_ 开头，不区分大小写）或自定义头像路径
+            let imageLower = character.image.lowercased()
+            let isPresetImage = UIImage(named: character.image) != nil
+            let isCustomCharacter = imageLower.hasPrefix("custom_") || 
+                                   imageLower.hasPrefix("user_avatar_") ||
+                                   (!character.image.contains("/") && !isPresetImage)
+            
+            if isCustomCharacter {
+                // 用户创建的角色：使用Avatar组件加载自定义头像
+                // 🔧 修复：使用原始大小写的image路径，确保Avatar组件能正确加载
+                Avatar(
+                    url: character.image,
+                    name: character.name,
+                    category: character.category.rawValue,
+                    size: 42
+                )
+                .frame(width: 42, height: 42)
+                .clipShape(Circle())
+            } else if UIImage(named: character.image) != nil {
+                // 预设角色：使用标准资源图片
                 Image(character.image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 42, height: 42)
                     .clipShape(Circle())
-                    .onAppear {
-
-                    }
             } else {
                 ZStack {
                     Circle()
