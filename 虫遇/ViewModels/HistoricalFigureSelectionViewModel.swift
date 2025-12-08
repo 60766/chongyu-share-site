@@ -1342,8 +1342,31 @@ class HistoricalFigureSelectionViewModel: ObservableObject {
         print("📣 邀请角色: \(characterIDs.joined(separator: ", ")), 帖子ID: \(postId)")
         #endif
         
-        // 获取帖子作者信息
-        let postAuthorName = postAuthor?.name
+        // 🔧 修复：正确获取帖子作者信息
+        // 如果postAuthor是AppCharacter类型（虚拟角色），使用其name
+        // 如果postAuthor是nil（用户发布的帖子），从PostViewModel获取帖子的username
+        let postAuthorName: String?
+        if let author = postAuthor {
+            // 虚拟角色发布的帖子
+            postAuthorName = author.name
+            #if DEBUG
+            print("📝 虚拟角色发布的帖子，作者: \(author.name)")
+            #endif
+        } else {
+            // 用户发布的帖子，从PostViewModel获取帖子的username
+            let viewModel = PostViewModel.shared
+            if let post = viewModel.posts.first(where: { $0.id.uuidString == postId }) {
+                postAuthorName = post.username
+                #if DEBUG
+                print("📝 用户发布的帖子，作者: \(post.username)")
+                #endif
+            } else {
+                postAuthorName = nil
+                #if DEBUG
+                print("⚠️ 未找到帖子，无法获取作者信息")
+                #endif
+            }
+        }
         
         // 复制需要的数据，避免闭包中引用self
         let finalPostId = postId

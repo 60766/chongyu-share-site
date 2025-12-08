@@ -822,11 +822,27 @@ class VirtualCharacterService {
         
         let post = viewModel.posts[postIndex]
         
-        // 如果没有提供帖子作者，尝试从帖子中获取
-        let finalPostAuthor = postAuthor ?? post.username
+        // 🔧 修复：正确识别用户发布的帖子
+        // 如果帖子没有characterID，说明是用户发布的帖子，应该直接使用post.username（忽略传入的postAuthor，因为它可能被错误设置为默认值）
+        // 如果帖子有characterID，说明是虚拟角色发布的帖子，使用post.username
+        let finalPostAuthor: String
+        if post.characterID == nil {
+            // 用户发布的帖子：直接使用post.username，忽略传入的postAuthor参数
+            // 因为HistoricalFigureSelectionViewModel可能会错误地设置默认作者
+            finalPostAuthor = post.username
         #if DEBUG
-        print("👤 最终使用的帖子作者: \(finalPostAuthor)")
+            print("👤 用户发布的帖子（characterID为nil），使用post.username: \(finalPostAuthor)")
+            if let passedAuthor = postAuthor, passedAuthor != post.username {
+                print("⚠️ 注意：传入的postAuthor参数(\(passedAuthor))与post.username(\(post.username))不一致，已忽略传入的参数")
+            }
         #endif
+        } else {
+            // 虚拟角色发布的帖子：使用post.username
+            finalPostAuthor = post.username
+            #if DEBUG
+            print("👤 虚拟角色发布的帖子（characterID=\(post.characterID ?? "nil")），使用post.username: \(finalPostAuthor)")
+            #endif
+        }
         
         // 在生成评论之前，先发送一个通知，确保UI准备好接收新评论
         DispatchQueue.main.async {

@@ -802,6 +802,9 @@ struct PublishPanelView: View {
         // 这样随机选择时就不会选择到被屏蔽分类的角色
         let allCharacters = CharacterModel.getAllCharacters()
         
+        // 随机选择4-6个角色（与自动选择保持一致）
+        let targetCount = Int.random(in: 4...6)
+        
         var tempSelectedCharacters: [CharacterModel] = []
         
         // 确保选择来自不同类别的角色（只从未被屏蔽的分类中选择）
@@ -812,24 +815,24 @@ struct PublishPanelView: View {
         for category in availableCategories {
             if let character = allCharacters.filter({ $0.category == category }).randomElement() {
                 tempSelectedCharacters.append(character)
-                if tempSelectedCharacters.count >= 3 {
+                if tempSelectedCharacters.count >= targetCount {
                     break
                 }
             }
         }
         
-        // 如果从不同分类中选择的角色不足3个，从所有可用角色中随机补充
-        if tempSelectedCharacters.count < 3 {
-            let remainingNeeded = 3 - tempSelectedCharacters.count
+        // 如果从不同分类中选择的角色不足目标数量，从所有可用角色中随机补充
+        if tempSelectedCharacters.count < targetCount {
+            let remainingNeeded = targetCount - tempSelectedCharacters.count
             let selectedIds = Set(tempSelectedCharacters.map { $0.id })
             let availableCharacters = allCharacters.filter { !selectedIds.contains($0.id) }
             let additionalCharacters = Array(availableCharacters.shuffled().prefix(remainingNeeded))
             tempSelectedCharacters.append(contentsOf: additionalCharacters)
         }
         
-        // 如果还不足3个，继续随机添加
-        if tempSelectedCharacters.count < 3 {
-            let remainingCount = 3 - tempSelectedCharacters.count
+        // 如果还不足目标数量，继续随机添加
+        if tempSelectedCharacters.count < targetCount {
+            let remainingCount = targetCount - tempSelectedCharacters.count
             let remainingCharacters = allCharacters.filter { character in
                 !tempSelectedCharacters.contains { $0.id == character.id }
             }
@@ -1242,20 +1245,28 @@ struct PublishPanelView: View {
         // 使用角色轮换系统开始新的生成会话
         CharacterRotationSystem.shared.beginNewGenerationSession()
         
+        #if DEBUG
+        print("🎯 selectCharactersForResponse: 开始选择角色")
+        print("🎯 用户是否手动选择: \(!selectedCharacters.isEmpty)，选择数量: \(selectedCharacters.count)")
+        #endif
+        
         // 用户手动选择的角色百分百会评论
         var manuallySelectedCharacters: [String] = []
         
         // 如果用户选择了角色，直接全部添加
         if !selectedCharacters.isEmpty {
             manuallySelectedCharacters = selectedCharacters.map { $0.id }
+            #if DEBUG
+            print("🎯 用户手动选择的角色ID: \(manuallySelectedCharacters.joined(separator: ", "))")
+            #endif
         }
         
         // 智能动态限制策略：
         // 1. 如果用户选择了角色，优先使用用户选择的（尊重用户选择）
-        // 2. 如果用户没选择，自动补充到3个（保证基本互动）
-        // 3. 设置上限为5个（平衡质量和成本）
-        let maxCharacters = 5 // 最多5个角色，保证质量
-        let minCharacters = 3 // 最少3个角色，保证基本互动
+        // 2. 如果用户没选择，自动选择4-6个角色（保证丰富的互动）
+        // 3. 设置上限为6个（平衡质量和互动丰富度）
+        let maxCharacters = 6 // 最多6个角色，保证互动丰富度
+        let minCharacters = 4 // 最少4个角色，保证丰富的互动
         
         var finalSelectedCharacters = manuallySelectedCharacters
         
@@ -1284,15 +1295,50 @@ struct PublishPanelView: View {
             }
             #endif
             
-            // 如果过滤后角色数量在合理范围内（1-5个），使用过滤后的列表
-            if filteredManuallySelected.count <= maxCharacters && filteredManuallySelected.count > 0 {
+            // 如果过滤后角色数量在合理范围内（1-6个），使用过滤后的列表
+            // 但如果用户选择的角色少于5个，自动补充到5-6个（保证互动丰富度）
+            if filteredManuallySelected.count >= minCharacters && filteredManuallySelected.count <= maxCharacters {
+                #if DEBUG
+                print("✅ 用户选择了\(filteredManuallySelected.count)个角色，在合理范围内，直接使用")
+                #endif
                 return Array(filteredManuallySelected.prefix(maxCharacters))
             } else if filteredManuallySelected.count > maxCharacters {
-                // 如果过滤后仍然超过5个，限制为5个（保证质量）
+                // 如果过滤后仍然超过6个，限制为6个（保证质量）
                 #if DEBUG
                 print("⚠️ 用户选择了\(manuallySelectedCharacters.count)个角色，过滤后剩余\(filteredManuallySelected.count)个，限制为\(maxCharacters)个以保证生成质量")
                 #endif
                 return Array(filteredManuallySelected.prefix(maxCharacters))
+            } else if filteredManuallySelected.count > 0 && filteredManuallySelected.count < minCharacters {
+                // 如果用户选择的角色少于4个，自动补充到4-6个
+                #if DEBUG
+                print("📈 用户选择了\(filteredManuallySelected.count)个角色，少于最小要求(\(minCharacters))，自动补充到4-6个")
+                #endif
+                let usedIds = Set(filteredManuallySelected)
+                let targetCount = Int.random(in: minCharacters...maxCharacters)
+                let additionalNeeded = targetCount - filteredManuallySelected.count
+                
+                // 使用角色轮换系统补充角色
+                let allCharacterModels = CharacterModel.getAllCharacters()
+                let availableCharacterIds = allCharacterModels
+                    .filter { !usedIds.contains($0.id) }
+                    .filter { BlockedCategoriesManager.shared.isCharacterAvailable($0) }
+                    .map { $0.id }
+                
+                // 使用角色轮换系统选择补充角色
+            let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: additionalNeeded)
+                let additionalCharacters = rotationCharacters
+                    .map { $0.id }
+                    .filter { !usedIds.contains($0) }
+                    .prefix(additionalNeeded)
+                
+                var finalResult = filteredManuallySelected
+                finalResult.append(contentsOf: Array(additionalCharacters))
+                
+                #if DEBUG
+                print("📈 补充后共\(finalResult.count)个角色: \(finalResult.joined(separator: ", "))")
+                #endif
+                
+                return Array(finalResult.prefix(maxCharacters))
         } else {
                 // 如果过滤后没有可用角色，使用自动选择
                 #if DEBUG
@@ -1304,15 +1350,32 @@ struct PublishPanelView: View {
         
         // 用户没有选择角色，或者用户选择的所有角色都被屏蔽，使用自动选择
         if finalSelectedCharacters.isEmpty {
-            // 用户没有选择角色，自动补充到3个
-            let additionalNeeded = minCharacters
-            let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: additionalNeeded)
+            // 用户没有选择角色，自动选择4-6个角色（随机选择4、5或6个，增加变化）
+            let targetCount = Int.random(in: 4...6)
+            #if DEBUG
+            print("🎲 用户未选择角色，准备自动选择 \(targetCount) 个角色（目标范围：4-6个）")
+            #endif
+            
+            let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: targetCount)
             finalSelectedCharacters = rotationCharacters.map { $0.id }
             
+            #if DEBUG
+            print("🎲 自动选择结果: 请求 \(targetCount) 个，实际获得 \(finalSelectedCharacters.count) 个角色")
+            if !finalSelectedCharacters.isEmpty {
+                print("🎲 选择的角色ID: \(finalSelectedCharacters.joined(separator: ", "))")
+            }
+            #endif
+            
         // 如果仍然不足（极端情况），使用轮换系统重新选择
-        if finalSelectedCharacters.count < 2 {
+            if finalSelectedCharacters.count < minCharacters {
+                #if DEBUG
+                print("⚠️ 首次选择不足（\(finalSelectedCharacters.count) < \(minCharacters)），重新选择 \(minCharacters) 个角色")
+                #endif
                 let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: minCharacters)
             finalSelectedCharacters = rotationCharacters.map { $0.id }
+                #if DEBUG
+                print("⚠️ 重新选择结果: \(finalSelectedCharacters.count) 个角色")
+                #endif
         }
         }
         
@@ -1322,9 +1385,9 @@ struct PublishPanelView: View {
             if let characterModel = allCharacterModels.first(where: { $0.id == characterId }) {
                 let isAvailable = BlockedCategoriesManager.shared.isCharacterAvailable(characterModel)
                 if !isAvailable {
-                    #if DEBUG
+        #if DEBUG
                     print("🔒 最终过滤：移除被屏蔽分类的角色 \(characterModel.name) (分类: \(characterModel.category.displayName))")
-                    #endif
+        #endif
                 }
                 return isAvailable
             }
@@ -1333,7 +1396,13 @@ struct PublishPanelView: View {
             return availableCharacterIds.contains(characterId)
         }
         
-        // 最终限制：最多5个角色
+        #if DEBUG
+        if finalFilteredResult.count < finalSelectedCharacters.count {
+            print("🔒 最终过滤: 从 \(finalSelectedCharacters.count) 个角色中过滤掉 \(finalSelectedCharacters.count - finalFilteredResult.count) 个被屏蔽分类的角色")
+        }
+        #endif
+        
+        // 最终限制：最多6个角色
         let result = Array(finalFilteredResult.prefix(maxCharacters))
         
         #if DEBUG
@@ -1342,6 +1411,9 @@ struct PublishPanelView: View {
             print("🔒 当前屏蔽的分类: \(blockedCategories.map { $0.displayName }.joined(separator: ", "))")
         }
         print("✅ 最终选择\(result.count)个角色进行评论生成: \(result.joined(separator: ", "))")
+        if result.count < minCharacters && finalSelectedCharacters.isEmpty {
+            print("⚠️ 警告：最终选择的角色数量(\(result.count))少于最小要求(\(minCharacters))，可能因为可用角色不足或被屏蔽")
+        }
         let characterModels = result.compactMap({ id in allCharacterModels.first(where: { $0.id == id }) })
         if !characterModels.isEmpty {
             let categoryInfo = characterModels.map { "\($0.name)(\($0.category.displayName))" }.joined(separator: ", ")
@@ -1358,16 +1430,16 @@ struct PublishPanelView: View {
     private static func handleGeneratedComments(_ commentsDict: [String: String], for userPost: UserPostModel) {
         // 🔧 评论已经由 MultiCharacterCommentService.directlyAddCommentsToPost 添加
         // 这里只需要触发UI更新，不需要再次添加评论
-        DispatchQueue.main.async {
-            if let postIndex = PostViewModel.shared.posts.firstIndex(where: { $0.id == userPost.id }) {
+            DispatchQueue.main.async {
+                if let postIndex = PostViewModel.shared.posts.firstIndex(where: { $0.id == userPost.id }) {
                 // 只触发UI更新，不添加评论
                 PostViewModel.shared.posts[postIndex].objectWillChange.send()
                 
                 #if DEBUG
                 print("✅ handleGeneratedComments: 评论已由 MultiCharacterCommentService 添加，只触发UI更新")
                 #endif
-            } else {
-                // 未找到对应的帖子进行评论更新
+                } else {
+                    // 未找到对应的帖子进行评论更新
             }
         }
     }
