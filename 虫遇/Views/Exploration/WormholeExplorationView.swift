@@ -264,13 +264,13 @@ public struct WormholeExplorationView: View {
                     }
                     .onAppear {
                         #if DEBUG
-                        print("🌀 显示时空效果，中心位置: \(centerPosition)")
+                        debugLog("🌀 显示时空效果，中心位置: \(centerPosition)")
                         #endif
                     }
                 } else {
                     // 如果黑洞中心位置不可用，则使用屏幕中心作为特效中心
                     #if DEBUG
-                    let _ = print("⚠️ WormholeExplorationView: blackHoleCenterPosition 为 nil，使用默认中心")
+                    let _ = debugLog("⚠️ WormholeExplorationView: blackHoleCenterPosition 为 nil，使用默认中心")
                     #endif
                     // 计算默认的屏幕中心位置
                     let screenSize = UIScreen.main.bounds.size
@@ -280,7 +280,7 @@ public struct WormholeExplorationView: View {
                     )
                     
                     #if DEBUG
-                    let _ = print("⚠️ 计算的默认中心: x=\(defaultCenter.x), y=\(defaultCenter.y)")
+                    let _ = debugLog("⚠️ 计算的默认中心: x=\(defaultCenter.x), y=\(defaultCenter.y)")
                     #endif
                     
                     TimeSpaceEffectView(
@@ -309,7 +309,7 @@ public struct WormholeExplorationView: View {
                     }
                     .onAppear {
                         #if DEBUG
-                        print("🌀 显示时空效果，使用默认中心位置: \(defaultCenter)")
+                        debugLog("🌀 显示时空效果，使用默认中心位置: \(defaultCenter)")
                         #endif
                     }
                 }
@@ -322,24 +322,24 @@ public struct WormholeExplorationView: View {
                     post: post,
                     onDislikeCharacter: {
                         #if DEBUG
-                        print("屏蔽角色: \(post.username)")
+                        debugLog("屏蔽角色: \(post.username)")
                         #endif
                     },
                     onReport: {
                         #if DEBUG
-                        print("举报内容: \(post.id)")
+                        debugLog("举报内容: \(post.id)")
                         #endif
                     },
                     onFollowCharacter: { isFollowed in
                         #if DEBUG
-                        print("\(isFollowed ? "关注" : "取消关注")角色: \(post.username)")
+                        debugLog("\(isFollowed ? "关注" : "取消关注")角色: \(post.username)")
                         #endif
                     },
                     onDeletePost: {
                         // 删除帖子
                         PostViewModel.shared.deletePost(post.id)
                         #if DEBUG
-                        print("删除帖子: \(post.id)")
+                        debugLog("删除帖子: \(post.id)")
                         #endif
                     },
                     feedbackGenerator: UIImpactFeedbackGenerator(style: .light)
@@ -357,7 +357,7 @@ public struct WormholeExplorationView: View {
             // 重置所有内容类型的权重，确保所有类型的数量控制组件都能正常显示
             // 这不会影响一键生成的权重分配，因为权重会在需要时重新计算
             #if DEBUG
-            print("🔄 重置所有内容类型权重，确保虫洞探索界面正常显示")
+            debugLog("🔄 重置所有内容类型权重，确保虫洞探索界面正常显示")
             #endif
             ContentTypeWeightManager.shared.resetWeight()
             
@@ -375,18 +375,18 @@ public struct WormholeExplorationView: View {
     private func createTempPost(for contentType: String) -> UserPostModel {
         // 在控制台打印内容类型，方便调试
         #if DEBUG
-        print("📋 为类型[\(contentType)]创建临时帖子用于选项菜单")
+        debugLog("📋 为类型[\(contentType)]创建临时帖子用于选项菜单")
         #endif
         
         // 特殊处理"虫洞共鸣"类型
         var finalContentType: String
         if contentType == "虫洞共鸣" {
             #if DEBUG
-            print("📋 检测到虫洞共鸣类型，使用特殊处理")
+            debugLog("📋 检测到虫洞共鸣类型，使用特殊处理")
             #endif
             finalContentType = ContentGeneratorService.ContentType.resonance.rawValue
             #if DEBUG
-            print("📋 虫洞共鸣转换为[\(finalContentType)]")
+            debugLog("📋 虫洞共鸣转换为[\(finalContentType)]")
             #endif
         } else {
             // 转换为ContentGeneratorService.ContentType对象
@@ -395,7 +395,7 @@ public struct WormholeExplorationView: View {
             // 确保为contentType和characterID使用正确的原始值
             finalContentType = contentTypeEnum?.rawValue ?? contentType
             #if DEBUG
-            print("📋 转换后的内容类型为[\(finalContentType)]")
+            debugLog("📋 转换后的内容类型为[\(finalContentType)]")
             #endif
         }
         
@@ -422,17 +422,17 @@ public struct WormholeExplorationView: View {
     private func loadCurrentPostCount() {
         let contentType = typeManager.types[typeManager.selectedIndex]
         #if DEBUG
-        print("🔍 尝试加载内容类型[\(contentType)]的帖子数量")
+        debugLog("🔍 尝试加载内容类型[\(contentType)]的帖子数量")
         #endif
         
         // 特殊处理"虫洞共鸣"类型
         if contentType == "虫洞共鸣" || contentType == "resonance" {
             #if DEBUG
-            print("🔍 检测到虫洞共鸣类型，使用特殊处理")
+            debugLog("🔍 检测到虫洞共鸣类型，使用特殊处理")
             #endif
             currentPostCount = ExplorationCountManager.shared.getCount(for: .resonance)
             #if DEBUG
-            print("✅ 成功加载虫洞共鸣的帖子数量: \(currentPostCount)")
+            debugLog("✅ 成功加载虫洞共鸣的帖子数量: \(currentPostCount)")
             #endif
             return
         }
@@ -441,17 +441,17 @@ public struct WormholeExplorationView: View {
             // 获取该类型的权重，用于调试
             let weight = ContentTypeWeightManager.shared.getWeight(for: type)
             #if DEBUG
-            print("📊 内容类型[\(contentType)]的权重为: \(weight)")
+            debugLog("📊 内容类型[\(contentType)]的权重为: \(weight)")
             #endif
             
             // 获取该类型的生成数量
             currentPostCount = ExplorationCountManager.shared.getCount(for: type)
             #if DEBUG
-            print("✅ 成功加载内容类型[\(contentType)]的帖子数量: \(currentPostCount)")
+            debugLog("✅ 成功加载内容类型[\(contentType)]的帖子数量: \(currentPostCount)")
             #endif
         } else {
             #if DEBUG
-            print("⚠️ 无法将[\(contentType)]转换为ContentType枚举")
+            debugLog("⚠️ 无法将[\(contentType)]转换为ContentType枚举")
             #endif
         }
     }
@@ -463,7 +463,7 @@ public struct WormholeExplorationView: View {
         // 特殊处理"虫洞共鸣"类型
         if contentType == "虫洞共鸣" || contentType == "resonance" {
             #if DEBUG
-            print("🔍 检测到虫洞共鸣类型，使用特殊处理增加数量")
+            debugLog("🔍 检测到虫洞共鸣类型，使用特殊处理增加数量")
             #endif
             currentPostCount = ExplorationCountManager.shared.increaseCount(for: .resonance)
             
@@ -495,7 +495,7 @@ public struct WormholeExplorationView: View {
         // 特殊处理"虫洞共鸣"类型
         if contentType == "虫洞共鸣" || contentType == "resonance" {
             #if DEBUG
-            print("🔍 检测到虫洞共鸣类型，使用特殊处理减少数量")
+            debugLog("🔍 检测到虫洞共鸣类型，使用特殊处理减少数量")
             #endif
             currentPostCount = ExplorationCountManager.shared.decreaseCount(for: .resonance)
             
@@ -543,7 +543,7 @@ public struct WormholeExplorationView: View {
             var contentType: ContentGeneratorService.ContentType
             if selectedType == "虫洞共鸣" || selectedType == "resonance" {
                 #if DEBUG
-                print("🔍 检测到虫洞共鸣类型，使用特殊处理")
+                debugLog("🔍 检测到虫洞共鸣类型，使用特殊处理")
                 #endif
                 contentType = .resonance
             } else {
@@ -552,13 +552,13 @@ public struct WormholeExplorationView: View {
             
             // 日志输出当前选择的类型
             #if DEBUG
-            print("📝 生成内容类型: \(contentType)")
+            debugLog("📝 生成内容类型: \(contentType)")
             #endif
             
             // 获取虫洞探索配置的生成数量
             let count = ExplorationCountManager.shared.getCount(for: contentType)
             #if DEBUG
-            print("📊 配置的生成数量: \(count)篇")
+            debugLog("📊 配置的生成数量: \(count)篇")
             #endif
             
             // 调用ViewModel的生成方法
@@ -595,7 +595,7 @@ public struct WormholeExplorationView: View {
                 }
             } else {
                 #if DEBUG
-                print("⚠️ 没有生成任何帖子")
+                debugLog("⚠️ 没有生成任何帖子")
                 #endif
                 
                 // 显示错误提示
@@ -611,7 +611,7 @@ public struct WormholeExplorationView: View {
             }
         } catch {
             #if DEBUG
-            print("❌ 生成帖子失败: \(error)")
+            debugLog("❌ 生成帖子失败: \(error)")
             #endif
             
             // 显示错误提示
@@ -635,18 +635,18 @@ public struct WormholeExplorationView: View {
     private func convertIndexToType(_ index: Int) -> ContentGeneratorService.ContentType {
         let typeString = typeManager.types[index]
         #if DEBUG
-        print("🔄 转换索引\(index)对应类型[\(typeString)]为ContentType枚举")
+        debugLog("🔄 转换索引\(index)对应类型[\(typeString)]为ContentType枚举")
         #endif
         
         guard let contentType = ContentGeneratorService.ContentType(rawValue: typeString) else {
             #if DEBUG
-            print("⚠️ 警告：无法将[\(typeString)]转换为ContentType枚举，使用默认值.resonance")
+            debugLog("⚠️ 警告：无法将[\(typeString)]转换为ContentType枚举，使用默认值.resonance")
             #endif
             return .resonance
         }
         
         #if DEBUG
-        print("✅ 成功转换为ContentType.\(contentType)")
+        debugLog("✅ 成功转换为ContentType.\(contentType)")
         #endif
         return contentType
     }
@@ -919,25 +919,25 @@ struct WormholeCreationTypeButtonsView: View {
             
             // 打印日志，帮助调试
             #if DEBUG
-            print("🔘 点击了[\(contentTypeText)]的选项按钮")
+            debugLog("🔘 点击了[\(contentTypeText)]的选项按钮")
             #endif
             
             // 确保内容类型与ContentGeneratorService.ContentType匹配
             if contentTypeText == "虫洞共鸣" {
                 #if DEBUG
-                print("✅ 虫洞共鸣类型，使用特殊处理")
+                debugLog("✅ 虫洞共鸣类型，使用特殊处理")
                 #endif
                 // 为虫洞共鸣类型创建临时帖子，确保使用resonance作为contentType
                 let _ = createTempPost(for: contentTypeText)
                 onOptionsButtonTapped?(contentTypeText)
             } else if ContentGeneratorService.ContentType(rawValue: contentTypeText) != nil {
                 #if DEBUG
-                print("✅ 内容类型[\(contentTypeText)]可以成功转换为ContentGeneratorService.ContentType")
+                debugLog("✅ 内容类型[\(contentTypeText)]可以成功转换为ContentGeneratorService.ContentType")
                 #endif
                 onOptionsButtonTapped?(contentTypeText)
             } else {
                 #if DEBUG
-                print("⚠️ 警告：内容类型[\(contentTypeText)]无法转换为ContentGeneratorService.ContentType")
+                debugLog("⚠️ 警告：内容类型[\(contentTypeText)]无法转换为ContentGeneratorService.ContentType")
                 #endif
             }
         }) {
@@ -954,18 +954,18 @@ struct WormholeCreationTypeButtonsView: View {
     private func createTempPost(for contentType: String) -> UserPostModel {
         // 在控制台打印内容类型，方便调试
         #if DEBUG
-        print("📋 为类型[\(contentType)]创建临时帖子用于选项菜单")
+        debugLog("📋 为类型[\(contentType)]创建临时帖子用于选项菜单")
         #endif
         
         // 特殊处理"虫洞共鸣"类型
         var finalContentType: String
         if contentType == "虫洞共鸣" {
             #if DEBUG
-            print("📋 检测到虫洞共鸣类型，使用特殊处理")
+            debugLog("📋 检测到虫洞共鸣类型，使用特殊处理")
             #endif
             finalContentType = ContentGeneratorService.ContentType.resonance.rawValue
             #if DEBUG
-            print("📋 虫洞共鸣转换为[\(finalContentType)]")
+            debugLog("📋 虫洞共鸣转换为[\(finalContentType)]")
             #endif
         } else {
             // 转换为ContentGeneratorService.ContentType对象
@@ -974,7 +974,7 @@ struct WormholeCreationTypeButtonsView: View {
             // 确保为contentType和characterID使用正确的原始值
             finalContentType = contentTypeEnum?.rawValue ?? contentType
             #if DEBUG
-            print("📋 转换后的内容类型为[\(finalContentType)]")
+            debugLog("📋 转换后的内容类型为[\(finalContentType)]")
             #endif
         }
         

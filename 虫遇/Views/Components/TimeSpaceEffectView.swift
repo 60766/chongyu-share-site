@@ -906,7 +906,7 @@ struct TimeSpaceEffectView: View {
 #Preview {
     TimeSpaceEffectView(isActive: .constant(true), onComplete: {
         #if DEBUG
-        print("时空效果完成")
+        debugLog("时空效果完成")
         #endif
     })
 } 

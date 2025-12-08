@@ -925,7 +925,7 @@ struct MultiPersonChatSetupView: View {
         let sessions = dataService.getChatSessions(modelContext: modelContext)
         chatHistory = sessions.map { dataService.convertToChatHistoryItem($0) }
         #if DEBUG
-        print("✅ 已加载 \(chatHistory.count) 个历史对话")
+        debugLog("✅ 已加载 \(chatHistory.count) 个历史对话")
         #endif
     }
     
@@ -1071,7 +1071,7 @@ struct ChatHistoryItemView: View {
         Button(action: {
             // 跳转到历史对话详情
             #if DEBUG
-            print("跳转到历史对话: \(item.topic) - 参与者: \(item.participantsText)")
+            debugLog("跳转到历史对话: \(item.topic) - 参与者: \(item.participantsText)")
             #endif
             shouldNavigateToChat = true
         }) {
@@ -1245,26 +1245,26 @@ struct HistoricalChatView: View {
             }
             
             #if DEBUG
-            print("✅ 加载历史会话信息：")
+            debugLog("✅ 加载历史会话信息：")
             #endif
             #if DEBUG
-            print("   - 会话ID: \(session.id)")
+            debugLog("   - 会话ID: \(session.id)")
             #endif
             #if DEBUG
-            print("   - 标题: \(session.topic)")
+            debugLog("   - 标题: \(session.topic)")
             #endif
             #if DEBUG
-            print("   - 角色数量: \(sessionCharacters.count)")
+            debugLog("   - 角色数量: \(sessionCharacters.count)")
             #endif
             #if DEBUG
-            print("   - 聊天模式: \(session.chatMode)")
+            debugLog("   - 聊天模式: \(session.chatMode)")
             #endif
             #if DEBUG
-            print("   - 主题: \(session.chatTheme)")
+            debugLog("   - 主题: \(session.chatTheme)")
             #endif
         } else {
             #if DEBUG
-            print("❌ 未找到会话ID为 \(chatId) 的历史会话")
+            debugLog("❌ 未找到会话ID为 \(chatId) 的历史会话")
             #endif
         }
     }

@@ -194,7 +194,7 @@ class TabBarManager: ObservableObject {
                 // 明确禁用TabBar的交互，防止点击事件穿透
                 tabBarController.tabBar.isUserInteractionEnabled = false
                 #if DEBUG
-                print("TabBar交互已禁用 (pushHideState)")
+                debugLog("TabBar交互已禁用 (pushHideState)")
                 #endif
                 
                 // 如果已有高度约束，先移除
@@ -247,7 +247,7 @@ class TabBarManager: ObservableObject {
                     // 恢复TabBar交互
                     tabBarController.tabBar.isUserInteractionEnabled = true
                     #if DEBUG
-                    print("TabBar交互已恢复 (popHideState)")
+                    debugLog("TabBar交互已恢复 (popHideState)")
                     #endif
                     
                     // 应用一致的样式
@@ -403,7 +403,7 @@ class TabBarManager: ObservableObject {
             #if DEBUG
             cacheHitCount += 1
             if debugModeEnabled {
-                print("🚀 缓存命中，避免了递归搜索")
+                debugLog("🚀 缓存命中，避免了递归搜索")
             }
             #endif
             return cached
@@ -419,7 +419,7 @@ class TabBarManager: ObservableObject {
         
         #if DEBUG
         if debugModeEnabled {
-            print("🔍 执行了递归搜索，结果已缓存")
+            debugLog("🔍 执行了递归搜索，结果已缓存")
             printPerformanceStats()
         }
         #endif
@@ -455,7 +455,7 @@ class TabBarManager: ObservableObject {
         
         #if DEBUG
         if debugModeEnabled {
-            print("🚀 TabBarController缓存已失效")
+            debugLog("🚀 TabBarController缓存已失效")
         }
         #endif
     }
@@ -468,7 +468,7 @@ class TabBarManager: ObservableObject {
         
         #if DEBUG
         if debugModeEnabled {
-            print("🚀 TabBarController直接引用已设置，性能优化生效")
+            debugLog("🚀 TabBarController直接引用已设置，性能优化生效")
         }
         #endif
     }
@@ -544,7 +544,7 @@ class TabBarManager: ObservableObject {
             // 明确禁用TabBar的交互，防止点击事件穿透
             tabBarController.tabBar.isUserInteractionEnabled = false
             #if DEBUG
-            print("TabBar交互已禁用 (hide)")
+            debugLog("TabBar交互已禁用 (hide)")
             #endif
         }
     }
@@ -1024,7 +1024,7 @@ class TabBarManager: ObservableObject {
             // 恢复TabBar交互
             tabBarController.tabBar.isUserInteractionEnabled = true
             #if DEBUG
-            print("TabBar交互已恢复 (showImmediately)")
+            debugLog("TabBar交互已恢复 (showImmediately)")
             #endif
             
             // 立即更新布局
@@ -1042,7 +1042,7 @@ class TabBarManager: ObservableObject {
         UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = true
         
         #if DEBUG
-        print("TabBar立即显示完成")
+        debugLog("TabBar立即显示完成")
         #endif
     }
     
@@ -1060,7 +1060,7 @@ class TabBarManager: ObservableObject {
         // 立即获取TabBar控制器
         guard let tabBarController = findTabBarController() else {
             #if DEBUG
-            print("TabBarManager: 无法获取TabBar控制器")
+            debugLog("TabBarManager: 无法获取TabBar控制器")
             #endif
             return
         }
@@ -1082,7 +1082,7 @@ class TabBarManager: ObservableObject {
         
         #if DEBUG
         if self.debugModeEnabled {
-            print("TabBar强制重置并立即显示完成")
+            debugLog("TabBar强制重置并立即显示完成")
         }
         #endif
     }
@@ -1127,26 +1127,26 @@ class TabBarManager: ObservableObject {
     /// 打印当前堆栈状态 - 仅在调试模式可用
     func printStackState() {
         if debugModeEnabled {
-            print("📊 TabBar状态报告:")
-            print("  ├─ 堆栈深度: \(hideStateStack.count)")
-            print("  ├─ 可见性: \(isVisible ? "✅ 可见" : "❌ 隐藏")")
-            print("  ├─ 完全隐藏: \(isFullyHidden ? "❌ 是" : "✅ 否")")
-            print("  ├─ 缓存状态: \(hasCachedTabBarController ? "🚀 已缓存" : "⚠️ 未缓存")")
-            print("  └─ 浮动按钮: \(showFloatingButtons ? "✅ 显示" : "❌ 隐藏")")
+            debugLog("📊 TabBar状态报告:")
+            debugLog("  ├─ 堆栈深度: \(hideStateStack.count)")
+            debugLog("  ├─ 可见性: \(isVisible ? "✅ 可见" : "❌ 隐藏")")
+            debugLog("  ├─ 完全隐藏: \(isFullyHidden ? "❌ 是" : "✅ 否")")
+            debugLog("  ├─ 缓存状态: \(hasCachedTabBarController ? "🚀 已缓存" : "⚠️ 未缓存")")
+            debugLog("  └─ 浮动按钮: \(showFloatingButtons ? "✅ 显示" : "❌ 隐藏")")
         }
     }
 
     /// 启用调试模式
     func enableDebugMode() {
         debugModeEnabled = true
-        print("🐛 TabBar调试模式已启用")
+        debugLog("🐛 TabBar调试模式已启用")
         printStackState()
     }
 
     /// 重置并打印状态
     func resetAndPrintState() {
         showImmediately()
-        print("🔄 TabBar已强制重置并显示")
+        debugLog("🔄 TabBar已强制重置并显示")
         printStackState()
     }
     
@@ -1157,10 +1157,10 @@ class TabBarManager: ObservableObject {
     func printPerformanceStats() {
         if debugModeEnabled && searchCount > 0 {
             let hitRate = Double(cacheHitCount) / Double(searchCount) * 100
-            print("🚀 性能统计:")
-            print("  ├─ 搜索总次数: \(searchCount)")
-            print("  ├─ 缓存命中: \(cacheHitCount)")
-            print("  └─ 命中率: \(String(format: "%.1f", hitRate))%")
+            debugLog("🚀 性能统计:")
+            debugLog("  ├─ 搜索总次数: \(searchCount)")
+            debugLog("  ├─ 缓存命中: \(cacheHitCount)")
+            debugLog("  └─ 命中率: \(String(format: "%.1f", hitRate))%")
         }
     }
     #endif
@@ -1179,7 +1179,7 @@ class TabBarManager: ObservableObject {
         // 立即获取TabBar控制器
         guard let tabBarController = findTabBarController() else {
             #if DEBUG
-            print("TabBarManager: 无法获取TabBar控制器")
+            debugLog("TabBarManager: 无法获取TabBar控制器")
             #endif
             return
         }
@@ -1210,7 +1210,7 @@ class TabBarManager: ObservableObject {
         UIScrollView.appearance().automaticallyAdjustsScrollIndicatorInsets = true
         
         #if DEBUG
-        print("TabBar平滑显示完成")
+        debugLog("TabBar平滑显示完成")
         #endif
     }
     
@@ -1227,7 +1227,7 @@ class TabBarManager: ObservableObject {
         // 获取TabBar控制器
         guard let tabBarController = findTabBarController() else {
             #if DEBUG
-            print("TabBarManager: 无法获取TabBar控制器")
+            debugLog("TabBarManager: 无法获取TabBar控制器")
             #endif
             return
         }
@@ -1244,7 +1244,7 @@ class TabBarManager: ObservableObject {
         }
         
         #if DEBUG
-        print("TabBar平滑隐藏完成")
+        debugLog("TabBar平滑隐藏完成")
         #endif
     }
 }

@@ -38,7 +38,7 @@ class MultiPersonChatDataService {
         do {
             try modelContext.save()
             #if DEBUG
-            print("✅ 多人聊天会话已创建: \(session.id)")
+            debugLog("✅ 多人聊天会话已创建: \(session.id)")
             #endif
         } catch {
             Logger.error("创建多人聊天会话失败", error: error, log: Logger.data)
@@ -83,7 +83,7 @@ class MultiPersonChatDataService {
                 
                 try modelContext.save()
                 #if DEBUG
-                print("✅ 会话活跃度已更新: \(sessionId)")
+                debugLog("✅ 会话活跃度已更新: \(sessionId)")
                 #endif
             }
         } catch {
@@ -117,7 +117,7 @@ class MultiPersonChatDataService {
                 modelContext.delete(session)
                 try modelContext.save()
                 #if DEBUG
-                print("✅ 聊天会话已删除: \(sessionId)")
+                debugLog("✅ 聊天会话已删除: \(sessionId)")
                 #endif
             }
         } catch {
@@ -157,7 +157,7 @@ class MultiPersonChatDataService {
             updateMessageCount(sessionId: sessionId, modelContext: modelContext)
             
             #if DEBUG
-            print("✅ 聊天消息已保存: \(message.id)")
+            debugLog("✅ 聊天消息已保存: \(message.id)")
             #endif
         } catch {
             Logger.error("保存聊天消息失败", error: error, log: Logger.data)

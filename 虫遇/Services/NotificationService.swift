@@ -107,20 +107,20 @@ class NotificationService: ObservableObject {
     
     @objc private func handlePostLiked(_ notification: Notification) {
         #if DEBUG
-        print("❤️ NotificationService: 收到点赞通知")
+        debugLog("❤️ NotificationService: 收到点赞通知")
         #endif
         
         guard let userInfo = notification.userInfo,
               let postId = userInfo["postId"] as? String,
               let authorCharacterId = userInfo["authorCharacterId"] as? String else {
             #if DEBUG
-            print("❌ NotificationService: 点赞通知数据无效")
+            debugLog("❌ NotificationService: 点赞通知数据无效")
             #endif
             return
         }
         
         #if DEBUG
-        print("❤️ NotificationService: 为角色\(authorCharacterId)创建点赞感谢通知")
+        debugLog("❤️ NotificationService: 为角色\(authorCharacterId)创建点赞感谢通知")
         #endif
         
         // 延迟生成点赞感谢通知
@@ -134,13 +134,13 @@ class NotificationService: ObservableObject {
     
     @objc private func handleCharacterInteraction(_ notification: Notification) {
         #if DEBUG
-        print("🤝 NotificationService: 收到角色互动通知")
+        debugLog("🤝 NotificationService: 收到角色互动通知")
         #endif
         
         guard let userInfo = notification.userInfo,
               let characterId = userInfo["characterId"] as? String else {
             #if DEBUG
-            print("❌ NotificationService: 角色互动通知数据无效")
+            debugLog("❌ NotificationService: 角色互动通知数据无效")
             #endif
             return
         }
@@ -151,13 +151,13 @@ class NotificationService: ObservableObject {
         
         let currentCount = characterInteractionCount[characterId]!
         #if DEBUG
-        print("🤝 NotificationService: 角色\(characterId)互动次数: \(currentCount)")
+        debugLog("🤝 NotificationService: 角色\(characterId)互动次数: \(currentCount)")
         #endif
         
         // 达到一定互动次数时生成关注通知
         if currentCount == 3 {
             #if DEBUG
-            print("🤝 NotificationService: 角色\(characterId)互动达到3次，将生成关注通知")
+            debugLog("🤝 NotificationService: 角色\(characterId)互动达到3次，将生成关注通知")
             #endif
             DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 5...10)) {
                 self.createFollowNotification(characterId: characterId)
@@ -246,7 +246,7 @@ class NotificationService: ObservableObject {
         // 获取角色信息
         guard let character = getCharacterInfo(characterId: characterId) else {
             #if DEBUG
-            print("❌ 无法获取角色\(characterId)的详细信息")
+            debugLog("❌ 无法获取角色\(characterId)的详细信息")
             #endif
             return
         }
@@ -314,9 +314,9 @@ class NotificationService: ObservableObject {
         userComment: String? = nil  // 🔧 添加用户评论参数
     ) {
         #if DEBUG
-        print("   角色: \(characterName)")
-        print("   评论内容: \(commentContent.prefix(30))...")
-        print("   用户评论: \(userComment?.prefix(30) ?? "无")...")  // 🔧 添加调试信息
+        debugLog("   角色: \(characterName)")
+        debugLog("   评论内容: \(commentContent.prefix(30))...")
+        debugLog("   用户评论: \(userComment?.prefix(30) ?? "无")...")  // 🔧 添加调试信息
         #endif
         
         let notification = NotificationModel(
@@ -357,8 +357,8 @@ class NotificationService: ObservableObject {
         postTitle: String
     ) {
         #if DEBUG
-        print("👤 NotificationService: 创建用户评论通知")
-        print("   评论内容: \(commentContent.prefix(30))...")
+        debugLog("👤 NotificationService: 创建用户评论通知")
+        debugLog("   评论内容: \(commentContent.prefix(30))...")
         #endif
         
         let notification = NotificationModel(
@@ -394,9 +394,9 @@ class NotificationService: ObservableObject {
         postTitle: String
     ) {
         #if DEBUG
-        print("👤 NotificationService: 创建用户回复通知")
-        print("   回复内容: \(replyContent.prefix(30))...")
-        print("   回复对象: \(replyToUsername)")
+        debugLog("👤 NotificationService: 创建用户回复通知")
+        debugLog("   回复内容: \(replyContent.prefix(30))...")
+        debugLog("   回复对象: \(replyToUsername)")
         #endif
         
         let notification = NotificationModel(
@@ -459,27 +459,27 @@ class NotificationService: ObservableObject {
     // 添加更多系统通知的方法
     func generateAdditionalSystemNotifications() {
         #if DEBUG
-        print("🔍 NotificationService: 开始生成系统通知，当前通知数量: \(notifications.count)")
+        debugLog("🔍 NotificationService: 开始生成系统通知，当前通知数量: \(notifications.count)")
         #endif
         
         // 检查是否已经有欢迎通知了
         let hasWelcomeNotification = notifications.contains { $0.type == .system && $0.username == "虫遇小助手" }
         #if DEBUG
-        print("🔍 NotificationService: 是否已有欢迎通知: \(hasWelcomeNotification)")
+        debugLog("🔍 NotificationService: 是否已有欢迎通知: \(hasWelcomeNotification)")
         #endif
         
         if !hasWelcomeNotification {
             // 生成欢迎通知
             generateSystemWelcomeNotification()
             #if DEBUG
-            print("✅ NotificationService: 已生成欢迎通知")
+            debugLog("✅ NotificationService: 已生成欢迎通知")
             #endif
         }
         
         // 检查是否已经有新手指南通知了
         let hasGuideNotification = notifications.contains { $0.type == .system && $0.username == "功能指南" }
         #if DEBUG
-        print("🔍 NotificationService: 是否已有新手指南通知: \(hasGuideNotification)")
+        debugLog("🔍 NotificationService: 是否已有新手指南通知: \(hasGuideNotification)")
         #endif
         
         if !hasGuideNotification {
@@ -541,7 +541,7 @@ class NotificationService: ObservableObject {
             
             addNotification(guideNotification)
             #if DEBUG
-            print("✅ NotificationService: 已生成功能指南通知")
+            debugLog("✅ NotificationService: 已生成功能指南通知")
             #endif
         }
         
@@ -731,7 +731,7 @@ class NotificationService: ObservableObject {
         
         guard let character = character else {
             #if DEBUG
-            print("⚠️ NotificationService: 未找到角色ID: \(characterId)")
+            debugLog("⚠️ NotificationService: 未找到角色ID: \(characterId)")
             #endif
             return nil
         }
@@ -824,14 +824,14 @@ class NotificationService: ObservableObject {
                 cleanedNotifications.append(notification)
             } else {
                 #if DEBUG
-                print("🗑️ 清理重复通知: \(notification.character?.name ?? "未知") - \(notification.type)")
+                debugLog("🗑️ 清理重复通知: \(notification.character?.name ?? "未知") - \(notification.type)")
                 #endif
             }
         }
         
         if cleanedNotifications.count != notifications.count {
             #if DEBUG
-            print("🧹 清理完成，从 \(notifications.count) 条通知减少到 \(cleanedNotifications.count) 条")
+            debugLog("🧹 清理完成，从 \(notifications.count) 条通知减少到 \(cleanedNotifications.count) 条")
             #endif
             notifications = cleanedNotifications
             saveNotifications()
@@ -859,7 +859,7 @@ class NotificationService: ObservableObject {
             let decoder = JSONDecoder()
             notifications = try decoder.decode([NotificationModel].self, from: data)
             #if DEBUG
-            print("📂 加载了 \(notifications.count) 条本地通知")
+            debugLog("📂 加载了 \(notifications.count) 条本地通知")
             #endif
             
             // 🔧 修复：加载后修复角色信息（如果角色名称是角色ID格式）
@@ -918,7 +918,7 @@ class NotificationService: ObservableObject {
                         )
                         hasChanges = true
                         #if DEBUG
-                        print("🔧 修复通知角色信息: \(characterName) -> \(fixedCharacter.name)")
+                        debugLog("🔧 修复通知角色信息: \(characterName) -> \(fixedCharacter.name)")
                         #endif
                     } else {
                         // 只更新character字段和avatar字段
@@ -945,12 +945,12 @@ class NotificationService: ObservableObject {
                         )
                         hasChanges = true
                         #if DEBUG
-                        print("🔧 修复通知角色信息（仅character）: \(characterName) -> \(fixedCharacter.name)")
+                        debugLog("🔧 修复通知角色信息（仅character）: \(characterName) -> \(fixedCharacter.name)")
                         #endif
                     }
                 } else {
                     #if DEBUG
-                    print("⚠️ 无法获取角色信息: \(characterName)")
+                    debugLog("⚠️ 无法获取角色信息: \(characterName)")
                     #endif
                 }
             }
@@ -959,7 +959,7 @@ class NotificationService: ObservableObject {
         if hasChanges {
             saveNotifications()
             #if DEBUG
-            print("✅ 已修复通知中的角色信息")
+            debugLog("✅ 已修复通知中的角色信息")
             #endif
         }
     }
@@ -996,7 +996,7 @@ class NotificationService: ObservableObject {
             self.notifications.removeAll()
             self.saveNotifications()
             #if DEBUG
-            print("🗑️ 已清空所有通知")
+            debugLog("🗑️ 已清空所有通知")
             #endif
         }
     }
@@ -1033,7 +1033,7 @@ class NotificationService: ObservableObject {
     func resetSystemNotifications() {
         DispatchQueue.main.async {
             #if DEBUG
-            print("🔄 重置系统通知...")
+            debugLog("🔄 重置系统通知...")
             #endif
             // 清除所有通知
             self.notifications.removeAll()
@@ -1042,7 +1042,7 @@ class NotificationService: ObservableObject {
             // 重新生成系统通知
             self.generateAdditionalSystemNotifications()
             #if DEBUG
-            print("✅ 系统通知重置完成，当前通知数量: \(self.notifications.count)")
+            debugLog("✅ 系统通知重置完成，当前通知数量: \(self.notifications.count)")
             #endif
         }
     }
@@ -1051,7 +1051,7 @@ class NotificationService: ObservableObject {
     func fixSystemNotificationContent() {
         DispatchQueue.main.async {
             #if DEBUG
-            print("🔧 修复系统通知内容...")
+            debugLog("🔧 修复系统通知内容...")
             #endif
             
             // 找到虫遇小助手通知并修复内容
@@ -1085,7 +1085,7 @@ class NotificationService: ObservableObject {
                     
                     self.notifications[i] = correctedNotification
                     #if DEBUG
-                    print("✅ 已修复虫遇小助手通知内容")
+                    debugLog("✅ 已修复虫遇小助手通知内容")
                     #endif
                     break
                 }
@@ -1151,7 +1151,7 @@ class NotificationService: ObservableObject {
                     
                     self.notifications[i] = correctedGuide
                     #if DEBUG
-                    print("✅ 已修复功能指南通知内容")
+                    debugLog("✅ 已修复功能指南通知内容")
                     #endif
                     break
                 }
@@ -1159,7 +1159,7 @@ class NotificationService: ObservableObject {
             
             self.saveNotifications()
             #if DEBUG
-            print("✅ 系统通知内容修复完成")
+            debugLog("✅ 系统通知内容修复完成")
             #endif
         }
     }

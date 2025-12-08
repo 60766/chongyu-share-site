@@ -513,7 +513,7 @@ struct CreateCharacterView: View {
         let optimizedName = optimizeCharacterName(name)
         
         #if DEBUG
-        print("尝试创建角色: \(optimizedName)")
+        debugLog("尝试创建角色: \(optimizedName)")
         #endif
         
         // 创建新角色 - 确保所有必填字段都有值，减少可选参数
@@ -528,7 +528,7 @@ struct CreateCharacterView: View {
         )
         
         #if DEBUG
-        print("角色创建成功，添加到列表")
+        debugLog("角色创建成功，添加到列表")
         #endif
         
         // 添加到角色列表
@@ -541,14 +541,14 @@ struct CreateCharacterView: View {
         if let image = selectedImage {
             // 使用更可靠的方法保存图片
             #if DEBUG
-            print("📸 CreateCharacterView - 开始保存用户选择的头像")
+            debugLog("📸 CreateCharacterView - 开始保存用户选择的头像")
             #endif
             DispatchQueue.global(qos: .background).async {
                 self.safelySaveImage(image, forCharacterId: characterId)
             }
         } else {
             #if DEBUG
-            print("⚠️ CreateCharacterView - 用户未选择头像，使用默认头像")
+            debugLog("⚠️ CreateCharacterView - 用户未选择头像，使用默认头像")
             #endif
         }
         
@@ -762,7 +762,7 @@ struct CreateCharacterView: View {
         // 压缩并转换为JPEG数据（使用较高质量以保持清晰度）
         guard let data = croppedImage.jpegData(compressionQuality: 0.85) else { 
             #if DEBUG
-            print("❌ CreateCharacterView - 无法将图像转换为JPEG数据")
+            debugLog("❌ CreateCharacterView - 无法将图像转换为JPEG数据")
             #endif
             return 
         }
@@ -782,11 +782,11 @@ struct CreateCharacterView: View {
             // 写入数据
             try data.write(to: fileURL)
             #if DEBUG
-            print("✅ CreateCharacterView - 头像已保存到: \(fileURL.path), 尺寸: \(Int(croppedImage.size.width))x\(Int(croppedImage.size.height))")
+            debugLog("✅ CreateCharacterView - 头像已保存到: \(fileURL.path), 尺寸: \(Int(croppedImage.size.width))x\(Int(croppedImage.size.height))")
             #endif
         } catch {
             #if DEBUG
-            print("❌ CreateCharacterView - 保存头像失败: \(error)")
+            debugLog("❌ CreateCharacterView - 保存头像失败: \(error)")
             #endif
         }
     }
@@ -852,12 +852,12 @@ struct CreateCharacterView: View {
                 if let existingCharacters = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
                     customCharacters = existingCharacters
                     #if DEBUG
-                    print("成功加载现有角色数据，共\(customCharacters.count)个角色")
+                    debugLog("成功加载现有角色数据，共\(customCharacters.count)个角色")
                     #endif
                 }
             } catch {
                 #if DEBUG
-                print("加载现有角色数据失败: \(error)")
+                debugLog("加载现有角色数据失败: \(error)")
                 #endif
                 // 如果加载失败，使用空数组
                 customCharacters = []
@@ -894,7 +894,7 @@ struct CreateCharacterView: View {
         // 添加到列表
         customCharacters.append(characterDict)
         #if DEBUG
-        print("添加新角色后，共有\(customCharacters.count)个角色")
+        debugLog("添加新角色后，共有\(customCharacters.count)个角色")
         #endif
         
         // 确保所有嵌套数据都是属性列表兼容的
@@ -906,11 +906,11 @@ struct CreateCharacterView: View {
             let data = try JSONSerialization.data(withJSONObject: propertyListCustomCharacters, options: [])
             UserDefaults.standard.set(data, forKey: "CustomCharactersData")
             #if DEBUG
-            print("角色数据已成功保存到UserDefaults")
+            debugLog("角色数据已成功保存到UserDefaults")
             #endif
         } catch {
             #if DEBUG
-            print("保存角色数据失败: \(error)")
+            debugLog("保存角色数据失败: \(error)")
             #endif
             errorMessage = "保存角色数据失败: \(error.localizedDescription)"
             showingError = true
@@ -1098,9 +1098,9 @@ struct CharacterImagePicker: UIViewControllerRepresentable {
                             let nsError = error as NSError
                             
                             #if DEBUG
-                            print("❌ 加载图片失败: \(error.localizedDescription)")
-                            print("   错误域: \(nsError.domain), 错误码: \(nsError.code)")
-                            print("   用户信息: \(nsError.userInfo)")
+                            debugLog("❌ 加载图片失败: \(error.localizedDescription)")
+                            debugLog("   错误域: \(nsError.domain), 错误码: \(nsError.code)")
+                            debugLog("   用户信息: \(nsError.userInfo)")
                             #endif
                             
                             // 根据错误类型提供友好的错误信息
@@ -1129,14 +1129,14 @@ struct CharacterImagePicker: UIViewControllerRepresentable {
                         
                         if let image = image as? UIImage {
                             #if DEBUG
-                            print("✅ 成功加载图片，尺寸: \(image.size)")
+                            debugLog("✅ 成功加载图片，尺寸: \(image.size)")
                             #endif
                             self.parent.selectedImage = image
                             self.parent.avatarSelected = true
                             self.parent.isPresented = false
                         } else {
                             #if DEBUG
-                            print("⚠️ 加载的对象不是UIImage类型")
+                            debugLog("⚠️ 加载的对象不是UIImage类型")
                             #endif
                             self.parent.isPresented = false
                             self.parent.onError?("选中的文件不是有效的图片格式，请选择其他图片")
@@ -1145,7 +1145,7 @@ struct CharacterImagePicker: UIViewControllerRepresentable {
                 }
             } else {
                 #if DEBUG
-                print("⚠️ 无法加载UIImage类型的对象")
+                debugLog("⚠️ 无法加载UIImage类型的对象")
                 #endif
                 parent.isLoadingImage = false
                 parent.isPresented = false

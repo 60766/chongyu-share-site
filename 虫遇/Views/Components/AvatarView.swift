@@ -29,7 +29,7 @@ struct AvatarView: View {
             )
             .onAppear {
                 #if DEBUG
-                print("🔍 AvatarView - 显示虚拟角色头像: \(characterID), 用户名: \(comment.username)")
+                debugLog("🔍 AvatarView - 显示虚拟角色头像: \(characterID), 用户名: \(comment.username)")
                 #endif
             }
         } else if comment.isCurrentUser {
@@ -45,7 +45,7 @@ struct AvatarView: View {
                     )
             .onAppear {
                 #if DEBUG
-                print("🔍 AvatarView - 显示当前用户头像: \(UserProfileManager.shared.getCurrentAvatarURL()), 用户名: \(UserProfileManager.shared.getCurrentUsername())")
+                debugLog("🔍 AvatarView - 显示当前用户头像: \(UserProfileManager.shared.getCurrentAvatarURL()), 用户名: \(UserProfileManager.shared.getCurrentUsername())")
                 #endif
             }
         } else {
@@ -61,7 +61,7 @@ struct AvatarView: View {
                     )
             .onAppear {
                 #if DEBUG
-                print("🔍 AvatarView - 显示其他用户头像: \(comment.userAvatar), 用户名: \(comment.username)")
+                debugLog("🔍 AvatarView - 显示其他用户头像: \(comment.userAvatar), 用户名: \(comment.username)")
                 #endif
             }
         }

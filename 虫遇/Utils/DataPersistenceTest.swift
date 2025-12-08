@@ -14,7 +14,7 @@ class DataPersistenceTest {
      */
     func testDataConsistency() {
         #if DEBUG
-        print("🧪 开始数据一致性测试...")
+        debugLog("🧪 开始数据一致性测试...")
         #endif
         
         let viewModel = PostViewModel.shared
@@ -22,10 +22,10 @@ class DataPersistenceTest {
         // 获取当前状态
         let consistencyInfo = viewModel.getDataConsistencyInfo()
         #if DEBUG
-        print("📊 当前数据状态:")
+        debugLog("📊 当前数据状态:")
         #endif
         #if DEBUG
-        print(consistencyInfo)
+        debugLog(consistencyInfo)
         #endif
         
         // 验证数据
@@ -41,22 +41,22 @@ class DataPersistenceTest {
             
             DispatchQueue.main.async {
                 #if DEBUG
-                print("📈 测试结果:")
+                debugLog("📈 测试结果:")
                 #endif
                 #if DEBUG
-                print("   内存用户帖子: \(memoryUserPosts.count)")
+                debugLog("   内存用户帖子: \(memoryUserPosts.count)")
                 #endif
                 #if DEBUG
-                print("   持久化用户帖子: \(savedUserPosts.count)")
+                debugLog("   持久化用户帖子: \(savedUserPosts.count)")
                 #endif
                 #if DEBUG
-                print("   内存AI帖子: \(memoryAIPosts.count)")
+                debugLog("   内存AI帖子: \(memoryAIPosts.count)")
                 #endif
                 #if DEBUG
-                print("   持久化AI帖子: \(savedAIPosts.count)")
+                debugLog("   持久化AI帖子: \(savedAIPosts.count)")
                 #endif
                 #if DEBUG
-                print("   数据一致性: \(viewModel.isDataConsistent ? "✅" : "❌")")
+                debugLog("   数据一致性: \(viewModel.isDataConsistent ? "✅" : "❌")")
                 #endif
             }
         }
@@ -67,7 +67,7 @@ class DataPersistenceTest {
      */
     func testCriticalPointSave() {
         #if DEBUG
-        print("🧪 测试关键节点保存...")
+        debugLog("🧪 测试关键节点保存...")
         #endif
         
         let viewModel = PostViewModel.shared
@@ -82,13 +82,13 @@ class DataPersistenceTest {
             let duration = endTime.timeIntervalSince(startTime)
             
             #if DEBUG
-            print("⏱️ 保存测试完成:")
+            debugLog("⏱️ 保存测试完成:")
             #endif
             #if DEBUG
-            print("   耗时: \(String(format: "%.3f", duration))秒")
+            debugLog("   耗时: \(String(format: "%.3f", duration))秒")
             #endif
             #if DEBUG
-            print("   数据一致性: \(viewModel.isDataConsistent ? "✅" : "❌")")
+            debugLog("   数据一致性: \(viewModel.isDataConsistent ? "✅" : "❌")")
             #endif
         }
     }
@@ -98,7 +98,7 @@ class DataPersistenceTest {
      */
     func testForceSave() {
         #if DEBUG
-        print("🧪 测试强制保存...")
+        debugLog("🧪 测试强制保存...")
         #endif
         
         let viewModel = PostViewModel.shared
@@ -113,13 +113,13 @@ class DataPersistenceTest {
             let duration = endTime.timeIntervalSince(startTime)
             
             #if DEBUG
-            print("⚡ 强制保存测试完成:")
+            debugLog("⚡ 强制保存测试完成:")
             #endif
             #if DEBUG
-            print("   耗时: \(String(format: "%.3f", duration))秒")
+            debugLog("   耗时: \(String(format: "%.3f", duration))秒")
             #endif
             #if DEBUG
-            print("   数据一致性: \(viewModel.isDataConsistent ? "✅" : "❌")")
+            debugLog("   数据一致性: \(viewModel.isDataConsistent ? "✅" : "❌")")
             #endif
         }
     }
@@ -129,7 +129,7 @@ class DataPersistenceTest {
      */
     func runFullTestSuite() {
         #if DEBUG
-        print("🚀 开始完整测试套件...")
+        debugLog("🚀 开始完整测试套件...")
         #endif
         
         testDataConsistency()
@@ -144,7 +144,7 @@ class DataPersistenceTest {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             #if DEBUG
-            print("✅ 测试套件完成")
+            debugLog("✅ 测试套件完成")
             #endif
         }
     }

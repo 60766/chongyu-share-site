@@ -1161,7 +1161,7 @@ struct ExploreView: View {
         saveRecentInteractions()
         
         #if DEBUG
-        print("添加/更新交互记录: \(character.name) - \(type.rawValue)")
+        debugLog("添加/更新交互记录: \(character.name) - \(type.rawValue)")
         #endif
     }
     
@@ -1258,7 +1258,7 @@ struct ExploreView: View {
         
         // 这里可以添加点赞的网络请求等
         #if DEBUG
-        print("用户点赞了角色: \(character.name)")
+        debugLog("用户点赞了角色: \(character.name)")
         #endif
     }
     
@@ -1269,7 +1269,7 @@ struct ExploreView: View {
         
         // 这里可以添加评论的网络请求等
         #if DEBUG
-        print("用户评论了角色: \(character.name)")
+        debugLog("用户评论了角色: \(character.name)")
         #endif
     }
     
@@ -1344,7 +1344,7 @@ struct ExploreView: View {
             }
         } catch {
             #if DEBUG
-            print("加载自定义角色失败: \(error)")
+            debugLog("加载自定义角色失败: \(error)")
             #endif
             userCharacters = []
         }
@@ -1353,7 +1353,7 @@ struct ExploreView: View {
     // 添加删除角色的方法
     private func deleteCharacter(_ character: CharacterModel) {
         #if DEBUG
-        print("删除角色: \(character.name), ID: \(character.id)")
+        debugLog("删除角色: \(character.name), ID: \(character.id)")
         #endif
         
         // 1. 从内存中删除
@@ -1400,12 +1400,12 @@ struct ExploreView: View {
                 let updatedData = try JSONSerialization.data(withJSONObject: characterDicts)
                 UserDefaults.standard.set(updatedData, forKey: "CustomCharactersData")
                 #if DEBUG
-                print("成功从UserDefaults中删除角色: \(characterId)")
+                debugLog("成功从UserDefaults中删除角色: \(characterId)")
                 #endif
             }
         } catch {
             #if DEBUG
-            print("从UserDefaults中删除角色失败: \(error)")
+            debugLog("从UserDefaults中删除角色失败: \(error)")
             #endif
         }
     }
@@ -1419,12 +1419,12 @@ struct ExploreView: View {
             if FileManager.default.fileExists(atPath: fileURL.path) {
                 try FileManager.default.removeItem(at: fileURL)
                 #if DEBUG
-                print("成功删除角色图像文件: \(fileURL.path)")
+                debugLog("成功删除角色图像文件: \(fileURL.path)")
                 #endif
             }
         } catch {
             #if DEBUG
-            print("删除角色图像文件失败: \(error)")
+            debugLog("删除角色图像文件失败: \(error)")
             #endif
         }
     }
@@ -1432,7 +1432,7 @@ struct ExploreView: View {
     // 添加隐藏角色的方法
     func hideCharacter(_ character: CharacterModel) {
         #if DEBUG
-        print("隐藏角色: \(character.name), ID: \(character.id)")
+        debugLog("隐藏角色: \(character.name), ID: \(character.id)")
         #endif
         
         // 将角色ID添加到隐藏列表
@@ -1453,13 +1453,13 @@ struct ExploreView: View {
             // 如果已经置顶，则取消置顶
             pinnedCharacters.removeAll { $0 == character.id }
             #if DEBUG
-            print("取消置顶角色: \(character.name)")
+            debugLog("取消置顶角色: \(character.name)")
             #endif
         } else {
             // 如果未置顶，则添加到置顶列表
             pinnedCharacters.append(character.id)
             #if DEBUG
-            print("置顶角色: \(character.name)")
+            debugLog("置顶角色: \(character.name)")
             #endif
         }
         
@@ -1581,7 +1581,7 @@ struct ExploreView: View {
             }
         } catch {
             #if DEBUG
-            print("加载自定义角色失败: \(error)")
+            debugLog("加载自定义角色失败: \(error)")
             #endif
         }
         
@@ -1687,7 +1687,7 @@ extension ExploreView {
         if let encoded = try? JSONEncoder().encode(hiddenCharacters) {
             UserDefaults.standard.set(encoded, forKey: "HiddenCharacters")
             #if DEBUG
-            print("保存了\(hiddenCharacters.count)个隐藏角色到UserDefaults")
+            debugLog("保存了\(hiddenCharacters.count)个隐藏角色到UserDefaults")
             #endif
         }
     }
@@ -1709,7 +1709,7 @@ extension ExploreView {
         if let encoded = try? JSONEncoder().encode(pinnedCharacters) {
             UserDefaults.standard.set(encoded, forKey: "PinnedCharacters")
             #if DEBUG
-            print("保存了\(pinnedCharacters.count)个置顶角色到UserDefaults")
+            debugLog("保存了\(pinnedCharacters.count)个置顶角色到UserDefaults")
             #endif
         }
     }
@@ -1951,7 +1951,7 @@ struct MyCharactersView: View {
             }
         } catch {
             #if DEBUG
-            print("加载自定义角色失败: \(error)")
+            debugLog("加载自定义角色失败: \(error)")
             #endif
             characters = []
         }
@@ -2097,7 +2097,7 @@ struct CharacterGridItem: View {
     private func loadCustomAvatar() {
         // 记录尝试加载的信息
         #if DEBUG
-        print("🔄 CharacterGridItem - 尝试加载头像: id=\(character.id), avatar=\(character.avatar)")
+        debugLog("🔄 CharacterGridItem - 尝试加载头像: id=\(character.id), avatar=\(character.avatar)")
         #endif
         
         // 只对自定义角色尝试加载头像
@@ -2112,17 +2112,17 @@ struct CharacterGridItem: View {
                     DispatchQueue.main.async {
                         self.customImage = image
                         #if DEBUG
-                        print("✅ CharacterGridItem - 成功加载自定义头像: \(character.id)")
+                        debugLog("✅ CharacterGridItem - 成功加载自定义头像: \(character.id)")
                         #endif
                     }
                 } else {
                     #if DEBUG
-                    print("❌ CharacterGridItem - 无法加载自定义头像数据: \(character.id)")
+                    debugLog("❌ CharacterGridItem - 无法加载自定义头像数据: \(character.id)")
                     #endif
                 }
             } else {
                 #if DEBUG
-                print("⚠️ CharacterGridItem - 自定义头像文件不存在: \(character.id)")
+                debugLog("⚠️ CharacterGridItem - 自定义头像文件不存在: \(character.id)")
                 #endif
                 
                 // 如果直接加载失败，尝试使用CustomAvatarLoader
@@ -2130,14 +2130,14 @@ struct CharacterGridItem: View {
                     DispatchQueue.main.async {
                         self.customImage = image
                         #if DEBUG
-                        print("✅ CharacterGridItem - 通过CustomAvatarLoader成功加载: \(character.id)")
+                        debugLog("✅ CharacterGridItem - 通过CustomAvatarLoader成功加载: \(character.id)")
                         #endif
                     }
                 }
             }
         } else {
             #if DEBUG
-            print("ℹ️ CharacterGridItem - 非自定义角色: \(character.id)")
+            debugLog("ℹ️ CharacterGridItem - 非自定义角色: \(character.id)")
             #endif
         }
     }

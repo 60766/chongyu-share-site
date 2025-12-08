@@ -403,19 +403,19 @@ class MultiChatShareCardGenerator {
         
         // 🔍 调试日志
         #if DEBUG
-        print("🔍 MultiChat边界检测:")
+        debugLog("🔍 MultiChat边界检测:")
         #endif
         #if DEBUG
-        print("   画布: \(width)×\(height)px (scale=\(scale))")
+        debugLog("   画布: \(width)×\(height)px (scale=\(scale))")
         #endif
         #if DEBUG
-        print("   内容边界: x[\(minX), \(maxX)] y[\(minY), \(maxY)]")
+        debugLog("   内容边界: x[\(minX), \(maxX)] y[\(minY), \(maxY)]")
         #endif
         #if DEBUG
-        print("   内容尺寸: \((maxX - minX + 1))×\((maxY - minY + 1))px")
+        debugLog("   内容尺寸: \((maxX - minX + 1))×\((maxY - minY + 1))px")
         #endif
         #if DEBUG
-        print("   目标padding: \(targetPadding)pt = \(paddingPixels)px")
+        debugLog("   目标padding: \(targetPadding)pt = \(paddingPixels)px")
         #endif
         
         // 计算裁剪区域（内容边界 + 目标padding）
@@ -425,10 +425,10 @@ class MultiChatShareCardGenerator {
         let cropHeight = min(height - cropY, maxY - minY + 1 + 2 * paddingPixels)
         
         #if DEBUG
-        print("   裁剪区域: (\(cropX), \(cropY), \(cropWidth), \(cropHeight))")
+        debugLog("   裁剪区域: (\(cropX), \(cropY), \(cropWidth), \(cropHeight))")
         #endif
         #if DEBUG
-        print("   实际白边: 左=\(minX - cropX)px 右=\(cropX + cropWidth - maxX - 1)px 上=\(minY - cropY)px 下=\(cropY + cropHeight - maxY - 1)px")
+        debugLog("   实际白边: 左=\(minX - cropX)px 右=\(cropX + cropWidth - maxX - 1)px 上=\(minY - cropY)px 下=\(cropY + cropHeight - maxY - 1)px")
         #endif
         
         let cropRect = CGRect(
@@ -609,7 +609,7 @@ struct MultiChatMergedCardView: View {
         let finalHeight = max(minHeight, min(maxHeight, totalHeight))
         
         #if DEBUG
-        print("[MultiChatCard] 消息数量: \(messages.count), 计算高度: \(finalHeight), 消息总高度: \(totalMessageHeight)")
+        debugLog("[MultiChatCard] 消息数量: \(messages.count), 计算高度: \(finalHeight), 消息总高度: \(totalMessageHeight)")
         #endif
         
         return finalHeight

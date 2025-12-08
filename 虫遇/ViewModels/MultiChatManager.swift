@@ -194,7 +194,7 @@ class MultiChatManager: ObservableObject {
     private func generateInitialMessages() {
         // ✅ 初始化完成，等待用户点击"开始对话"按钮
         #if DEBUG
-        print("💬 多角色聊天初始化完成，等待用户开始对话...")
+        debugLog("💬 多角色聊天初始化完成，等待用户开始对话...")
         #endif
         
         // 保持 isFirstTimeStart = true，让按钮显示"开始对话"
@@ -235,13 +235,13 @@ class MultiChatManager: ObservableObject {
                 switch result {
                 case .success(let responses):
                     #if DEBUG
-                    print("✅ 批量生成成功，获得\(responses.count)个角色回复")
+                    debugLog("✅ 批量生成成功，获得\(responses.count)个角色回复")
                     #endif
                     self.addBatchResponses(responses)
                     
                 case .failure(let error):
                     #if DEBUG
-                    print("❌ 批量生成失败: \(error.localizedDescription)")
+                    debugLog("❌ 批量生成失败: \(error.localizedDescription)")
                     #endif
                     // 直接显示失败，不使用降级方案
                 }
@@ -255,7 +255,7 @@ class MultiChatManager: ObservableObject {
     private func addBatchResponses(_ responses: [(characterId: String, content: String)]) {
         // 保持API返回的原始顺序，不再重新排序
         #if DEBUG
-        print("📥 按原始顺序添加 \(responses.count) 个角色回复")
+        debugLog("📥 按原始顺序添加 \(responses.count) 个角色回复")
         #endif
         
         // 逐个添加回复，带有时间间隔
@@ -272,16 +272,16 @@ class MultiChatManager: ObservableObject {
                 )
                 
                 #if DEBUG
-                print("🤔 添加思考消息 - 角色: \(response.characterId)")
+                debugLog("🤔 添加思考消息 - 角色: \(response.characterId)")
                 #endif
                 #if DEBUG
-                print("📊 思考前消息数量: \(self.messages.count)")
+                debugLog("📊 思考前消息数量: \(self.messages.count)")
                 #endif
                 
                 self.messages.append(thinkingMessage)
                 
                 #if DEBUG
-                print("📊 思考后消息数量: \(self.messages.count)")
+                debugLog("📊 思考后消息数量: \(self.messages.count)")
                 #endif
                 
                 // 强制触发UI更新
@@ -293,16 +293,16 @@ class MultiChatManager: ObservableObject {
                 DispatchQueue.main.asyncAfter(deadline: .now() + self.thinkingTime) {
                     // 移除思考消息
                     #if DEBUG
-                    print("🗑️ 移除思考消息 - 角色: \(response.characterId)")
+                    debugLog("🗑️ 移除思考消息 - 角色: \(response.characterId)")
                     #endif
                     #if DEBUG
-                    print("📊 移除前消息数量: \(self.messages.count)")
+                    debugLog("📊 移除前消息数量: \(self.messages.count)")
                     #endif
                     
                     self.messages.removeAll { $0.id == thinkingMessage.id }
                     
                     #if DEBUG
-                    print("📊 移除后消息数量: \(self.messages.count)")
+                    debugLog("📊 移除后消息数量: \(self.messages.count)")
                     #endif
                     
                     // 添加实际回复
@@ -313,10 +313,10 @@ class MultiChatManager: ObservableObject {
                     )
                     
                     #if DEBUG
-                    print("🔧 准备添加消息到UI - 角色: \(response.characterId), 内容长度: \(response.content.count)")
+                    debugLog("🔧 准备添加消息到UI - 角色: \(response.characterId), 内容长度: \(response.content.count)")
                     #endif
                     #if DEBUG
-                    print("📊 当前消息数量: \(self.messages.count)")
+                    debugLog("📊 当前消息数量: \(self.messages.count)")
                     #endif
                     
                     self.messages.append(responseMessage)
@@ -325,10 +325,10 @@ class MultiChatManager: ObservableObject {
                     self.saveMessage(responseMessage, messageType: "text")
                     
                     #if DEBUG
-                    print("✅ 消息已添加到数组 - 新的消息数量: \(self.messages.count)")
+                    debugLog("✅ 消息已添加到数组 - 新的消息数量: \(self.messages.count)")
                     #endif
                     #if DEBUG
-                    print("💬 添加角色回复: \(response.characterId) -> \(response.content.prefix(20))...")
+                    debugLog("💬 添加角色回复: \(response.characterId) -> \(response.content.prefix(20))...")
                     #endif
                     
                     // 强制触发UI更新
@@ -341,7 +341,7 @@ class MultiChatManager: ObservableObject {
                         self.updateMultiChatContext(with: responseMessage, character: character)
                     } else {
                         #if DEBUG
-                        print("⚠️ 未找到角色: \(response.characterId)")
+                        debugLog("⚠️ 未找到角色: \(response.characterId)")
                         #endif
                     }
                     
@@ -350,7 +350,7 @@ class MultiChatManager: ObservableObject {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             self.shouldShowConversationEndIndicator = true
                             #if DEBUG
-                            print("🏁 显示对话结束指示器")
+                            debugLog("🏁 显示对话结束指示器")
                             #endif
                         }
                     }
@@ -437,31 +437,31 @@ class MultiChatManager: ObservableObject {
     /// 按需创建会话（仅在有AI消息时创建）
     private func createSessionIfNeeded() {
         #if DEBUG
-        print("🔍 检查会话创建需求:")
+        debugLog("🔍 检查会话创建需求:")
         #endif
         #if DEBUG
-        print("  - currentSession存在: \(currentSession != nil)")
+        debugLog("  - currentSession存在: \(currentSession != nil)")
         #endif
         #if DEBUG
-        print("  - modelContext存在: \(modelContext != nil)")
+        debugLog("  - modelContext存在: \(modelContext != nil)")
         #endif
         #if DEBUG
-        print("  - characters数量: \(characters.count)")
+        debugLog("  - characters数量: \(characters.count)")
         #endif
         #if DEBUG
-        print("  - theme: \"\(theme)\"")
+        debugLog("  - theme: \"\(theme)\"")
         #endif
         
         // 如果会话已存在或没有ModelContext，则不创建
         guard currentSession == nil, let modelContext = modelContext else { 
             #if DEBUG
-            print("  - 跳过会话创建（已存在或缺少ModelContext）")
+            debugLog("  - 跳过会话创建（已存在或缺少ModelContext）")
             #endif
             return 
         }
         
         #if DEBUG
-        print("  - 开始创建新会话...")
+        debugLog("  - 开始创建新会话...")
         #endif
         
         // 创建新的聊天会话
@@ -475,32 +475,32 @@ class MultiChatManager: ObservableObject {
         )
         
         #if DEBUG
-        print("✅ 按需创建聊天会话: \(currentSession?.id ?? "创建失败")")
+        debugLog("✅ 按需创建聊天会话: \(currentSession?.id ?? "创建失败")")
         #endif
     }
     
     /// 保存消息到数据库
     private func saveMessage(_ message: ChatMessage, messageType: String) {
         #if DEBUG
-        print("🔍 开始保存消息 - 类型: \(message.isUserMessage ? "用户" : "AI"), 内容: \"\(String(message.content.prefix(30)))...\"")
+        debugLog("🔍 开始保存消息 - 类型: \(message.isUserMessage ? "用户" : "AI"), 内容: \"\(String(message.content.prefix(30)))...\"")
         #endif
         
         guard let modelContext = modelContext else {
             #if DEBUG
-            print("⚠️ 无法保存消息：缺少ModelContext")
+            debugLog("⚠️ 无法保存消息：缺少ModelContext")
             #endif
             return
         }
         
         #if DEBUG
-        print("🔍 保存前会话状态: currentSession=\(currentSession?.id ?? "nil")")
+        debugLog("🔍 保存前会话状态: currentSession=\(currentSession?.id ?? "nil")")
         #endif
         
         // 确保会话已创建（无论是用户消息还是AI消息）
         createSessionIfNeeded()
         
         #if DEBUG
-        print("🔍 保存后会话状态: currentSession=\(currentSession?.id ?? "nil")")
+        debugLog("🔍 保存后会话状态: currentSession=\(currentSession?.id ?? "nil")")
         #endif
         
         // 如果是AI消息，保存之前未保存的用户消息（向后兼容）
@@ -510,7 +510,7 @@ class MultiChatManager: ObservableObject {
         
         guard let sessionId = currentSession?.id else {
             #if DEBUG
-            print("❌ 无法保存消息：缺少会话ID，会话创建可能失败")
+            debugLog("❌ 无法保存消息：缺少会话ID，会话创建可能失败")
             #endif
             return
         }
@@ -534,7 +534,7 @@ class MultiChatManager: ObservableObject {
         )
         
         #if DEBUG
-        print("✅ 已保存消息到数据库 - 类型: \(message.isUserMessage ? "用户" : "AI"), 内容: \"\(String(message.content.prefix(50)))...\"")
+        debugLog("✅ 已保存消息到数据库 - 类型: \(message.isUserMessage ? "用户" : "AI"), 内容: \"\(String(message.content.prefix(50)))...\"")
         #endif
     }
     
@@ -563,7 +563,7 @@ class MultiChatManager: ObservableObject {
             
             userMessagesAlreadySaved = true // 标记已保存
             #if DEBUG
-            print("✅ 已保存 \(userMessages.count) 条用户消息")
+            debugLog("✅ 已保存 \(userMessages.count) 条用户消息")
             #endif
         }
     }
@@ -584,13 +584,13 @@ class MultiChatManager: ObservableObject {
                     CharacterModel.loadAllCharactersWithoutFilter().first { $0.id == characterId }
                 }
                 #if DEBUG
-                print("✅ 从会话重建角色列表：\(self.characters.map { $0.name }.joined(separator: ", "))")
+                debugLog("✅ 从会话重建角色列表：\(self.characters.map { $0.name }.joined(separator: ", "))")
                 #endif
             } else {
                 // 使用传入的角色数据
                 self.characters = characters
                 #if DEBUG
-                print("✅ 使用传入角色数据：\(characters.map { $0.name }.joined(separator: ", "))")
+                debugLog("✅ 使用传入角色数据：\(characters.map { $0.name }.joined(separator: ", "))")
                 #endif
             }
             
@@ -600,16 +600,16 @@ class MultiChatManager: ObservableObject {
             self.userRole = UserRole(rawValue: session.userRole) ?? .observer
             
             #if DEBUG
-            print("✅ 已设置当前会话: \(session.topic)")
+            debugLog("✅ 已设置当前会话: \(session.topic)")
             #endif
             #if DEBUG
-            print("   - 角色数量: \(self.characters.count)")
+            debugLog("   - 角色数量: \(self.characters.count)")
             #endif
             #if DEBUG
-            print("   - 对话模式: \(self.mode)")
+            debugLog("   - 对话模式: \(self.mode)")
             #endif
             #if DEBUG
-            print("   - 用户角色: \(self.userRole)")
+            debugLog("   - 用户角色: \(self.userRole)")
             #endif
         }
         
@@ -622,7 +622,7 @@ class MultiChatManager: ObservableObject {
             self.hasStartedConversation = !chatMessages.isEmpty
             self.isFirstTimeStart = false
             #if DEBUG
-            print("✅ 已加载历史对话：\(chatMessages.count) 条消息")
+            debugLog("✅ 已加载历史对话：\(chatMessages.count) 条消息")
             #endif
         }
     }

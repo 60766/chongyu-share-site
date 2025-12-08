@@ -484,7 +484,7 @@ struct MyLikesView: View {
     private func handleRecordTap(_ record: LikeRecord) {
         
         #if DEBUG
-        print("点击了\(record.type.rawValue): \(record.postId)")
+        debugLog("点击了\(record.type.rawValue): \(record.postId)")
         #endif
     }
     
@@ -495,7 +495,7 @@ struct MyLikesView: View {
             // 视图会自动更新，因为likeService是@StateObject
         }
         #if DEBUG
-        print("移除了点赞记录: \(record.type.rawValue) - \(record.authorName)")
+        debugLog("移除了点赞记录: \(record.type.rawValue) - \(record.authorName)")
         #endif
     }
 }

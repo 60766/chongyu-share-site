@@ -45,22 +45,22 @@ class DoubaoVisionService {
      */
     func processCharacterLikes(for postId: String, postContent: String) {
         #if DEBUG
-        print("🎯 [通义千问视觉] 开始处理角色点赞，帖子ID: \(postId)")
-        print("🎯 [通义千问视觉] 当前点赞决策: \(characterLikeDecisions)")
+        debugLog("🎯 [通义千问视觉] 开始处理角色点赞，帖子ID: \(postId)")
+        debugLog("🎯 [通义千问视觉] 当前点赞决策: \(characterLikeDecisions)")
         #endif
         
         // 遍历所有决定点赞的角色
         for (characterId, shouldLike) in characterLikeDecisions {
             if shouldLike {
                 #if DEBUG
-                print("❤️ [通义千问视觉] 角色 \(characterId) 决定点赞")
+                debugLog("❤️ [通义千问视觉] 角色 \(characterId) 决定点赞")
                 #endif
                 // 延迟2-8秒再进行点赞，模拟真实的点赞时机
                 let likeDelay = Double.random(in: 2...8)
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + likeDelay) {
                     #if DEBUG
-                    print("🕐 [通义千问视觉] \(characterId)延迟\(String(format: "%.1f", likeDelay))秒后开始对帖子点赞")
+                    debugLog("🕐 [通义千问视觉] \(characterId)延迟\(String(format: "%.1f", likeDelay))秒后开始对帖子点赞")
                     #endif
                     // 调用虚拟角色点赞服务
                     VirtualCharacterLikeService.shared.processPostLike(
@@ -71,7 +71,7 @@ class DoubaoVisionService {
                 }
             } else {
                 #if DEBUG
-                print("💔 [通义千问视觉] 角色 \(characterId) 决定不点赞")
+                debugLog("💔 [通义千问视觉] 角色 \(characterId) 决定不点赞")
                 #endif
             }
         }
@@ -101,7 +101,7 @@ class DoubaoVisionService {
         
         // 直接处理所有图片（通义千问支持最多约15张，我们的App最多9张，不需要分批）
         #if DEBUG
-        print("📸 处理\(images.count)张图片，一次性发送到视觉API")
+        debugLog("📸 处理\(images.count)张图片，一次性发送到视觉API")
         #endif
         return analyzeImagesBatch(
             images,
@@ -143,9 +143,9 @@ class DoubaoVisionService {
             let url = self.baseURL.appendingPathComponent("api/vision")
             
 #if DEBUG
-            print("🌐 通义千问视觉API请求URL: \(url.absoluteString)")
-            print("🔑 使用Token: \(AppAccountManager.shared.appAccountToken)")
-            print("📊 图片数量: \(images.count)张")
+            debugLog("🌐 通义千问视觉API请求URL: \(url.absoluteString)")
+            debugLog("🔑 使用Token: \(AppAccountManager.shared.appAccountToken)")
+            debugLog("📊 图片数量: \(images.count)张")
 #endif
             
             var request = URLRequest(url: url)
@@ -176,11 +176,11 @@ class DoubaoVisionService {
             session.dataTask(with: request) { data, response, error in
                 if let error = error {
                     #if DEBUG
-                    print("❌ 通义千问视觉API网络错误详情: \(error)")
-                    print("❌ 错误类型: \(type(of: error))")
+                    debugLog("❌ 通义千问视觉API网络错误详情: \(error)")
+                    debugLog("❌ 错误类型: \(type(of: error))")
                     if let urlError = error as? URLError {
-                        print("❌ URLError代码: \(urlError.code.rawValue)")
-                        print("❌ URLError描述: \(urlError.localizedDescription)")
+                        debugLog("❌ URLError代码: \(urlError.code.rawValue)")
+                        debugLog("❌ URLError描述: \(urlError.localizedDescription)")
                     }
                     #endif
                     promise(.failure(.requestFailed(error)))
@@ -194,7 +194,7 @@ class DoubaoVisionService {
                 
                 if httpResponse.statusCode != 200 {
                     #if DEBUG
-                    print("❌ 通义千问视觉API HTTP错误: \(httpResponse.statusCode)")
+                    debugLog("❌ 通义千问视觉API HTTP错误: \(httpResponse.statusCode)")
                     #endif
                     promise(.failure(.httpError(httpResponse.statusCode)))
                     return
@@ -214,11 +214,11 @@ class DoubaoVisionService {
                        let content = message["content"] as? String {
                         
                         #if DEBUG
-                        print("✅ 通义千问视觉分析成功")
-                        print("📄 通义千问AI原始响应（前500字符）:")
-                        print("---")
-                        print(String(content.prefix(500)))
-                        print("---")
+                        debugLog("✅ 通义千问视觉分析成功")
+                        debugLog("📄 通义千问AI原始响应（前500字符）:")
+                        debugLog("---")
+                        debugLog(String(content.prefix(500)))
+                        debugLog("---")
 #endif
                         
                         // 解析角色评论
@@ -310,7 +310,7 @@ class DoubaoVisionService {
                        let content = message["content"] as? String {
                         
                         #if DEBUG
-                        print("✅ 通义千问视觉分析成功: \(content.prefix(100))...")
+                        debugLog("✅ 通义千问视觉分析成功: \(content.prefix(100))...")
                         #endif
                         promise(.success(content))
                     } else {
@@ -400,13 +400,13 @@ class DoubaoVisionService {
         // 转换为JPEG格式，使用指定的压缩质量
         guard let imageData = processedImage.jpegData(compressionQuality: compressionQuality) else {
             #if DEBUG
-            print("❌ 无法将图片转换为JPEG数据")
+            debugLog("❌ 无法将图片转换为JPEG数据")
             #endif
             return nil
         }
         
         #if DEBUG
-        print("📦 图片压缩质量: \(compressionQuality), 数据大小: \(imageData.count / 1024)KB")
+        debugLog("📦 图片压缩质量: \(compressionQuality), 数据大小: \(imageData.count / 1024)KB")
         #endif
         
         // ⚡️ 关键优化：base64编码后立即释放imageData引用
@@ -609,7 +609,7 @@ class DoubaoVisionService {
             result[charId] = currentComment.trimmingCharacters(in: .whitespacesAndNewlines)
             characterLikeDecisions[charId] = currentShouldLike
             #if DEBUG
-            print("💬 [\(charId)] 评论: \(currentComment.prefix(30))... | 点赞: \(currentShouldLike ? "是" : "否")")
+            debugLog("💬 [\(charId)] 评论: \(currentComment.prefix(30))... | 点赞: \(currentShouldLike ? "是" : "否")")
             #endif
         }
         
@@ -645,12 +645,12 @@ class DoubaoVisionService {
                 if lowerLine.contains("是") || lowerLine.contains("yes") || lowerLine.contains("true") {
                     currentShouldLike = true
                     #if DEBUG
-                    print("📝 [通义千问] 解析点赞判断: 原文='\(trimmedLine)', 结果=✅是")
+                    debugLog("📝 [通义千问] 解析点赞判断: 原文='\(trimmedLine)', 结果=✅是")
                     #endif
                 } else if lowerLine.contains("否") || lowerLine.contains("no") || lowerLine.contains("false") {
                     currentShouldLike = false
                     #if DEBUG
-                    print("📝 [通义千问] 解析点赞判断: 原文='\(trimmedLine)', 结果=❌否")
+                    debugLog("📝 [通义千问] 解析点赞判断: 原文='\(trimmedLine)', 结果=❌否")
                     #endif
                 }
                 continue
@@ -669,8 +669,8 @@ class DoubaoVisionService {
         saveCurrentCharacter()
         
 #if DEBUG
-        print("🎭 解析到\(result.count)个角色评论: \(result.keys.joined(separator: ", "))")
-        print("❤️ 点赞决策: \(characterLikeDecisions)")
+        debugLog("🎭 解析到\(result.count)个角色评论: \(result.keys.joined(separator: ", "))")
+        debugLog("❤️ 点赞决策: \(characterLikeDecisions)")
 #endif
         return result
     }

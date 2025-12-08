@@ -257,7 +257,7 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         
         // 发送评论点赞通知给UserLikeService
         if let comment = likedComment {
-            print("📨 UserPostModel: 发送评论点赞通知 - 评论ID: \(comment.id), 是否点赞: \(wasLiked)")
+            debugLog("📨 UserPostModel: 发送评论点赞通知 - 评论ID: \(comment.id), 是否点赞: \(wasLiked)")
             NotificationCenter.default.post(
                 name: NSNotification.Name("CommentLiked"),
                 object: nil,
@@ -574,7 +574,7 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         NotificationCenter.default.post(name: NSNotification.Name("PostDataUpdated"), object: nil)
         
         // 打印日志
-        print("数据已保存：\(self.id)")
+        debugLog("数据已保存：\(self.id)")
     }
     
     /**
@@ -583,11 +583,11 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
      * 特别用于一键生成的帖子，确保评论嵌套关系正确
      */
     func updateCommentRelationships() {
-        print("🔄 开始更新评论嵌套关系 - 帖子ID: \(id), 评论数: \(comments.count)")
+        debugLog("🔄 开始更新评论嵌套关系 - 帖子ID: \(id), 评论数: \(comments.count)")
         
         // 如果评论数量少于2，不需要处理嵌套关系
         if comments.count < 2 {
-            print("⏩ 评论数量少于2，跳过处理")
+            debugLog("⏩ 评论数量少于2，跳过处理")
             return
         }
         
@@ -609,7 +609,7 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                updatedComments[i].parentCommentId == nil {
                 if let parentId = usernameToCommentMap[replyToUsername] {
                     updatedComments[i].parentCommentId = parentId
-                    print("✅ 为评论 \(updatedComments[i].id) 设置父评论ID: \(parentId)")
+                    debugLog("✅ 为评论 \(updatedComments[i].id) 设置父评论ID: \(parentId)")
                 }
             }
         }
@@ -637,14 +637,14 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                 if let index = topLevelComments.firstIndex(where: { $0.id == parentId }) {
                     // 父评论在顶级评论中，直接添加
                     topLevelComments[index].replies.append(reply)
-                    print("✅ 将回复 \(reply.id) 添加到顶级父评论 \(parentId)")
+                    debugLog("✅ 将回复 \(reply.id) 添加到顶级父评论 \(parentId)")
                 } else {
                     // 父评论可能是另一个回复，需要递归查找
                     var found = false
                     for i in 0..<topLevelComments.count {
                         if addReplyToNestedParent(in: &topLevelComments[i].replies, parentId: parentId, reply: reply) {
                             found = true
-                            print("✅ 将回复 \(reply.id) 添加到嵌套父评论 \(parentId)")
+                            debugLog("✅ 将回复 \(reply.id) 添加到嵌套父评论 \(parentId)")
                             break
                         }
                     }
@@ -653,10 +653,10 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
                     if !found {
                         if reply.isVirtualCharacter {
                             // 虚拟角色回复找不到父评论时，丢弃该回复，不要转换为顶级评论
-                            print("❌ 虚拟角色回复找不到父评论，丢弃回复 - 角色: \(reply.username), 父评论ID: \(parentId)")
+                            debugLog("❌ 虚拟角色回复找不到父评论，丢弃回复 - 角色: \(reply.username), 父评论ID: \(parentId)")
                         } else {
                             // 只有非虚拟角色的回复才能转换为顶级评论
-                            print("⚠️ 未找到父评论 \(parentId)，将用户回复 \(reply.id) 作为顶级评论添加")
+                            debugLog("⚠️ 未找到父评论 \(parentId)，将用户回复 \(reply.id) 作为顶级评论添加")
                         var replyAsTopLevel = reply
                         replyAsTopLevel.parentCommentId = nil // 清除父评论ID
                         topLevelComments.append(replyAsTopLevel)
@@ -674,7 +674,7 @@ class UserPostModel: ObservableObject, Identifiable, Codable, Hashable {
         
         // 更新评论数组
         comments = topLevelComments
-        print("✅ 评论嵌套关系更新完成，更新后顶级评论数: \(comments.count)")
+        debugLog("✅ 评论嵌套关系更新完成，更新后顶级评论数: \(comments.count)")
         
         // 打印评论结构，帮助调试
         for comment in comments {

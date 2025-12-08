@@ -186,7 +186,7 @@ class CharacterRotationSystem {
         currentCycleUsedIds.removeAll()
         currentCycleNumber += 1
         #if DEBUG
-        print("🔄 开始角色新轮换周期 #\(currentCycleNumber)")
+        debugLog("🔄 开始角色新轮换周期 #\(currentCycleNumber)")
         #endif
         saveRotationState()
     }
@@ -297,19 +297,19 @@ class CharacterRotationSystem {
         // 调试：验证过滤是否正确工作
         let blockedCategories = BlockedCategoriesManager.shared.getBlockedCategories()
         if !blockedCategories.isEmpty {
-            print("🔒 当前屏蔽的分类: \(blockedCategories.map { $0.displayName }.joined(separator: ", "))")
-            print("📊 过滤后的角色数量: \(allCharacters.count)")
+            debugLog("🔒 当前屏蔽的分类: \(blockedCategories.map { $0.displayName }.joined(separator: ", "))")
+            debugLog("📊 过滤后的角色数量: \(allCharacters.count)")
             
             // 按分类统计过滤后的角色
             let categoryCounts = Dictionary(grouping: allCharacterModels) { $0.category }
                 .mapValues { $0.count }
-            print("📈 过滤后各分类角色数量: \(categoryCounts)")
+            debugLog("📈 过滤后各分类角色数量: \(categoryCounts)")
             
             // 验证：确保被屏蔽分类的角色不在列表中
             for category in blockedCategories {
                 let charactersInBlockedCategory = allCharacterModels.filter { $0.category == category }
                 if !charactersInBlockedCategory.isEmpty {
-                    print("⚠️ 警告：发现被屏蔽分类「\(category.displayName)」的角色仍在列表中: \(charactersInBlockedCategory.map { $0.name }.joined(separator: ", "))")
+                    debugLog("⚠️ 警告：发现被屏蔽分类「\(category.displayName)」的角色仍在列表中: \(charactersInBlockedCategory.map { $0.name }.joined(separator: ", "))")
                 }
             }
         }
@@ -350,7 +350,7 @@ class CharacterRotationSystem {
         // 这对于"我的创建"角色数量少的情况特别重要
         if finalCandidates.count < count {
             #if DEBUG
-            print("⚠️ 可用角色数量(\(finalCandidates.count))少于所需数量(\(count))，将允许重复使用角色")
+            debugLog("⚠️ 可用角色数量(\(finalCandidates.count))少于所需数量(\(count))，将允许重复使用角色")
             #endif
         }
         
@@ -371,8 +371,8 @@ class CharacterRotationSystem {
         let typeCount = Dictionary(grouping: allCharacters) { $0.type }.mapValues { $0.count }
         
         #if DEBUG
-        print("📊 可用角色类型分布: \(typeCount)")
-        print("📊 将按照角色分配模式选择角色，不强制类型配额")
+        debugLog("📊 可用角色类型分布: \(typeCount)")
+        debugLog("📊 将按照角色分配模式选择角色，不强制类型配额")
         #endif
         
         // 3. 选择角色 - 按照原来的角色分配模式（使用次数、轮换等），不强制类型配额
@@ -401,9 +401,9 @@ class CharacterRotationSystem {
             
             #if DEBUG
             if result.count < count {
-                print("⚠️ 选择后角色数量仍不足: 需要 \(count) 个，但只有 \(result.count) 个（可用角色总数: \(finalCandidates.count)，剩余角色: \(remainingCharacters.count)）")
+                debugLog("⚠️ 选择后角色数量仍不足: 需要 \(count) 个，但只有 \(result.count) 个（可用角色总数: \(finalCandidates.count)，剩余角色: \(remainingCharacters.count)）")
             } else {
-                print("✅ 通过最后补充阶段，成功选择 \(result.count) 个角色")
+                debugLog("✅ 通过最后补充阶段，成功选择 \(result.count) 个角色")
             }
             #endif
         }
@@ -416,7 +416,7 @@ class CharacterRotationSystem {
                 let isAvailable = BlockedCategoriesManager.shared.isCharacterAvailable(characterModel)
                 if !isAvailable {
         #if DEBUG
-                    print("⚠️ 过滤掉被屏蔽分类的角色: \(characterModel.name) (分类: \(characterModel.category.displayName))")
+                    debugLog("⚠️ 过滤掉被屏蔽分类的角色: \(characterModel.name) (分类: \(characterModel.category.displayName))")
         #endif
                 }
                 return isAvailable
@@ -426,10 +426,10 @@ class CharacterRotationSystem {
         
         #if DEBUG
         if finalResult.count < result.count {
-            print("🔒 从 \(result.count) 个角色中过滤掉 \(result.count - finalResult.count) 个被屏蔽分类的角色")
+            debugLog("🔒 从 \(result.count) 个角色中过滤掉 \(result.count - finalResult.count) 个被屏蔽分类的角色")
         }
         if finalResult.count < count {
-            print("⚠️ 过滤后角色数量不足: 需要 \(count) 个，但只有 \(finalResult.count) 个可用角色")
+            debugLog("⚠️ 过滤后角色数量不足: 需要 \(count) 个，但只有 \(finalResult.count) 个可用角色")
         }
         #endif
         
@@ -467,10 +467,10 @@ class CharacterRotationSystem {
             
         #if DEBUG
             if finalResultWithSupplement.count < count {
-                print("⚠️ 补充后仍然不足: 需要 \(count) 个，补充后只有 \(finalResultWithSupplement.count) 个")
-                print("📊 可用角色总数: \(allCharacters.count)，已使用: \(usedIds.count)，可补充: \(availableForSupplement.count)，实际补充: \(availableSupplement.count)")
+                debugLog("⚠️ 补充后仍然不足: 需要 \(count) 个，补充后只有 \(finalResultWithSupplement.count) 个")
+                debugLog("📊 可用角色总数: \(allCharacters.count)，已使用: \(usedIds.count)，可补充: \(availableForSupplement.count)，实际补充: \(availableSupplement.count)")
             } else {
-                print("✅ 成功补充到 \(finalResultWithSupplement.count) 个角色（目标: \(count) 个）")
+                debugLog("✅ 成功补充到 \(finalResultWithSupplement.count) 个角色（目标: \(count) 个）")
             }
         #endif
         }
@@ -486,10 +486,10 @@ class CharacterRotationSystem {
         let uniqueTypes = Set(finalResultWithSupplement.map { $0.type })
         let coolingCount = min(recentlyUsedCharacterIds.count, max(5, allCharacters.count / 8))
         
-        print("🔄 角色轮换系统选择了\(finalResultWithSupplement.count)个角色：\(selectedIds.joined(separator: ", "))")
-        print("📊 角色类型分布：\(uniqueTypes.map { "\($0)" }.joined(separator: ", "))")
-        print("❄️ 冷却期角色数量：\(coolingCount)/\(recentlyUsedCharacterIds.count)")
-        print("📈 总角色库大小：\(allCharacters.count)，当前可用：\(allCharacters.count - coolingCount)")
+        debugLog("🔄 角色轮换系统选择了\(finalResultWithSupplement.count)个角色：\(selectedIds.joined(separator: ", "))")
+        debugLog("📊 角色类型分布：\(uniqueTypes.map { "\($0)" }.joined(separator: ", "))")
+        debugLog("❄️ 冷却期角色数量：\(coolingCount)/\(recentlyUsedCharacterIds.count)")
+        debugLog("📈 总角色库大小：\(allCharacters.count)，当前可用：\(allCharacters.count - coolingCount)")
         #endif
         
         return finalResultWithSupplement
@@ -510,7 +510,7 @@ class CharacterRotationSystem {
         // 🔒 如果过滤后没有可用角色，返回空数组并记录警告
         if allCharacters.isEmpty {
             #if DEBUG
-            print("⚠️ 严格轮换模式：过滤后没有可用角色，请检查屏蔽设置")
+            debugLog("⚠️ 严格轮换模式：过滤后没有可用角色，请检查屏蔽设置")
             #endif
             return []
         }
@@ -556,7 +556,7 @@ class CharacterRotationSystem {
             // 🔒 如果剩余角色仍然不足，允许重复使用已选角色（对于角色数量很少的情况）
             if remainingCharacters.count < neededMore {
                 #if DEBUG
-                print("⚠️ 角色数量不足(需要\(neededMore)个，可用\(remainingCharacters.count)个)，允许重复使用角色")
+                debugLog("⚠️ 角色数量不足(需要\(neededMore)个，可用\(remainingCharacters.count)个)，允许重复使用角色")
                 #endif
                 // 从所有角色中选择（包括已选角色），优先选择使用次数最少的
                 let allAvailable = allCharacters.sorted { char1, char2 in
@@ -593,7 +593,7 @@ class CharacterRotationSystem {
         let totalCount = allCharacters.count
         let remainingCount = totalCount - usedCount
         #if DEBUG
-        print("🔄 严格轮换模式：选择了\(result.count)个角色，当前周期#\(currentCycleNumber)已使用\(usedCount)/\(totalCount)个角色（过滤后），剩余\(remainingCount)个")
+        debugLog("🔄 严格轮换模式：选择了\(result.count)个角色，当前周期#\(currentCycleNumber)已使用\(usedCount)/\(totalCount)个角色（过滤后），剩余\(remainingCount)个")
         #endif
         
         return result
@@ -621,7 +621,7 @@ class CharacterRotationSystem {
             
             saveRotationState()
             #if DEBUG
-            print("🔀 角色分配模式已切换为: \(getModeName(mode))")
+            debugLog("🔀 角色分配模式已切换为: \(getModeName(mode))")
             #endif
         }
     }
@@ -840,7 +840,7 @@ class CharacterRotationSystem {
         saveUserPreferences()
         
         #if DEBUG
-        print("👎 用户已标记不喜欢角色: \(characterId)")
+        debugLog("👎 用户已标记不喜欢角色: \(characterId)")
         #endif
     }
     

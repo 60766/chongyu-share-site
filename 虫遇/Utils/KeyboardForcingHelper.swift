@@ -44,7 +44,7 @@ extension UIWindow {
 struct KeyboardForcingHelper {
     static func forceHideKeyboard() {
         #if DEBUG
-        print("KeyboardForcingHelper - 强制隐藏键盘")
+        debugLog("KeyboardForcingHelper - 强制隐藏键盘")
         #endif
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }

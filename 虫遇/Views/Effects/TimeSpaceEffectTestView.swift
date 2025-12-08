@@ -65,7 +65,7 @@ struct TimeSpaceEffectTestView: View {
                 TimeSpaceEffectView(isActive: $showEffect) {
                     // 特效完成后的回调
                     #if DEBUG
-                    print("特效完成")
+                    debugLog("特效完成")
                     #endif
                 }
                 .edgesIgnoringSafeArea(.all)

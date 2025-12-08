@@ -104,7 +104,7 @@ class CommentManager: ObservableObject {
             // Phase 2优化 - 尝试从缓存加载评论
             if let cachedComments = self.intelligentCache.getComments(for: post.id) {
                 #if DEBUG
-                print("📈 评论缓存命中，直接使用缓存评论")
+                debugLog("📈 评论缓存命中，直接使用缓存评论")
                 #endif
                 self.allComments = cachedComments
                 self.topLevelComments = cachedComments.filter { $0.parentCommentId == nil }
@@ -164,7 +164,7 @@ class CommentManager: ObservableObject {
         }
         
         // 🚀 性能优化：减少非关键日志输出
-        // print("📝 已从 UserDefaults 加载 \(draftDictionary.count) 个草稿和 \(userClearedDictionary.count) 个清除标记")
+        // debugLog("📝 已从 UserDefaults 加载 \(draftDictionary.count) 个草稿和 \(userClearedDictionary.count) 个清除标记")
     }
     
     /**
@@ -216,7 +216,7 @@ class CommentManager: ObservableObject {
                   self.currentPost.id.uuidString == postID,
                   let commentsMap = userInfo["commentsMap"] as? [String: String] else {
                 #if DEBUG
-                print("⚠️ 无法处理批量生成评论通知：缺少必要信息或当前帖子不匹配")
+                debugLog("⚠️ 无法处理批量生成评论通知：缺少必要信息或当前帖子不匹配")
                 #endif
                 return
             }
@@ -228,7 +228,7 @@ class CommentManager: ObservableObject {
             let processedBatchKey = "processed_batch_\(batchId)"
             if UserDefaults.standard.bool(forKey: processedBatchKey) {
                 #if DEBUG
-                print("⚠️ 批次ID \(batchId) 已被处理过，跳过重复处理")
+                debugLog("⚠️ 批次ID \(batchId) 已被处理过，跳过重复处理")
                 #endif
                 return
             }
@@ -244,7 +244,7 @@ class CommentManager: ObservableObject {
             } else {
                 // 这是对用户评论的回复，已经在generateVirtualReply方法中处理
                 #if DEBUG
-                print("ℹ️ 这是对用户评论的回复，将在generateVirtualReply方法中处理")
+                debugLog("ℹ️ 这是对用户评论的回复，将在generateVirtualReply方法中处理")
                 #endif
             }
             
@@ -325,7 +325,7 @@ class CommentManager: ObservableObject {
         isRestoringDraft = false
         
         #if DEBUG
-        print("🗑️ 帖子 \(currentPost.id.uuidString) 的草稿已被外部组件清除")
+        debugLog("🗑️ 帖子 \(currentPost.id.uuidString) 的草稿已被外部组件清除")
         #endif
     }
     
@@ -433,7 +433,7 @@ class CommentManager: ObservableObject {
     func submitComment() {
         guard !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             #if DEBUG
-            print("⚠️ 评论内容为空，取消提交")
+            debugLog("⚠️ 评论内容为空，取消提交")
             #endif
             return
         }
@@ -480,7 +480,7 @@ class CommentManager: ObservableObject {
                         // 如果找不到根评论，使用被回复评论的父评论ID
                         rootCommentId = parentId
                         #if DEBUG
-                        print("🔍 使用父评论ID作为根评论: \(rootCommentId)")
+                        debugLog("🔍 使用父评论ID作为根评论: \(rootCommentId)")
                         #endif
                     }
                 } else {
@@ -655,7 +655,7 @@ class CommentManager: ObservableObject {
             // 如果指定了评论ID，优先使用指定的评论
             targetComment = allComments.first { $0.id == specifiedCommentId && !$0.isVirtualCharacter }
             #if DEBUG
-            print("🎯 使用指定的评论ID: \(specifiedCommentId)")
+            debugLog("🎯 使用指定的评论ID: \(specifiedCommentId)")
             #endif
         }
         
@@ -674,26 +674,26 @@ class CommentManager: ObservableObject {
                 }
             }
             #if DEBUG
-            print("🎯 查找最新未回复评论")
+            debugLog("🎯 查找最新未回复评论")
             #endif
         }
         
         guard let latestComment = targetComment else {
             #if DEBUG
-            print("🤖 没有找到需要回复的用户评论")
+            debugLog("🤖 没有找到需要回复的用户评论")
             #endif
             return
         }
         
         #if DEBUG
-        print("🎯 找到需要回复的用户评论 - ID: \(latestComment.id), 内容: \"\(latestComment.content.prefix(20))...\"")
+        debugLog("🎯 找到需要回复的用户评论 - ID: \(latestComment.id), 内容: \"\(latestComment.content.prefix(20))...\"")
         #endif
         
         // 检查是否已经对此评论生成过回复（双重检查）
         let commentRepliedKey = "replied_to_comment_\(latestComment.id.uuidString)"
         if UserDefaults.standard.bool(forKey: commentRepliedKey) {
             #if DEBUG
-            print("🤖 已经对评论ID: \(latestComment.id.uuidString) 生成过回复，跳过")
+            debugLog("🤖 已经对评论ID: \(latestComment.id.uuidString) 生成过回复，跳过")
             #endif
             return
         }
@@ -704,7 +704,7 @@ class CommentManager: ObservableObject {
         let userCommentContent = latestComment.content  // 获取用户评论内容
         
         #if DEBUG
-        print("⭐️ 生成回复目标 - 评论ID: \(targetCommentID), 用户: \(targetUsername), 内容: \"\(latestComment.content.prefix(20))...\"")
+        debugLog("⭐️ 生成回复目标 - 评论ID: \(targetCommentID), 用户: \(targetUsername), 内容: \"\(latestComment.content.prefix(20))...\"")
         #endif
         
         // 检查评论中是否包含@特定角色
@@ -718,7 +718,7 @@ class CommentManager: ObservableObject {
         if let postCharacterId = currentPost.characterID, !postCharacterId.isEmpty {
             authorCharacterId = postCharacterId
             #if DEBUG
-            print("👑 从帖子属性获取到作者角色ID: \(postCharacterId)")
+            debugLog("👑 从帖子属性获取到作者角色ID: \(postCharacterId)")
             #endif
         } else {
             // 使用CharacterDataManager获取所有角色信息
@@ -734,7 +734,7 @@ class CommentManager: ObservableObject {
             if let id = characterMapping[postAuthorName] {
                 authorCharacterId = id
                 #if DEBUG
-                print("👑 通过名称匹配识别帖子作者是虚拟角色: \(postAuthorName) (ID: \(id))")
+                debugLog("👑 通过名称匹配识别帖子作者是虚拟角色: \(postAuthorName) (ID: \(id))")
                 #endif
             }
         }
@@ -751,7 +751,7 @@ class CommentManager: ObservableObject {
         if let authorId = authorCharacterId {
             authorCharacter = authorId
             #if DEBUG
-            print("👑 帖子作者将参与回复")
+            debugLog("👑 帖子作者将参与回复")
             #endif
         }
         
@@ -759,13 +759,13 @@ class CommentManager: ObservableObject {
         if let mentionedCharacter = mentionedCharacter, mentionedCharacter != authorCharacter {
             otherSelectedCharacters.append(mentionedCharacter)
             #if DEBUG
-            print("👥 @提及的角色将参与回复: \(CharacterDataManager.shared.getName(for: mentionedCharacter) ?? mentionedCharacter)")
+            debugLog("👥 @提及的角色将参与回复: \(CharacterDataManager.shared.getName(for: mentionedCharacter) ?? mentionedCharacter)")
             #endif
         }
         
         // 3. 使用角色轮换系统选择额外角色，确保均衡分配
         #if DEBUG
-        print("🔄 使用角色轮换系统选择回复角色")
+        debugLog("🔄 使用角色轮换系统选择回复角色")
         #endif
         
         // 开始新的生成会话
@@ -793,7 +793,7 @@ class CommentManager: ObservableObject {
             
             otherSelectedCharacters.append(contentsOf: additionalCharacters)
             #if DEBUG
-            print("🎯 角色轮换系统选择了\(additionalCharacters.count)个额外角色参与回复")
+            debugLog("🎯 角色轮换系统选择了\(additionalCharacters.count)个额外角色参与回复")
             #endif
         }
         
@@ -802,7 +802,7 @@ class CommentManager: ObservableObject {
         if let authorChar = authorCharacter {
             allSelectedCharacters.append(authorChar)
             #if DEBUG
-            print("👑 已将作者角色添加到回复列表")
+            debugLog("👑 已将作者角色添加到回复列表")
             #endif
         }
 
@@ -839,18 +839,18 @@ class CommentManager: ObservableObject {
             let rotationCharacters = CharacterRotationSystem.shared.getBalancedCharacters(count: 4)
             allSelectedCharacters = rotationCharacters.map { $0.id }
             #if DEBUG
-            print("⚠️ 角色列表为空，角色轮换系统选择了\(allSelectedCharacters.count)个角色")
+            debugLog("⚠️ 角色列表为空，角色轮换系统选择了\(allSelectedCharacters.count)个角色")
             #endif
         }
         
         #if DEBUG
-        print("👥 最终选择的回复角色: \(allSelectedCharacters.joined(separator: ", "))")
+        debugLog("👥 最终选择的回复角色: \(allSelectedCharacters.joined(separator: ", "))")
         #endif
         #if DEBUG
-        print("🔍 是否包含帖子作者: \(authorCharacter != nil ? "是 - \(authorCharacter!)" : "否")")
+        debugLog("🔍 是否包含帖子作者: \(authorCharacter != nil ? "是 - \(authorCharacter!)" : "否")")
         #endif
         #if DEBUG
-        print("🔢 总共选择了\(allSelectedCharacters.count)个角色回复")
+        debugLog("🔢 总共选择了\(allSelectedCharacters.count)个角色回复")
         #endif
         
         // 记录用户评论，用于跟踪历史
@@ -863,18 +863,18 @@ class CommentManager: ObservableObject {
         // do {
         //     try await Task.sleep(nanoseconds: UInt64(Double.random(in: 0.5...2.0) * 1_000_000_000))
         // } catch {
-        //     print("⚠️ 延迟模拟被中断")
+        //     debugLog("⚠️ 延迟模拟被中断")
         // }
         
         // 使用批量API生成回复
         #if DEBUG
-        print("🚀 开始批量生成\(allSelectedCharacters.count)个角色的回复")
+        debugLog("🚀 开始批量生成\(allSelectedCharacters.count)个角色的回复")
         #endif
         
         // 生成一个唯一的请求ID，用于跟踪这次请求
         let requestId = UUID().uuidString
         #if DEBUG
-        print("📝 生成请求ID: \(requestId)")
+        debugLog("📝 生成请求ID: \(requestId)")
         #endif
         
         // 使用MultiCharacterCommentService一次性生成多个角色的回复
@@ -898,7 +898,7 @@ class CommentManager: ObservableObject {
                         switch result {
                         case .success(let commentsMap):
                             #if DEBUG
-                            print("✅ 成功批量生成\(commentsMap.count)个角色的回复")
+                            debugLog("✅ 成功批量生成\(commentsMap.count)个角色的回复")
                             #endif
                             
                             // 标记此评论已被回复
@@ -941,17 +941,17 @@ class CommentManager: ObservableObject {
                                     // 添加调试日志，特别关注孔子的情况
                                     if characterID.lowercased() == "kongzi" {
                                         #if DEBUG
-                                        print("🔍 创建孔子评论 - ID: \(characterID), 名称: \(characterDisplayName), 头像: \(characterAvatar)")
+                                        debugLog("🔍 创建孔子评论 - ID: \(characterID), 名称: \(characterDisplayName), 头像: \(characterAvatar)")
                                         #endif
                                         #if DEBUG
-                                        print("�� 孔子评论详情 - isVirtualCharacter: \(virtualReply.isVirtualCharacter), characterID: \(virtualReply.characterID ?? "nil")")
+                                        debugLog("�� 孔子评论详情 - isVirtualCharacter: \(virtualReply.isVirtualCharacter), characterID: \(virtualReply.characterID ?? "nil")")
                                         #endif
                                     }
                                     
                                     // 🔧 关键修复：注释掉手动添加评论的代码，避免重复添加
                                     // 现在由MultiCharacterCommentService统一处理评论添加，避免重复
                                     #if DEBUG
-                                    print("🔧 CommentManager: 跳过手动添加评论，由MultiCharacterCommentService统一处理")
+                                    debugLog("🔧 CommentManager: 跳过手动添加评论，由MultiCharacterCommentService统一处理")
                                     #endif
                                     
                                     // 注释掉以下代码以避免重复添加：
@@ -984,7 +984,7 @@ class CommentManager: ObservableObject {
                                         let commentAuthorReplyKey = "author_replied_\(targetCommentID.uuidString)"
                                         UserDefaults.standard.set(true, forKey: commentAuthorReplyKey)
                                         #if DEBUG
-                                        print("✅ 帖子作者已回复此评论")
+                                        debugLog("✅ 帖子作者已回复此评论")
                                         #endif
                                     }
                                     
@@ -1037,7 +1037,7 @@ class CommentManager: ObservableObject {
                             continuation.resume()
                         case .failure(let error):
                             #if DEBUG
-                            print("❌ 批量生成角色回复失败: \(error.localizedDescription)")
+                            debugLog("❌ 批量生成角色回复失败: \(error.localizedDescription)")
                             #endif
                             continuation.resume(throwing: error)
                         }
@@ -1046,7 +1046,7 @@ class CommentManager: ObservableObject {
             }
         } catch {
             #if DEBUG
-            print("❌ 批量API生成回复失败: \(error.localizedDescription)")
+            debugLog("❌ 批量API生成回复失败: \(error.localizedDescription)")
             #endif
         }
     }
@@ -1071,7 +1071,7 @@ class CommentManager: ObservableObject {
         let commentRepliedKey = "replied_to_user_comment_\(parentCommentID.uuidString)_\(userComment.hash)"
         if UserDefaults.standard.bool(forKey: commentRepliedKey) {
             #if DEBUG
-            print("🤖 已经对用户回复生成过回应，跳过")
+            debugLog("🤖 已经对用户回复生成过回应，跳过")
             #endif
             return
         }
@@ -1084,7 +1084,7 @@ class CommentManager: ObservableObject {
         let allCharacters = CharacterSystem.shared.getAllCharacters()
         guard let character = allCharacters.first(where: { $0.id == characterID }) else {
             #if DEBUG
-            print("⚠️ CommentManager: 未找到角色ID: \(characterID)，使用默认信息")
+            debugLog("⚠️ CommentManager: 未找到角色ID: \(characterID)，使用默认信息")
             #endif
             return
         }
@@ -1133,7 +1133,7 @@ class CommentManager: ObservableObject {
                             break
                         case .failure(let error):
                             #if DEBUG
-                            print("❌ 生成虚拟角色回复失败: \(error.localizedDescription)")
+                            debugLog("❌ 生成虚拟角色回复失败: \(error.localizedDescription)")
                             #endif
                         }
                         continuation.resume()
@@ -1188,13 +1188,13 @@ class CommentManager: ObservableObject {
                             if let rootComment = self.findRootComment(for: virtualReply, in: self.currentPost.comments) {
                                 rootCommentId = rootComment.id
                                 #if DEBUG
-                                print("🔍 虚拟角色回复 - 找到根评论ID: \(rootCommentId)")
+                                debugLog("🔍 虚拟角色回复 - 找到根评论ID: \(rootCommentId)")
                                 #endif
                             } else {
                                 // 如果找不到根评论，使用父评论ID
                                 rootCommentId = parentCommentID
                                 #if DEBUG
-                                print("🔍 虚拟角色回复 - 使用父评论ID作为根评论: \(parentCommentID)")
+                                debugLog("🔍 虚拟角色回复 - 使用父评论ID作为根评论: \(parentCommentID)")
                                 #endif
                             }
                             
@@ -1261,7 +1261,7 @@ class CommentManager: ObservableObject {
         // 使用CharacterAvatarService获取角色头像
         let avatarName = CharacterAvatarService.shared.getAvatarName(for: characterID)
         #if DEBUG
-        print("✅ 从CharacterAvatarService获取头像: \(characterID) -> \(avatarName)")
+        debugLog("✅ 从CharacterAvatarService获取头像: \(characterID) -> \(avatarName)")
         #endif
         return avatarName
     }
@@ -1365,14 +1365,14 @@ class CommentManager: ObservableObject {
         // 如果在备用映射中找到，返回对应名称
         if let name = characterNames[characterId] {
             #if DEBUG
-            print("⚠️ 从备用映射获取角色名称: \(characterId) -> \(name)")
+            debugLog("⚠️ 从备用映射获取角色名称: \(characterId) -> \(name)")
             #endif
             return name
         }
         
         // 如果都找不到，返回角色ID
         #if DEBUG
-        print("⚠️ 无法获取角色名称，使用ID作为名称: \(characterId)")
+        debugLog("⚠️ 无法获取角色名称，使用ID作为名称: \(characterId)")
         #endif
         return characterId
     }
@@ -1531,7 +1531,7 @@ class CommentManager: ObservableObject {
         // 发送通知让评论输入框获取焦点
         DispatchQueue.main.async {
             #if DEBUG
-            print("📣 发送FocusCommentInput通知")
+            debugLog("📣 发送FocusCommentInput通知")
             #endif
             NotificationCenter.default.post(
                 name: NSNotification.Name("FocusCommentInput"),
@@ -1716,7 +1716,7 @@ class CommentManager: ObservableObject {
             userInfo: ["postID": currentPost.id.uuidString]
         )
         #if DEBUG
-        print("💾 已发送保存帖子数据通知 - 帖子ID: \(currentPost.id.uuidString)")
+        debugLog("💾 已发送保存帖子数据通知 - 帖子ID: \(currentPost.id.uuidString)")
         #endif
     }
     
@@ -1732,7 +1732,7 @@ class CommentManager: ObservableObject {
         // 查找指定ID的角色
         guard let character = allCharacters.first(where: { $0.id == characterID }) else {
             #if DEBUG
-            print("⚠️ CommentManager: 未找到角色ID: \(characterID)，使用默认描述")
+            debugLog("⚠️ CommentManager: 未找到角色ID: \(characterID)，使用默认描述")
             #endif
             return "智能助手"
         }
@@ -1784,12 +1784,12 @@ class CommentManager: ObservableObject {
                 self.commentProtectionTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { _ in
                     self.protectedCommentIds.remove(commentId)
                     #if DEBUG
-                    print("🛡️ 评论保护期结束: \(commentId)")
+                    debugLog("🛡️ 评论保护期结束: \(commentId)")
                     #endif
                 }
                 
                 #if DEBUG
-                print("🛡️ 评论已保护: \(commentId), 保护期: \(duration)秒")
+                debugLog("🛡️ 评论已保护: \(commentId), 保护期: \(duration)秒")
                 #endif
             }
         }
@@ -1816,11 +1816,11 @@ class CommentManager: ObservableObject {
         if !allComments.contains(where: { $0.id == comment.id }) {
             allComments.append(comment)
             #if DEBUG
-            print("✅ 安全添加评论: \(comment.username) - \(comment.content.prefix(20))...")
+            debugLog("✅ 安全添加评论: \(comment.username) - \(comment.content.prefix(20))...")
             #endif
         } else {
             #if DEBUG
-            print("⚠️ 评论已存在，跳过添加: \(comment.id)")
+            debugLog("⚠️ 评论已存在，跳过添加: \(comment.id)")
             #endif
         }
     }
@@ -1833,25 +1833,25 @@ class CommentManager: ObservableObject {
         let userComments = allComments.filter { !$0.isVirtualCharacter }
         
         #if DEBUG
-        print("🔍 评论状态监控:")
+        debugLog("🔍 评论状态监控:")
         #endif
         #if DEBUG
-        print("- 总评论数: \(allComments.count)")
+        debugLog("- 总评论数: \(allComments.count)")
         #endif
         #if DEBUG
-        print("- 虚拟角色评论: \(virtualComments.count)")
+        debugLog("- 虚拟角色评论: \(virtualComments.count)")
         #endif
         #if DEBUG
-        print("- 用户评论: \(userComments.count)")
+        debugLog("- 用户评论: \(userComments.count)")
         #endif
         #if DEBUG
-        print("- 受保护评论: \(protectedCommentIds.count)")
+        debugLog("- 受保护评论: \(protectedCommentIds.count)")
         #endif
         
         for comment in virtualComments {
             let isProtected = isCommentProtected(comment.id)
             #if DEBUG
-            print("  🤖 \(comment.username): \(isProtected ? "🛡️受保护" : "⚠️未保护")")
+            debugLog("  🤖 \(comment.username): \(isProtected ? "🛡️受保护" : "⚠️未保护")")
             #endif
         }
     }
@@ -1866,7 +1866,7 @@ class CommentManager: ObservableObject {
         for expectedComment in expectedVirtualComments {
             if !currentVirtualComments.contains(where: { $0.id == expectedComment.id }) {
                 #if DEBUG
-                print("🔄 恢复丢失的虚拟角色评论: \(expectedComment.username)")
+                debugLog("🔄 恢复丢失的虚拟角色评论: \(expectedComment.username)")
                 #endif
                 addCommentSafely(expectedComment)
             }

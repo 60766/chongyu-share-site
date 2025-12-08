@@ -126,7 +126,7 @@ class CharacterPersonalityManager {
         if !adjustments.hasAnyAdjustments {
             userAdjustments.removeValue(forKey: characterId)
             #if DEBUG
-            print("✅ CharacterPersonalityManager: 重置了角色个性参数 - \(characterId)")
+            debugLog("✅ CharacterPersonalityManager: 重置了角色个性参数 - \(characterId)")
             #endif
         } else {
             userAdjustments[characterId] = adjustments
@@ -138,7 +138,7 @@ class CharacterPersonalityManager {
                 adjustments.communicationPace != nil ? "communicationPace" : nil
             ].compactMap { $0 }
             #if DEBUG
-            print("✅ CharacterPersonalityManager: 更新了角色个性参数 - \(characterId), 调整的参数: \(adjustedParams)")
+            debugLog("✅ CharacterPersonalityManager: 更新了角色个性参数 - \(characterId), 调整的参数: \(adjustedParams)")
             #endif
         }
         
@@ -153,7 +153,7 @@ class CharacterPersonalityManager {
         userAdjustments.removeValue(forKey: characterId)
         saveUserAdjustments()
         #if DEBUG
-        print("✅ CharacterPersonalityManager: 重置了角色个性参数 - \(characterId)")
+        debugLog("✅ CharacterPersonalityManager: 重置了角色个性参数 - \(characterId)")
         #endif
     }
     
@@ -274,24 +274,24 @@ class CharacterPersonalityManager {
                     count + [adj.intimacy, adj.engagementDepth, adj.emotionality, adj.responseStyle, adj.communicationPace].compactMap { $0 }.count
                 }
                 #if DEBUG
-                print("✅ CharacterPersonalityManager: 加载用户调整成功，共\(userAdjustments.count)个角色，\(totalAdjustments)个参数调整")
+                debugLog("✅ CharacterPersonalityManager: 加载用户调整成功，共\(userAdjustments.count)个角色，\(totalAdjustments)个参数调整")
                 #endif
             } catch {
                 #if DEBUG
-                print("⚠️ CharacterPersonalityManager: 加载用户调整失败，尝试加载旧格式 - \(error.localizedDescription)")
+                debugLog("⚠️ CharacterPersonalityManager: 加载用户调整失败，尝试加载旧格式 - \(error.localizedDescription)")
                 #endif
                 // 尝试加载旧格式并转换
                 if let oldAdjustments = try? JSONDecoder().decode([String: CharacterPersonality].self, from: savedData) {
                     userAdjustments = convertOldFormat(oldAdjustments)
                     #if DEBUG
-                    print("✅ CharacterPersonalityManager: 成功转换旧格式数据，共\(userAdjustments.count)个角色")
+                    debugLog("✅ CharacterPersonalityManager: 成功转换旧格式数据，共\(userAdjustments.count)个角色")
                     #endif
                     saveUserAdjustments() // 保存转换后的新格式
                 }
             }
         } else {
             #if DEBUG
-            print("📝 CharacterPersonalityManager: 首次启动，无用户调整数据")
+            debugLog("📝 CharacterPersonalityManager: 首次启动，无用户调整数据")
             #endif
         }
     }
@@ -331,11 +331,11 @@ class CharacterPersonalityManager {
                 count + [adj.intimacy, adj.engagementDepth, adj.emotionality, adj.responseStyle, adj.communicationPace].compactMap { $0 }.count
             }
             #if DEBUG
-            print("💾 CharacterPersonalityManager: 保存用户调整成功，共\(userAdjustments.count)个角色，\(totalAdjustments)个参数调整")
+            debugLog("💾 CharacterPersonalityManager: 保存用户调整成功，共\(userAdjustments.count)个角色，\(totalAdjustments)个参数调整")
             #endif
         } catch {
             #if DEBUG
-            print("⚠️ CharacterPersonalityManager: 保存用户调整失败 - \(error.localizedDescription)")
+            debugLog("⚠️ CharacterPersonalityManager: 保存用户调整失败 - \(error.localizedDescription)")
             #endif
         }
     }

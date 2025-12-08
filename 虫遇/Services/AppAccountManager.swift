@@ -128,7 +128,7 @@ class AppAccountManager: ObservableObject {
                         )
                         completion(.success(serverToken))
                         #if DEBUG
-                        print("💰 账号找回成功(命中云端): \(String(serverToken.prefix(8)))...")
+                        debugLog("💰 账号找回成功(命中云端): \(String(serverToken.prefix(8)))...")
                         #endif
                     }
                     return
@@ -169,12 +169,12 @@ class AppAccountManager: ObservableObject {
             let deleteStatus = SecItemDelete(deleteQuery as CFDictionary)
             if deleteStatus != errSecSuccess && deleteStatus != errSecItemNotFound {
                 #if DEBUG
-                print("❌ 清除钥匙串失败: \(deleteStatus)")
+                debugLog("❌ 清除钥匙串失败: \(deleteStatus)")
                 #endif
                 success = false
             } else {
                 #if DEBUG
-                print("✅ 已清除钥匙串数据")
+                debugLog("✅ 已清除钥匙串数据")
                 #endif
             }
             
@@ -190,7 +190,7 @@ class AppAccountManager: ObservableObject {
                 
                 completion(success)
                 #if DEBUG
-                print("🔐 退出登录完成")
+                debugLog("🔐 退出登录完成")
                 #endif
             }
         }
@@ -224,7 +224,7 @@ class AppAccountManager: ObservableObject {
                 
                 completion(newToken)
                 #if DEBUG
-                print("🆕 新账号创建完成: \(String(newToken.prefix(8)))...")
+                debugLog("🆕 新账号创建完成: \(String(newToken.prefix(8)))...")
                 #endif
             }
         }
@@ -244,7 +244,7 @@ class AppAccountManager: ObservableObject {
                     userInfo: ["token": newToken]
                 )
                 #if DEBUG
-                print("🔁 本地账号已替换为服务端账号: \(String(newToken.prefix(8)))...")
+                debugLog("🔁 本地账号已替换为服务端账号: \(String(newToken.prefix(8)))...")
                 #endif
             }
         }

@@ -75,7 +75,7 @@ class PerformanceMonitor: ObservableObject {
         addPerformanceSample(sample)
         
         #if DEBUG
-        print("⏱️ 帖子切换耗时: \(String(format: "%.1f", duration * 1000))ms, 平均: \(String(format: "%.1f", averagePostSwitchTime * 1000))ms")
+        debugLog("⏱️ 帖子切换耗时: \(String(format: "%.1f", duration * 1000))ms, 平均: \(String(format: "%.1f", averagePostSwitchTime * 1000))ms")
         #endif
         
         currentSwitchStartTime = nil
@@ -118,7 +118,7 @@ class PerformanceMonitor: ObservableObject {
         addPerformanceSample(sample)
         
         #if DEBUG
-        print("💬 评论加载耗时: \(String(format: "%.1f", duration * 1000))ms, 平均: \(String(format: "%.1f", averageCommentLoadTime * 1000))ms")
+        debugLog("💬 评论加载耗时: \(String(format: "%.1f", duration * 1000))ms, 平均: \(String(format: "%.1f", averageCommentLoadTime * 1000))ms")
         #endif
         
         currentCommentLoadStartTime = nil
@@ -201,7 +201,7 @@ class PerformanceMonitor: ObservableObject {
         let report = generatePerformanceReport()
         
         #if DEBUG
-        print("""
+        debugLog("""
         📊 Phase 2优化性能报告:
         ════════════════════════════════════════
         🚀 响应时间指标:
@@ -247,7 +247,7 @@ class PerformanceMonitor: ObservableObject {
      */
     func runBenchmark() {
         #if DEBUG
-        print("🧪 开始Phase 2优化基准测试...")
+        debugLog("🧪 开始Phase 2优化基准测试...")
         #endif
         
         // 测试缓存性能
@@ -266,7 +266,7 @@ class PerformanceMonitor: ObservableObject {
         let defaultsTestDuration = CFAbsoluteTimeGetCurrent() - defaultsTestStart
         
         #if DEBUG
-        print("""
+        debugLog("""
         🧪 基准测试结果:
         - 缓存操作100次耗时: \(String(format: "%.1f", cacheTestDuration * 1000))ms
         - 批量UserDefaults 50次耗时: \(String(format: "%.1f", defaultsTestDuration * 1000))ms

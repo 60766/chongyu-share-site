@@ -12,7 +12,7 @@ public class NavigationHelper {
     /// 私有初始化方法
     private init() {
         #if DEBUG
-        print("NavigationHelper初始化")
+        debugLog("NavigationHelper初始化")
         #endif
     }
     

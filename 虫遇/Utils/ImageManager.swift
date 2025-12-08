@@ -38,7 +38,7 @@ class ImageManager {
             // 获取文档目录路径
             guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
                 #if DEBUG
-                print("无法访问文档目录")
+                debugLog("无法访问文档目录")
                 #endif
                 return false
             }
@@ -52,7 +52,7 @@ class ImageManager {
                     try FileManager.default.createDirectory(at: imageDirectory, withIntermediateDirectories: true)
                 } catch {
                     #if DEBUG
-                    print("创建图片目录失败: \(error)")
+                    debugLog("创建图片目录失败: \(error)")
                     #endif
                     return false
                 }
@@ -66,19 +66,19 @@ class ImageManager {
                 do {
                     try imageData.write(to: imagePath)
                     #if DEBUG
-                    print("✅ 图片保存成功: \(id), 路径: \(imagePath.path)")
+                    debugLog("✅ 图片保存成功: \(id), 路径: \(imagePath.path)")
                     #endif
                     return true
                 } catch {
                     #if DEBUG
-                    print("❌ 保存图片失败: \(error), ID: \(id)")
+                    debugLog("❌ 保存图片失败: \(error), ID: \(id)")
                     #endif
                     return false
                 }
             }
             
             #if DEBUG
-            print("❌ 无法生成图片数据: \(id)")
+            debugLog("❌ 无法生成图片数据: \(id)")
             #endif
             return false
         }
@@ -99,7 +99,7 @@ class ImageManager {
         // 如果缓存中没有，从文件系统加载
         guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             #if DEBUG
-            print("❌ 无法访问文档目录")
+            debugLog("❌ 无法访问文档目录")
             #endif
             return nil
         }
@@ -115,7 +115,7 @@ class ImageManager {
                 return image
             } else {
                 #if DEBUG
-                print("❌ 无法解码图片数据: \(id)")
+                debugLog("❌ 无法解码图片数据: \(id)")
                 #endif
             }
         }
@@ -195,7 +195,7 @@ class ImageManager {
                 return true
             } catch {
                 #if DEBUG
-                print("删除图片失败: \(error)")
+                debugLog("删除图片失败: \(error)")
                 #endif
                 return false
             }
@@ -312,14 +312,14 @@ struct PostImageView: View {
         guard shouldLoad else {
             // 图片已在其他视图实例中加载，等待结果
             #if DEBUG
-            // print("⏳ 图片已在加载中，复用结果: \(imageId)")
+            // debugLog("⏳ 图片已在加载中，复用结果: \(imageId)")
             #endif
             isLoading = true
             return
         }
         
         #if DEBUG
-        // print("🔍 PostImageView 开始加载图片: \(imageId)")
+        // debugLog("🔍 PostImageView 开始加载图片: \(imageId)")
         #endif
         isLoading = true
         
@@ -339,9 +339,9 @@ struct PostImageView: View {
                 
                 #if DEBUG
                 if loadedImage != nil {
-                    // print("✅ 成功加载图片: \(imageId)")
+                    // debugLog("✅ 成功加载图片: \(imageId)")
                 } else {
-                    print("❌ 加载图片失败: \(imageId)")
+                    debugLog("❌ 加载图片失败: \(imageId)")
                 }
                 #endif
             }

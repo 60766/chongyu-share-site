@@ -44,7 +44,7 @@ struct CommentView: View {
         // 调试信息
         if comment.isVirtualCharacter {
             #if DEBUG
-            print("🔍 创建虚拟角色评论视图 - 角色ID: \(comment.characterID ?? "未知"), 用户名: \(comment.username)")
+            debugLog("🔍 创建虚拟角色评论视图 - 角色ID: \(comment.characterID ?? "未知"), 用户名: \(comment.username)")
             #endif
         }
     }
@@ -69,11 +69,11 @@ struct CommentView: View {
                         .onAppear {
                             if comment.isVirtualCharacter {
                                 #if DEBUG
-                                print("🔍 CommentView显示用户名: \(comment.username), 角色ID: \(comment.characterID ?? "未知")")
+                                debugLog("🔍 CommentView显示用户名: \(comment.username), 角色ID: \(comment.characterID ?? "未知")")
                                 #endif
                                 if let characterID = comment.characterID, characterID.lowercased() == "kongzi" {
                                     #if DEBUG
-                                    print("⚠️ 检测到孔子评论，显示名称: \(comment.username)")
+                                    debugLog("⚠️ 检测到孔子评论，显示名称: \(comment.username)")
                                     #endif
                                 }
                             }
@@ -283,13 +283,13 @@ struct CommentView: View {
                     )
                     .onAppear {
                         #if DEBUG
-                        print("🔍 CommentView.AvatarView - 显示虚拟角色头像: \(characterID), 用户名: \(comment.username)")
+                        debugLog("🔍 CommentView.AvatarView - 显示虚拟角色头像: \(characterID), 用户名: \(comment.username)")
                         #endif
                         
                         // 检查图片是否存在
                         let exists = avatarService.checkImageExistence(imageName: characterID)
                         #if DEBUG
-                        print("🔍 CommentView.AvatarView - 角色头像检查 - \(characterID): \(exists ? "存在" : "不存在")")
+                        debugLog("🔍 CommentView.AvatarView - 角色头像检查 - \(characterID): \(exists ? "存在" : "不存在")")
                         #endif
                     }
             } else {
@@ -301,7 +301,7 @@ struct CommentView: View {
                     )
                     .onAppear {
                         #if DEBUG
-                        print("⚠️ CommentView.AvatarView - 虚拟角色没有characterID，使用userAvatar: \(comment.userAvatar)")
+                        debugLog("⚠️ CommentView.AvatarView - 虚拟角色没有characterID，使用userAvatar: \(comment.userAvatar)")
                         #endif
                 }
                 }
@@ -314,7 +314,7 @@ struct CommentView: View {
                 )
                 .onAppear {
                     #if DEBUG
-                    print("🔍 CommentView.AvatarView - 显示普通用户头像: \(comment.userAvatar)")
+                    debugLog("🔍 CommentView.AvatarView - 显示普通用户头像: \(comment.userAvatar)")
                     #endif
                 }
             }
@@ -337,7 +337,7 @@ struct CommentView: View {
                         .clipShape(Circle())
                         .onAppear {
                             #if DEBUG
-                            print("✅ 成功加载历史人物头像: \(characterID)")
+                            debugLog("✅ 成功加载历史人物头像: \(characterID)")
                             #endif
                         }
                 } 
@@ -354,10 +354,10 @@ struct CommentView: View {
                     }
                     .onAppear {
                         #if DEBUG
-                        print("⚠️ 无法加载历史人物头像，显示文字头像: \(characterID)")
+                        debugLog("⚠️ 无法加载历史人物头像，显示文字头像: \(characterID)")
                         #endif
                         #if DEBUG
-                        print("⚠️ 尝试的头像路径: \(avatarPath)")
+                        debugLog("⚠️ 尝试的头像路径: \(avatarPath)")
                         #endif
                         debugPrintImagePaths(characterID)
                     }
@@ -381,7 +381,7 @@ struct CommentView: View {
             for name in possibleNames {
                 if let image = UIImage(named: name) {
                     #if DEBUG
-                    print("✅ 成功使用UIImage(named:)加载头像: \(name)")
+                    debugLog("✅ 成功使用UIImage(named:)加载头像: \(name)")
                     #endif
                     return image
                 }
@@ -390,7 +390,7 @@ struct CommentView: View {
             // 2. 如果UIImage(named:)失败，尝试直接从文件系统加载
             guard let resourcePath = Bundle.main.resourcePath else { 
                 #if DEBUG
-                print("❌ 无法获取资源路径")
+                debugLog("❌ 无法获取资源路径")
                 #endif
                 return nil 
             }
@@ -404,7 +404,7 @@ struct CommentView: View {
             }
             
             #if DEBUG
-            print("🔍 从avatarPath提取的ID: \(extractedID)")
+            debugLog("🔍 从avatarPath提取的ID: \(extractedID)")
             #endif
             
             // 尝试多个可能的路径
@@ -434,11 +434,11 @@ struct CommentView: View {
             for path in possiblePaths {
                 if FileManager.default.fileExists(atPath: path) {
                     #if DEBUG
-                    print("✅ 文件存在: \(path)")
+                    debugLog("✅ 文件存在: \(path)")
                     #endif
                     if let image = UIImage(contentsOfFile: path) {
                         #if DEBUG
-                        print("✅ 成功加载头像图片: \(path)")
+                        debugLog("✅ 成功加载头像图片: \(path)")
                         #endif
                         return image
                     }
@@ -454,11 +454,11 @@ struct CommentView: View {
             for path in backupPaths {
                 if FileManager.default.fileExists(atPath: path) {
                     #if DEBUG
-                    print("✅ 文件存在于备份目录: \(path)")
+                    debugLog("✅ 文件存在于备份目录: \(path)")
                     #endif
                     if let image = UIImage(contentsOfFile: path) {
                         #if DEBUG
-                        print("✅ 成功从备份目录加载头像: \(path)")
+                        debugLog("✅ 成功从备份目录加载头像: \(path)")
                         #endif
                         return image
                     }
@@ -466,7 +466,7 @@ struct CommentView: View {
             }
             
             #if DEBUG
-            print("❌ 所有路径尝试失败，无法加载头像: \(characterID)")
+            debugLog("❌ 所有路径尝试失败，无法加载头像: \(characterID)")
             #endif
             return nil
         }
@@ -474,23 +474,23 @@ struct CommentView: View {
         /// 打印调试信息，帮助诊断问题
         private func debugPrintImagePaths(_ characterID: String) {
             #if DEBUG
-            print("🔍 调试图片路径 - 角色ID: \(characterID)")
+            debugLog("🔍 调试图片路径 - 角色ID: \(characterID)")
             #endif
             
             if let resourcePath = Bundle.main.resourcePath {
                 #if DEBUG
-                print("📁 资源路径: \(resourcePath)")
+                debugLog("📁 资源路径: \(resourcePath)")
                 #endif
                 
                 // 检查Assets.xcassets中的HistoricalFigures目录
                 let assetPath = resourcePath + "/Assets.xcassets/HistoricalFigures"
                 if FileManager.default.fileExists(atPath: assetPath) {
                     #if DEBUG
-                    print("✅ HistoricalFigures目录存在: \(assetPath)")
+                    debugLog("✅ HistoricalFigures目录存在: \(assetPath)")
                     #endif
                 } else {
                     #if DEBUG
-                    print("❌ HistoricalFigures目录不存在: \(assetPath)")
+                    debugLog("❌ HistoricalFigures目录不存在: \(assetPath)")
                     #endif
                 }
                 
@@ -498,11 +498,11 @@ struct CommentView: View {
                 let backupPath = resourcePath + "/backup_assets_20250730181514/HistoricalFigures"
                 if FileManager.default.fileExists(atPath: backupPath) {
                     #if DEBUG
-                    print("✅ 备份HistoricalFigures目录存在: \(backupPath)")
+                    debugLog("✅ 备份HistoricalFigures目录存在: \(backupPath)")
                     #endif
                 } else {
                     #if DEBUG
-                    print("❌ 备份HistoricalFigures目录不存在: \(backupPath)")
+                    debugLog("❌ 备份HistoricalFigures目录不存在: \(backupPath)")
                     #endif
                 }
             }

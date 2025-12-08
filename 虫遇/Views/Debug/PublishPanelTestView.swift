@@ -258,7 +258,7 @@ struct TestPublishPanelView: View {
             onFocus: { focused in
                 directInputFocused = focused
                 #if DEBUG
-                print("DirectTextInput焦点变化: \(focused)")
+                debugLog("DirectTextInput焦点变化: \(focused)")
                 #endif
             },
             debug: true

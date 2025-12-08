@@ -204,11 +204,11 @@ struct MessageCenterView: View {
             }
             
             #if DEBUG
-            print("✅ 已删除对话: \(conversation.id)")
+            debugLog("✅ 已删除对话: \(conversation.id)")
             #endif
         } catch {
             #if DEBUG
-            print("❌ 删除对话失败: \(error)")
+            debugLog("❌ 删除对话失败: \(error)")
             #endif
         }
     }
@@ -223,7 +223,7 @@ struct MessageCenterView: View {
             }
         } catch {
             #if DEBUG
-            print("❌ 更新对话状态失败: \(error)")
+            debugLog("❌ 更新对话状态失败: \(error)")
             #endif
         }
     }
@@ -245,11 +245,11 @@ struct MessageCenterView: View {
             )
             conversations = try modelContext.fetch(fetchDescriptor)
             #if DEBUG
-            print("✅ MessageCenterView: 加载了 \(conversations.count) 个对话（已按时间排序）")
+            debugLog("✅ MessageCenterView: 加载了 \(conversations.count) 个对话（已按时间排序）")
             #endif
         } catch {
             #if DEBUG
-            print("❌ MessageCenterView: 加载对话失败: \(error)")
+            debugLog("❌ MessageCenterView: 加载对话失败: \(error)")
             #endif
             conversations = []
         }

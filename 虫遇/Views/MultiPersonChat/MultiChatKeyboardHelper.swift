@@ -6,13 +6,13 @@ class MultiChatKeyboardHelper {
     /// 强制显示键盘
     static func forceShowKeyboard() {
         #if DEBUG
-        print("MultiChatKeyboardHelper - 强制显示键盘")
+        debugLog("MultiChatKeyboardHelper - 强制显示键盘")
         #endif
         
         // 尝试让当前第一响应者获得焦点
         let result = UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
         #if DEBUG
-        print("MultiChatKeyboardHelper - becomeFirstResponder 结果: \(result)")
+        debugLog("MultiChatKeyboardHelper - becomeFirstResponder 结果: \(result)")
         #endif
         
         // 手动发送键盘通知
@@ -57,13 +57,13 @@ class MultiChatKeyboardHelper {
     /// 强制隐藏键盘
     static func forceHideKeyboard() {
         #if DEBUG
-        print("MultiChatKeyboardHelper - 强制隐藏键盘")
+        debugLog("MultiChatKeyboardHelper - 强制隐藏键盘")
         #endif
         
         // 让当前第一响应者失去焦点
         let result = UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         #if DEBUG
-        print("MultiChatKeyboardHelper - resignFirstResponder 结果: \(result)")
+        debugLog("MultiChatKeyboardHelper - resignFirstResponder 结果: \(result)")
         #endif
         
         // 发送自定义通知

@@ -293,11 +293,11 @@ struct DataBackupView: View {
                 switch result {
                 case .success:
                     #if DEBUG
-                    print("✅ 自动备份成功")
+                    debugLog("✅ 自动备份成功")
                     #endif
                 case .failure(let error):
                     #if DEBUG
-                    print("❌ 自动备份失败: \(error.localizedDescription)")
+                    debugLog("❌ 自动备份失败: \(error.localizedDescription)")
                     #endif
                 }
             }
@@ -319,11 +319,11 @@ struct DataBackupView: View {
                         switch result {
                         case .success:
                             #if DEBUG
-                            print("✅ 自动备份成功")
+                            debugLog("✅ 自动备份成功")
                             #endif
                         case .failure(let error):
                             #if DEBUG
-                            print("❌ 自动备份失败: \(error.localizedDescription)")
+                            debugLog("❌ 自动备份失败: \(error.localizedDescription)")
                             #endif
                         }
                     }

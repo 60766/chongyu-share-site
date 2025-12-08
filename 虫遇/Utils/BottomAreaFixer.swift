@@ -63,7 +63,7 @@ struct BottomSafeAreaHeightProvider: ViewModifier {
                 .onAppear {
                     // 调试信息：打印底部安全区域高度
                     #if DEBUG
-                    print("底部安全区域高度: \(geometry.safeAreaInsets.bottom)px")
+                    debugLog("底部安全区域高度: \(geometry.safeAreaInsets.bottom)px")
                     #endif
                 }
         }

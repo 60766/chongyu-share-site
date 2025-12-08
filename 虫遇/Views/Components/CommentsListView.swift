@@ -146,7 +146,7 @@ struct CommentsListView: View {
                 }
                 .onChange(of: comments) { oldComments, newComments in
                     #if DEBUG
-                    print("🔄 评论数据变化: 旧评论数=\(oldComments.count), 新评论数=\(newComments.count)")
+                    debugLog("🔄 评论数据变化: 旧评论数=\(oldComments.count), 新评论数=\(newComments.count)")
                     #endif
                     
                     // 🔧 优化：只在评论数量真正变化时才处理，避免重复刷新
@@ -1373,7 +1373,7 @@ struct CommentItemView: View {
                     .onAppear {
                             if comment.isCurrentUser {
                             #if DEBUG
-                            print("📱 评论头像 - 当前用户: \(UserProfileManager.shared.getCurrentUsername())")
+                            debugLog("📱 评论头像 - 当前用户: \(UserProfileManager.shared.getCurrentUsername())")
                             #endif
                             }
                         }

@@ -65,7 +65,7 @@ struct NotificationItemView: View {
                 onLike: { comment in
                     // 处理评论点赞
                     #if DEBUG
-                    print("点赞评论: \(comment.content)")
+                    debugLog("点赞评论: \(comment.content)")
                     #endif
                 },
                 onNextPost: { currentPostId in
@@ -101,7 +101,7 @@ struct NotificationItemView: View {
             .ignoresSafeArea(.all) // 确保全屏显示，与正常帖子详情页面布局一致
             .onAppear {
                 #if DEBUG
-                print("🚀 FullscreenPostDetailView onAppear，帖子ID: \(post.id.uuidString)")
+                debugLog("🚀 FullscreenPostDetailView onAppear，帖子ID: \(post.id.uuidString)")
                 #endif
             }
         }
@@ -221,53 +221,53 @@ struct NotificationItemView: View {
                 // 导航到原帖
                 if let postId = notification.relatedPostId {
                     #if DEBUG
-                    print("🔍 开始查找帖子:")
+                    debugLog("🔍 开始查找帖子:")
                     #endif
                     #if DEBUG
-                    print("   目标帖子ID: \(postId)")
+                    debugLog("   目标帖子ID: \(postId)")
                     #endif
                     #if DEBUG
-                    print("   当前帖子总数: \(PostViewModel.shared.posts.count)")
+                    debugLog("   当前帖子总数: \(PostViewModel.shared.posts.count)")
                     #endif
                     
                     // 打印前几个帖子的ID用于调试
                     for (index, post) in PostViewModel.shared.posts.prefix(3).enumerated() {
                         #if DEBUG
-                        print("   帖子[\(index)]: ID=\(post.id.uuidString), 内容=\(post.content.prefix(20))...")
+                        debugLog("   帖子[\(index)]: ID=\(post.id.uuidString), 内容=\(post.content.prefix(20))...")
                         #endif
                     }
                     
                     if let post = PostViewModel.shared.posts.first(where: { $0.id.uuidString == postId }) {
                         #if DEBUG
-                        print("✅ 找到帖子，准备导航: \(post.content.prefix(30))...")
+                        debugLog("✅ 找到帖子，准备导航: \(post.content.prefix(30))...")
                         #endif
                         
                         // 使用 DispatchQueue 确保状态更新在下一个运行循环中执行
                         DispatchQueue.main.async {
                             #if DEBUG
-                            print("🔄 在主线程中设置状态")
+                            debugLog("🔄 在主线程中设置状态")
                             #endif
                             selectedPostForReply = post
                             #if DEBUG
-                            print("🔄 状态设置完成 - selectedPostForReply: \(selectedPostForReply?.id.uuidString ?? "nil")")
+                            debugLog("🔄 状态设置完成 - selectedPostForReply: \(selectedPostForReply?.id.uuidString ?? "nil")")
                             #endif
                         }
                     } else {
                         #if DEBUG
-                        print("❌ 未找到匹配的帖子ID: \(postId)")
+                        debugLog("❌ 未找到匹配的帖子ID: \(postId)")
                         #endif
                         #if DEBUG
-                        print("   所有帖子ID列表:")
+                        debugLog("   所有帖子ID列表:")
                         #endif
                         for (index, post) in PostViewModel.shared.posts.enumerated() {
                             #if DEBUG
-                            print("     [\(index)]: \(post.id.uuidString)")
+                            debugLog("     [\(index)]: \(post.id.uuidString)")
                             #endif
                         }
                     }
                 } else {
                     #if DEBUG
-                    print("❌ 通知中没有relatedPostId")
+                    debugLog("❌ 通知中没有relatedPostId")
                     #endif
                 }
             }
@@ -604,22 +604,22 @@ struct NotificationItemView: View {
         VStack(alignment: .leading, spacing: 8) {
             // 添加调试信息
             #if DEBUG
-            let _ = print("🔍 originalPostView 渲染")
+            let _ = debugLog("🔍 originalPostView 渲染")
             #endif
             #if DEBUG
-            let _ = print("🔍   notification.originalPost存在: \(notification.originalPost != nil)")
+            let _ = debugLog("🔍   notification.originalPost存在: \(notification.originalPost != nil)")
             #endif
             #if DEBUG
-            let _ = print("🔍   notification.originalPost内容: '\(notification.originalPost ?? "nil")'")
+            let _ = debugLog("🔍   notification.originalPost内容: '\(notification.originalPost ?? "nil")'")
             #endif
             #if DEBUG
-            let _ = print("🔍   notification.originalPostAuthor: '\(notification.originalPostAuthor ?? "nil")'")
+            let _ = debugLog("🔍   notification.originalPostAuthor: '\(notification.originalPostAuthor ?? "nil")'")
             #endif
             #if DEBUG
-            let _ = print("🔍   notification.userComment存在: \(notification.userComment != nil)")
+            let _ = debugLog("🔍   notification.userComment存在: \(notification.userComment != nil)")
             #endif
             #if DEBUG
-            let _ = print("🔍   shouldShowOriginalPost: \(shouldShowOriginalPost)")
+            let _ = debugLog("🔍   shouldShowOriginalPost: \(shouldShowOriginalPost)")
             #endif
             
             if let originalPost = notification.originalPost,
@@ -772,7 +772,7 @@ struct NotificationCharacterView: View {
                 }
                 .onAppear {
                     #if DEBUG
-                    print("❌ 通知头像加载失败: \(character.image)，使用字母头像")
+                    debugLog("❌ 通知头像加载失败: \(character.image)，使用字母头像")
                     #endif
                 }
             }

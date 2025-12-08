@@ -207,14 +207,14 @@ struct Avatar: View {
                     )
                     // 🔧 优化：移除重复的日志输出
                     // .onAppear {
-                    //     print("✅ Avatar - 直接加载图片成功: \(url), 尺寸: \(image.size)")
+                    //     debugLog("✅ Avatar - 直接加载图片成功: \(url), 尺寸: \(image.size)")
                     // }
             } else {
                 // 如果直接加载失败，则使用占位符
                 placeholderImage
                 // 🔧 优化：移除重复的日志输出
                 // .onAppear {
-                //     print("⚠️ Avatar - 直接加载图片失败 \(url)，使用占位符")
+                //     debugLog("⚠️ Avatar - 直接加载图片失败 \(url)，使用占位符")
                 // }
             }
         }
@@ -229,7 +229,7 @@ struct Avatar: View {
                     .frame(width: size, height: size)
                     // 🔧 优化：移除重复的日志输出
                     // .onAppear {
-                    //     print("🔄 Avatar - 远程图片加载中: \(url)")
+                    //     debugLog("🔄 Avatar - 远程图片加载中: \(url)")
                     // }
             case .success(let image):
                 image
@@ -237,19 +237,19 @@ struct Avatar: View {
                     .aspectRatio(contentMode: .fill)
                     // 🔧 优化：移除重复的日志输出
                     // .onAppear {
-                    //     print("✅ Avatar - 远程图片加载成功: \(url)")
+                    //     debugLog("✅ Avatar - 远程图片加载成功: \(url)")
                     // }
             case .failure:
                 placeholderImage
                 // 🔧 优化：移除重复的日志输出
                 // .onAppear {
-                //     print("❌ Avatar - 远程图片加载失败: \(url)")
+                //     debugLog("❌ Avatar - 远程图片加载失败: \(url)")
                 // }
             @unknown default:
                 placeholderImage
                 // 🔧 优化：移除重复的日志输出
                 // .onAppear {
-                //     print("⚠️ Avatar - 远程图片未知状态: \(url)")
+                //     debugLog("⚠️ Avatar - 远程图片未知状态: \(url)")
                 // }
             }
         }
@@ -276,14 +276,14 @@ struct Avatar: View {
                 )
                 // 🔧 优化：移除重复的日志输出
                 // .onAppear {
-                //     print("✅ Avatar - 本地图片加载成功: \(url)")
+                //     debugLog("✅ Avatar - 本地图片加载成功: \(url)")
                 // }
             } else {
                 // 图片加载失败，显示占位符
                 placeholderImage
                 // 🔧 优化：移除重复的日志输出
                 // .onAppear {
-                //     print("❌ Avatar - 本地图片加载失败: \(url)")
+                //     debugLog("❌ Avatar - 本地图片加载失败: \(url)")
                 // }
             }
         }
@@ -335,14 +335,14 @@ struct Avatar: View {
         
         if let image = CustomAvatarLoader.shared.loadCustomAvatar(characterId: characterId, avatarName: url) {
             #if DEBUG
-            print("✅ Avatar: 成功加载自定义头像 - characterId: \(characterId)")
+            debugLog("✅ Avatar: 成功加载自定义头像 - characterId: \(characterId)")
             #endif
             DispatchQueue.main.async {
             self.customImage = image
             }
         } else {
             #if DEBUG
-            print("⚠️ Avatar: 加载自定义头像失败 - characterId: \(characterId), url: \(url)")
+            debugLog("⚠️ Avatar: 加载自定义头像失败 - characterId: \(characterId), url: \(url)")
             #endif
             
             // 尝试加载用户头像（从UserProfileManager）

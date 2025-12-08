@@ -95,7 +95,7 @@ struct EnhancedTextDisplayView: View {
                             isTextFieldFocused = true
                             tapCount += 1
                             #if DEBUG
-                            print("点击TextEditor - 次数: \(tapCount)")
+                            debugLog("点击TextEditor - 次数: \(tapCount)")
                             #endif
                         }
                     }
@@ -131,7 +131,7 @@ struct EnhancedTextDisplayView: View {
                     isFocused = true 
                     tapCount += 1
                     #if DEBUG
-                    print("点击视图区域 - 次数: \(tapCount)")
+                    debugLog("点击视图区域 - 次数: \(tapCount)")
                     #endif
                     
                     // 强制激活输入

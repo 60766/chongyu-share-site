@@ -17,7 +17,7 @@ struct DirectTextInput: UIViewRepresentable {
         
         if debug {
             #if DEBUG
-            print("创建UITextView，初始文本: \"\(text)\"")
+            debugLog("创建UITextView，初始文本: \"\(text)\"")
             #endif
             // 设置醒目的背景色和边框，便于调试
             textView.backgroundColor = UIColor.systemYellow.withAlphaComponent(0.2)
@@ -73,10 +73,10 @@ struct DirectTextInput: UIViewRepresentable {
     func updateUIView(_ textView: UITextView, context: Context) {
         if debug {
             #if DEBUG
-            print("更新UITextView，文本绑定: \"\(text)\", 当前文本显示: \"\(textView.text ?? "")\"")
+            debugLog("更新UITextView，文本绑定: \"\(text)\", 当前文本显示: \"\(textView.text ?? "")\"")
             #endif
             #if DEBUG
-            print("文本颜色: \(textView.textColor == .placeholderText ? "占位符颜色" : "正常颜色")")
+            debugLog("文本颜色: \(textView.textColor == .placeholderText ? "占位符颜色" : "正常颜色")")
             #endif
         }
         
@@ -85,7 +85,7 @@ struct DirectTextInput: UIViewRepresentable {
             // 总是设置文本和颜色
             if textView.text != text || textView.textColor == .placeholderText {
                 #if DEBUG
-                if debug { print("强制更新文本和颜色") }
+                if debug { debugLog("强制更新文本和颜色") }
                 #endif
                 textView.text = text
                 textView.textColor = UIColor.black
@@ -128,7 +128,7 @@ struct DirectTextInput: UIViewRepresentable {
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
             if parent.debug {
                 #if DEBUG
-                print("检测到UITextView上的点击!")
+                debugLog("检测到UITextView上的点击!")
                 #endif
             }
             
@@ -164,7 +164,7 @@ struct DirectTextInput: UIViewRepresentable {
         func textViewDidBeginEditing(_ textView: UITextView) {
             if parent.debug {
                 #if DEBUG
-                print("UITextView开始编辑，当前文本: \"\(textView.text ?? "")\"")
+                debugLog("UITextView开始编辑，当前文本: \"\(textView.text ?? "")\"")
                 #endif
             }
             
@@ -182,7 +182,7 @@ struct DirectTextInput: UIViewRepresentable {
         func textViewDidEndEditing(_ textView: UITextView) {
             if parent.debug {
                 #if DEBUG
-                print("UITextView结束编辑，文本内容: \"\(textView.text ?? "")\"")
+                debugLog("UITextView结束编辑，文本内容: \"\(textView.text ?? "")\"")
                 #endif
             }
             
@@ -214,7 +214,7 @@ struct DirectTextInput: UIViewRepresentable {
                 // 设置调试打印
                 if parent.debug {
                     #if DEBUG
-                    print("文本已更新为: \"\(parent.text)\"")
+                    debugLog("文本已更新为: \"\(parent.text)\"")
                     #endif
                 }
             }
@@ -241,7 +241,7 @@ struct MinimalTextTest: View {
                 onFocus: { focused in
                     isFocused = focused
                     #if DEBUG
-                    print("焦点状态: \(focused ? "获得焦点" : "失去焦点")")
+                    debugLog("焦点状态: \(focused ? "获得焦点" : "失去焦点")")
                     #endif
                 },
                 debug: true // 启用调试模式
@@ -443,7 +443,7 @@ struct TextInputArea: View {
             if !isFocused && text.isEmpty {
                 InputButton(placeholder: placeholder) {
                     #if DEBUG
-                    print("点击了InputButton")
+                    debugLog("点击了InputButton")
                     #endif
                     isFocused = true
                     
@@ -458,7 +458,7 @@ struct TextInputArea: View {
                     // 底层添加一个透明按钮，确保能接收到点击事件
                     Button(action: {
                         #if DEBUG
-                        print("点击了底层按钮区域")
+                        debugLog("点击了底层按钮区域")
                         #endif
                         if !isFocused {
                             isFocused = true
@@ -479,7 +479,7 @@ struct TextInputArea: View {
                         placeholder: placeholder,
                         onFocus: { focused in
                             #if DEBUG
-                            print("DirectTextInput焦点变化: \(focused)")
+                            debugLog("DirectTextInput焦点变化: \(focused)")
                             #endif
                             isFocused = focused
                         },
@@ -493,7 +493,7 @@ struct TextInputArea: View {
                 }
                 .onTapGesture {
                     #if DEBUG
-                    print("检测到ZStack的点击事件")
+                    debugLog("检测到ZStack的点击事件")
                     #endif
                     if !isFocused {
                         isFocused = true
@@ -522,7 +522,7 @@ struct TextInputArea: View {
                 if !isFocused && !text.isEmpty {
                     Button(action: {
                         #if DEBUG
-                        print("点击了继续编辑按钮")
+                        debugLog("点击了继续编辑按钮")
                         #endif
                         isFocused = true
                         
@@ -642,12 +642,12 @@ struct DirectTextField: View {
                 .onChange(of: fieldFocused) { oldValue, newValue in
                     isFocused = newValue
                     #if DEBUG
-                    print("TextField焦点状态变化: \(newValue)")
+                    debugLog("TextField焦点状态变化: \(newValue)")
                     #endif
                 }
                 .onTapGesture {
                     #if DEBUG
-                    print("TextField被点击")
+                    debugLog("TextField被点击")
                     #endif
                     fieldFocused = true
                 }
@@ -716,7 +716,7 @@ public struct SimpleInputArea: View {
         .onTapGesture {
             if debug {
                 #if DEBUG
-                print("SimpleInputArea被点击")
+                debugLog("SimpleInputArea被点击")
                 #endif
             }
             internalFocus = true
@@ -730,7 +730,7 @@ public struct SimpleInputArea: View {
         .onAppear {
             if debug {
                 #if DEBUG
-                print("SimpleInputArea 出现")
+                debugLog("SimpleInputArea 出现")
                 #endif
             }
             
@@ -750,7 +750,7 @@ public struct SimpleInputArea: View {
         .onChange(of: internalFocus) { oldValue, newValue in
             if debug {
                 #if DEBUG
-                print("内部焦点变化: \(newValue)")
+                debugLog("内部焦点变化: \(newValue)")
                 #endif
             }
             isFocused = newValue
@@ -759,7 +759,7 @@ public struct SimpleInputArea: View {
             if internalFocus != newValue {
                 if debug {
                     #if DEBUG
-                    print("外部焦点变化: \(newValue)")
+                    debugLog("外部焦点变化: \(newValue)")
                     #endif
                 }
                 internalFocus = newValue
@@ -808,7 +808,7 @@ struct HighlightableTextField: View {
                 .onChange(of: fieldFocused) { oldValue, newValue in
                     if debug {
                         #if DEBUG
-                        print("HighlightableTextField焦点变化: \(newValue)")
+                        debugLog("HighlightableTextField焦点变化: \(newValue)")
                         #endif
                     }
                     isFocused = newValue
@@ -817,7 +817,7 @@ struct HighlightableTextField: View {
                     if newValue != fieldFocused {
                         if debug {
                             #if DEBUG
-                            print("正在同步外部焦点状态到HighlightableTextField: \(newValue)")
+                            debugLog("正在同步外部焦点状态到HighlightableTextField: \(newValue)")
                             #endif
                         }
                         fieldFocused = newValue
@@ -826,7 +826,7 @@ struct HighlightableTextField: View {
                 .onTapGesture {
                     if debug {
                         #if DEBUG
-                        print("HighlightableTextField被点击")
+                        debugLog("HighlightableTextField被点击")
                         #endif
                     }
                     
@@ -859,7 +859,7 @@ struct HighlightableTextField: View {
                 .onAppear {
                     if debug {
                         #if DEBUG
-                        print("HighlightableTextField 出现")
+                        debugLog("HighlightableTextField 出现")
                         #endif
                     }
                     
@@ -875,7 +875,7 @@ struct HighlightableTextField: View {
                     Button(action: {
                         if debug {
                             #if DEBUG
-                            print("HighlightableTextField底层按钮被点击")
+                            debugLog("HighlightableTextField底层按钮被点击")
                             #endif
                         }
                         fieldFocused = true
@@ -923,12 +923,12 @@ public struct DirectInputView: View {
                 )
                 .onChange(of: isFocused) { oldValue, newValue in
                     #if DEBUG
-                    print("焦点状态变化: \(newValue)")
+                    debugLog("焦点状态变化: \(newValue)")
                     #endif
                 }
                 .onChange(of: text) { oldValue, newValue in
                     #if DEBUG
-                    print("文本长度: \(newValue.count)")
+                    debugLog("文本长度: \(newValue.count)")
                     #endif
                 }
         }
@@ -1024,7 +1024,7 @@ struct SuperSimpleTextInput: UIViewRepresentable {
             
             // 调试输出
             #if DEBUG
-            print("文本更新为: \"\(textView.text ?? "")\"")
+            debugLog("文本更新为: \"\(textView.text ?? "")\"")
             #endif
         }
     }

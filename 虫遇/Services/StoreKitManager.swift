@@ -56,13 +56,13 @@ final class StoreKitManager: NSObject, ObservableObject {
         // 检查是否在模拟器中运行
         #if targetEnvironment(simulator)
         #if DEBUG
-        print("[IAP] ℹ️ 当前运行在模拟器。如未在Scheme的Run→Options绑定.storekit配置文件，将无法从App Store获取真实商品。可选择：1) 绑定.storekit 2) 使用真机+Sandbox账号测试")
+        debugLog("[IAP] ℹ️ 当前运行在模拟器。如未在Scheme的Run→Options绑定.storekit配置文件，将无法从App Store获取真实商品。可选择：1) 绑定.storekit 2) 使用真机+Sandbox账号测试")
         #endif
         
         // 检查 StoreKit 配置文件是否存在
         if let storeKitPath = Bundle.main.path(forResource: "StoreKit", ofType: "storekit") {
             #if DEBUG
-            print("[IAP] ✅ 找到 StoreKit 配置文件: \(storeKitPath)")
+            debugLog("[IAP] ✅ 找到 StoreKit 配置文件: \(storeKitPath)")
             #endif
             
             // 尝试读取配置文件内容
@@ -72,11 +72,11 @@ final class StoreKitManager: NSObject, ObservableObject {
                 if let dict = json as? [String: Any],
                    let products = dict["products"] as? [[String: Any]] {
                     #if DEBUG
-                    print("[IAP] 📋 配置文件中包含 \(products.count) 个产品:")
+                    debugLog("[IAP] 📋 配置文件中包含 \(products.count) 个产品:")
                     for product in products {
                         if let productID = product["productID"] as? String,
                            let displayName = product["referenceName"] as? String {
-                            print("[IAP]   - \(productID): \(displayName)")
+                            debugLog("[IAP]   - \(productID): \(displayName)")
                         }
                     }
                     #endif
@@ -87,75 +87,75 @@ final class StoreKitManager: NSObject, ObservableObject {
                    let configBundleID = dict["identifier"] as? String {
                     let appBundleID = Bundle.main.bundleIdentifier ?? "未知"
                     #if DEBUG
-                    print("[IAP] 📦 配置文件 Bundle ID: \(configBundleID)")
-                    print("[IAP] 📦 应用 Bundle ID: \(appBundleID)")
+                    debugLog("[IAP] 📦 配置文件 Bundle ID: \(configBundleID)")
+                    debugLog("[IAP] 📦 应用 Bundle ID: \(appBundleID)")
                     #endif
                     if configBundleID != appBundleID {
                         #if DEBUG
-                        print("[IAP] ❌ Bundle ID 不匹配！这可能是问题所在")
+                        debugLog("[IAP] ❌ Bundle ID 不匹配！这可能是问题所在")
                         #endif
                     }
                 }
             } catch {
                 #if DEBUG
-                print("[IAP] ❌ 无法读取 StoreKit 配置文件: \(error)")
+                debugLog("[IAP] ❌ 无法读取 StoreKit 配置文件: \(error)")
                 #endif
             }
         } else {
             #if DEBUG
-            print("[IAP] ❌ 未找到 StoreKit 配置文件")
+            debugLog("[IAP] ❌ 未找到 StoreKit 配置文件")
             #endif
         }
         #endif
         
         guard AppStore.canMakePayments else {
             #if DEBUG
-            print("[IAP] ❌ 设备不支持应用内购买")
+            debugLog("[IAP] ❌ 设备不支持应用内购买")
             #endif
             return
         }
         #if DEBUG
-        print("[IAP] ✅ 设备支持应用内购买")
+        debugLog("[IAP] ✅ 设备支持应用内购买")
         #endif
         
         do {
             #if DEBUG
-            print("[IAP] 🔄 开始请求产品信息...")
-            print("[IAP] 📋 请求的产品 IDs: \(Array(productIds).sorted())")
+            debugLog("[IAP] 🔄 开始请求产品信息...")
+            debugLog("[IAP] 📋 请求的产品 IDs: \(Array(productIds).sorted())")
             #endif
             
             let products = try await Product.products(for: Array(productIds))
             #if DEBUG
-            print("[IAP] 成功加载 \(products.count) 个商品")
+            debugLog("[IAP] 成功加载 \(products.count) 个商品")
             #endif
             
             if products.isEmpty {
                 #if DEBUG
-                print("[IAP] ⚠️ 没有找到任何商品")
+                debugLog("[IAP] ⚠️ 没有找到任何商品")
                 #endif
                 #if DEBUG
-                print("[IAP] 可能原因：")
-                print("[IAP] 1. App Store Connect中未配置这些Product ID")
-                print("[IAP] 2. Bundle ID不匹配")
-                print("[IAP] 3. 开发者账号Team ID不正确")
-                print("[IAP] 4. 商品状态未设置为'Ready for Sale'")
-                print("[IAP] 5. StoreKit 配置文件未正确加载")
-                print("[IAP] 当前Bundle ID: \(Bundle.main.bundleIdentifier ?? "未知")")
-                print("[IAP] 期望的Product IDs: \(Array(productIds).sorted())")
+                debugLog("[IAP] 可能原因：")
+                debugLog("[IAP] 1. App Store Connect中未配置这些Product ID")
+                debugLog("[IAP] 2. Bundle ID不匹配")
+                debugLog("[IAP] 3. 开发者账号Team ID不正确")
+                debugLog("[IAP] 4. 商品状态未设置为'Ready for Sale'")
+                debugLog("[IAP] 5. StoreKit 配置文件未正确加载")
+                debugLog("[IAP] 当前Bundle ID: \(Bundle.main.bundleIdentifier ?? "未知")")
+                debugLog("[IAP] 期望的Product IDs: \(Array(productIds).sorted())")
                 
                 // 额外的调试信息
-                print("[IAP] 📊 StoreKit 环境检查:")
-                print("[IAP] - AppStore.canMakePayments: \(AppStore.canMakePayments)")
-                print("[IAP] - 产品请求是否成功: 是（但返回空数组）")
+                debugLog("[IAP] 📊 StoreKit 环境检查:")
+                debugLog("[IAP] - AppStore.canMakePayments: \(AppStore.canMakePayments)")
+                debugLog("[IAP] - 产品请求是否成功: 是（但返回空数组）")
                 
                 // 尝试单个产品请求
-                print("[IAP] 🔍 尝试单个产品请求测试:")
+                debugLog("[IAP] 🔍 尝试单个产品请求测试:")
                 for productId in productIds.prefix(2) {
                     do {
                         let singleProducts = try await Product.products(for: [productId])
-                        print("[IAP]   - \(productId): 找到 \(singleProducts.count) 个产品")
+                        debugLog("[IAP]   - \(productId): 找到 \(singleProducts.count) 个产品")
                     } catch {
-                        print("[IAP]   - \(productId): 请求失败 - \(error)")
+                        debugLog("[IAP]   - \(productId): 请求失败 - \(error)")
                     }
                 }
                 #endif
@@ -163,7 +163,7 @@ final class StoreKitManager: NSObject, ObservableObject {
                 // 在模拟器中使用备用方案
                 #if targetEnvironment(simulator)
                 #if DEBUG
-                print("[IAP] 🔄 启用模拟器备用模式，创建本地模拟产品...")
+                debugLog("[IAP] 🔄 启用模拟器备用模式，创建本地模拟产品...")
                 #endif
                 await createFallbackProducts()
                 return
@@ -171,7 +171,7 @@ final class StoreKitManager: NSObject, ObservableObject {
             } else {
                 #if DEBUG
                 for product in products {
-                    print("[IAP] 商品: \(product.id) - \(product.displayName) - \(product.displayPrice)")
+                    debugLog("[IAP] 商品: \(product.id) - \(product.displayName) - \(product.displayPrice)")
                 }
                 #endif
             }
@@ -182,44 +182,44 @@ final class StoreKitManager: NSObject, ObservableObject {
             }
         } catch {
             #if DEBUG
-            print("[IAP] ❌ 加载商品失败: \(error)")
+            debugLog("[IAP] ❌ 加载商品失败: \(error)")
             #endif
             #if DEBUG
-            print("[IAP] 错误详情: \(error.localizedDescription)")
+            debugLog("[IAP] 错误详情: \(error.localizedDescription)")
             if let nsError = error as NSError? {
-                print("[IAP] 错误域: \(nsError.domain), 错误代码: \(nsError.code)")
-                print("[IAP] 用户信息: \(nsError.userInfo)")
+                debugLog("[IAP] 错误域: \(nsError.domain), 错误代码: \(nsError.code)")
+                debugLog("[IAP] 用户信息: \(nsError.userInfo)")
             }
             
             // 分析常见错误
             if let storeKitError = error as? StoreKitError {
                 switch storeKitError {
                 case .networkError:
-                    print("[IAP] 💡 可能解决方案: 检查网络连接")
+                    debugLog("[IAP] 💡 可能解决方案: 检查网络连接")
                 case .systemError:
-                    print("[IAP] 💡 可能解决方案: 重启模拟器或设备")
+                    debugLog("[IAP] 💡 可能解决方案: 重启模拟器或设备")
                 case .userCancelled:
-                    print("[IAP] 💡 用户取消了操作")
+                    debugLog("[IAP] 💡 用户取消了操作")
                 default:
-                    print("[IAP] 💡 未知的StoreKit错误: \(storeKitError)")
+                    debugLog("[IAP] 💡 未知的StoreKit错误: \(storeKitError)")
                 }
             } else if let nsError = error as NSError? {
                 if nsError.domain == "SKErrorDomain" {
                     switch nsError.code {
                     case 0:
-                        print("[IAP] 💡 SKError: 未知错误")
+                        debugLog("[IAP] 💡 SKError: 未知错误")
                     case 1:
-                        print("[IAP] 💡 SKError: 客户端无效")
+                        debugLog("[IAP] 💡 SKError: 客户端无效")
                     case 2:
-                        print("[IAP] 💡 SKError: 支付被取消")
+                        debugLog("[IAP] 💡 SKError: 支付被取消")
                     case 3:
-                        print("[IAP] 💡 SKError: 支付无效")
+                        debugLog("[IAP] 💡 SKError: 支付无效")
                     case 4:
-                        print("[IAP] 💡 SKError: 支付未授权")
+                        debugLog("[IAP] 💡 SKError: 支付未授权")
                     case 5:
-                        print("[IAP] 💡 SKError: 产品不可用")
+                        debugLog("[IAP] 💡 SKError: 产品不可用")
                     default:
-                        print("[IAP] 💡 SKError 代码: \(nsError.code)")
+                        debugLog("[IAP] 💡 SKError 代码: \(nsError.code)")
                     }
                 }
             }
@@ -228,7 +228,7 @@ final class StoreKitManager: NSObject, ObservableObject {
             // 在模拟器中遇到错误时使用备用方案
             #if targetEnvironment(simulator)
             #if DEBUG
-            print("[IAP] 🔄 由于错误，启用模拟器备用模式...")
+            debugLog("[IAP] 🔄 由于错误，启用模拟器备用模式...")
             #endif
             await createFallbackProducts()
             #endif
@@ -239,7 +239,7 @@ final class StoreKitManager: NSObject, ObservableObject {
     @MainActor
     private func createFallbackProducts() async {
         #if DEBUG
-        print("[IAP] 📱 创建模拟器备用产品...")
+        debugLog("[IAP] 📱 创建模拟器备用产品...")
         #endif
         
         // 注意：这里我们不能创建真实的Product对象，因为它们是系统创建的
@@ -248,7 +248,7 @@ final class StoreKitManager: NSObject, ObservableObject {
         products = [] // 保持空数组，但设置fallback标志
         
         #if DEBUG
-        print("[IAP] ✅ 模拟器备用模式已启用，UI将显示测试充值按钮")
+        debugLog("[IAP] ✅ 模拟器备用模式已启用，UI将显示测试充值按钮")
         #endif
     }
     
@@ -290,7 +290,7 @@ final class StoreKitManager: NSObject, ObservableObject {
                 await transaction.finish()
             } catch {
                 #if DEBUG
-                print("[IAP] 交易监听处理失败: \(error)")
+                debugLog("[IAP] 交易监听处理失败: \(error)")
                 #endif
             }
         }
@@ -309,7 +309,7 @@ final class StoreKitManager: NSObject, ObservableObject {
             )
         } catch {
             #if DEBUG
-            print("[IAP] 确认购买失败: \(error)")
+            debugLog("[IAP] 确认购买失败: \(error)")
             #endif
             throw error
         }
@@ -319,12 +319,12 @@ final class StoreKitManager: NSObject, ObservableObject {
         switch result {
         case .unverified(_, let verificationError):
             #if DEBUG
-            print("[IAP] ⚠️ 交易验证失败: \(verificationError)")
+            debugLog("[IAP] ⚠️ 交易验证失败: \(verificationError)")
             #endif
             throw verificationError
         case .verified(let signedType):
             #if DEBUG
-            print("[IAP] ✅ 交易验证成功")
+            debugLog("[IAP] ✅ 交易验证成功")
             #endif
             return signedType
         }

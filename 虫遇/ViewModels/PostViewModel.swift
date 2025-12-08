@@ -74,6 +74,13 @@ class PostViewModel: ObservableObject {
     // ⚡️ 初始化完成标志（用于避免启动时频繁的数据一致性检查）
     private var isInitialized: Bool = false
     
+    // ⚡️ 内容变化追踪器（用于避免不必要的UI刷新）
+    private let changeTracker = ContentChangeTracker.shared
+    
+    // ⚡️ 保存失败提示防抖（避免频繁提示）
+    private var lastSaveFailureTime: Date?
+    private let saveFailureDebounceInterval: TimeInterval = 5.0 // 5秒内只提示一次
+    
     /**
      * 初始化PostViewModel
      */
@@ -88,7 +95,7 @@ class PostViewModel: ObservableObject {
         self.posts = samplePosts
         
         #if DEBUG
-        print("⚡️ PostViewModel快速初始化完成，先显示 \(samplePosts.count) 条示例帖子")
+        debugLog("⚡️ PostViewModel快速初始化完成，先显示 \(samplePosts.count) 条示例帖子")
         #endif
         
         // 监听数据恢复通知
@@ -98,7 +105,7 @@ class PostViewModel: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             #if DEBUG
-            print("📥 PostViewModel: 收到数据恢复通知，重新加载帖子")
+            debugLog("📥 PostViewModel: 收到数据恢复通知，重新加载帖子")
             #endif
             self?.reloadPostsFromUserDefaults()
         }
@@ -155,19 +162,23 @@ class PostViewModel: ObservableObject {
             
             let loadTime = (CFAbsoluteTimeGetCurrent() - loadStartTime) * 1000
             #if DEBUG
-            print("🚀 PostViewModel后台加载完成:")
-            print("   - 用户帖子: \(userPosts.count) 条")
-            print("   - AI帖子: \(aiPosts.count) 条") 
-            print("   - 示例帖子: \(samplePosts.count) 条")
-            print("   - 总计: \(uniquePosts.count) 条")
-            print("   - 加载耗时: \(String(format: "%.0f", loadTime))ms")
+            debugLog("🚀 PostViewModel后台加载完成:")
+            debugLog("   - 用户帖子: \(userPosts.count) 条")
+            debugLog("   - AI帖子: \(aiPosts.count) 条") 
+            debugLog("   - 示例帖子: \(samplePosts.count) 条")
+            debugLog("   - 总计: \(uniquePosts.count) 条")
+            debugLog("   - 加载耗时: \(String(format: "%.0f", loadTime))ms")
             #endif
             
             // 在主线程更新UI
             DispatchQueue.main.async {
                 self.posts = uniquePosts
+                
+                // ⚡️ 初始化所有帖子的内容哈希值
+                self.changeTracker.updatePostHashes(uniquePosts)
+                
                 #if DEBUG
-                print("✅ UI已更新，显示全部 \(uniquePosts.count) 条帖子")
+                debugLog("✅ UI已更新，显示全部 \(uniquePosts.count) 条帖子")
                 #endif
                 
                 // ⚡️ 标记初始化完成（延迟1秒后才启用数据一致性检查）
@@ -184,21 +195,37 @@ class PostViewModel: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             #if DEBUG
-            print("📥 PostViewModel: 收到数据恢复通知，重新加载帖子")
+            debugLog("📥 PostViewModel: 收到数据恢复通知，重新加载帖子")
             #endif
             self?.reloadPostsFromUserDefaults()
         }
         
-        // 监听 PostCommentsUpdated 通知，强制刷新 comments
+        // 监听 PostCommentsUpdated 通知，仅在内容真正变化时刷新
         NotificationCenter.default.addObserver(forName: NSNotification.Name("PostCommentsUpdated"), object: nil, queue: .main) { [weak self] notification in
             guard let self = self else { return }
-            // 自动推断当前展示的 postId（假设只有一个帖子或第一个帖子为当前）
-            if let currentPostId = self.posts.first?.id,
-               let _ = self.posts.firstIndex(where: { $0.id == currentPostId }) {
-                // 触发UI刷新
+            
+            // 获取通知中的帖子ID
+            guard let userInfo = notification.userInfo,
+                  let postIDString = userInfo["postID"] as? String,
+                  let postID = UUID(uuidString: postIDString),
+                  let postIndex = self.posts.firstIndex(where: { $0.id == postID }) else {
+                return
+            }
+            
+            let post = self.posts[postIndex]
+            
+            // ⚡️ 关键优化：检查内容是否真的发生变化
+            if self.changeTracker.hasPostChanged(post) {
+                // 内容发生变化，触发UI刷新
                 self.objectWillChange.send()
-                // 如果你有 @Published var comments: [DetailedCommentModel]，请同步刷新
-                // self.comments = self.posts[currentPostIndex].comments
+                #if DEBUG
+                debugLog("🔄 帖子内容已变化，触发UI刷新: \(postID.uuidString.prefix(8))")
+                #endif
+            } else {
+                // 内容没有变化，跳过刷新
+                #if DEBUG
+                debugLog("⏭️ 帖子内容未变化，跳过UI刷新: \(postID.uuidString.prefix(8))")
+                #endif
             }
         }
         
@@ -210,7 +237,38 @@ class PostViewModel: ObservableObject {
             self.saveUserPosts()
             self.saveAIPosts()
             #if DEBUG
-            print("💾 收到保存通知，已保存帖子数据")
+            debugLog("💾 收到保存通知，已保存帖子数据")
+            #endif
+        }
+    }
+    
+    /**
+     * ⚡️ 智能发送帖子更新通知
+     * 仅在内容真正发生变化时才发送通知，避免不必要的UI刷新
+     */
+    private func notifyPostUpdatedIfChanged(postID: UUID) {
+        // 查找帖子
+        guard let postIndex = posts.firstIndex(where: { $0.id == postID }) else {
+            return
+        }
+        
+        let post = posts[postIndex]
+        
+        // 检查内容是否真的发生变化
+        if changeTracker.hasPostChanged(post) {
+            // 内容发生变化，发送通知
+            NotificationCenter.default.post(
+                name: NSNotification.Name("PostCommentsUpdated"),
+                object: nil,
+                userInfo: ["postID": postID.uuidString]
+            )
+            #if DEBUG
+            debugLog("🔄 帖子内容已变化，发送更新通知: \(postID.uuidString.prefix(8))")
+            #endif
+        } else {
+            // 内容没有变化，跳过通知
+            #if DEBUG
+            debugLog("⏭️ 帖子内容未变化，跳过通知: \(postID.uuidString.prefix(8))")
             #endif
         }
     }
@@ -256,8 +314,19 @@ class PostViewModel: ObservableObject {
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(sortedUserPosts)
             UserDefaults.standard.set(data, forKey: userPostsKey)
+            #if DEBUG
+            debugLog("✅ 用户帖子保存成功: \(sortedUserPosts.count) 条")
+            #endif
         } catch {
-            // 保存失败，静默处理
+            // ⚡️ 优化：保存失败时记录错误并提示用户
+            #if DEBUG
+            debugLog("❌ 用户帖子保存失败: \(error.localizedDescription)")
+            debugLog("   错误详情: \(error)")
+            debugLog("   尝试保存的帖子数量: \(sortedUserPosts.count)")
+            #endif
+            
+            // ⚡️ 显示用户友好的提示（带防抖，避免频繁提示）
+            showSaveFailureToastIfNeeded(error: error, dataType: "帖子")
         }
     }
     
@@ -278,8 +347,76 @@ class PostViewModel: ObservableObject {
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(sortedAIPosts)
             UserDefaults.standard.set(data, forKey: aiPostsKey)
+            #if DEBUG
+            debugLog("✅ AI帖子保存成功: \(sortedAIPosts.count) 条")
+            #endif
         } catch {
-            // 保存失败，静默处理
+            // ⚡️ 优化：保存失败时记录错误并提示用户
+            #if DEBUG
+            debugLog("❌ AI帖子保存失败: \(error.localizedDescription)")
+            debugLog("   错误详情: \(error)")
+            debugLog("   尝试保存的帖子数量: \(sortedAIPosts.count)")
+            #endif
+            
+            // ⚡️ 显示用户友好的提示（带防抖，避免频繁提示）
+            showSaveFailureToastIfNeeded(error: error, dataType: "内容")
+        }
+    }
+    
+    /**
+     * ⚡️ 显示保存失败提示（只显示用户可解决的问题）
+     * 只有存储空间不足和权限问题才提示用户，其他错误只记录日志
+     */
+    private func showSaveFailureToastIfNeeded(error: Error, dataType: String) {
+        // 检查是否是用户可解决的错误
+        let errorDescription = error.localizedDescription.lowercased()
+        let isUserActionable: Bool
+        let errorMessage: String
+        
+        // 只处理用户可控制的两种情况
+        if errorDescription.contains("space") || 
+           errorDescription.contains("存储") || 
+           errorDescription.contains("disk") ||
+           errorDescription.contains("full") {
+            // 存储空间不足 - 用户可以清理空间
+            isUserActionable = true
+            errorMessage = "存储空间不足，请清理空间后重试"
+        } else if errorDescription.contains("permission") || 
+                  errorDescription.contains("权限") ||
+                  errorDescription.contains("denied") {
+            // 权限问题 - 用户可以在设置中允许
+            isUserActionable = true
+            errorMessage = "存储权限不足，请在设置中允许访问"
+        } else {
+            // 其他错误（数据格式错误、系统错误等）- 用户无法控制，不提示
+            isUserActionable = false
+            errorMessage = "" // ⚡️ 修复：确保errorMessage在所有分支都被初始化
+            #if DEBUG
+            debugLog("⚠️ \(dataType)保存失败，但用户无法解决，不显示提示")
+            debugLog("   错误类型: \(type(of: error))")
+            debugLog("   错误信息: \(error.localizedDescription)")
+            #endif
+        }
+        
+        // 只有用户可解决的错误才显示提示
+        guard isUserActionable else {
+            return
+        }
+        
+        // 防抖：5秒内只提示一次
+        let now = Date()
+        if let lastTime = lastSaveFailureTime,
+           now.timeIntervalSince(lastTime) < saveFailureDebounceInterval {
+            // 距离上次提示太近，跳过
+            return
+        }
+        lastSaveFailureTime = now
+        
+        // ⚡️ 修复：在闭包外确保errorMessage已初始化，然后捕获
+        let finalErrorMessage = errorMessage
+        // 在主线程显示Toast提示
+        DispatchQueue.main.async {
+            ToastManager.shared.showToast(message: finalErrorMessage)
         }
     }
     
@@ -289,7 +426,7 @@ class PostViewModel: ObservableObject {
     private func restoreUserPosts() {
         guard let data = UserDefaults.standard.data(forKey: userPostsKey) else {
             #if DEBUG
-            print("🔍 没有找到持久化的用户帖子数据")
+            debugLog("🔍 没有找到持久化的用户帖子数据")
             #endif
             return
         }
@@ -309,7 +446,7 @@ class PostViewModel: ObservableObject {
             }
             
             #if DEBUG
-            print("✅ 成功恢复 \(userPosts.count) 条用户帖子，当前总帖子数: \(posts.count)")
+            debugLog("✅ 成功恢复 \(userPosts.count) 条用户帖子，当前总帖子数: \(posts.count)")
             #endif
         } catch {
             Logger.error("恢复用户帖子失败", error: error, log: Logger.data)
@@ -322,7 +459,7 @@ class PostViewModel: ObservableObject {
     func restoreUserPostsData() -> [UserPostModel] {
         guard let data = UserDefaults.standard.data(forKey: userPostsKey) else {
             #if DEBUG
-            print("🔍 没有找到持久化的用户帖子数据")
+            debugLog("🔍 没有找到持久化的用户帖子数据")
             #endif
             return []
         }
@@ -334,7 +471,7 @@ class PostViewModel: ObservableObject {
             // 按时间倒序排列（最新的在前）
             let sortedPosts = userPosts.sorted { $0.datePosted > $1.datePosted }
             #if DEBUG
-            print("✅ 成功读取 \(sortedPosts.count) 条用户帖子（已按时间排序）")
+            debugLog("✅ 成功读取 \(sortedPosts.count) 条用户帖子（已按时间排序）")
             #endif
             return sortedPosts
         } catch {
@@ -349,7 +486,7 @@ class PostViewModel: ObservableObject {
     private func restoreAIPosts() {
         guard let data = UserDefaults.standard.data(forKey: aiPostsKey) else {
             #if DEBUG
-            print("🔍 没有找到持久化的AI生成帖子数据")
+            debugLog("🔍 没有找到持久化的AI生成帖子数据")
             #endif
             return
         }
@@ -369,12 +506,12 @@ class PostViewModel: ObservableObject {
             }
             
             #if DEBUG
-            print("✅ 成功恢复 \(aiPosts.count) 条AI生成帖子，当前总帖子数: \(posts.count)")
+            debugLog("✅ 成功恢复 \(aiPosts.count) 条AI生成帖子，当前总帖子数: \(posts.count)")
             
             // 打印恢复的AI帖子来源统计
             let sourceStats = Dictionary(grouping: aiPosts, by: { $0.source ?? "未知" })
             for (source, posts) in sourceStats {
-                print("   - 恢复 \(source): \(posts.count) 条")
+                debugLog("   - 恢复 \(source): \(posts.count) 条")
             }
             #endif
         } catch {
@@ -388,7 +525,7 @@ class PostViewModel: ObservableObject {
     func restoreAIPostsData() -> [UserPostModel] {
         guard let data = UserDefaults.standard.data(forKey: aiPostsKey) else {
             #if DEBUG
-            print("🔍 没有找到持久化的AI生成帖子数据")
+            debugLog("🔍 没有找到持久化的AI生成帖子数据")
             #endif
             return []
         }
@@ -404,17 +541,17 @@ class PostViewModel: ObservableObject {
             let sourceStats = Dictionary(grouping: sortedPosts, by: { $0.source ?? "未知" })
             for (source, posts) in sourceStats {
                 #if DEBUG
-                print("   - 读取 \(source): \(posts.count) 条")
+                debugLog("   - 读取 \(source): \(posts.count) 条")
                 #endif
             }
             
             #if DEBUG
-            print("✅ 成功读取 \(sortedPosts.count) 条AI生成帖子（已按时间排序）")
+            debugLog("✅ 成功读取 \(sortedPosts.count) 条AI生成帖子（已按时间排序）")
             #endif
             return sortedPosts
         } catch {
             #if DEBUG
-            print("❌ 恢复AI生成帖子失败: \(error.localizedDescription)")
+            debugLog("❌ 恢复AI生成帖子失败: \(error.localizedDescription)")
             #endif
             return []
         }
@@ -480,11 +617,11 @@ class PostViewModel: ObservableObject {
         // 如果当前没有帖子，尝试恢复或加载示例数据
         if posts.isEmpty {
             #if DEBUG
-            print("📦 检测到帖子列表为空，尝试恢复数据")
+            debugLog("📦 检测到帖子列表为空，尝试恢复数据")
             #endif
             if !tryRestorePersistedPosts() {
                 #if DEBUG
-                print("📦 恢复失败，加载示例帖子")
+                debugLog("📦 恢复失败，加载示例帖子")
                 #endif
                 loadSamplePosts()
             }
@@ -493,12 +630,12 @@ class PostViewModel: ObservableObject {
             DispatchQueue.main.async {
                 self.objectWillChange.send()
                 #if DEBUG
-                print("📦 已触发UI更新信号")
+                debugLog("📦 已触发UI更新信号")
                 #endif
             }
         } else {
             #if DEBUG
-            print("📦 当前有\(posts.count)个帖子，无需恢复")
+            debugLog("📦 当前有\(posts.count)个帖子，无需恢复")
             #endif
         }
     }
@@ -517,7 +654,7 @@ class PostViewModel: ObservableObject {
         }
         
         #if DEBUG
-        print("📦 加载了示例帖子，当前总帖子数: \(posts.count)")
+        debugLog("📦 加载了示例帖子，当前总帖子数: \(posts.count)")
         #endif
     }
     
@@ -580,7 +717,7 @@ class PostViewModel: ObservableObject {
         // 创建后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
             #if DEBUG
-            print("⚠️ addUserComment: 后台任务超时")
+            debugLog("⚠️ addUserComment: 后台任务超时")
             #endif
         }
         
@@ -613,7 +750,7 @@ class PostViewModel: ObservableObject {
                 // 保存用户回复的ID，用于后续添加虚拟角色回复
                 let userReplyId = userReply.id
                 #if DEBUG
-                print("📝 创建用户回复，ID: \(userReplyId)")
+                debugLog("📝 创建用户回复，ID: \(userReplyId)")
                 #endif
                 
                 // 创建帖子的可变副本
@@ -626,7 +763,7 @@ class PostViewModel: ObservableObject {
                 posts[index] = updatedPost
                 
                 #if DEBUG
-                print("✅ 已添加用户回复到评论，回复ID: \(userReplyId)")
+                debugLog("✅ 已添加用户回复到评论，回复ID: \(userReplyId)")
                 #endif
                 
                 // 准备要生成回复的角色列表
@@ -638,7 +775,7 @@ class PostViewModel: ObservableObject {
                    let characterID = comment.characterID {
                     // 添加被回复的角色
                     #if DEBUG
-                    print("🤖 被回复的虚拟角色将回应用户")
+                    debugLog("🤖 被回复的虚拟角色将回应用户")
                     #endif
                     charactersToRespond.append(characterID)
                     
@@ -684,14 +821,14 @@ class PostViewModel: ObservableObject {
                 for virtualComment in virtualComments {
                     if !posts[index].comments.contains(where: { $0.id == virtualComment.id }) {
                         #if DEBUG
-                        print("🛡️ 恢复被清除的虚拟角色评论: \(virtualComment.username)")
+                        debugLog("🛡️ 恢复被清除的虚拟角色评论: \(virtualComment.username)")
                         #endif
                         posts[index].comments.append(virtualComment)
                     }
                 }
                 
                 #if DEBUG
-                print("✅ 已添加用户评论，评论ID: \(userCommentId)")
+                debugLog("✅ 已添加用户评论，评论ID: \(userCommentId)")
                 #endif
                 
                 // 🆕 为用户评论创建通知
@@ -710,7 +847,7 @@ class PostViewModel: ObservableObject {
                 
                 if let authorCharacterId = authorCharacterId {
                     #if DEBUG
-                    print("🤖 帖子作者将回复用户评论，作者：\(postAuthor), ID：\(authorCharacterId)")
+                    debugLog("🤖 帖子作者将回复用户评论，作者：\(postAuthor), ID：\(authorCharacterId)")
                     #endif
                     charactersToRespond.append(authorCharacterId)
                     
@@ -724,7 +861,7 @@ class PostViewModel: ObservableObject {
                 
                 // 2. 使用角色轮换系统智能选择角色
                 #if DEBUG
-                print("🔄 使用角色轮换系统选择回复角色")
+                debugLog("🔄 使用角色轮换系统选择回复角色")
                 #endif
                 CharacterRotationSystem.shared.beginNewGenerationSession()
                 
@@ -788,10 +925,10 @@ class PostViewModel: ObservableObject {
         }
         
         #if DEBUG
-        print("🔄 准备批量生成\(characterIDs.count)个角色的回复")
-        print("🔍 DEBUG: 传递给generateMultiCharacterComments的content参数: '\(content)'")
-        print("🔍 DEBUG: content长度: \(content.count)")
-        print("🔍 DEBUG: content是否为空: \(content.isEmpty)")
+        debugLog("🔄 准备批量生成\(characterIDs.count)个角色的回复")
+        debugLog("🔍 DEBUG: 传递给generateMultiCharacterComments的content参数: '\(content)'")
+        debugLog("🔍 DEBUG: content长度: \(content.count)")
+        debugLog("🔍 DEBUG: content是否为空: \(content.isEmpty)")
         #endif
         
         // 使用MultiCharacterCommentService一次性生成多个角色的回复
@@ -807,13 +944,13 @@ class PostViewModel: ObservableObject {
             switch result {
             case .success(let commentsMap):
                 #if DEBUG
-                print("✅ 成功批量生成\(commentsMap.count)个角色的回复")
+                debugLog("✅ 成功批量生成\(commentsMap.count)个角色的回复")
                 #endif
                 
                 // 获取帖子索引
                 guard let postIndex = self.posts.firstIndex(where: { $0.id == post.id }) else {
                     #if DEBUG
-                    print("❌ 无法找到帖子，无法添加批量生成的回复")
+                    debugLog("❌ 无法找到帖子，无法添加批量生成的回复")
                     #endif
                     if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                         UIApplication.shared.endBackgroundTask(backgroundTaskID)
@@ -848,13 +985,13 @@ class PostViewModel: ObservableObject {
                         
                         // 🔧 安全添加回复（带保护机制）
                         #if DEBUG
-                        print("📝 添加\(firstCharacterId)的回复到评论ID: \(replyToId)")
+                        debugLog("📝 添加\(firstCharacterId)的回复到评论ID: \(replyToId)")
                         #endif
                         
                         // 确保帖子索引仍然有效
                         guard postIndex < self.posts.count else {
                             #if DEBUG
-                            print("⚠️ 帖子索引无效，跳过添加回复")
+                            debugLog("⚠️ 帖子索引无效，跳过添加回复")
                             #endif
                             return
                         }
@@ -862,19 +999,15 @@ class PostViewModel: ObservableObject {
                         // 检查父评论是否还存在
                         guard self.posts[postIndex].comments.contains(where: { $0.id == replyToId }) else {
                             #if DEBUG
-                            print("⚠️ 父评论不存在，跳过添加回复")
+                            debugLog("⚠️ 父评论不存在，跳过添加回复")
                             #endif
                             return
                         }
                         
                         self.posts[postIndex].addReplyToParent(parentId: replyToId, reply: virtualReply)
                         
-                        // 发送通知刷新UI
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("PostCommentsUpdated"),
-                            object: nil,
-                            userInfo: ["postID": post.id.uuidString]
-                        )
+                        // ⚡️ 智能发送通知（仅在内容变化时）
+                        self.notifyPostUpdatedIfChanged(postID: post.id)
                         
                         // 发送评论生成通知给通知系统
                         NotificationCenter.default.post(
@@ -913,13 +1046,13 @@ class PostViewModel: ObservableObject {
                             
                             // 🔧 安全添加回复（带保护机制）
                             #if DEBUG
-                            print("📝 添加\(characterID)的回复到评论ID: \(replyToId)")
+                            debugLog("📝 添加\(characterID)的回复到评论ID: \(replyToId)")
                             #endif
                             
                             // 确保帖子索引仍然有效
                             guard postIndex < self.posts.count else {
                                 #if DEBUG
-                                print("⚠️ 帖子索引无效，跳过添加回复")
+                                debugLog("⚠️ 帖子索引无效，跳过添加回复")
                                 #endif
                                 return
                             }
@@ -927,19 +1060,15 @@ class PostViewModel: ObservableObject {
                             // 检查父评论是否还存在
                             guard self.posts[postIndex].comments.contains(where: { $0.id == replyToId }) else {
                                 #if DEBUG
-                                print("⚠️ 父评论不存在，跳过添加回复")
+                                debugLog("⚠️ 父评论不存在，跳过添加回复")
                                 #endif
                                 return
                             }
                             
                             self.posts[postIndex].addReplyToParent(parentId: replyToId, reply: virtualReply)
                             
-                            // 发送通知刷新UI
-                            NotificationCenter.default.post(
-                                name: NSNotification.Name("PostCommentsUpdated"),
-                                object: nil,
-                                userInfo: ["postID": post.id.uuidString]
-                            )
+                            // ⚡️ 智能发送通知（仅在内容变化时）
+                            self.notifyPostUpdatedIfChanged(postID: post.id)
                             
                             // 发送评论生成通知给通知系统
                             NotificationCenter.default.post(
@@ -960,7 +1089,7 @@ class PostViewModel: ObservableObject {
                                 if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                                     UIApplication.shared.endBackgroundTask(backgroundTaskID)
                                     #if DEBUG
-                                    print("🏁 所有虚拟角色回复任务已完成")
+                                    debugLog("🏁 所有虚拟角色回复任务已完成")
                                     #endif
                                 }
                             }
@@ -974,7 +1103,7 @@ class PostViewModel: ObservableObject {
                         if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                             UIApplication.shared.endBackgroundTask(backgroundTaskID)
                             #if DEBUG
-                            print("🏁 虚拟角色回复任务已完成")
+                            debugLog("🏁 虚拟角色回复任务已完成")
                             #endif
                         }
                     }
@@ -982,7 +1111,7 @@ class PostViewModel: ObservableObject {
                 
             case .failure(let error):
                 #if DEBUG
-                print("❌ 批量生成角色回复失败: \(error.localizedDescription)")
+                debugLog("❌ 批量生成角色回复失败: \(error.localizedDescription)")
                 #endif
                 if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                     UIApplication.shared.endBackgroundTask(backgroundTaskID)
@@ -1013,7 +1142,7 @@ class PostViewModel: ObservableObject {
                         completion: { result in
                             if case .success(let content) = result {
                                 #if DEBUG
-                                print("✅ 单独生成角色回复 - \(self.getCharacterName(for: characterID)): \(content.prefix(30))...")
+                                debugLog("✅ 单独生成角色回复 - \(self.getCharacterName(for: characterID)): \(content.prefix(30))...")
                                 #endif
                                 
                                 // 创建虚拟角色回复
@@ -1030,16 +1159,12 @@ class PostViewModel: ObservableObject {
                                 
                                 // 添加到帖子
                                 #if DEBUG
-                                print("📝 添加虚拟角色回复到用户评论ID: \(originalCommentId)")
+                                debugLog("📝 添加虚拟角色回复到用户评论ID: \(originalCommentId)")
                                 #endif
                                 self.posts[postIndex].addReplyToParent(parentId: originalCommentId, reply: virtualReply)
                                 
-                                // 发送通知刷新UI
-                                NotificationCenter.default.post(
-                                    name: NSNotification.Name("PostCommentsUpdated"),
-                                    object: nil,
-                                    userInfo: ["postID": post.id.uuidString]
-                                )
+                                // ⚡️ 智能发送通知（仅在内容变化时）
+                                self.notifyPostUpdatedIfChanged(postID: post.id)
                                 
                                 // 添加震动反馈
                                 self.hapticFeedback()
@@ -1151,7 +1276,7 @@ class PostViewModel: ObservableObject {
         completion: @escaping (Result<String, Error>) -> Void
     ) {
         #if DEBUG
-        print("🤖 开始生成虚拟角色回复: 角色=\(characterID)")
+        debugLog("🤖 开始生成虚拟角色回复: 角色=\(characterID)")
         #endif
         
         // 创建一个临时的UUID作为帖子ID，用于inviteCharactersToComment方法
@@ -1237,41 +1362,41 @@ class PostViewModel: ObservableObject {
         
         // 🔴🔴🔴 超级醒目的视图模型层日志 🔴🔴🔴
         #if DEBUG
-        print("📏 帖子完整长度: \(post.content.count)字符")
+        debugLog("📏 帖子完整长度: \(post.content.count)字符")
         #endif
         #if DEBUG
-        print("\n🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
-        print("📱📱📱 【PostViewModel】用户发帖后触发虚拟角色评论 📱📱📱")
-        print("🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
-        print("🚀 开始生成虚拟角色评论")
-        print("👤 目标角色ID: \(characterID)")
-        print("👤 目标角色名称: \(character.name)")
-        print("📄 帖子ID: \(post.id.uuidString)")
-        print("👥 帖子作者: \(post.username)")
-        print("📝 帖子内容: \"\(String(post.content.prefix(100)))...\"")
+        debugLog("\n🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
+        debugLog("📱📱📱 【PostViewModel】用户发帖后触发虚拟角色评论 📱📱📱")
+        debugLog("🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
+        debugLog("🚀 开始生成虚拟角色评论")
+        debugLog("👤 目标角色ID: \(characterID)")
+        debugLog("👤 目标角色名称: \(character.name)")
+        debugLog("📄 帖子ID: \(post.id.uuidString)")
+        debugLog("👥 帖子作者: \(post.username)")
+        debugLog("📝 帖子内容: \"\(String(post.content.prefix(100)))...\"")
         #endif
         
         // 检查后端配置
         if APIConfigManager.shared.validateConfiguration() {
             #if DEBUG
-            print("\n✅ 后端配置检查通过")
+            debugLog("\n✅ 后端配置检查通过")
             #endif
         } else {
             #if DEBUG
-            print("\n❌ ⚠️ 警告: 后端配置无效，API调用可能失败")
+            debugLog("\n❌ ⚠️ 警告: 后端配置无效，API调用可能失败")
             #endif
         }
         
         #if DEBUG
-        print("🔵 ===== 开始服务调用 =====")
+        debugLog("🔵 ===== 开始服务调用 =====")
         #endif
         #if DEBUG
-        print("\n🔵 ===== 准备调用VirtualCharacterService =====")
-        print("📞 调用方法: inviteCharactersToComment")
-        print("📋 参数详情:")
-        print("  - characterIDs: [\(characterID)]")
-        print("  - postId: \(post.id.uuidString)")
-        print("  - postAuthor: \(post.username)")
+        debugLog("\n🔵 ===== 准备调用VirtualCharacterService =====")
+        debugLog("📞 调用方法: inviteCharactersToComment")
+        debugLog("📋 参数详情:")
+        debugLog("  - characterIDs: [\(characterID)]")
+        debugLog("  - postId: \(post.id.uuidString)")
+        debugLog("  - postAuthor: \(post.username)")
         #endif
         
         // 使用统一的inviteCharactersToComment方法，确保所有角色评论生成都使用相同的批量生成流程
@@ -1282,12 +1407,12 @@ class PostViewModel: ObservableObject {
         )
         
         #if DEBUG
-        print("🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
+        debugLog("🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
         #endif
         #if DEBUG
-        print("🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
-        print("📤 已向VirtualCharacterService发送评论生成请求")
-        print("⏳ 等待虚拟角色评论生成完成...")
+        debugLog("🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵")
+        debugLog("📤 已向VirtualCharacterService发送评论生成请求")
+        debugLog("⏳ 等待虚拟角色评论生成完成...")
         #endif
     }
     
@@ -1345,18 +1470,18 @@ class PostViewModel: ObservableObject {
         // 创建后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
             #if DEBUG
-            print("⚠️ PostViewModel: 自动生成回复的后台任务超时")
+            debugLog("⚠️ PostViewModel: 自动生成回复的后台任务超时")
             #endif
         }
         
         #if DEBUG
-        print("🔄 PostViewModel: 创建自动生成回复后台任务，ID: \(backgroundTaskID)")
+        debugLog("🔄 PostViewModel: 创建自动生成回复后台任务，ID: \(backgroundTaskID)")
         #endif
         
         // 确保帖子索引有效
         guard postIndex >= 0 && postIndex < posts.count else {
             #if DEBUG
-            print("⚠️ 无效的帖子索引: \(postIndex)")
+            debugLog("⚠️ 无效的帖子索引: \(postIndex)")
             #endif
             if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                 UIApplication.shared.endBackgroundTask(backgroundTaskID)
@@ -1371,7 +1496,7 @@ class PostViewModel: ObservableObject {
         
         // 使用角色轮换系统选择角色回复
         #if DEBUG
-        print("🔄 使用角色轮换系统选择回复角色")
+        debugLog("🔄 使用角色轮换系统选择回复角色")
         #endif
         CharacterRotationSystem.shared.beginNewGenerationSession()
         
@@ -1381,7 +1506,7 @@ class PostViewModel: ObservableObject {
         
         // 使用批量API调用生成回复
         #if DEBUG
-        print("🚀 开始批量生成\(randomCharacters.count)个角色的回复")
+        debugLog("🚀 开始批量生成\(randomCharacters.count)个角色的回复")
         #endif
         
         // 使用MultiCharacterCommentService一次性生成多个角色的回复
@@ -1397,7 +1522,7 @@ class PostViewModel: ObservableObject {
             switch result {
             case .success(let commentsMap):
                 #if DEBUG
-                print("✅ 成功批量生成\(commentsMap.count)个角色的回复")
+                debugLog("✅ 成功批量生成\(commentsMap.count)个角色的回复")
                 #endif
                 
                 // 为每个角色添加回复，添加一定的延迟使回复看起来更自然
@@ -1418,16 +1543,12 @@ class PostViewModel: ObservableObject {
                         
                         // 添加到帖子
                         #if DEBUG
-                        print("📝 添加\(characterID)的回复到帖子")
+                        debugLog("📝 添加\(characterID)的回复到帖子")
                         #endif
                         self.posts[postIndex].comments.insert(virtualReply, at: 0)
                         
-                        // 发送通知刷新UI
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("PostCommentsUpdated"),
-                            object: nil,
-                            userInfo: ["postID": postId.uuidString]
-                        )
+                        // ⚡️ 智能发送通知（仅在内容变化时）
+                        self.notifyPostUpdatedIfChanged(postID: postId)
                         
                         // 添加震动反馈
                         self.hapticFeedback()
@@ -1437,7 +1558,7 @@ class PostViewModel: ObservableObject {
                             if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                                 UIApplication.shared.endBackgroundTask(backgroundTaskID)
                                 #if DEBUG
-                                print("🏁 所有虚拟角色回复任务已完成")
+                                debugLog("🏁 所有虚拟角色回复任务已完成")
                                 #endif
                             }
                         }
@@ -1446,7 +1567,7 @@ class PostViewModel: ObservableObject {
                 
             case .failure(let error):
                 #if DEBUG
-                print("❌ 批量生成角色回复失败: \(error.localizedDescription)")
+                debugLog("❌ 批量生成角色回复失败: \(error.localizedDescription)")
                 #endif
                 
                 // 结束后台任务
@@ -1462,7 +1583,7 @@ class PostViewModel: ObservableObject {
         guard postIndex >= 0, postIndex < posts.count,
               commentIndex >= 0, commentIndex < posts[postIndex].comments.count else {
             #if DEBUG
-            print("错误: 无效的帖子或评论索引")
+            debugLog("错误: 无效的帖子或评论索引")
             #endif
             return
         }
@@ -1486,7 +1607,7 @@ class PostViewModel: ObservableObject {
         // 添加用户回复
         posts[postIndex].comments.append(userReply)
         #if DEBUG
-        print("✅ 用户回复已添加")
+        debugLog("✅ 用户回复已添加")
         #endif
         
         // 获取帖子内容用于生成回复
@@ -1496,7 +1617,7 @@ class PostViewModel: ObservableObject {
         // 添加后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
             #if DEBUG
-            print("⚠️ 后台任务超时")
+            debugLog("⚠️ 后台任务超时")
             #endif
         }
         
@@ -1506,7 +1627,7 @@ class PostViewModel: ObservableObject {
         // 1. 如果原评论来自虚拟角色，添加该角色
         if originalComment.isVirtualCharacter, let characterID = originalComment.characterID {
             #if DEBUG
-            print("🤖 被回复的角色将回应用户")
+            debugLog("🤖 被回复的角色将回应用户")
             #endif
             charactersToRespond.append(characterID)
         }
@@ -1514,7 +1635,7 @@ class PostViewModel: ObservableObject {
         else if originalComment.username == post.username {
             if let authorCharacterId = getCharacterIdByName(post.username) {
                 #if DEBUG
-                print("🤖 帖子作者将回应用户回复")
+                debugLog("🤖 帖子作者将回应用户回复")
                 #endif
                 charactersToRespond.append(authorCharacterId)
             }
@@ -1523,7 +1644,7 @@ class PostViewModel: ObservableObject {
         // 2. 随机决定是否让其他角色也参与评论(50%几率)
         if Bool.random() {
             #if DEBUG
-            print("🤖 另一个虚拟角色将加入讨论")
+            debugLog("🤖 另一个虚拟角色将加入讨论")
             #endif
             
             // 使用角色轮换系统智能选择角色
@@ -1555,7 +1676,7 @@ class PostViewModel: ObservableObject {
             if let selectedCharacter = filteredCharacters.first {
                 charactersToRespond.append(selectedCharacter.id)
                 #if DEBUG
-                print("🤖 选择了角色: \(selectedCharacter.id) 加入讨论")
+                debugLog("🤖 选择了角色: \(selectedCharacter.id) 加入讨论")
                 #endif
             }
         }
@@ -1569,7 +1690,7 @@ class PostViewModel: ObservableObject {
         }
         
         #if DEBUG
-        print("🔄 准备批量生成\(charactersToRespond.count)个角色的回复")
+        debugLog("🔄 准备批量生成\(charactersToRespond.count)个角色的回复")
         #endif
         
         // 使用MultiCharacterCommentService一次性生成多个角色的回复
@@ -1585,7 +1706,7 @@ class PostViewModel: ObservableObject {
             switch result {
             case .success(let commentsMap):
                 #if DEBUG
-                print("✅ 成功批量生成\(commentsMap.count)个角色的回复")
+                debugLog("✅ 成功批量生成\(commentsMap.count)个角色的回复")
                 #endif
                 
                 // 为每个角色添加回复，添加一定的延迟使回复看起来更自然
@@ -1615,7 +1736,7 @@ class PostViewModel: ObservableObject {
                         
                         // 添加到帖子
                         #if DEBUG
-                        print("📝 添加\(characterID)的回复到用户回复ID: \(userReply.id)")
+                        debugLog("📝 添加\(characterID)的回复到用户回复ID: \(userReply.id)")
                         #endif
                         self.posts[postIndex].addReplyToParent(parentId: userReply.id, reply: virtualReply)
                         
@@ -1623,12 +1744,8 @@ class PostViewModel: ObservableObject {
                         self.saveUserPosts()
                         self.saveAIPosts()
                         
-                        // 发送通知刷新UI
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("PostCommentsUpdated"),
-                            object: nil,
-                            userInfo: ["postID": post.id.uuidString]
-                        )
+                        // ⚡️ 智能发送通知（仅在内容变化时）
+                        self.notifyPostUpdatedIfChanged(postID: post.id)
                         
                         // 添加震动反馈
                         self.hapticFeedback()
@@ -1638,7 +1755,7 @@ class PostViewModel: ObservableObject {
                             if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                                 UIApplication.shared.endBackgroundTask(backgroundTaskID)
                                 #if DEBUG
-                                print("🏁 所有虚拟角色回复任务已完成")
+                                debugLog("🏁 所有虚拟角色回复任务已完成")
                                 #endif
                             }
                         }
@@ -1647,7 +1764,7 @@ class PostViewModel: ObservableObject {
                 
             case .failure(let error):
                 #if DEBUG
-                print("❌ 批量生成角色回复失败: \(error.localizedDescription)")
+                debugLog("❌ 批量生成角色回复失败: \(error.localizedDescription)")
                 #endif
                 
                 // 回退到逐个生成回复
@@ -1663,7 +1780,7 @@ class PostViewModel: ObservableObject {
                             completion: { result in
                                 if case .success(let content) = result {
                                     #if DEBUG
-                                    print("✅ 单独生成角色回复 - \(self.getCharacterName(for: characterID)): \(content.prefix(30))...")
+                                    debugLog("✅ 单独生成角色回复 - \(self.getCharacterName(for: characterID)): \(content.prefix(30))...")
                                     #endif
                                     
                                     // 创建虚拟角色回复
@@ -1685,12 +1802,8 @@ class PostViewModel: ObservableObject {
                                     self.saveUserPosts()
                                     self.saveAIPosts()
                                     
-                                    // 发送通知刷新UI
-                                    NotificationCenter.default.post(
-                                        name: NSNotification.Name("PostCommentsUpdated"),
-                                        object: nil,
-                                        userInfo: ["postID": post.id.uuidString]
-                                    )
+                                    // ⚡️ 智能发送通知（仅在内容变化时）
+                                    self.notifyPostUpdatedIfChanged(postID: post.id)
                                     
                                     // 添加震动反馈
                                     self.hapticFeedback()
@@ -1700,7 +1813,7 @@ class PostViewModel: ObservableObject {
                                         if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                                             UIApplication.shared.endBackgroundTask(backgroundTaskID)
                                             #if DEBUG
-                                            print("🏁 所有虚拟角色回复任务已完成")
+                                            debugLog("🏁 所有虚拟角色回复任务已完成")
                                             #endif
                                         }
                                     }
@@ -1751,13 +1864,13 @@ class PostViewModel: ObservableObject {
      */
     func handleCommentReply(postId: UUID, commentId: UUID, commentContent: String, replyTo: String) {
         #if DEBUG
-        print("🔄 处理评论回复: postId=\(postId), commentId=\(commentId), content=\(commentContent)")
+        debugLog("🔄 处理评论回复: postId=\(postId), commentId=\(commentId), content=\(commentContent)")
         #endif
         
         // 查找帖子
         guard let postIndex = posts.firstIndex(where: { $0.id == postId }) else {
             #if DEBUG
-            print("❌ 未找到帖子: \(postId)")
+            debugLog("❌ 未找到帖子: \(postId)")
             #endif
             return
         }
@@ -1771,19 +1884,19 @@ class PostViewModel: ObservableObject {
         // 查找被回复的评论
         guard let targetComment = flattenedComments.first(where: { $0.id == commentId }) else {
             #if DEBUG
-            print("❌ 未找到评论: \(commentId)")
+            debugLog("❌ 未找到评论: \(commentId)")
             #endif
             return
         }
         
         // 打印目标评论的结构，帮助调试
         #if DEBUG
-        print("📊 目标评论结构:")
+        debugLog("📊 目标评论结构:")
         #endif
         targetComment.printStructure()
         
         #if DEBUG
-        print("📝 创建用户回复，回复给: \(replyTo)")
+        debugLog("📝 创建用户回复，回复给: \(replyTo)")
         #endif
         
         // 创建用户回复评论
@@ -1801,7 +1914,7 @@ class PostViewModel: ObservableObject {
         // 保存用户回复的ID，用于后续添加虚拟角色回复
         let userReplyId = userReply.id
         #if DEBUG
-        print("📝 创建用户回复，ID: \(userReplyId)")
+        debugLog("📝 创建用户回复，ID: \(userReplyId)")
         #endif
         
         // 创建帖子的可变副本
@@ -1826,30 +1939,20 @@ class PostViewModel: ObservableObject {
         if let updatedTargetComment = updatedFlattenedComments.first(where: { $0.id == commentId }),
            let addedReply = updatedTargetComment.replies.first(where: { $0.id == userReplyId }) {
             #if DEBUG
-            print("📊 更新后的评论结构:")
+            debugLog("📊 更新后的评论结构:")
             #endif
             #if DEBUG
-            print("✅ 成功添加回复，检查到回复ID: \(addedReply.id)")
+            debugLog("✅ 成功添加回复，检查到回复ID: \(addedReply.id)")
             #endif
             updatedTargetComment.printStructure()
         } else {
             #if DEBUG
-            print("⚠️ 回复可能未成功添加到嵌套结构中")
+            debugLog("⚠️ 回复可能未成功添加到嵌套结构中")
             #endif
         }
         
-        // 发送通知刷新UI
-        NotificationCenter.default.post(
-            name: NSNotification.Name("PostCommentsUpdated"),
-            object: nil,
-            userInfo: ["postID": postId.uuidString]
-        )
-        
-        // 确保UI刷新
-        NotificationCenter.default.post(
-            name: NSNotification.Name("RefreshPostComments"),
-            object: nil
-        )
+        // ⚡️ 智能发送通知（仅在内容变化时）
+        notifyPostUpdatedIfChanged(postID: postId)
         
         // 收集需要回复的角色ID
         var characterIDsToReply: [String] = []
@@ -1857,7 +1960,7 @@ class PostViewModel: ObservableObject {
         // 检查是否回复的是虚拟角色的评论
         if targetComment.isVirtualCharacter, let characterID = targetComment.characterID {
             #if DEBUG
-            print("🔍 找到虚拟角色评论，添加到回复列表，角色ID: \(characterID)")
+            debugLog("🔍 找到虚拟角色评论，添加到回复列表，角色ID: \(characterID)")
             #endif
             characterIDsToReply.append(characterID)
         }
@@ -1866,7 +1969,7 @@ class PostViewModel: ObservableObject {
         if targetComment.username == post.username && post.characterID != nil,
            let characterID = post.characterID, !characterIDsToReply.contains(characterID) {
             #if DEBUG
-            print("🔍 回复帖子作者，添加到回复列表，角色ID: \(characterID)")
+            debugLog("🔍 回复帖子作者，添加到回复列表，角色ID: \(characterID)")
             #endif
             characterIDsToReply.append(characterID)
         }
@@ -1874,7 +1977,7 @@ class PostViewModel: ObservableObject {
         // 如果没有角色需要回复
         if characterIDsToReply.isEmpty {
             #if DEBUG
-            print("⚠️ 没有找到需要回复的虚拟角色，跳过生成回复")
+            debugLog("⚠️ 没有找到需要回复的虚拟角色，跳过生成回复")
             #endif
             return
         }
@@ -1882,13 +1985,13 @@ class PostViewModel: ObservableObject {
         // 创建后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
             #if DEBUG
-            print("⚠️ 生成批量回复的后台任务超时")
+            debugLog("⚠️ 生成批量回复的后台任务超时")
             #endif
         }
         
         // 使用批量API调用生成回复
         #if DEBUG
-        print("🚀 开始批量生成\(characterIDsToReply.count)个角色的回复")
+        debugLog("🚀 开始批量生成\(characterIDsToReply.count)个角色的回复")
         #endif
         
         // 使用MultiCharacterCommentService一次性生成多个角色的回复
@@ -1904,13 +2007,13 @@ class PostViewModel: ObservableObject {
             switch result {
             case .success(let commentsMap):
                 #if DEBUG
-                print("✅ 成功批量生成\(commentsMap.count)个角色的回复")
+                debugLog("✅ 成功批量生成\(commentsMap.count)个角色的回复")
                 #endif
                 
                 // 获取帖子索引
                 guard let postIndex = self.posts.firstIndex(where: { $0.id == postId }) else {
                     #if DEBUG
-                    print("❌ 无法找到帖子，无法添加批量生成的回复")
+                    debugLog("❌ 无法找到帖子，无法添加批量生成的回复")
                     #endif
                     if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                         UIApplication.shared.endBackgroundTask(backgroundTaskID)
@@ -1945,16 +2048,12 @@ class PostViewModel: ObservableObject {
                         
                         // 添加到帖子 - 添加到原始评论下
                         #if DEBUG
-                        print("📝 添加\(firstCharacterId)的回复到评论ID: \(commentId)")
+                        debugLog("📝 添加\(firstCharacterId)的回复到评论ID: \(commentId)")
                         #endif
                         self.posts[postIndex].addReplyToParent(parentId: commentId, reply: virtualReply)
                         
-                        // 发送通知刷新UI
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("PostCommentsUpdated"),
-                            object: nil,
-                            userInfo: ["postID": postId.uuidString]
-                        )
+                        // ⚡️ 智能发送通知（仅在内容变化时）
+                        self.notifyPostUpdatedIfChanged(postID: postId)
                         
                         // 添加震动反馈
                         self.hapticFeedback()
@@ -1982,7 +2081,7 @@ class PostViewModel: ObservableObject {
                             
                             // 添加到帖子
                             #if DEBUG
-                            print("📝 添加\(characterID)的回复到评论ID: \(commentId)")
+                            debugLog("📝 添加\(characterID)的回复到评论ID: \(commentId)")
                             #endif
                             self.posts[postIndex].addReplyToParent(parentId: commentId, reply: virtualReply)
                             
@@ -2001,7 +2100,7 @@ class PostViewModel: ObservableObject {
                                 if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                                     UIApplication.shared.endBackgroundTask(backgroundTaskID)
                                     #if DEBUG
-                                    print("🏁 所有虚拟角色回复任务已完成")
+                                    debugLog("🏁 所有虚拟角色回复任务已完成")
                                     #endif
                                 }
                             }
@@ -2015,7 +2114,7 @@ class PostViewModel: ObservableObject {
                         if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                             UIApplication.shared.endBackgroundTask(backgroundTaskID)
                             #if DEBUG
-                            print("🏁 虚拟角色回复任务已完成")
+                            debugLog("🏁 虚拟角色回复任务已完成")
                             #endif
                         }
                     }
@@ -2023,19 +2122,19 @@ class PostViewModel: ObservableObject {
                 
             case .failure(let error):
                 #if DEBUG
-                print("❌ 批量生成角色回复失败: \(error.localizedDescription)")
+                debugLog("❌ 批量生成角色回复失败: \(error.localizedDescription)")
                 #endif
                 
                 // 备用方案：使用原来的单独API调用方法
                 #if DEBUG
-                print("🔄 使用备用方案，单独生成回复")
+                debugLog("🔄 使用备用方案，单独生成回复")
                 #endif
                 
                 // 检查是否回复的是虚拟角色的评论
                 if targetComment.isVirtualCharacter,
                    let characterID = targetComment.characterID {
                     #if DEBUG
-                    print("🔍 找到虚拟角色评论，准备生成回复，角色ID: \(characterID)")
+                    debugLog("🔍 找到虚拟角色评论，准备生成回复，角色ID: \(characterID)")
                     #endif
                     
                     // 使用API生成虚拟角色回复
@@ -2050,7 +2149,7 @@ class PostViewModel: ObservableObject {
                                 switch result {
                                 case .success(let replyContent):
                                     #if DEBUG
-                                    print("✅ API生成回复成功: \(replyContent.prefix(50))...")
+                                    debugLog("✅ API生成回复成功: \(replyContent.prefix(50))...")
                                     #endif
                                     
                                     // 添加虚拟角色的回复
@@ -2072,7 +2171,7 @@ class PostViewModel: ObservableObject {
                                     // 添加到帖子 - 添加到原始评论下
                                     if let postIndex = self.posts.firstIndex(where: { $0.id == postId }) {
                                         #if DEBUG
-                                        print("📝 添加虚拟角色回复到原始评论下，原始评论ID: \(commentId)")
+                                        debugLog("📝 添加虚拟角色回复到原始评论下，原始评论ID: \(commentId)")
                                         #endif
                                         
                                         // 使用临时变量来创建帖子副本
@@ -2083,7 +2182,7 @@ class PostViewModel: ObservableObject {
                                         self.posts[postIndex] = updatedPost
                                         
                                         #if DEBUG
-                                        print("✅ 已添加API生成的虚拟角色回复到原始评论下")
+                                        debugLog("✅ 已添加API生成的虚拟角色回复到原始评论下")
                                         #endif
                                     }
                                     
@@ -2092,26 +2191,16 @@ class PostViewModel: ObservableObject {
                                     
                                 case .failure(let error):
                                     #if DEBUG
-                                    print("❌ API生成回复失败: \(error.localizedDescription)")
+                                    debugLog("❌ API生成回复失败: \(error.localizedDescription)")
                                     #endif
                                     // API失败时不再使用模板回复，直接跳过
                                     #if DEBUG
-                                    print("⚠️ API失败，跳过回复生成")
+                                    debugLog("⚠️ API失败，跳过回复生成")
                                     #endif
                                 }
                                 
-                                // 发送通知，刷新评论UI
-                                NotificationCenter.default.post(
-                                    name: NSNotification.Name("PostCommentsUpdated"),
-                                    object: nil,
-                                    userInfo: ["postID": postId.uuidString]
-                                )
-                                
-                                // 确保UI刷新
-                                NotificationCenter.default.post(
-                                    name: NSNotification.Name("RefreshPostComments"),
-                                    object: nil
-                                )
+                                // ⚡️ 智能发送通知（仅在内容变化时）
+                                self.notifyPostUpdatedIfChanged(postID: postId)
                             }
                         }
                     )
@@ -2134,7 +2223,7 @@ class PostViewModel: ObservableObject {
         // 使用布尔测试直接检查是否存在匹配的帖子
         guard posts.contains(where: { $0.id == postId }) else {
             #if DEBUG
-            print("❌ findLastCommentFromCurrentUser: 未找到帖子")
+            debugLog("❌ findLastCommentFromCurrentUser: 未找到帖子")
             #endif
             return nil
         }
@@ -2146,14 +2235,14 @@ class PostViewModel: ObservableObject {
         for comment in allComments.reversed() {
             if comment.username == "当前用户" {
                 #if DEBUG
-                print("✅ 找到当前用户的最后一条评论，ID: \(comment.id)")
+                debugLog("✅ 找到当前用户的最后一条评论，ID: \(comment.id)")
                 #endif
                 return comment.id
             }
         }
         
         #if DEBUG
-        print("❌ 未找到当前用户的评论")
+        debugLog("❌ 未找到当前用户的评论")
         #endif
         return nil
     }
@@ -2176,7 +2265,7 @@ class PostViewModel: ObservableObject {
         // 查找帖子
         guard let postIndex = posts.firstIndex(where: { $0.id == postId }) else {
             #if DEBUG
-            print("❌ getFlattenedComments: 未找到帖子")
+            debugLog("❌ getFlattenedComments: 未找到帖子")
             #endif
             return []
         }
@@ -2206,16 +2295,17 @@ class PostViewModel: ObservableObject {
      */
     func generateResonancePosts(situation: String, expectation: String, keyword: String? = nil) async throws -> [UserPostModel] {
         #if DEBUG
-        print("🔄 开始生成虫洞共鸣帖子 - 使用角色系统")
+        debugLog("🔄 开始生成虫洞共鸣帖子 - 使用角色系统")
         #endif
         
-        // 构建话题
-        let topic = "关于[\(situation)]，期望[\(expectation)]\(keyword != nil ? "，关键词[\(keyword!)]" : "")"
+        // 构建话题 - ⚡️ 安全修复：使用可选链替代强制解包
+        let keywordPart = keyword.map { "，关键词[\($0)]" } ?? ""
+        let topic = "关于[\(situation)]，期望[\(expectation)]\(keywordPart)"
         
         // 获取虫洞共鸣配置的生成数量
         let count = ExplorationCountManager.shared.getCount(for: .resonance)
         #if DEBUG
-        print("📊 虫洞共鸣配置的生成数量: \(count)篇")
+        debugLog("📊 虫洞共鸣配置的生成数量: \(count)篇")
         #endif
         
         do {
@@ -2227,14 +2317,14 @@ class PostViewModel: ObservableObject {
                         receiveCompletion: { completion in
                             if case .failure(let error) = completion {
                                 #if DEBUG
-                                print("⚠️ 生成共鸣帖子失败: \(error)")
+                                debugLog("⚠️ 生成共鸣帖子失败: \(error)")
                                 #endif
                                 continuation.resume(throwing: error)
                             }
                         },
                         receiveValue: { items in
                             #if DEBUG
-                            print("✅ 成功生成\(items.count)篇虫洞共鸣内容")
+                            debugLog("✅ 成功生成\(items.count)篇虫洞共鸣内容")
                             #endif
                             continuation.resume(returning: items)
                         }
@@ -2243,7 +2333,7 @@ class PostViewModel: ObservableObject {
             }
             
             #if DEBUG
-            print("📝 将生成的\(contentItems.count)篇内容转换为帖子模型")
+            debugLog("📝 将生成的\(contentItems.count)篇内容转换为帖子模型")
             #endif
             
             // 转换为帖子模型
@@ -2252,7 +2342,7 @@ class PostViewModel: ObservableObject {
                 // 从CommentStore获取评论
                 let commentItems = CommentStore.shared.getComments(forContentID: item.id)
                 #if DEBUG
-                print("📝 为内容ID=\(item.id)获取到\(commentItems.count)条评论")
+                debugLog("📝 为内容ID=\(item.id)获取到\(commentItems.count)条评论")
                 #endif
                 
                 // 使用优化的评论转换方法
@@ -2279,7 +2369,7 @@ class PostViewModel: ObservableObject {
             // 如果没有生成任何帖子，抛出错误
             if userPosts.isEmpty {
                 #if DEBUG
-                print("⚠️ 警告：生成虫洞共鸣帖子失败，没有生成任何内容")
+                debugLog("⚠️ 警告：生成虫洞共鸣帖子失败，没有生成任何内容")
                 #endif
                 throw PostGenerationError.failedToGeneratePosts
             }
@@ -2287,7 +2377,7 @@ class PostViewModel: ObservableObject {
             return userPosts
         } catch {
             #if DEBUG
-            print("❌ 生成虫洞共鸣帖子时出错: \(error.localizedDescription)")
+            debugLog("❌ 生成虫洞共鸣帖子时出错: \(error.localizedDescription)")
             #endif
             throw error
         }
@@ -2299,7 +2389,7 @@ class PostViewModel: ObservableObject {
      */
     func generatePostsByTypeIndexAsync(typeIndex: Int) async throws -> [UserPostModel] {
         #if DEBUG
-        print("🔄 开始异步生成帖子: 类型索引=\(typeIndex)")
+        debugLog("🔄 开始异步生成帖子: 类型索引=\(typeIndex)")
         #endif
         
         // 获取ContentType
@@ -2308,7 +2398,7 @@ class PostViewModel: ObservableObject {
         // 获取内容生成数量
         let count = ExplorationCountManager.shared.getCount(for: contentType)
         #if DEBUG
-        print("📊 使用[类型=\(contentType.rawValue)]的生成数量: \(count)")
+        debugLog("📊 使用[类型=\(contentType.rawValue)]的生成数量: \(count)")
         #endif
         
         // 使用带评论的内容生成方法
@@ -2319,14 +2409,14 @@ class PostViewModel: ObservableObject {
                     receiveCompletion: { completion in
                         if case .failure(let error) = completion {
                             #if DEBUG
-                            print("⚠️ 生成\(contentType.rawValue)内容失败: \(error)")
+                            debugLog("⚠️ 生成\(contentType.rawValue)内容失败: \(error)")
                             #endif
                             continuation.resume(throwing: error)
                         }
                     },
                     receiveValue: { items in
                         #if DEBUG
-                        print("✅ 成功生成\(items.count)篇\(contentType.rawValue)内容")
+                        debugLog("✅ 成功生成\(items.count)篇\(contentType.rawValue)内容")
                         #endif
                         
                         // 将ContentItem转换为UserPostModel
@@ -2335,7 +2425,7 @@ class PostViewModel: ObservableObject {
                             // 从CommentStore获取评论
                             let commentItems = CommentStore.shared.getComments(forContentID: item.id)
                             #if DEBUG
-                            print("📝 为内容ID=\(item.id)获取到\(commentItems.count)条评论")
+                            debugLog("📝 为内容ID=\(item.id)获取到\(commentItems.count)条评论")
                             #endif
                             
                             // 使用优化的评论转换方法
@@ -2361,7 +2451,7 @@ class PostViewModel: ObservableObject {
                         // 如果没有生成任何帖子，抛出错误
                         if userPosts.isEmpty {
                             #if DEBUG
-                            print("⚠️ 警告：生成\(contentType.rawValue)帖子失败，没有生成任何内容")
+                            debugLog("⚠️ 警告：生成\(contentType.rawValue)帖子失败，没有生成任何内容")
                             #endif
                             continuation.resume(throwing: PostGenerationError.failedToGeneratePosts)
                         } else {
@@ -2378,7 +2468,7 @@ class PostViewModel: ObservableObject {
      */
     func generateSinglePost(for characterID: String, contentType: ContentGeneratorService.ContentType) async throws -> UserPostModel {
         #if DEBUG
-        print("🔄 开始生成单条帖子: 角色ID=\(characterID), 内容类型=\(contentType.rawValue)")
+        debugLog("🔄 开始生成单条帖子: 角色ID=\(characterID), 内容类型=\(contentType.rawValue)")
         #endif
         
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<UserPostModel, Error>) in
@@ -2435,7 +2525,7 @@ class PostViewModel: ObservableObject {
         let actualCount = count ?? ExplorationCountManager.shared.getCount(for: contentType)
         
         #if DEBUG
-        print("📊 为类型[\(contentType.rawValue)]生成帖子，数量: \(actualCount)，\(withComments ? "带评论" : "不带评论")")
+        debugLog("📊 为类型[\(contentType.rawValue)]生成帖子，数量: \(actualCount)，\(withComments ? "带评论" : "不带评论")")
         #endif
         
         if withComments {
@@ -2531,7 +2621,7 @@ class PostViewModel: ObservableObject {
         guard !newPosts.isEmpty else { return }
         
         #if DEBUG
-        print("📝 PostViewModel: 开始添加 \(newPosts.count) 个新帖子")
+        debugLog("📝 PostViewModel: 开始添加 \(newPosts.count) 个新帖子")
         #endif
         
         // 过滤出真正的新帖子（避免重复添加）
@@ -2541,7 +2631,7 @@ class PostViewModel: ObservableObject {
         
         guard !uniquePosts.isEmpty else {
             #if DEBUG
-            print("📝 PostViewModel: 所有帖子都已存在，跳过添加")
+            debugLog("📝 PostViewModel: 所有帖子都已存在，跳过添加")
             #endif
             return
         }
@@ -2553,14 +2643,14 @@ class PostViewModel: ObservableObject {
         let newCount = posts.count
         let addedCount = uniquePosts.count
         #if DEBUG
-        print("📝 PostViewModel: 添加后帖子数量 = \(newCount)，实际增加 \(addedCount)")
+        debugLog("📝 PostViewModel: 添加后帖子数量 = \(newCount)，实际增加 \(addedCount)")
         #endif
         
         // 检查第一篇帖子是否就是新添加的第一篇
         if let firstNewPost = uniquePosts.first, let firstPost = posts.first {
             let isFirstPostMatch = firstNewPost.id == firstPost.id
             #if DEBUG
-            print("📊 PostViewModel: 第一篇帖子ID匹配检查 = \(isFirstPostMatch ? "✅成功" : "❌失败")")
+            debugLog("📊 PostViewModel: 第一篇帖子ID匹配检查 = \(isFirstPostMatch ? "✅成功" : "❌失败")")
             #endif
         }
         
@@ -2585,7 +2675,7 @@ class PostViewModel: ObservableObject {
             )
             
             #if DEBUG
-            print("📱 PostViewModel: 已发送增量更新通知，添加了 \(uniquePosts.count) 个新帖子")
+            debugLog("📱 PostViewModel: 已发送增量更新通知，添加了 \(uniquePosts.count) 个新帖子")
             #endif
         }
     }
@@ -2602,13 +2692,13 @@ class PostViewModel: ObservableObject {
         var localCancellables = Set<AnyCancellable>()
         
         #if DEBUG
-        print("🔄 开始生成带初始评论的帖子: 类型索引=\(typeIndex), 评论数=\(commentersCount)")
+        debugLog("🔄 开始生成带初始评论的帖子: 类型索引=\(typeIndex), 评论数=\(commentersCount)")
         #endif
         
         // 确保typeIndex在有效范围内
         guard typeIndex >= 0 && typeIndex < ContentTypeManager.shared.contentTypes.count else {
             #if DEBUG
-            print("❌ 无效的类型索引: \(typeIndex)")
+            debugLog("❌ 无效的类型索引: \(typeIndex)")
             #endif
             throw PostGenerationError.invalidTypeIndex
         }
@@ -2616,7 +2706,7 @@ class PostViewModel: ObservableObject {
         // 获取内容类型
         let contentType = convertTypeIndexToContentType(typeIndex)
         #if DEBUG
-        print("👉 已转换内容类型: \(contentType.rawValue)")
+        debugLog("👉 已转换内容类型: \(contentType.rawValue)")
         #endif
         
         return try await withCheckedThrowingContinuation { continuation in
@@ -2626,7 +2716,7 @@ class PostViewModel: ObservableObject {
                     receiveCompletion: { completion in
                         if case .failure(let error) = completion {
                             #if DEBUG
-                            print("❌ 生成带评论的内容失败: \(error.localizedDescription)")
+                            debugLog("❌ 生成带评论的内容失败: \(error.localizedDescription)")
                             #endif
                             continuation.resume(throwing: error)
                             // 清理本地取消令牌
@@ -2635,19 +2725,19 @@ class PostViewModel: ObservableObject {
                     },
                     receiveValue: { result in
                         #if DEBUG
-                        print("✅ 成功生成带评论的内容: 评论数=\(result.comments.count)")
+                        debugLog("✅ 成功生成带评论的内容: 评论数=\(result.comments.count)")
                         #endif
                         
                         // 将ContentItem转换为UserPostModel
                         let post = self.convertContentItemToUserPost(result.contentItem)
                         #if DEBUG
-                        print("📝 创建帖子: ID=\(post.id), 作者=\(post.username)")
+                        debugLog("📝 创建帖子: ID=\(post.id), 作者=\(post.username)")
                         #endif
                         
                         // 将CommentItem转换为DetailedCommentModel
                         let comments = result.comments.map { commentItem -> DetailedCommentModel in
                             #if DEBUG
-                            print("✅ 添加评论: 来自=\(commentItem.characterName), 内容=\(commentItem.content.prefix(30))...")
+                            debugLog("✅ 添加评论: 来自=\(commentItem.characterName), 内容=\(commentItem.content.prefix(30))...")
                             #endif
                             return DetailedCommentModel(
                                 id: UUID(uuidString: commentItem.id) ?? UUID(),
@@ -2657,7 +2747,8 @@ class PostViewModel: ObservableObject {
                                 datePosted: commentItem.timestamp,
                                 isVirtualCharacter: true,
                                 characterID: commentItem.characterId,
-                                parentCommentId: commentItem.parentCommentId != nil ? UUID(uuidString: commentItem.parentCommentId!) : nil,
+                                // ⚡️ 安全修复：使用 flatMap 安全转换 UUID
+parentCommentId: commentItem.parentCommentId.flatMap { UUID(uuidString: $0) },
                                 replyToUsername: nil,
                                 likes: commentItem.likes,
                                 isLikedByCurrentUser: Bool.random()
@@ -2665,7 +2756,7 @@ class PostViewModel: ObservableObject {
                         }
                         
                         #if DEBUG
-                        print("🎉 生成完成: 帖子=1, 评论=\(comments.count)")
+                        debugLog("🎉 生成完成: 帖子=1, 评论=\(comments.count)")
                         #endif
                         
                         // 继续执行
@@ -2691,14 +2782,14 @@ class PostViewModel: ObservableObject {
         var generatedPosts: [UserPostModel] = []
         
         #if DEBUG
-        print("🌟 开始生成\(count)个带评论的帖子: 类型索引=\(typeIndex), 每个帖子评论数=\(commentersCount)")
+        debugLog("🌟 开始生成\(count)个带评论的帖子: 类型索引=\(typeIndex), 每个帖子评论数=\(commentersCount)")
         #endif
         
         // 逐个生成帖子和评论
         for i in 0..<count {
             do {
                 #if DEBUG
-                print("📝 生成第\(i+1)个帖子...")
+                debugLog("📝 生成第\(i+1)个帖子...")
                 #endif
                 let result = try await generatePostWithInitialComments(typeIndex: typeIndex, topic: topic, commentersCount: commentersCount)
                 
@@ -2707,12 +2798,12 @@ class PostViewModel: ObservableObject {
                 post.comments = result.comments
                 
                 #if DEBUG
-                print("✅ 成功添加\(result.comments.count)条评论到帖子")
+                debugLog("✅ 成功添加\(result.comments.count)条评论到帖子")
                 #endif
                 generatedPosts.append(post)
             } catch {
                 #if DEBUG
-                print("❌ 生成带评论的帖子失败: \(error.localizedDescription)")
+                debugLog("❌ 生成带评论的帖子失败: \(error.localizedDescription)")
                 #endif
                 // 继续生成下一个帖子
                 continue
@@ -2722,13 +2813,13 @@ class PostViewModel: ObservableObject {
         // 如果没有成功生成任何帖子，抛出错误
         if generatedPosts.isEmpty {
             #if DEBUG
-            print("⚠️ 未能生成任何帖子")
+            debugLog("⚠️ 未能生成任何帖子")
             #endif
             throw PostGenerationError.failedToGeneratePosts
         }
         
         #if DEBUG
-        print("🎉 成功生成\(generatedPosts.count)个带评论的帖子")
+        debugLog("🎉 成功生成\(generatedPosts.count)个带评论的帖子")
         #endif
         return generatedPosts
     }
@@ -2763,11 +2854,11 @@ class PostViewModel: ObservableObject {
         
         // 打印日志，便于调试内容传递
         #if DEBUG
-        print("🔍 转换ContentItem为UserPost: 类型=\(item.contentType), 内容长度=\(item.content.count)字")
+        debugLog("🔍 转换ContentItem为UserPost: 类型=\(item.contentType), 内容长度=\(item.content.count)字")
         #endif
         if item.contentType == "古潮新语" {
             #if DEBUG
-            print("📝 古潮新语原始内容: \(item.content)")
+            debugLog("📝 古潮新语原始内容: \(item.content)")
             #endif
         }
         
@@ -2783,7 +2874,7 @@ class PostViewModel: ObservableObject {
      */
     func generatePosts(contentType: ContentGeneratorService.ContentType, count: Int, source: String? = nil) async throws -> [UserPostModel] {
         #if DEBUG
-        print("📊 开始生成\(count)篇\(contentType.rawValue)内容，来源: \(source ?? "未指定")")
+        debugLog("📊 开始生成\(count)篇\(contentType.rawValue)内容，来源: \(source ?? "未指定")")
         #endif
         
         return try await withCheckedThrowingContinuation { continuation in
@@ -2796,14 +2887,14 @@ class PostViewModel: ObservableObject {
                     receiveCompletion: { completion in
                         if case .failure(let error) = completion {
                             #if DEBUG
-                            print("❌ 生成内容失败: \(error.localizedDescription)")
+                            debugLog("❌ 生成内容失败: \(error.localizedDescription)")
                             #endif
                             continuation.resume(throwing: error)
                         }
                     },
                     receiveValue: { items in
                         #if DEBUG
-                        print("✅ 成功生成\(items.count)篇\(contentType.rawValue)内容")
+                        debugLog("✅ 成功生成\(items.count)篇\(contentType.rawValue)内容")
                         #endif
                         
                         // 将ContentItem转换为UserPostModel
@@ -2812,7 +2903,7 @@ class PostViewModel: ObservableObject {
                             // 从CommentStore获取评论
                             let commentItems = CommentStore.shared.getComments(forContentID: item.id)
                             #if DEBUG
-                            print("📝 为内容ID=\(item.id)获取到\(commentItems.count)条评论")
+                            debugLog("📝 为内容ID=\(item.id)获取到\(commentItems.count)条评论")
                             #endif
                             
                             // 将CommentItem转换为DetailedCommentModel
@@ -2825,7 +2916,8 @@ class PostViewModel: ObservableObject {
                                     datePosted: commentItem.timestamp,
                                     isVirtualCharacter: true,
                                     characterID: commentItem.characterId,
-                                    parentCommentId: commentItem.parentCommentId != nil ? UUID(uuidString: commentItem.parentCommentId!) : nil,
+                                    // ⚡️ 安全修复：使用 flatMap 安全转换 UUID
+parentCommentId: commentItem.parentCommentId.flatMap { UUID(uuidString: $0) },
                                     replyToUsername: nil,
                                     likes: commentItem.likes,
                                     isLikedByCurrentUser: Bool.random()
@@ -2852,7 +2944,7 @@ class PostViewModel: ObservableObject {
                         // 如果没有生成任何帖子，抛出错误
                         if userPosts.isEmpty {
                             #if DEBUG
-                            print("⚠️ 警告：生成\(contentType.rawValue)帖子失败，没有生成任何内容")
+                            debugLog("⚠️ 警告：生成\(contentType.rawValue)帖子失败，没有生成任何内容")
                             #endif
                             continuation.resume(throwing: PostGenerationError.failedToGeneratePosts)
                         } else {
@@ -2872,24 +2964,24 @@ class PostViewModel: ObservableObject {
      */
     func addReplyToComment(parentId: UUID, reply: DetailedCommentModel) {
         #if DEBUG
-        print("📝 回复者: \(reply.username), 父评论ID: \(reply.parentCommentId?.uuidString ?? "nil")")
+        debugLog("📝 回复者: \(reply.username), 父评论ID: \(reply.parentCommentId?.uuidString ?? "nil")")
         #endif
         #if DEBUG
-        print("📝 ViewModel: 添加回复到评论ID: \(parentId)")
-        print("📝 回复内容: \"\(reply.content.prefix(30))...\"")
+        debugLog("📝 ViewModel: 添加回复到评论ID: \(parentId)")
+        debugLog("📝 回复内容: \"\(reply.content.prefix(30))...\"")
         #endif
         
         // 查找包含目标评论的帖子
         for (postIndex, post) in posts.enumerated() {
             #if DEBUG
-            print("🔍 检查帖子[\(postIndex)], ID: \(post.id)")
+            debugLog("🔍 检查帖子[\(postIndex)], ID: \(post.id)")
             #endif
             
             // 尝试查找评论 (先平铺所有评论进行查找)
             let allComments = getFlattenedComments(forPost: post.id)
             if let targetComment = allComments.first(where: { $0.id == parentId }) {
                 #if DEBUG
-                print("✅ 找到目标评论在帖子[\(postIndex)]中，评论用户名: \(targetComment.username)")
+                debugLog("✅ 找到目标评论在帖子[\(postIndex)]中，评论用户名: \(targetComment.username)")
                 #endif
                 
                 // 创建帖子的可变副本
@@ -2905,13 +2997,13 @@ class PostViewModel: ObservableObject {
                 let updatedFlattenedComments = getFlattenedComments(forPost: updatedPost.id)
                 if let updatedParentComment = updatedFlattenedComments.first(where: { $0.id == parentId }) {
                     #if DEBUG
-                    print("📊 添加回复后，目标评论现在有 \(updatedParentComment.replies.count) 条回复")
+                    debugLog("📊 添加回复后，目标评论现在有 \(updatedParentComment.replies.count) 条回复")
                     #endif
                     
                     // 验证回复是否存在
                     let replyExists = updatedParentComment.replies.contains { $0.id == reply.id }
                     #if DEBUG
-                    print(replyExists ? "✅ 验证成功: 回复已正确添加" : "❌ 验证失败: 回复未找到")
+                    debugLog(replyExists ? "✅ 验证成功: 回复已正确添加" : "❌ 验证失败: 回复未找到")
                     #endif
                 }
                 
@@ -2919,14 +3011,14 @@ class PostViewModel: ObservableObject {
                 objectWillChange.send()
                 
                 #if DEBUG
-                print("🔄 已发送ViewModel更新通知")
+                debugLog("🔄 已发送ViewModel更新通知")
                 #endif
                 return
             }
         }
         
         #if DEBUG
-        print("⚠️ 未找到对应的父评论ID: \(parentId)，无法添加回复")
+        debugLog("⚠️ 未找到对应的父评论ID: \(parentId)，无法添加回复")
         #endif
     }
     
@@ -2943,7 +3035,7 @@ class PostViewModel: ObservableObject {
             if comments[i].id == parentId {
                 comments[i].replies.insert(reply, at: 0)
                 #if DEBUG
-                print("🔍 ViewModel: 找到目标评论，ID: \(parentId)，用户名: \(comments[i].username)，添加回复成功")
+                debugLog("🔍 ViewModel: 找到目标评论，ID: \(parentId)，用户名: \(comments[i].username)，添加回复成功")
                 #endif
                 return true
             }
@@ -2954,7 +3046,7 @@ class PostViewModel: ObservableObject {
                 if findAndAddReplyToNestedComment(comments: &updatedReplies, parentId: parentId, reply: reply) {
                     comments[i].replies = updatedReplies
                     #if DEBUG
-                    print("🔍 ViewModel: 在评论 \(comments[i].id) (\(comments[i].username)) 的回复中找到目标评论，添加回复成功")
+                    debugLog("🔍 ViewModel: 在评论 \(comments[i].id) (\(comments[i].username)) 的回复中找到目标评论，添加回复成功")
                     #endif
                     return true
                 }
@@ -2970,7 +3062,7 @@ class PostViewModel: ObservableObject {
      */
     private func convertCommentItems(commentItems: [CommentItem]) -> [DetailedCommentModel] {
         #if DEBUG
-        print("🔄 开始转换评论，总数：\(commentItems.count)条")
+        debugLog("🔄 开始转换评论，总数：\(commentItems.count)条")
         #endif
         
         // 第一步：创建所有评论的映射，供后续处理引用
@@ -3016,7 +3108,7 @@ class PostViewModel: ObservableObject {
             if let parentId = parentId, let parentComment = commentMap[parentId] {
                 // 这是一条回复评论
                 #if DEBUG
-                print("📝 评论#\(index+1) ID=\(comment.id)是\(parentComment.username)的回复")
+                debugLog("📝 评论#\(index+1) ID=\(comment.id)是\(parentComment.username)的回复")
                 #endif
                 
                 // 设置父评论ID和回复用户名
@@ -3031,13 +3123,13 @@ class PostViewModel: ObservableObject {
                 
                 // 打印调试信息
                 #if DEBUG
-                print("✅ 已将回复添加到父评论，父评论ID=\(parentId)，父评论用户=\(updatedParent.username)，现有回复数=\(updatedParent.replies.count)")
+                debugLog("✅ 已将回复添加到父评论，父评论ID=\(parentId)，父评论用户=\(updatedParent.username)，现有回复数=\(updatedParent.replies.count)")
                 #endif
             } else {
                 // 这是一条顶级评论
                 topLevelComments.append(comment)
                 #if DEBUG
-                print("📝 评论#\(index+1) ID=\(comment.id)是顶级评论，用户=\(comment.username)")
+                debugLog("📝 评论#\(index+1) ID=\(comment.id)是顶级评论，用户=\(comment.username)")
                 #endif
             }
         }
@@ -3054,21 +3146,21 @@ class PostViewModel: ObservableObject {
         
         // 打印最终结构
         #if DEBUG
-        print("📊 评论层次结构:")
+        debugLog("📊 评论层次结构:")
         #endif
         for (index, comment) in finalTopLevelComments.enumerated() {
             #if DEBUG
-            print("📊 顶级评论[\(index)]: ID=\(comment.id), 用户=\(comment.username), 回复数=\(comment.replies.count)")
+            debugLog("📊 顶级评论[\(index)]: ID=\(comment.id), 用户=\(comment.username), 回复数=\(comment.replies.count)")
             #endif
             for (replyIndex, reply) in comment.replies.enumerated() {
                 #if DEBUG
-                print("  └─ 回复[\(replyIndex)]: ID=\(reply.id), 用户=\(reply.username), 回复给=\(reply.replyToUsername ?? "未知")")
+                debugLog("  └─ 回复[\(replyIndex)]: ID=\(reply.id), 用户=\(reply.username), 回复给=\(reply.replyToUsername ?? "未知")")
                 #endif
             }
         }
         
         #if DEBUG
-        print("✅ 评论转换完成: \(finalTopLevelComments.count)条顶级评论，包含嵌套回复")
+        debugLog("✅ 评论转换完成: \(finalTopLevelComments.count)条顶级评论，包含嵌套回复")
         #endif
         
         // 返回所有顶级评论，它们的replies数组中已经包含了各自的回复
@@ -3081,13 +3173,13 @@ class PostViewModel: ObservableObject {
      */
     func generateDialoguePosts(topic: String) async throws -> [UserPostModel] {
         #if DEBUG
-        print("🔄 开始生成历史对话帖子: 话题=\(topic)")
+        debugLog("🔄 开始生成历史对话帖子: 话题=\(topic)")
         #endif
         
         // 获取对话生成配置
         let count = ExplorationCountManager.shared.getCount(for: .resonance) // 使用存在的类型
         #if DEBUG
-        print("📊 对话配置的生成数量: \(count)篇")
+        debugLog("📊 对话配置的生成数量: \(count)篇")
         #endif
         
         do {
@@ -3110,14 +3202,14 @@ class PostViewModel: ObservableObject {
             }
             
             #if DEBUG
-            print("✅ 成功生成\(result.count)篇历史对话内容")
+            debugLog("✅ 成功生成\(result.count)篇历史对话内容")
             #endif
             
             // 转换为帖子模型
             var userPosts: [UserPostModel] = []
             for (item, commentItems) in result {
                 #if DEBUG
-                print("📝 处理对话内容ID=\(item.id)，包含\(commentItems.count)条评论")
+                debugLog("📝 处理对话内容ID=\(item.id)，包含\(commentItems.count)条评论")
                 #endif
                 
                 // 使用优化的评论转换方法
@@ -3143,7 +3235,7 @@ class PostViewModel: ObservableObject {
             // 如果没有生成任何帖子，抛出错误
             if userPosts.isEmpty {
                 #if DEBUG
-                print("⚠️ 警告：生成历史对话帖子失败，没有生成任何内容")
+                debugLog("⚠️ 警告：生成历史对话帖子失败，没有生成任何内容")
                 #endif
                 throw PostGenerationError.failedToGeneratePosts
             }
@@ -3151,7 +3243,7 @@ class PostViewModel: ObservableObject {
             return userPosts
         } catch {
             #if DEBUG
-            print("❌ 生成历史对话帖子时出错: \(error)")
+            debugLog("❌ 生成历史对话帖子时出错: \(error)")
             #endif
             throw error
         }
@@ -3217,14 +3309,14 @@ class PostViewModel: ObservableObject {
         posts = updatedPosts
         
         #if DEBUG
-        print("✅ 添加了 \(newPosts.count) 条AI帖子，当前总帖子数: \(posts.count)")
+        debugLog("✅ 添加了 \(newPosts.count) 条AI帖子，当前总帖子数: \(posts.count)")
         #endif
         
         // 打印新增帖子的来源统计
         let sourceStats = Dictionary(grouping: newPosts, by: { $0.source ?? "未知" })
         for (source, posts) in sourceStats {
             #if DEBUG
-            print("   - 新增 \(source): \(posts.count) 条")
+            debugLog("   - 新增 \(source): \(posts.count) 条")
             #endif
         }
     }
@@ -3241,7 +3333,7 @@ class PostViewModel: ObservableObject {
         posts = currentPosts
         
         #if DEBUG
-        print("✅ 添加了1条用户帖子，当前总帖子数: \(posts.count)")
+        debugLog("✅ 添加了1条用户帖子，当前总帖子数: \(posts.count)")
         #endif
     }
     
@@ -3255,7 +3347,7 @@ class PostViewModel: ObservableObject {
         // 🔧 修复重复添加问题：注释掉PostViewModel中的重复逻辑
         // 现在由MultiCharacterCommentService统一处理，避免重复添加
         #if DEBUG
-        print("🔧 PostViewModel: 虚拟角色回复生成已由MultiCharacterCommentService统一处理，跳过重复生成")
+        debugLog("🔧 PostViewModel: 虚拟角色回复生成已由MultiCharacterCommentService统一处理，跳过重复生成")
         #endif
         return
         
@@ -3269,7 +3361,7 @@ class PostViewModel: ObservableObject {
         let selectedCharacterIds = Array(availableCharacterIds.shuffled().prefix(numberOfReplies))
         
         #if DEBUG
-        print("🎭 为帖子生成虚拟角色回复，选择 \(numberOfReplies) 个角色")
+        debugLog("🎭 为帖子生成虚拟角色回复，选择 \(numberOfReplies) 个角色")
         #endif
         
         // 为每个选中的角色生成回复
@@ -3291,7 +3383,7 @@ class PostViewModel: ObservableObject {
                         completion: { result in
                             if case .success(let content) = result {
                                 #if DEBUG
-                                print("✅ 单独生成角色回复 - \(self.getCharacterName(for: characterID)): \(content.prefix(30))...")
+                                debugLog("✅ 单独生成角色回复 - \(self.getCharacterName(for: characterID)): \(content.prefix(30))...")
                                 #endif
                                 
                                 // 创建虚拟角色回复
@@ -3308,16 +3400,12 @@ class PostViewModel: ObservableObject {
                                 
                                 // 添加到帖子
                                 #if DEBUG
-                                print("📝 添加虚拟角色回复到用户评论ID: \(commentId)")
+                                debugLog("📝 添加虚拟角色回复到用户评论ID: \(commentId)")
                                 #endif
                                 self.posts[postIndex].addReplyToParent(parentId: commentId, reply: virtualReply)
                                 
-                                // 发送通知刷新UI
-                                NotificationCenter.default.post(
-                                    name: NSNotification.Name("PostCommentsUpdated"),
-                                    object: nil,
-                                    userInfo: ["postID": post.id.uuidString]
-                                )
+                                // ⚡️ 智能发送通知（仅在内容变化时）
+                                self.notifyPostUpdatedIfChanged(postID: post.id)
                                 
                                 // 添加震动反馈
                                 self.hapticFeedback()
@@ -3375,7 +3463,7 @@ class PostViewModel: ObservableObject {
         // 查找帖子索引
         guard let index = posts.firstIndex(where: { $0.id == postId }) else {
             #if DEBUG
-            print("⚠️ 未找到要删除的帖子: \(postId)")
+            debugLog("⚠️ 未找到要删除的帖子: \(postId)")
             #endif
             return
         }
@@ -3386,7 +3474,7 @@ class PostViewModel: ObservableObject {
         posts.remove(at: index)
         
         #if DEBUG
-        print("✅ 已从内存删除帖子: \(deletedPost.id), 作者: \(deletedPost.username)")
+        debugLog("✅ 已从内存删除帖子: \(deletedPost.id), 作者: \(deletedPost.username)")
         #endif
         
         // 🗑️ 从持久化存储中永久删除
@@ -3407,7 +3495,7 @@ class PostViewModel: ObservableObject {
             self.removePostFromStub(postId: postId)
             
             #if DEBUG
-            print("🗑️ 已从持久化存储永久删除帖子: \(postId)")
+            debugLog("🗑️ 已从持久化存储永久删除帖子: \(postId)")
             #endif
         }
         
@@ -3452,7 +3540,7 @@ class PostViewModel: ObservableObject {
                 }
                 UserDefaults.standard.set(filteredPosts, forKey: key)
                 #if DEBUG
-                print("🗑️ 已从 \(key) 删除帖子（旧格式），剩余 \(filteredPosts.count) 条")
+                debugLog("🗑️ 已从 \(key) 删除帖子（旧格式），剩余 \(filteredPosts.count) 条")
                 #endif
             }
             return
@@ -3462,7 +3550,7 @@ class PostViewModel: ObservableObject {
         let decoder = JSONDecoder()
         guard var posts = try? decoder.decode([UserPostModel].self, from: data) else {
             #if DEBUG
-            print("⚠️ 无法解码 \(key) 的数据，尝试其他方法")
+            debugLog("⚠️ 无法解码 \(key) 的数据，尝试其他方法")
             #endif
             // 尝试使用旧的数组格式
             if let postsData = UserDefaults.standard.array(forKey: key) as? [[String: Any]] {
@@ -3475,7 +3563,7 @@ class PostViewModel: ObservableObject {
                 }
                 UserDefaults.standard.set(filteredPosts, forKey: key)
                 #if DEBUG
-                print("🗑️ 已从 \(key) 删除帖子（备用方法），剩余 \(filteredPosts.count) 条")
+                debugLog("🗑️ 已从 \(key) 删除帖子（备用方法），剩余 \(filteredPosts.count) 条")
                 #endif
             }
             return
@@ -3489,11 +3577,11 @@ class PostViewModel: ObservableObject {
         if let encoded = try? encoder.encode(posts) {
             UserDefaults.standard.set(encoded, forKey: key)
             #if DEBUG
-            print("🗑️ 已从 \(key) 永久删除帖子，剩余 \(posts.count) 条")
+            debugLog("🗑️ 已从 \(key) 永久删除帖子，剩余 \(posts.count) 条")
             #endif
         } else {
             #if DEBUG
-            print("⚠️ 无法编码帖子数据到 \(key)")
+            debugLog("⚠️ 无法编码帖子数据到 \(key)")
             #endif
         }
     }
@@ -3525,7 +3613,7 @@ class PostViewModel: ObservableObject {
             if let encoded = try? JSONSerialization.data(withJSONObject: updatedStub) {
                 UserDefaults.standard.set(encoded, forKey: postsStubKey)
                 #if DEBUG
-                print("🗑️ 已从存根数据删除帖子")
+                debugLog("🗑️ 已从存根数据删除帖子")
                 #endif
             }
         }
@@ -3567,13 +3655,13 @@ class PostViewModel: ObservableObject {
                 
                 if !consistent {
                     #if DEBUG
-                    print("   - 内存AI帖子数: \(currentAIPosts.count), 持久化: \(savedAIPosts.count)")
+                    debugLog("   - 内存AI帖子数: \(currentAIPosts.count), 持久化: \(savedAIPosts.count)")
                     #endif
                     #if DEBUG
-                    print("⚠️ 数据一致性检查失败:")
-                    print("   - 用户帖子一致性: \(userPostsConsistent)")
-                    print("   - AI帖子一致性: \(aiPostsConsistent)")
-                    print("   - 内存用户帖子数: \(currentUserPosts.count), 持久化: \(savedUserPosts.count)")
+                    debugLog("⚠️ 数据一致性检查失败:")
+                    debugLog("   - 用户帖子一致性: \(userPostsConsistent)")
+                    debugLog("   - AI帖子一致性: \(aiPostsConsistent)")
+                    debugLog("   - 内存用户帖子数: \(currentUserPosts.count), 持久化: \(savedUserPosts.count)")
                     #endif
                     
                     // 触发同步保存
@@ -3673,14 +3761,14 @@ class PostViewModel: ObservableObject {
             let uniquePosts = Array(allPostsDict.values).sorted { $0.datePosted > $1.datePosted }
             
             #if DEBUG
-            print("🔄 PostViewModel: 重新加载完成，共 \(uniquePosts.count) 条帖子")
+            debugLog("🔄 PostViewModel: 重新加载完成，共 \(uniquePosts.count) 条帖子")
             #endif
             
             // 在主线程更新UI
             DispatchQueue.main.async {
                 self.posts = uniquePosts
                 #if DEBUG
-                print("✅ PostViewModel: UI已更新，显示全部 \(uniquePosts.count) 条帖子")
+                debugLog("✅ PostViewModel: UI已更新，显示全部 \(uniquePosts.count) 条帖子")
                 #endif
             }
         }
@@ -3691,7 +3779,7 @@ class PostViewModel: ObservableObject {
      */
     func forceSave(reason: String = "强制保存") {
         #if DEBUG
-        print("🚨 强制保存: \(reason)")
+        debugLog("🚨 强制保存: \(reason)")
         #endif
         
         // 取消延迟保存

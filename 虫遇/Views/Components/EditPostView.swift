@@ -54,7 +54,7 @@ struct EditPostView: View {
         self.onUpdate = onUpdate
         _editedContent = State(initialValue: post.content)
         #if DEBUG
-        print("EditPostView初始化: 帖子ID=\(post.id), 内容长度=\(post.content.count)")
+        debugLog("EditPostView初始化: 帖子ID=\(post.id), 内容长度=\(post.content.count)")
         #endif
     }
     
@@ -350,7 +350,7 @@ struct EditPostView: View {
             .onAppear {
                 // 确保内容已正确设置
                 #if DEBUG
-                print("EditPostView出现: 内容长度=\(editedContent.count), 原帖子内容长度=\(post.content.count)")
+                debugLog("EditPostView出现: 内容长度=\(editedContent.count), 原帖子内容长度=\(post.content.count)")
                 #endif
                 
                 // 延迟加载，确保视图已完全准备好
@@ -696,11 +696,11 @@ struct EditPostView: View {
         for index in 0..<selectedImages.count {
             if let frame = imagePositions[index] {
                 #if DEBUG
-                print("图片 \(index) 位置: \(frame)")
+                debugLog("图片 \(index) 位置: \(frame)")
                 #endif
             } else {
                 #if DEBUG
-                print("图片 \(index) 位置未收集")
+                debugLog("图片 \(index) 位置未收集")
                 #endif
             }
         }

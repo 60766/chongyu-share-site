@@ -1056,7 +1056,7 @@ struct CosmicGenerateButton_Previews: PreviewProvider {
             Color.black.opacity(0.8).edgesIgnoringSafeArea(.all)
             CosmicGenerateButton(isGenerating: .constant(false)) {
                 #if DEBUG
-                print("宇宙按钮被点击")
+                debugLog("宇宙按钮被点击")
                 #endif
             }
         }

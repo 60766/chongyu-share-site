@@ -23,7 +23,7 @@ struct UIKitTextView: UIViewRepresentable {
      */
     func makeUIView(context: Context) -> UITextView {
         #if DEBUG
-        print("UIKitTextView - 创建新的UITextView实例")
+        debugLog("UIKitTextView - 创建新的UITextView实例")
         #endif
         let textView = UITextView()
         textView.delegate = context.coordinator
@@ -55,7 +55,7 @@ struct UIKitTextView: UIViewRepresentable {
         
         // 在整个视图层级上打印点击区域信息，便于调试
         #if DEBUG
-        print("UIKitTextView - 点击区域大小: \(textView.bounds)")
+        debugLog("UIKitTextView - 点击区域大小: \(textView.bounds)")
         #endif
         
         // 增强点击响应
@@ -76,12 +76,12 @@ struct UIKitTextView: UIViewRepresentable {
         // 激活文本视图（如果需要）
         if isFirstResponder && UIKitTextView.globalShouldActivate {
             #if DEBUG
-            print("UIKitTextView - 尝试激活第一响应者")
+            debugLog("UIKitTextView - 尝试激活第一响应者")
             #endif
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 textView.becomeFirstResponder()
                 #if DEBUG
-                print("UIKitTextView - 成为第一响应者: \(textView.isFirstResponder)")
+                debugLog("UIKitTextView - 成为第一响应者: \(textView.isFirstResponder)")
                 #endif
             }
         }
@@ -110,17 +110,17 @@ struct UIKitTextView: UIViewRepresentable {
         // 处理焦点状态
         if isFirstResponder && !uiView.isFirstResponder {
             #if DEBUG
-            print("UIKitTextView - 需要聚焦但未聚焦，尝试聚焦")
+            debugLog("UIKitTextView - 需要聚焦但未聚焦，尝试聚焦")
             #endif
             DispatchQueue.main.async {
                 uiView.becomeFirstResponder()
                 #if DEBUG
-                print("UIKitTextView - 焦点状态变更为: \(uiView.isFirstResponder)")
+                debugLog("UIKitTextView - 焦点状态变更为: \(uiView.isFirstResponder)")
                 #endif
             }
         } else if !isFirstResponder && uiView.isFirstResponder {
             #if DEBUG
-            print("UIKitTextView - 不需要聚焦但已聚焦，取消聚焦")
+            debugLog("UIKitTextView - 不需要聚焦但已聚焦，取消聚焦")
             #endif
             uiView.resignFirstResponder()
         }
@@ -157,7 +157,7 @@ struct UIKitTextView: UIViewRepresentable {
          */
         func textViewDidBeginEditing(_ textView: UITextView) {
             #if DEBUG
-            print("UIKitTextView - 开始编辑")
+            debugLog("UIKitTextView - 开始编辑")
             #endif
             if textView.text == placeholder {
                 textView.text = ""
@@ -170,7 +170,7 @@ struct UIKitTextView: UIViewRepresentable {
          */
         func textViewDidEndEditing(_ textView: UITextView) {
             #if DEBUG
-            print("UIKitTextView - 结束编辑")
+            debugLog("UIKitTextView - 结束编辑")
             #endif
             if textView.text.isEmpty {
                 textView.text = placeholder
@@ -185,7 +185,7 @@ struct UIKitTextView: UIViewRepresentable {
             if textView.text != placeholder {
                 text = textView.text
                 #if DEBUG
-                print("UIKitTextView - 文本已更新: \(text.count) 字符")
+                debugLog("UIKitTextView - 文本已更新: \(text.count) 字符")
                 #endif
             } else {
                 text = ""
@@ -197,14 +197,14 @@ struct UIKitTextView: UIViewRepresentable {
          */
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
             #if DEBUG
-            print("UIKitTextView - 检测到点击手势")
+            debugLog("UIKitTextView - 检测到点击手势")
             #endif
             onTap?()
             
             if let textView = gesture.view as? UITextView {
                 if !textView.isFirstResponder {
                     #if DEBUG
-                    print("UIKitTextView - 手动激活输入框")
+                    debugLog("UIKitTextView - 手动激活输入框")
                     #endif
                     textView.becomeFirstResponder()
                 }

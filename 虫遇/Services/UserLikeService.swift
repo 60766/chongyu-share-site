@@ -34,7 +34,7 @@ class UserLikeService: ObservableObject {
     @objc private func handleLikesDataRestored(_ notification: Notification) {
         loadLikes()
         #if DEBUG
-        print("🔄 UserLikeService: 已重新加载点赞记录，共 \(userLikes.count) 条")
+        debugLog("🔄 UserLikeService: 已重新加载点赞记录，共 \(userLikes.count) 条")
         #endif
     }
     
@@ -80,13 +80,13 @@ class UserLikeService: ObservableObject {
               let post = userInfo["post"] as? UserPostModel,
               let isLiked = userInfo["isLiked"] as? Bool else {
             #if DEBUG
-            print("❌ UserLikeService: handleCommentLiked 参数解析失败")
+            debugLog("❌ UserLikeService: handleCommentLiked 参数解析失败")
             #endif
             return
         }
         
         #if DEBUG
-        print("❤️ UserLikeService: 处理评论点赞 - 评论ID: \(comment.id), 是否点赞: \(isLiked)")
+        debugLog("❤️ UserLikeService: 处理评论点赞 - 评论ID: \(comment.id), 是否点赞: \(isLiked)")
         #endif
         
         if isLiked {
@@ -166,7 +166,7 @@ class UserLikeService: ObservableObject {
             self.userLikes.removeAll()
             self.saveLikes()
             #if DEBUG
-            print("🗑️ 已清空所有点赞记录")
+            debugLog("🗑️ 已清空所有点赞记录")
             #endif
         }
     }
@@ -179,7 +179,7 @@ class UserLikeService: ObservableObject {
             self.userLikes.removeAll { $0.id == record.id }
             self.saveLikes()
             #if DEBUG
-            print("🗑️ 移除点赞记录: \(record.type.rawValue) - \(record.authorName)")
+            debugLog("🗑️ 移除点赞记录: \(record.type.rawValue) - \(record.authorName)")
             #endif
             
             // 发送通知，告知其他组件点赞状态已改变
@@ -208,7 +208,7 @@ class UserLikeService: ObservableObject {
                 self.userLikes.append(record)
                 self.saveLikes()
                 #if DEBUG
-                print("👍 记录点赞: \(record.type.rawValue) - \(record.authorName)")
+                debugLog("👍 记录点赞: \(record.type.rawValue) - \(record.authorName)")
                 #endif
             }
         }
@@ -219,7 +219,7 @@ class UserLikeService: ObservableObject {
             self.userLikes.removeAll { $0.postId == postId && $0.type == type }
             self.saveLikes()
             #if DEBUG
-            print("👎 移除点赞记录: \(type.rawValue)")
+            debugLog("👎 移除点赞记录: \(type.rawValue)")
             #endif
         }
     }
@@ -250,7 +250,7 @@ class UserLikeService: ObservableObject {
     func reloadLikes() {
         loadLikes()
         #if DEBUG
-        print("🔄 UserLikeService: 重新加载点赞记录，共 \(userLikes.count) 条")
+        debugLog("🔄 UserLikeService: 重新加载点赞记录，共 \(userLikes.count) 条")
         #endif
     }
     
@@ -263,11 +263,11 @@ class UserLikeService: ObservableObject {
             // 确保数据立即同步到磁盘
             UserDefaults.standard.synchronize()
             #if DEBUG
-            print("💾 保存了 \(userLikes.count) 条点赞记录")
+            debugLog("💾 保存了 \(userLikes.count) 条点赞记录")
             #endif
         } catch {
             #if DEBUG
-            print("❌ 保存点赞记录失败: \(error)")
+            debugLog("❌ 保存点赞记录失败: \(error)")
             #endif
         }
     }
@@ -275,7 +275,7 @@ class UserLikeService: ObservableObject {
     private func loadLikes() {
         guard let data = UserDefaults.standard.data(forKey: userLikesKey) else {
             #if DEBUG
-            print("📂 首次使用，无点赞记录")
+            debugLog("📂 首次使用，无点赞记录")
             #endif
             return
         }
@@ -285,11 +285,11 @@ class UserLikeService: ObservableObject {
             decoder.dateDecodingStrategy = .iso8601
             userLikes = try decoder.decode([LikeRecord].self, from: data)
             #if DEBUG
-            print("📂 加载了 \(userLikes.count) 条点赞记录")
+            debugLog("📂 加载了 \(userLikes.count) 条点赞记录")
             #endif
         } catch {
             #if DEBUG
-            print("❌ 加载点赞记录失败: \(error)")
+            debugLog("❌ 加载点赞记录失败: \(error)")
             #endif
             userLikes = []
         }

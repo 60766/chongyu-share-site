@@ -12,7 +12,7 @@ public class DebugHelper {
     /// 私有初始化方法
     private init() {
         #if DEBUG
-        print("DebugHelper初始化")
+        debugLog("DebugHelper初始化")
         #endif
     }
     
@@ -24,7 +24,7 @@ public class DebugHelper {
                   let window = windowScene.windows.first,
                   let rootViewController = window.rootViewController else {
                 #if DEBUG
-                print("无法找到根视图控制器")
+                debugLog("无法找到根视图控制器")
                 #endif
                 return
             }
@@ -40,7 +40,7 @@ public class DebugHelper {
             // 显示调试窗口
             topViewController.present(hostingController, animated: true) {
                 #if DEBUG
-                print("调试窗口已显示")
+                debugLog("调试窗口已显示")
                 #endif
             }
         }

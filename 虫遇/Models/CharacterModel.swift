@@ -295,7 +295,7 @@ struct CharacterModel: Identifiable, Hashable {
             }
         } catch {
             #if DEBUG
-            print("⚠️ 加载用户创建的角色失败: \(error)")
+            debugLog("⚠️ 加载用户创建的角色失败: \(error)")
             #endif
         }
         
@@ -347,27 +347,27 @@ struct CharacterModel: Identifiable, Hashable {
         for fileName in ["characters_fixed2", "characters_clean"] {
             if let url = Bundle.main.url(forResource: fileName, withExtension: "json"),
                let data = try? Data(contentsOf: url) {
-                print("\(fileName).json文件大小: \(data.count) 字节")
+                debugLog("\(fileName).json文件大小: \(data.count) 字节")
                 
                 do {
                     // 解析JSON数据
                     let decoder = JSONDecoder()
                     let characterData = try decoder.decode(CharacterLibrary.self, from: data)
-                    print("成功解析\(fileName).json，包含\(characterData.characters.count)个角色")
+                    debugLog("成功解析\(fileName).json，包含\(characterData.characters.count)个角色")
                     
                     // 将AppCharacter转换为CharacterModel
                     let characters = characterData.characters.map { CharacterModel(from: $0) }
-                    print("成功转换为CharacterModel，共\(characters.count)个角色")
+                    debugLog("成功转换为CharacterModel，共\(characters.count)个角色")
                     
                     return characters
                 } catch {
-                    print("解析\(fileName).json失败: \(error)")
+                    debugLog("解析\(fileName).json失败: \(error)")
                 }
             }
         }
         
         // 如果所有文件都加载失败，返回示例数据
-        print("所有JSON文件加载失败，返回示例数据")
+        debugLog("所有JSON文件加载失败，返回示例数据")
         return allCharacters
     }
 } 

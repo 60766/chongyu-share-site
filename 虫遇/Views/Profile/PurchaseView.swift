@@ -549,8 +549,8 @@ struct PurchaseView: View {
                 }
                 
                 #if DEBUG
-                print("[IAP] ✅ 模拟器测试购买成功: \(productId), 交易ID: \(txId)")
-                print("[IAP] 💰 余额更新: \(walletBalance.balance) 虫洞币")
+                debugLog("[IAP] ✅ 模拟器测试购买成功: \(productId), 交易ID: \(txId)")
+                debugLog("[IAP] 💰 余额更新: \(walletBalance.balance) 虫洞币")
                 #endif
             } catch {
                 await MainActor.run {
@@ -560,14 +560,18 @@ struct PurchaseView: View {
                     showError = true
                 }
                 #if DEBUG
-                print("[IAP] ❌ 模拟器测试购买失败: \(error)")
+                debugLog("[IAP] ❌ 模拟器测试购买失败: \(error)")
                 #endif
             }
         }
     }
     #endif
     
+    /**
+     * ⚡️ 优化：生成友好的错误提示，覆盖所有错误类型
+     */
     private func friendlyErrorMessage(for error: Error) -> String {
+        // 1. StoreKit错误
         if let skError = error as? StoreKitError {
             switch skError {
             case .userCancelled:
@@ -576,35 +580,82 @@ struct PurchaseView: View {
                 return "网络连接不稳定，请检查网络后重试。"
             case .systemError:
                 return "Apple 支付系统暂时不可用，请稍后再试。"
-            default:
-                break
+            @unknown default:
+                // ⚡️ 修复：StoreKitError可能没有notAvailable等case，使用default处理
+                let errorDesc = skError.localizedDescription.lowercased()
+                if errorDesc.contains("not available") || errorDesc.contains("不可用") {
+                    return "商品暂时不可用，请稍后再试。"
+                } else if errorDesc.contains("not entitled") || errorDesc.contains("权限") {
+                    return "您没有购买此商品的权限。"
+                }
+                return "支付遇到未知错误，请稍后重试。"
             }
         }
         
         let nsError = error as NSError
+        
+        // 2. 自定义IAP错误
         if nsError.domain == "iap" {
             switch nsError.code {
             case 1:
                 return "已取消支付，未扣款。"
             case 2:
                 return "订单待处理，几分钟内会自动完成，请稍后刷新余额确认。"
+            case 3:
+                return "支付状态未知，请稍后刷新余额确认。"
             default:
-                break
+                if let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String, !message.isEmpty {
+                    return message
+                }
             }
         }
         
+        // 3. 钱包/后端错误
         if nsError.domain == "wallet.purchase" {
             let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String
             if let message, !message.isEmpty {
                 return message
             }
+            // 根据HTTP状态码提供更具体的错误信息
+            if nsError.code == 402 {
+                return "余额不足，请先充值。"
+            } else if nsError.code == 403 {
+                return "服务暂时不可用，请稍后重试。"
+            } else if nsError.code >= 500 {
+                return "服务器错误，请稍后重试。如已扣款，请联系客服处理。"
+            }
             return "支付已完成，但服务端记账失败，请稍后刷新余额或联系客服处理。"
         }
         
+        // 4. 网络错误
         if nsError.domain == NSURLErrorDomain {
-            if nsError.code == NSURLErrorNotConnectedToInternet || nsError.code == NSURLErrorTimedOut {
+            // ⚡️ 修复：使用URLError.Code而不是直接使用Int
+            let urlErrorCode = URLError.Code(rawValue: nsError.code)
+            switch urlErrorCode {
+            case .notConnectedToInternet:
+                return "网络未连接，请检查网络后重试。"
+            case .networkConnectionLost:
+                return "网络连接中断，请检查网络后重试。"
+            case .timedOut:
                 return "网络请求超时，请确认网络后重试。"
+            case .cannotFindHost, .cannotConnectToHost:
+                return "无法连接到服务器，请检查网络后重试。"
+            case .dnsLookupFailed:
+                return "DNS查询失败，请检查网络设置。"
+            default:
+                return "网络错误，请检查网络后重试。"
             }
+        }
+        
+        // 5. 默认错误
+        // 尝试从错误信息中提取有用的信息
+        let errorDesc = error.localizedDescription.lowercased()
+        if errorDesc.contains("network") || errorDesc.contains("网络") {
+            return "网络连接失败，请检查网络后重试。"
+        } else if errorDesc.contains("timeout") || errorDesc.contains("超时") {
+            return "请求超时，请稍后重试。"
+        } else if errorDesc.contains("balance") || errorDesc.contains("余额") {
+            return "余额不足，请先充值。"
         }
         
         return "支付未完成，请稍后再试。如已扣款，可联系支持处理。"

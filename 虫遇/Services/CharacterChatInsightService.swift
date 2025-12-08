@@ -37,7 +37,7 @@ class CharacterChatInsightService: ObservableObject {
         completion: @escaping (Result<CharacterChatInsight, Error>) -> Void
     ) {
         #if DEBUG
-        print("🎨 开始生成角色聊天画像 - 角色: \(characterName)")
+        debugLog("🎨 开始生成角色聊天画像 - 角色: \(characterName)")
         #endif
         
         DispatchQueue.main.async {
@@ -49,7 +49,7 @@ class CharacterChatInsightService: ObservableObject {
         // 1. 检查缓存
         if let cachedInsight = loadCachedInsight(characterId: characterId, modelContext: modelContext) {
             #if DEBUG
-            print("✅ 使用缓存的画像数据: \(cachedInsight.title)")
+            debugLog("✅ 使用缓存的画像数据: \(cachedInsight.title)")
             #endif
             DispatchQueue.main.async {
                 self.currentInsight = cachedInsight
@@ -68,7 +68,7 @@ class CharacterChatInsightService: ObservableObject {
         )
         
         #if DEBUG
-        print("📊 获取到 \(messages.count) 条消息")
+        debugLog("📊 获取到 \(messages.count) 条消息")
         #endif
         
         // 3. 检查数据是否足够
@@ -95,12 +95,12 @@ class CharacterChatInsightService: ObservableObject {
         )
         
         #if DEBUG
-        print("📝 提示词长度: \(prompt.count) 字符")
+        debugLog("📝 提示词长度: \(prompt.count) 字符")
         #endif
         
         // 5. 调用AI
         #if DEBUG
-        print("🌐 开始调用AI服务...")
+        debugLog("🌐 开始调用AI服务...")
         #endif
         aiNetworkService.sendRequest(prompt: prompt)
             .receive(on: DispatchQueue.main)
@@ -115,7 +115,7 @@ class CharacterChatInsightService: ObservableObject {
                 },
                 receiveValue: { [weak self] response in
                     #if DEBUG
-                    print("📥 收到AI响应，长度: \(response.count) 字符")
+                    debugLog("📥 收到AI响应，长度: \(response.count) 字符")
                     #endif
                     self?.parseAndSaveInsight(
                         response: response,
@@ -240,13 +240,13 @@ class CharacterChatInsightService: ObservableObject {
         completion: @escaping (Result<CharacterChatInsight, Error>) -> Void
     ) {
         #if DEBUG
-        print("🔍 开始解析AI响应...")
+        debugLog("🔍 开始解析AI响应...")
         #endif
         
         // 尝试解析JSON
         guard let jsonData = extractJSON(from: response) else {
             #if DEBUG
-            print("❌ 无法提取JSON数据")
+            debugLog("❌ 无法提取JSON数据")
             #endif
             let error = NSError(
                 domain: "CharacterChatInsightService",
@@ -265,7 +265,7 @@ class CharacterChatInsightService: ObservableObject {
             let aiResponse = try decoder.decode(CharacterChatInsightResponse.self, from: jsonData)
             
             #if DEBUG
-            print("✅ JSON解析成功")
+            debugLog("✅ JSON解析成功")
             #endif
             
             // 构建最终的Insight对象
@@ -285,32 +285,32 @@ class CharacterChatInsightService: ObservableObject {
                 self.currentInsight = insight
                 self.isGenerating = false
                 #if DEBUG
-                print("✅ 画像生成完成")
+                debugLog("✅ 画像生成完成")
                 #endif
                 completion(.success(insight))
             }
             
         } catch {
             #if DEBUG
-            print("❌ JSON解析失败: \(error.localizedDescription)")
+            debugLog("❌ JSON解析失败: \(error.localizedDescription)")
             if let decodingError = error as? DecodingError {
                 switch decodingError {
                 case .keyNotFound(let key, let context):
-                    print("❌ 缺少键: \(key.stringValue), 路径: \(context.codingPath)")
+                    debugLog("❌ 缺少键: \(key.stringValue), 路径: \(context.codingPath)")
                 case .typeMismatch(let type, let context):
-                    print("❌ 类型不匹配: 期望 \(type), 路径: \(context.codingPath)")
+                    debugLog("❌ 类型不匹配: 期望 \(type), 路径: \(context.codingPath)")
                 case .valueNotFound(let type, let context):
-                    print("❌ 值不存在: \(type), 路径: \(context.codingPath)")
+                    debugLog("❌ 值不存在: \(type), 路径: \(context.codingPath)")
                 case .dataCorrupted(let context):
-                    print("❌ 数据损坏: \(context.debugDescription)")
+                    debugLog("❌ 数据损坏: \(context.debugDescription)")
                 @unknown default:
-                    print("❌ 未知解码错误")
+                    debugLog("❌ 未知解码错误")
                 }
             }
             
             // 打印原始JSON用于调试
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                print("📋 原始JSON: \(jsonString)")
+                debugLog("📋 原始JSON: \(jsonString)")
             }
             #endif
             
@@ -318,7 +318,7 @@ class CharacterChatInsightService: ObservableObject {
             if retryCount < maxRetries {
                 retryCount += 1
                 #if DEBUG
-                print("🔄 第 \(retryCount) 次重试...")
+                debugLog("🔄 第 \(retryCount) 次重试...")
                 #endif
                 
                 // 尝试修复JSON
@@ -332,7 +332,7 @@ class CharacterChatInsightService: ObservableObject {
                 )
             } else {
                 #if DEBUG
-                print("❌ 已达到最大重试次数")
+                debugLog("❌ 已达到最大重试次数")
                 #endif
                 let finalError = NSError(
                     domain: "CharacterChatInsightService",
@@ -374,7 +374,7 @@ class CharacterChatInsightService: ObservableObject {
             
             // 打印提取的JSON用于调试
             #if DEBUG
-            print("📋 提取的JSON: \(jsonString.prefix(200))...")
+            debugLog("📋 提取的JSON: \(jsonString.prefix(200))...")
             #endif
             
             return jsonString.data(using: .utf8)
@@ -400,7 +400,7 @@ class CharacterChatInsightService: ObservableObject {
         completion: @escaping (Result<CharacterChatInsight, Error>) -> Void
     ) {
         #if DEBUG
-        print("🔧 尝试修复JSON...")
+        debugLog("🔧 尝试修复JSON...")
         #endif
         
         let repairPrompt = """
@@ -438,7 +438,7 @@ class CharacterChatInsightService: ObservableObject {
                 },
                 receiveValue: { [weak self] repairedResponse in
                     #if DEBUG
-                    print("🔧 收到修复后的响应")
+                    debugLog("🔧 收到修复后的响应")
                     #endif
                     self?.parseAndSaveInsight(
                         response: repairedResponse,
@@ -463,7 +463,7 @@ class CharacterChatInsightService: ObservableObject {
     ) {
         do {
             #if DEBUG
-            print("💾 CharacterChatInsightService - 开始保存缓存，角色ID: \(insight.characterId)")
+            debugLog("💾 CharacterChatInsightService - 开始保存缓存，角色ID: \(insight.characterId)")
             #endif
             
             let encoder = JSONEncoder()
@@ -479,7 +479,7 @@ class CharacterChatInsightService: ObservableObject {
             let existingCaches = try modelContext.fetch(descriptor)
             
             #if DEBUG
-            print("📊 CharacterChatInsightService - 保存前查找，找到 \(existingCaches.count) 个现有缓存")
+            debugLog("📊 CharacterChatInsightService - 保存前查找，找到 \(existingCaches.count) 个现有缓存")
             #endif
             
             if let existingCache = existingCaches.first {
@@ -489,7 +489,7 @@ class CharacterChatInsightService: ObservableObject {
                 existingCache.messageCount = messages.count
                 existingCache.lastMessageTimestamp = lastMessageTimestamp
                 #if DEBUG
-                print("✅ 更新现有缓存")
+                debugLog("✅ 更新现有缓存")
                 #endif
             } else {
                 // 创建新缓存
@@ -503,13 +503,13 @@ class CharacterChatInsightService: ObservableObject {
                 )
                 modelContext.insert(cache)
                 #if DEBUG
-                print("✅ 创建新缓存，ID: \(cache.id)")
+                debugLog("✅ 创建新缓存，ID: \(cache.id)")
                 #endif
             }
             
             try modelContext.save()
             #if DEBUG
-            print("💾 CharacterChatInsightService - 缓存已保存到数据库")
+            debugLog("💾 CharacterChatInsightService - 缓存已保存到数据库")
             #endif
             
             // 立即验证缓存是否保存成功
@@ -519,10 +519,10 @@ class CharacterChatInsightService: ObservableObject {
             let verifyDescriptor = FetchDescriptor<CharacterChatInsightCache>(predicate: verifyPredicate)
             let savedCaches = try modelContext.fetch(verifyDescriptor)
             #if DEBUG
-            print("🔍 CharacterChatInsightService - 保存后立即验证，找到 \(savedCaches.count) 个缓存记录")
+            debugLog("🔍 CharacterChatInsightService - 保存后立即验证，找到 \(savedCaches.count) 个缓存记录")
             
             if let savedCache = savedCaches.first {
-                print("✅ 验证成功 - 缓存ID: \(savedCache.id), 生成时间: \(savedCache.generatedAt)")
+                debugLog("✅ 验证成功 - 缓存ID: \(savedCache.id), 生成时间: \(savedCache.generatedAt)")
             }
             #endif
             
@@ -530,7 +530,7 @@ class CharacterChatInsightService: ObservableObject {
             Logger.error("保存缓存失败", error: error, log: Logger.data)
             #if DEBUG
             if let swiftDataError = error as? any LocalizedError {
-                print("❌ SwiftData错误详情: \(swiftDataError.errorDescription ?? "未知错误")")
+                debugLog("❌ SwiftData错误详情: \(swiftDataError.errorDescription ?? "未知错误")")
             }
             #endif
         }
@@ -545,7 +545,7 @@ class CharacterChatInsightService: ObservableObject {
     ) -> CharacterChatInsight? {
         do {
             #if DEBUG
-            print("🔍 CharacterChatInsightService - 查找角色缓存: \(characterId)")
+            debugLog("🔍 CharacterChatInsightService - 查找角色缓存: \(characterId)")
             #endif
             
             let predicate = #Predicate<CharacterChatInsightCache> { cache in
@@ -555,12 +555,12 @@ class CharacterChatInsightService: ObservableObject {
             let caches = try modelContext.fetch(descriptor)
             
             #if DEBUG
-            print("📊 CharacterChatInsightService - 找到 \(caches.count) 个缓存记录")
+            debugLog("📊 CharacterChatInsightService - 找到 \(caches.count) 个缓存记录")
             #endif
             
             guard let cache = caches.first else {
                 #if DEBUG
-                print("⚠️ CharacterChatInsightService - 未找到缓存记录")
+                debugLog("⚠️ CharacterChatInsightService - 未找到缓存记录")
                 #endif
                 return nil
             }
@@ -568,12 +568,12 @@ class CharacterChatInsightService: ObservableObject {
             // 检查缓存是否过期（24小时）
             let hoursSinceGeneration = Date().timeIntervalSince(cache.generatedAt) / 3600
             #if DEBUG
-            print("⏰ CharacterChatInsightService - 缓存生成时间: \(cache.generatedAt), 距今 \(String(format: "%.1f", hoursSinceGeneration)) 小时")
+            debugLog("⏰ CharacterChatInsightService - 缓存生成时间: \(cache.generatedAt), 距今 \(String(format: "%.1f", hoursSinceGeneration)) 小时")
             #endif
             
             if hoursSinceGeneration > 24 {
                 #if DEBUG
-                print("⏰ 缓存已过期")
+                debugLog("⏰ 缓存已过期")
                 #endif
                 return nil
             }
@@ -581,12 +581,12 @@ class CharacterChatInsightService: ObservableObject {
             // 检查是否有新消息（超过10条）
             let currentMessageCount = countMessages(characterId: characterId, modelContext: modelContext)
             #if DEBUG
-            print("📬 CharacterChatInsightService - 当前消息数: \(currentMessageCount), 缓存时消息数: \(cache.messageCount)")
+            debugLog("📬 CharacterChatInsightService - 当前消息数: \(currentMessageCount), 缓存时消息数: \(cache.messageCount)")
             #endif
             
             if currentMessageCount - cache.messageCount >= 10 {
                 #if DEBUG
-                print("📬 有新消息，需要重新生成")
+                debugLog("📬 有新消息，需要重新生成")
                 #endif
                 return nil
             }
@@ -596,7 +596,7 @@ class CharacterChatInsightService: ObservableObject {
             let insight = try decoder.decode(CharacterChatInsight.self, from: cache.insightData)
             
             #if DEBUG
-            print("✅ CharacterChatInsightService - 成功加载缓存画像: \(insight.title)")
+            debugLog("✅ CharacterChatInsightService - 成功加载缓存画像: \(insight.title)")
             #endif
             return insight
             
@@ -639,7 +639,7 @@ class CharacterChatInsightService: ObservableObject {
             
             try modelContext.save()
             #if DEBUG
-            print("✅ 缓存已清除")
+            debugLog("✅ 缓存已清除")
             #endif
             
         } catch {

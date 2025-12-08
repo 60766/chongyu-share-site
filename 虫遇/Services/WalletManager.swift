@@ -10,10 +10,12 @@ class WalletManager: ObservableObject {
     @Published var currency: String = "虫洞币"
     @Published var isLoading: Bool = false
     @Published var showingPurchaseSheet: Bool = false
+    @Published var loadError: String? = nil // ⚡️ 新增：加载错误信息（nil表示无错误或已成功）
     
     private var notificationObservers: [NSObjectProtocol] = []
     private var cancellables = Set<AnyCancellable>()
     private var hasLoadedBalance = false // 标记是否已经加载过余额
+    private var lastSuccessfulBalance: Int? = nil // ⚡️ 新增：保存上次成功加载的余额
     
     private init() {
         setupAccountObservers()
@@ -34,12 +36,12 @@ class WalletManager: ObservableObject {
             .dropFirst() // 跳过初始值
             .sink { [weak self] isSignedIn in
                 #if DEBUG
-                print("💰 [WalletManager] Apple ID登录状态变化: \(isSignedIn)")
+                debugLog("💰 [WalletManager] Apple ID登录状态变化: \(isSignedIn)")
                 #endif
                 if isSignedIn {
                     // 如果登录了，刷新余额（确保显示最新数据）
                     #if DEBUG
-                    print("💰 [WalletManager] Apple ID已登录，刷新余额")
+                    debugLog("💰 [WalletManager] Apple ID已登录，刷新余额")
                     #endif
                     self?.loadBalance()
                 }
@@ -57,7 +59,7 @@ class WalletManager: ObservableObject {
         // 直接加载余额，不检查Apple ID登录状态
         // 因为后端不要求Apple ID登录，只要有appAccountToken就可以查询余额
         #if DEBUG
-        print("💰 [WalletManager] 延迟检查：加载余额（不要求Apple ID登录）")
+        debugLog("💰 [WalletManager] 延迟检查：加载余额（不要求Apple ID登录）")
         #endif
         loadBalance()
     }
@@ -85,19 +87,47 @@ class WalletManager: ObservableObject {
                     self.currency = walletBalance.currency
                     self.isLoading = false
                     self.hasLoadedBalance = true // 标记已加载
+                    self.loadError = nil // 清除错误状态
+                    self.lastSuccessfulBalance = walletBalance.balance // 保存成功加载的余额
                 }
             } catch {
                 // 错误日志：使用Logger记录，生产环境也会记录
                 Logger.error("加载余额失败", error: error, log: Logger.business)
                 #if DEBUG
                 if let urlError = error as? URLError {
-                    print("   URLError code: \(urlError.code.rawValue)")
-                    print("   URLError: \(urlError.localizedDescription)")
+                    debugLog("   URLError code: \(urlError.code.rawValue)")
+                    debugLog("   URLError: \(urlError.localizedDescription)")
                 }
                 #endif
+                
+                // ⚡️ 优化：生成友好的错误信息
+                let errorMessage: String
+                if let nsError = error as NSError? {
+                    let errorDesc = nsError.localizedDescription.lowercased()
+                    if errorDesc.contains("network") || errorDesc.contains("网络") || errorDesc.contains("connection") {
+                        errorMessage = "网络连接失败，请检查网络后重试"
+                    } else if errorDesc.contains("timeout") || errorDesc.contains("超时") {
+                        errorMessage = "请求超时，请稍后重试"
+                    } else {
+                        errorMessage = "余额加载失败，请稍后重试"
+                    }
+                } else {
+                    errorMessage = "余额加载失败，请稍后重试"
+                }
+                
                 await MainActor.run {
                     self.isLoading = false
-                    // 保持余额为 0，不更新
+                    self.loadError = errorMessage
+                    // ⚡️ 优化：如果之前有成功加载的余额，保持显示，而不是显示0
+                    if let lastBalance = self.lastSuccessfulBalance {
+                        self.balance = lastBalance
+                        #if DEBUG
+                        debugLog("💰 余额查询失败，保持上次成功加载的余额: \(lastBalance)")
+                        #endif
+                    } else {
+                        // 如果从未成功加载过，保持为0（这是合理的，因为新用户余额就是0）
+                        self.balance = 0
+                    }
                 }
             }
         }
@@ -113,7 +143,7 @@ class WalletManager: ObservableObject {
         Task {
             do {
                 #if DEBUG
-                print("💰 [WalletManager] 强制加载余额（账号恢复）...")
+                debugLog("💰 [WalletManager] 强制加载余额（账号恢复）...")
                 // 测试模式：如果设置了测试余额，直接使用测试余额
                 if let testBalance = UserDefaults.standard.object(forKey: "DEBUG_TEST_BALANCE") as? Int {
                     await MainActor.run {
@@ -121,7 +151,7 @@ class WalletManager: ObservableObject {
                         self.currency = "虫洞币"
                         self.isLoading = false
                     }
-                    print("🧪 [测试模式] 使用测试余额: \(testBalance)")
+                    debugLog("🧪 [测试模式] 使用测试余额: \(testBalance)")
                     return
                 }
                 #endif
@@ -131,15 +161,43 @@ class WalletManager: ObservableObject {
                     self.currency = walletBalance.currency
                     self.isLoading = false
                     self.hasLoadedBalance = true // 标记已加载
+                    self.loadError = nil // 清除错误状态
+                    self.lastSuccessfulBalance = walletBalance.balance // 保存成功加载的余额
                 }
                 #if DEBUG
-                print("💰 [WalletManager] 账号恢复后余额加载成功: \(walletBalance.balance) 虫洞币")
+                debugLog("💰 [WalletManager] 账号恢复后余额加载成功: \(walletBalance.balance) 虫洞币")
                 #endif
             } catch {
                 Logger.error("账号恢复后余额加载失败", error: error, log: Logger.business)
+                
+                // ⚡️ 优化：生成友好的错误信息
+                let errorMessage: String
+                if let nsError = error as NSError? {
+                    let errorDesc = nsError.localizedDescription.lowercased()
+                    if errorDesc.contains("network") || errorDesc.contains("网络") || errorDesc.contains("connection") {
+                        errorMessage = "网络连接失败，请检查网络后重试"
+                    } else if errorDesc.contains("timeout") || errorDesc.contains("超时") {
+                        errorMessage = "请求超时，请稍后重试"
+                    } else {
+                        errorMessage = "余额加载失败，请稍后重试"
+                    }
+                } else {
+                    errorMessage = "余额加载失败，请稍后重试"
+                }
+                
                 await MainActor.run {
                     self.isLoading = false
-                    // 保持余额为 0，不更新
+                    self.loadError = errorMessage
+                    // ⚡️ 优化：如果之前有成功加载的余额，保持显示，而不是显示0
+                    if let lastBalance = self.lastSuccessfulBalance {
+                        self.balance = lastBalance
+                        #if DEBUG
+                        debugLog("💰 账号恢复后余额查询失败，保持上次成功加载的余额: \(lastBalance)")
+                        #endif
+                    } else {
+                        // 如果从未成功加载过，保持为0
+                        self.balance = 0
+                    }
                 }
             }
         }
@@ -163,7 +221,7 @@ class WalletManager: ObservableObject {
         #if DEBUG
         // 如果设置了测试余额，不更新
         if UserDefaults.standard.object(forKey: "DEBUG_TEST_BALANCE") as? Int != nil {
-            print("🧪 [测试模式] 忽略余额更新，保持测试余额")
+            debugLog("🧪 [测试模式] 忽略余额更新，保持测试余额")
             return
         }
         #endif
@@ -179,14 +237,14 @@ class WalletManager: ObservableObject {
     func setTestBalance(_ amount: Int) {
         UserDefaults.standard.set(amount, forKey: "DEBUG_TEST_BALANCE")
         balance = amount
-        print("🧪 [测试] 余额已设置为: \(amount)")
+        debugLog("🧪 [测试] 余额已设置为: \(amount)")
     }
     
     /// 清除测试余额，恢复从服务器获取
     func clearTestBalance() {
         UserDefaults.standard.removeObject(forKey: "DEBUG_TEST_BALANCE")
         loadBalance() // 重新加载真实余额
-        print("🧪 [测试] 已清除测试余额，恢复从服务器获取")
+        debugLog("🧪 [测试] 已清除测试余额，恢复从服务器获取")
     }
     #endif
     
@@ -217,7 +275,7 @@ class WalletManager: ObservableObject {
                 // 新账号创建时，加载余额（不要求Apple ID登录）
                 // 后端会根据deviceId判断是否赠送新用户虫洞币
                 #if DEBUG
-                print("💰 [WalletManager] 新账号创建，加载余额")
+                debugLog("💰 [WalletManager] 新账号创建，加载余额")
                 #endif
                     self?.loadBalance()
             }
@@ -245,7 +303,7 @@ class WalletManager: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             #if DEBUG
-            print("💰 [WalletManager] 应用进入前台，刷新余额")
+            debugLog("💰 [WalletManager] 应用进入前台，刷新余额")
             #endif
             self?.loadBalance()
         }

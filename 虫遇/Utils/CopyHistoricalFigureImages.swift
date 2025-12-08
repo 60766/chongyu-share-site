@@ -109,14 +109,14 @@ class HistoricalFigureImageCopier {
         if hasCompletedInitialCopy {
             #if DEBUG
             let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
-            print("⚡️ 图片快速检查完成，耗时: \(String(format: "%.2f", timeElapsed * 1000))ms")
+            debugLog("⚡️ 图片快速检查完成，耗时: \(String(format: "%.2f", timeElapsed * 1000))ms")
             #endif
             return
         }
         
         // 首次启动：完整复制所有图片
         #if DEBUG
-        print("🚀 首次启动，开始复制历史人物图片...")
+        debugLog("🚀 首次启动，开始复制历史人物图片...")
         #endif
         
         // 复制每个历史人物的图片
@@ -142,7 +142,7 @@ class HistoricalFigureImageCopier {
         
         let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
         #if DEBUG
-        print("✅ 图片复制完成: 成功 \(successCount) 个，跳过 \(skippedCount) 个，耗时: \(String(format: "%.2f", timeElapsed * 1000))ms")
+        debugLog("✅ 图片复制完成: 成功 \(successCount) 个，跳过 \(skippedCount) 个，耗时: \(String(format: "%.2f", timeElapsed * 1000))ms")
         #endif
     }
     
@@ -157,12 +157,12 @@ class HistoricalFigureImageCopier {
                 try fileManager.createDirectory(atPath: path, withIntermediateDirectories: true)
                 #if DEBUG
                 if !silent {
-                    print("✅ 创建目录: \(path)")
+                    debugLog("✅ 创建目录: \(path)")
                 }
                 #endif
             } catch {
                 #if DEBUG
-                print("❌ 创建目录失败: \(error)")
+                debugLog("❌ 创建目录失败: \(error)")
                 #endif
             }
         }
@@ -237,7 +237,7 @@ class HistoricalFigureImageCopier {
                 } catch {
                     #if DEBUG
                     if !silent {
-                        print("❌ 复制 \(characterID) 图片失败: \(error)")
+                        debugLog("❌ 复制 \(characterID) 图片失败: \(error)")
                     }
                     #endif
                     return false

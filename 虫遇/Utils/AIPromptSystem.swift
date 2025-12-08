@@ -79,7 +79,7 @@ class AIPromptSystem {
         prompt += "\n\n回复："
         
         #if DEBUG
-        print("🔍 生成提示词: '\(String(prompt.prefix(100)))...'")
+        debugLog("🔍 生成提示词: '\(String(prompt.prefix(100)))...'")
         #endif
         return prompt
     }

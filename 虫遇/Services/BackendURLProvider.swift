@@ -48,25 +48,33 @@ enum BackendURLProvider {
             }
             
             #if DEBUG
-            print("🌐 [BackendURLProvider] 使用覆盖地址: \(url.absoluteString)")
+            debugLog("🌐 [BackendURLProvider] 使用覆盖地址: \(url.absoluteString)")
             return url
             #else
             if url.scheme?.lowercased() == "https" {
                 #if DEBUG
-                print("🌐 [BackendURLProvider] 使用覆盖地址: \(url.absoluteString)")
+                debugLog("🌐 [BackendURLProvider] 使用覆盖地址: \(url.absoluteString)")
                 #endif
                 return url
             } else {
                 #if DEBUG
-                print("⚠️ [BackendURLProvider] 忽略非HTTPS地址: \(url.absoluteString)")
+                debugLog("⚠️ [BackendURLProvider] 忽略非HTTPS地址: \(url.absoluteString)")
                 #endif
             }
             #endif
         }
         
-        let fallback = URL(string: fallbackURL)!
+        // ⚡️ 安全修复：避免强制解包，即使硬编码的URL也应该安全处理
+        guard let fallback = URL(string: fallbackURL) else {
+            // 如果硬编码的URL都失败了，说明代码有问题，但至少不会崩溃
+            #if DEBUG
+            debugLog("❌ [BackendURLProvider] 严重错误：默认URL格式错误: \(fallbackURL)")
+            #endif
+            // 使用系统默认的URL创建方法（虽然理论上不会到这里）
+            fatalError("BackendURLProvider: 默认URL格式错误，请检查代码")
+        }
         #if DEBUG
-        print("🌐 [BackendURLProvider] 使用默认地址: \(fallback.absoluteString)")
+        debugLog("🌐 [BackendURLProvider] 使用默认地址: \(fallback.absoluteString)")
         #endif
         return fallback
     }

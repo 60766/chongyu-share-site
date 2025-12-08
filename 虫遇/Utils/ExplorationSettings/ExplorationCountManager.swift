@@ -22,7 +22,7 @@ class ExplorationCountManager {
     private init() {
         loadCounts()
         #if DEBUG
-        print("🔢 ExplorationCountManager初始化完成，加载配置: \(contentTypeCounts)")
+        debugLog("🔢 ExplorationCountManager初始化完成，加载配置: \(contentTypeCounts)")
         #endif
     }
     
@@ -56,7 +56,7 @@ class ExplorationCountManager {
         saveCounts()
         
         #if DEBUG
-        print("📈 增加「\(typeKey)」生成数量: \(currentCount) → \(newCount)")
+        debugLog("📈 增加「\(typeKey)」生成数量: \(currentCount) → \(newCount)")
         #endif
         return newCount
     }
@@ -77,7 +77,7 @@ class ExplorationCountManager {
         saveCounts()
         
         #if DEBUG
-        print("📉 减少「\(typeKey)」生成数量: \(currentCount) → \(newCount)")
+        debugLog("📉 减少「\(typeKey)」生成数量: \(currentCount) → \(newCount)")
         #endif
         return newCount
     }
@@ -98,7 +98,7 @@ class ExplorationCountManager {
         saveCounts()
         
         #if DEBUG
-        print("🔄 设置「\(typeKey)」生成数量: \(currentCount) → \(newCount)")
+        debugLog("🔄 设置「\(typeKey)」生成数量: \(currentCount) → \(newCount)")
         #endif
         return newCount
     }
@@ -116,7 +116,7 @@ class ExplorationCountManager {
         saveCounts()
         
         #if DEBUG
-        print("🔄 重置「\(typeKey)」生成数量: \(currentCount) → \(defaultCount)")
+        debugLog("🔄 重置「\(typeKey)」生成数量: \(currentCount) → \(defaultCount)")
         #endif
         return defaultCount
     }
@@ -128,7 +128,7 @@ class ExplorationCountManager {
         contentTypeCounts.removeAll()
         saveCounts()
         #if DEBUG
-        print("🔄 已重置所有内容类型的生成数量为默认值 \(defaultCount)")
+        debugLog("🔄 已重置所有内容类型的生成数量为默认值 \(defaultCount)")
         #endif
     }
     
@@ -138,19 +138,19 @@ class ExplorationCountManager {
      */
     func printAllCounts() {
         #if DEBUG
-        print("📊 当前所有内容类型生成数量配置:")
+        debugLog("📊 当前所有内容类型生成数量配置:")
         #endif
         
         if contentTypeCounts.isEmpty {
             #if DEBUG
-            print("   - 暂无自定义配置，所有类型使用默认值: \(defaultCount)")
+            debugLog("   - 暂无自定义配置，所有类型使用默认值: \(defaultCount)")
             #endif
             return
         }
         
         for (type, count) in contentTypeCounts {
             #if DEBUG
-            print("   - \(type): \(count)")
+            debugLog("   - \(type): \(count)")
             #endif
         }
     }

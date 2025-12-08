@@ -55,7 +55,7 @@ struct AppCharacter: Codable, Identifiable, Equatable, Hashable {
         do {
             contentAffinities = try container.decodeIfPresent([String: Double].self, forKey: .contentAffinities) ?? [:]
         } catch {
-            print("解析角色 \(name) 的contentAffinities失败: \(error)")
+            debugLog("解析角色 \(name) 的contentAffinities失败: \(error)")
             contentAffinities = [:]
         }
 
@@ -96,7 +96,7 @@ struct CharacterLibrary: Codable {
             // 已移除调试日志
         } catch {
             #if DEBUG
-            print("⚠️ 解析角色数组失败: \(error)")
+            debugLog("⚠️ 解析角色数组失败: \(error)")
             #endif
             characters = []
         }

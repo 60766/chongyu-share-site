@@ -199,7 +199,7 @@ struct DebugMenu: View {
                     Button {
                         // 打印当前环境信息
                         #if DEBUG
-                        print("当前环境: \(Bundle.main.infoDictionary?["CFBundleIdentifier"] as? String ?? "未知")")
+                        debugLog("当前环境: \(Bundle.main.infoDictionary?["CFBundleIdentifier"] as? String ?? "未知")")
                         #endif
                     } label: {
                         HStack {

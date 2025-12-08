@@ -132,18 +132,18 @@ struct DetailedCommentModel: Identifiable, Hashable, Codable {
     /// 打印评论及其嵌套结构，帮助调试
     func printStructure(indent: Int = 0) {
         let indentation = String(repeating: "  ", count: indent)
-        print("\(indentation)📝 评论ID: \(id.uuidString.prefix(8)), 用户: \(username)")
+        debugLog("\(indentation)📝 评论ID: \(id.uuidString.prefix(8)), 用户: \(username)")
         
         if let parentCommentId = parentCommentId {
-            print("\(indentation)  ↪️ 父评论ID: \(parentCommentId.uuidString.prefix(8))")
+            debugLog("\(indentation)  ↪️ 父评论ID: \(parentCommentId.uuidString.prefix(8))")
         }
         
         if let replyToUsername = replyToUsername {
-            print("\(indentation)  ↪️ 回复给: \(replyToUsername)")
+            debugLog("\(indentation)  ↪️ 回复给: \(replyToUsername)")
         }
         
         if !replies.isEmpty {
-            print("\(indentation)  ⤵️ \(replies.count)条回复:")
+            debugLog("\(indentation)  ⤵️ \(replies.count)条回复:")
             replies.forEach { $0.printStructure(indent: indent + 1) }
         }
     }

@@ -206,7 +206,7 @@ struct KeyboardDebugView: View {
         )
         .onKeyboardHeightChange { height, isVisible in
             #if DEBUG
-            print("键盘高度变化: \(height)pt, 可见性: \(isVisible)")
+            debugLog("键盘高度变化: \(height)pt, 可见性: \(isVisible)")
             #endif
         }
     }

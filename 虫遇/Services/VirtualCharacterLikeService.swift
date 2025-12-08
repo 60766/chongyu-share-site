@@ -20,10 +20,10 @@ class VirtualCharacterLikeService {
      */
     func processCharacterLike(characterId: String, postId: String, commentId: String, userComment: String? = nil) {
         #if DEBUG
-        print("🔧 VirtualCharacterLikeService.processCharacterLike 开始（评论点赞）")
+        debugLog("🔧 VirtualCharacterLikeService.processCharacterLike 开始（评论点赞）")
         #endif
         #if DEBUG
-        print("🔧 参数 - 角色:\(characterId), 帖子:\(postId), 评论:\(commentId)")
+        debugLog("🔧 参数 - 角色:\(characterId), 帖子:\(postId), 评论:\(commentId)")
         #endif
         DispatchQueue.main.async {
             // 1. 更新评论的点赞数
@@ -62,16 +62,16 @@ class VirtualCharacterLikeService {
             let currentPost = viewModel.posts[postIndex]
             
             #if DEBUG
-            print("🎯 虚拟角色点赞目标评论ID: \(commentId)")
+            debugLog("🎯 虚拟角色点赞目标评论ID: \(commentId)")
             #endif
             
             // 🔧 DEBUG: 显示帖子中所有评论的信息
             #if DEBUG
-            print("🔧 DEBUG: 帖子中所有评论:")
+            debugLog("🔧 DEBUG: 帖子中所有评论:")
             #endif
             for (index, comment) in currentPost.comments.enumerated() {
                 #if DEBUG
-                print("  [\(index)] ID: \(comment.id.uuidString.prefix(8))..., 用户: \(comment.username), 内容: \"\(comment.content.prefix(20))...\", 虚拟角色: \(comment.isVirtualCharacter)")
+                debugLog("  [\(index)] ID: \(comment.id.uuidString.prefix(8))..., 用户: \(comment.username), 内容: \"\(comment.content.prefix(20))...\", 虚拟角色: \(comment.isVirtualCharacter)")
                 #endif
             }
             
@@ -79,7 +79,7 @@ class VirtualCharacterLikeService {
             if let commentIndex = currentPost.comments.firstIndex(where: { $0.id.uuidString == commentId }) {
                 let targetComment = currentPost.comments[commentIndex]
                 #if DEBUG
-                print("🎯 DEBUG: 找到目标评论! 索引: \(commentIndex), 用户: \(targetComment.username), 内容: \"\(targetComment.content.prefix(20))...\"")
+                debugLog("🎯 DEBUG: 找到目标评论! 索引: \(commentIndex), 用户: \(targetComment.username), 内容: \"\(targetComment.content.prefix(20))...\"")
                 #endif
                 
                 // 验证这是一条用户评论（不是虚拟角色评论）
@@ -123,23 +123,23 @@ class VirtualCharacterLikeService {
                     )
                     
                     #if DEBUG
-                    print("📈 评论\(targetComment.id)点赞数已更新: \(currentComment.likes) -> \(updatedComment.likes)")
+                    debugLog("📈 评论\(targetComment.id)点赞数已更新: \(currentComment.likes) -> \(updatedComment.likes)")
                     #endif
                 } else {
                     #if DEBUG
-                    print("⚠️ 指定的评论ID \(commentId) 对应的是虚拟角色评论，不能点赞")
+                    debugLog("⚠️ 指定的评论ID \(commentId) 对应的是虚拟角色评论，不能点赞")
                     #endif
                 }
             } else {
                 // 如果找不到指定的评论ID，作为备用方案，查找最新的用户评论
                 #if DEBUG
-                print("⚠️ 未找到指定的评论ID \(commentId)，作为备用方案查找最新用户评论")
+                debugLog("⚠️ 未找到指定的评论ID \(commentId)，作为备用方案查找最新用户评论")
                 #endif
                 
                 let userComments = currentPost.comments.filter { !$0.isVirtualCharacter }
                 guard let latestUserComment = userComments.max(by: { $0.datePosted < $1.datePosted }) else {
                     #if DEBUG
-                    print("❌ 在帖子\(postId)中未找到任何用户评论，无法点赞")
+                    debugLog("❌ 在帖子\(postId)中未找到任何用户评论，无法点赞")
                     #endif
                     return
                 }
@@ -182,13 +182,13 @@ class VirtualCharacterLikeService {
                     )
                     
                     #if DEBUG
-                    print("📈 备用方案：评论\(latestUserComment.id)点赞数已更新: \(currentComment.likes) -> \(updatedComment.likes)")
+                    debugLog("📈 备用方案：评论\(latestUserComment.id)点赞数已更新: \(currentComment.likes) -> \(updatedComment.likes)")
                     #endif
                 }
             }
         } else {
             #if DEBUG
-            print("❌ 未找到帖子\(postId)，无法更新评论点赞数")
+            debugLog("❌ 未找到帖子\(postId)，无法更新评论点赞数")
             #endif
         }
     }
@@ -208,7 +208,7 @@ class VirtualCharacterLikeService {
             
             if isVirtualCharacterPost {
                 #if DEBUG
-                print("🚫 帖子\(postId)是虚拟角色发布的，邀请角色评论后的点赞不发送通知")
+                debugLog("🚫 帖子\(postId)是虚拟角色发布的，邀请角色评论后的点赞不发送通知")
                 #endif
                 return
             }
@@ -233,7 +233,7 @@ class VirtualCharacterLikeService {
                     characterName = name
                 } else {
                     #if DEBUG
-                    print("❌ 无法获取角色\(characterId)的名称")
+                    debugLog("❌ 无法获取角色\(characterId)的名称")
                     #endif
                     return
                 }
@@ -242,7 +242,7 @@ class VirtualCharacterLikeService {
             // 预设角色：使用CharacterDataManager
             guard let name = CharacterDataManager.shared.getName(for: characterId) else {
             #if DEBUG
-            print("❌ 无法获取角色\(characterId)的名称")
+            debugLog("❌ 无法获取角色\(characterId)的名称")
             #endif
             return
             }
@@ -268,7 +268,7 @@ class VirtualCharacterLikeService {
         )
         
         #if DEBUG
-        print("📨 已发送点赞通知: \(characterName)点赞了您的内容")
+        debugLog("📨 已发送点赞通知: \(characterName)点赞了您的内容")
         #endif
     }
     
@@ -283,16 +283,16 @@ class VirtualCharacterLikeService {
             let currentPost = viewModel.posts[postIndex]
             
             #if DEBUG
-            print("🎯 虚拟角色点赞目标帖子ID: \(postId)")
+            debugLog("🎯 虚拟角色点赞目标帖子ID: \(postId)")
             #endif
             #if DEBUG
-            print("🎯 帖子当前点赞数: \(currentPost.likes)")
+            debugLog("🎯 帖子当前点赞数: \(currentPost.likes)")
             #endif
             
             // 检查帖子是否为用户发布的帖子
             if currentPost.username == "当前用户" || currentPost.characterID == nil {
                 #if DEBUG
-                print("✅ 找到目标用户帖子 - ID: \(currentPost.id), 作者: \(currentPost.username)")
+                debugLog("✅ 找到目标用户帖子 - ID: \(currentPost.id), 作者: \(currentPost.username)")
                 #endif
                 
                 // 更新帖子点赞数
@@ -315,12 +315,12 @@ class VirtualCharacterLikeService {
                 
             } else {
                 #if DEBUG
-                print("⚠️ 指定的帖子ID \(postId) 对应的是虚拟角色帖子，不能点赞")
+                debugLog("⚠️ 指定的帖子ID \(postId) 对应的是虚拟角色帖子，不能点赞")
                 #endif
             }
         } else {
             #if DEBUG
-            print("❌ 未找到帖子\(postId)，无法更新帖子点赞数")
+            debugLog("❌ 未找到帖子\(postId)，无法更新帖子点赞数")
             #endif
         }
     }
@@ -340,7 +340,7 @@ class VirtualCharacterLikeService {
             
             if isVirtualCharacterPost {
                 #if DEBUG
-                print("🚫 帖子\(postId)是虚拟角色发布的，虚拟角色点赞不发送通知")
+                debugLog("🚫 帖子\(postId)是虚拟角色发布的，虚拟角色点赞不发送通知")
                 #endif
                 return
             }
@@ -365,7 +365,7 @@ class VirtualCharacterLikeService {
                     characterName = name
                 } else {
                     #if DEBUG
-                    print("❌ 无法获取角色\(characterId)的名称")
+                    debugLog("❌ 无法获取角色\(characterId)的名称")
                     #endif
                     return
                 }
@@ -374,7 +374,7 @@ class VirtualCharacterLikeService {
             // 预设角色：使用CharacterDataManager
             guard let name = CharacterDataManager.shared.getName(for: characterId) else {
             #if DEBUG
-            print("❌ 无法获取角色\(characterId)的名称")
+            debugLog("❌ 无法获取角色\(characterId)的名称")
             #endif
             return
             }
@@ -402,7 +402,7 @@ class VirtualCharacterLikeService {
         )
         
         #if DEBUG
-        print("📨 已发送帖子点赞通知: \(characterName)点赞了您的帖子")
+        debugLog("📨 已发送帖子点赞通知: \(characterName)点赞了您的帖子")
         #endif
     }
 }

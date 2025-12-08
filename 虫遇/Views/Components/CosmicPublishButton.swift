@@ -245,7 +245,7 @@ struct CosmicPublishButton: View {
             try hapticEngine?.start()
         } catch {
             #if DEBUG
-            print("触觉引擎启动失败: \(error.localizedDescription)")
+            debugLog("触觉引擎启动失败: \(error.localizedDescription)")
             #endif
         }
     }
@@ -284,7 +284,7 @@ struct CosmicPublishButton: View {
             try player.start(atTime: 0)
         } catch {
             #if DEBUG
-            print("触觉播放失败: \(error.localizedDescription)")
+            debugLog("触觉播放失败: \(error.localizedDescription)")
             #endif
         }
     }
@@ -300,7 +300,7 @@ struct CosmicPublishButton_Previews: PreviewProvider {
             
             CosmicPublishButton(isPressed: .constant(false)) {
                 #if DEBUG
-                print("按钮被点击")
+                debugLog("按钮被点击")
                 #endif
             }
         }

@@ -45,13 +45,13 @@ class MultiCharacterChatService {
         completion: @escaping (Result<[(characterId: String, content: String)], Error>) -> Void
     ) {
         #if DEBUG
-        print("🚀 开始批量生成聊天消息 - 主题: \(chatTheme)")
+        debugLog("🚀 开始批量生成聊天消息 - 主题: \(chatTheme)")
         #endif
         
         // 创建后台任务
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
             #if DEBUG
-            print("⚠️ MultiCharacterChatService: 批量生成聊天消息的后台任务超时")
+            debugLog("⚠️ MultiCharacterChatService: 批量生成聊天消息的后台任务超时")
             #endif
         }
         
@@ -64,7 +64,7 @@ class MultiCharacterChatService {
         )
         
         #if DEBUG
-        print("📝 选择了\(respondingCharacters.count)个角色参与回复")
+        debugLog("📝 选择了\(respondingCharacters.count)个角色参与回复")
         #endif
         
         // 构建角色信息
@@ -85,7 +85,7 @@ class MultiCharacterChatService {
         )
         
         #if DEBUG
-        print("📤 发送批量聊天生成请求")
+        debugLog("📤 发送批量聊天生成请求")
         #endif
         
         // 调用AI服务
@@ -104,8 +104,8 @@ class MultiCharacterChatService {
                 },
                 receiveValue: { [weak self] response in
                     #if DEBUG
-                    print("✅ 批量聊天生成成功，开始解析回复")
-                    print("📊 API响应统计: 长度=\(response.count)字符")
+                    debugLog("✅ 批量聊天生成成功，开始解析回复")
+                    debugLog("📊 API响应统计: 长度=\(response.count)字符")
                     #endif
                     
                     guard let self = self else {
@@ -116,7 +116,7 @@ class MultiCharacterChatService {
                     // 🔧 稳健性检查：确保API响应不为空
                     if response.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         #if DEBUG
-                        print("❌ API返回了空响应")
+                        debugLog("❌ API返回了空响应")
                         #endif
                         completion(.failure(NSError(domain: "MultiCharacterChatService", code: -2, userInfo: [NSLocalizedDescriptionKey: "API返回了空响应"])))
                         return
@@ -130,8 +130,8 @@ class MultiCharacterChatService {
                     // 🔧 最终验证：确保至少有一个有效回复
                     if parsedReplies.isEmpty {
                         #if DEBUG
-                        print("❌ 解析失败：无法从API响应中提取任何有效回复")
-                        print("📄 原始响应内容: \(response)")
+                        debugLog("❌ 解析失败：无法从API响应中提取任何有效回复")
+                        debugLog("📄 原始响应内容: \(response)")
                         #endif
                         completion(.failure(NSError(domain: "MultiCharacterChatService", code: -3, userInfo: [
                             NSLocalizedDescriptionKey: "解析失败：无法从API响应中提取有效回复",
@@ -141,7 +141,7 @@ class MultiCharacterChatService {
                     }
                     
                     #if DEBUG
-                    print("🎉 解析成功：获得\(parsedReplies.count)个有效角色回复")
+                    debugLog("🎉 解析成功：获得\(parsedReplies.count)个有效角色回复")
                     #endif
                     completion(.success(parsedReplies))
                 }
@@ -406,13 +406,13 @@ class MultiCharacterChatService {
     private func normalizeCharacterId(_ rawId: String, expectedCharacters: [CharacterModel]) -> String? {
         let normalizedInput = rawId.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         #if DEBUG
-        print("🔍 尝试匹配角色ID: '\(rawId)' (标准化后: '\(normalizedInput)')")
+        debugLog("🔍 尝试匹配角色ID: '\(rawId)' (标准化后: '\(normalizedInput)')")
         #endif
         
         // 1. 直接匹配
         if let character = expectedCharacters.first(where: { $0.id.lowercased() == normalizedInput }) {
             #if DEBUG
-            print("✅ 直接匹配角色ID: \(rawId) -> \(character.id)")
+            debugLog("✅ 直接匹配角色ID: \(rawId) -> \(character.id)")
             #endif
             return character.id
         }
@@ -445,7 +445,7 @@ class MultiCharacterChatService {
         if let standardId = idMappings[normalizedInput] {
             if expectedCharacters.contains(where: { $0.id == standardId }) {
                 #if DEBUG
-                print("✅ 变体匹配角色ID: \(rawId) -> \(standardId)")
+                debugLog("✅ 变体匹配角色ID: \(rawId) -> \(standardId)")
                 #endif
                 return standardId
             }
@@ -454,7 +454,7 @@ class MultiCharacterChatService {
         // 3. 按名称匹配
         if let character = expectedCharacters.first(where: { $0.name.lowercased().contains(normalizedInput) || normalizedInput.contains($0.name.lowercased()) }) {
             #if DEBUG
-            print("✅ 名称匹配角色ID: \(rawId) -> \(character.id)")
+            debugLog("✅ 名称匹配角色ID: \(rawId) -> \(character.id)")
             #endif
             return character.id
         }
@@ -463,14 +463,14 @@ class MultiCharacterChatService {
         for character in expectedCharacters {
             if editDistance(normalizedInput, character.id.lowercased()) <= 2 {
                 #if DEBUG
-                print("✅ 模糊匹配角色ID: \(rawId) -> \(character.id)")
+                debugLog("✅ 模糊匹配角色ID: \(rawId) -> \(character.id)")
                 #endif
                 return character.id
             }
         }
         
         #if DEBUG
-        print("⚠️ 无法匹配角色ID: \(rawId)")
+        debugLog("⚠️ 无法匹配角色ID: \(rawId)")
         #endif
         return nil
     }
@@ -512,9 +512,9 @@ class MultiCharacterChatService {
         expectedCharacters: [CharacterModel]
     ) -> [(characterId: String, content: String)] {
         #if DEBUG
-        print("🔍 开始解析多角色回复，响应长度: \(response.count)")
-        print("📝 期望角色列表(\(expectedCharacters.count)个): \(expectedCharacters.map { "\($0.name)(\($0.id))" }.joined(separator: ", "))")
-        print("📝 原始API响应内容:\n\(response)")
+        debugLog("🔍 开始解析多角色回复，响应长度: \(response.count)")
+        debugLog("📝 期望角色列表(\(expectedCharacters.count)个): \(expectedCharacters.map { "\($0.name)(\($0.id))" }.joined(separator: ", "))")
+        debugLog("📝 原始API响应内容:\n\(response)")
         #endif
         
         var result: [(characterId: String, content: String)] = []
@@ -534,7 +534,7 @@ class MultiCharacterChatService {
                     if !content.isEmpty {
                         result.append((characterId: characterId, content: content))
                         #if DEBUG
-                        print("✅ 解析到角色回复: \(characterId) -> \(content.prefix(30))...")
+                        debugLog("✅ 解析到角色回复: \(characterId) -> \(content.prefix(30))...")
                         #endif
                     }
                 }
@@ -548,7 +548,7 @@ class MultiCharacterChatService {
                 } else {
                     // 如果无法匹配，跳过这个角色
                     #if DEBUG
-                    print("❌ 跳过无法匹配的角色ID: \(extractedId)")
+                    debugLog("❌ 跳过无法匹配的角色ID: \(extractedId)")
                     #endif
                     currentCharacterId = nil
                 currentContent = []
@@ -565,19 +565,19 @@ class MultiCharacterChatService {
             if !content.isEmpty {
                 result.append((characterId: characterId, content: content))
                 #if DEBUG
-                print("✅ 解析到最后一个角色回复: \(characterId) -> \(content.prefix(30))...")
+                debugLog("✅ 解析到最后一个角色回复: \(characterId) -> \(content.prefix(30))...")
                 #endif
             }
         }
         
         #if DEBUG
-        print("📊 标准解析完成，共获得 \(result.count) 个角色回复")
+        debugLog("📊 标准解析完成，共获得 \(result.count) 个角色回复")
         #endif
         
         // 🔧 稳健性增强：如果标准解析失败或结果不足，尝试备用解析方法
         if result.isEmpty || result.count < min(expectedCharacters.count, 2) {
             #if DEBUG
-            print("⚠️ 标准解析结果不满意，尝试备用解析方法...")
+            debugLog("⚠️ 标准解析结果不满意，尝试备用解析方法...")
             #endif
             result = fallbackParseResponse(response: response, expectedCharacters: expectedCharacters)
         }
@@ -586,7 +586,7 @@ class MultiCharacterChatService {
         result = validateAndEnhanceResponses(result, expectedCharacters: expectedCharacters, originalResponse: response)
         
         #if DEBUG
-        print("🎯 最终解析结果: \(result.count) 个有效角色回复")
+        debugLog("🎯 最终解析结果: \(result.count) 个有效角色回复")
         #endif
         return result
     }
@@ -600,7 +600,7 @@ class MultiCharacterChatService {
         expectedCharacters: [CharacterModel]
     ) -> [(characterId: String, content: String)] {
         #if DEBUG
-        print("🔄 执行备用解析方法...")
+        debugLog("🔄 执行备用解析方法...")
         #endif
         
         var result: [(characterId: String, content: String)] = []
@@ -629,7 +629,7 @@ class MultiCharacterChatService {
                             if !content.isEmpty && content.count > 5 { // 至少5个字符
                                 result.append((characterId: character.id, content: content))
                                 #if DEBUG
-                                print("🔄 备用解析找到: \(character.id) -> \(content.prefix(30))...")
+                                debugLog("🔄 备用解析找到: \(character.id) -> \(content.prefix(30))...")
                                 #endif
                                 break // 找到一个就跳出pattern循环
                             }
@@ -646,7 +646,7 @@ class MultiCharacterChatService {
         // 方法2：如果方法1失败，尝试按段落分割
         if result.isEmpty {
             #if DEBUG
-            print("🔄 尝试按段落分割解析...")
+            debugLog("🔄 尝试按段落分割解析...")
             #endif
             let paragraphs = response.components(separatedBy: "\n\n")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -664,7 +664,7 @@ class MultiCharacterChatService {
                     if !cleanContent.isEmpty {
                         result.append((characterId: character.id, content: cleanContent))
                         #if DEBUG
-                        print("🔄 段落解析找到: \(character.id) -> \(cleanContent.prefix(30))...")
+                        debugLog("🔄 段落解析找到: \(character.id) -> \(cleanContent.prefix(30))...")
                         #endif
                     }
                 }
@@ -672,7 +672,7 @@ class MultiCharacterChatService {
         }
         
         #if DEBUG
-        print("🔄 备用解析完成，获得 \(result.count) 个角色回复")
+        debugLog("🔄 备用解析完成，获得 \(result.count) 个角色回复")
         #endif
         return result
     }
@@ -687,7 +687,7 @@ class MultiCharacterChatService {
         originalResponse: String
     ) -> [(characterId: String, content: String)] {
         #if DEBUG
-        print("🔍 验证解析结果...")
+        debugLog("🔍 验证解析结果...")
         #endif
         
         var validatedResponses = responses
@@ -704,7 +704,7 @@ class MultiCharacterChatService {
             
             if !isValid {
                 #if DEBUG
-                print("⚠️ 过滤无效回复: \(response.characterId) -> \(content.prefix(30))...")
+                debugLog("⚠️ 过滤无效回复: \(response.characterId) -> \(content.prefix(30))...")
                 #endif
             }
             
@@ -714,7 +714,7 @@ class MultiCharacterChatService {
         // 2. 如果解析结果仍然为空，但API确实返回了内容，生成紧急回复
         if validatedResponses.isEmpty && !originalResponse.isEmpty && originalResponse.count > 50 {
             #if DEBUG
-            print("🚨 紧急情况：API返回了内容但解析完全失败，生成应急回复")
+            debugLog("🚨 紧急情况：API返回了内容但解析完全失败，生成应急回复")
             #endif
             
             // 为前两个角色生成基于原始内容的应急回复
@@ -727,7 +727,7 @@ class MultiCharacterChatService {
                 )
                 validatedResponses.append((characterId: character.id, content: emergencyContent))
                 #if DEBUG
-                print("🚨 生成应急回复: \(character.id) -> \(emergencyContent.prefix(30))...")
+                debugLog("🚨 生成应急回复: \(character.id) -> \(emergencyContent.prefix(30))...")
                 #endif
             }
         }
@@ -735,11 +735,11 @@ class MultiCharacterChatService {
         // 3. 🔧 修复：允许多轮对话，不限制回复数量为角色数量
         // 移除之前的数量限制，保留所有有效回复
         #if DEBUG
-        print("📊 多轮对话模式：保留所有 \(validatedResponses.count) 个有效回复")
+        debugLog("📊 多轮对话模式：保留所有 \(validatedResponses.count) 个有效回复")
         #endif
         
         #if DEBUG
-        print("✅ 验证完成，最终有效回复数: \(validatedResponses.count)")
+        debugLog("✅ 验证完成，最终有效回复数: \(validatedResponses.count)")
         #endif
         return validatedResponses
     }

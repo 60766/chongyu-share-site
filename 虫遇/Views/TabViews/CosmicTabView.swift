@@ -33,7 +33,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 _ = appLauncherClass.perform(NSSelectorFromString("onAppLaunch"))
             } else {
                 #if DEBUG
-                print("⚠️ 无法找到AppLauncher类")
+                debugLog("⚠️ 无法找到AppLauncher类")
                 #endif
             }
         }
@@ -655,7 +655,7 @@ struct CosmicTabView: View {
             try hapticEngine?.start()
         } catch {
             #if DEBUG
-            print("触觉引擎启动失败: \(error.localizedDescription)")
+            debugLog("触觉引擎启动失败: \(error.localizedDescription)")
             #endif
         }
     }
@@ -691,7 +691,7 @@ struct CosmicTabView: View {
             try player.start(atTime: 0)
         } catch {
             #if DEBUG
-            print("触觉播放失败: \(error.localizedDescription)")
+            debugLog("触觉播放失败: \(error.localizedDescription)")
             #endif
         }
     }

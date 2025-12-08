@@ -111,12 +111,47 @@ final class WalletService {
     func getBalance() async throws -> Int {
         let req = makeRequest(path: "api/balance", method: "GET")
         let session = createSession()
+        
+        do {
         let (data, resp) = try await session.data(for: req)
-        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
-            throw URLError(.badServerResponse)
+            
+            guard let http = resp as? HTTPURLResponse else {
+                throw NSError(domain: "wallet.balance", code: -1, userInfo: [
+                    NSLocalizedDescriptionKey: "无法获取服务器响应"
+                ])
+            }
+            
+            guard http.statusCode == 200 else {
+                let bodyText = String(data: data, encoding: .utf8) ?? ""
+                throw NSError(domain: "wallet.balance", code: http.statusCode, userInfo: [
+                    NSLocalizedDescriptionKey: "余额查询失败(\(http.statusCode)): \(bodyText.isEmpty ? "未知错误" : bodyText)"
+                ])
         }
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        return json?["balance"] as? Int ?? 0
+            
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                throw NSError(domain: "wallet.balance", code: -2, userInfo: [
+                    NSLocalizedDescriptionKey: "余额数据格式错误"
+                ])
+            }
+            
+            guard let balance = json["balance"] as? Int else {
+                throw NSError(domain: "wallet.balance", code: -3, userInfo: [
+                    NSLocalizedDescriptionKey: "余额数据缺失"
+                ])
+            }
+            
+            return balance
+        } catch {
+            // ⚡️ 优化：重新抛出更明确的错误，而不是返回0
+            if let nsError = error as? NSError, nsError.domain == "wallet.balance" {
+                throw error
+            } else {
+                // 网络错误等其他错误
+                throw NSError(domain: "wallet.balance", code: -4, userInfo: [
+                    NSLocalizedDescriptionKey: "余额查询失败: \(error.localizedDescription)"
+                ])
+            }
+        }
     }
     
     /// 获取指定 token 的余额（不切换当前 token）
@@ -128,12 +163,47 @@ final class WalletService {
         req.addValue(token, forHTTPHeaderField: "X-App-Account-Token")
         req.addValue(AppAccountManager.shared.deviceIdentifier, forHTTPHeaderField: "X-Device-Id")
         let session = createSession()
+        
+        do {
         let (data, resp) = try await session.data(for: req)
-        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
-            throw URLError(.badServerResponse)
+            
+            guard let http = resp as? HTTPURLResponse else {
+                throw NSError(domain: "wallet.balance", code: -1, userInfo: [
+                    NSLocalizedDescriptionKey: "无法获取服务器响应"
+                ])
+            }
+            
+            guard http.statusCode == 200 else {
+                let bodyText = String(data: data, encoding: .utf8) ?? ""
+                throw NSError(domain: "wallet.balance", code: http.statusCode, userInfo: [
+                    NSLocalizedDescriptionKey: "余额查询失败(\(http.statusCode)): \(bodyText.isEmpty ? "未知错误" : bodyText)"
+                ])
         }
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        return json?["balance"] as? Int ?? 0
+            
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                throw NSError(domain: "wallet.balance", code: -2, userInfo: [
+                    NSLocalizedDescriptionKey: "余额数据格式错误"
+                ])
+            }
+            
+            guard let balance = json["balance"] as? Int else {
+                throw NSError(domain: "wallet.balance", code: -3, userInfo: [
+                    NSLocalizedDescriptionKey: "余额数据缺失"
+                ])
+            }
+            
+            return balance
+        } catch {
+            // ⚡️ 优化：重新抛出更明确的错误，而不是返回0
+            if let nsError = error as? NSError, nsError.domain == "wallet.balance" {
+                throw error
+            } else {
+                // 网络错误等其他错误
+                throw NSError(domain: "wallet.balance", code: -4, userInfo: [
+                    NSLocalizedDescriptionKey: "余额查询失败: \(error.localizedDescription)"
+                ])
+            }
+        }
     }
 
     func consumeTokens(_ amount: Int, operation: String) async throws {

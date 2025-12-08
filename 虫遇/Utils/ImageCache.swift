@@ -77,12 +77,12 @@ class ImageCache {
                 if let image = UIImage(data: data) {
                     self.cache.setObject(image, forKey: url as NSString)
                     #if DEBUG
-                    print("✅ ImageCache: 预加载图片成功 - \(url)")
+                    debugLog("✅ ImageCache: 预加载图片成功 - \(url)")
                     #endif
                 }
             } catch {
                 #if DEBUG
-                print("❌ ImageCache: 预加载图片失败 - \(url), 错误: \(error.localizedDescription)")
+                debugLog("❌ ImageCache: 预加载图片失败 - \(url), 错误: \(error.localizedDescription)")
                 #endif
             }
         }
@@ -154,7 +154,7 @@ extension ImageCache {
             guard let self = self else { return }
             
             #if DEBUG
-            print("🖼️ 开始批量预加载 \(posts.count) 个帖子的图片")
+            debugLog("🖼️ 开始批量预加载 \(posts.count) 个帖子的图片")
             #endif
             
             for post in posts {
@@ -191,7 +191,7 @@ extension ImageCache {
                 self.cache.totalCostLimit = 30 * 1024 * 1024 // 降低到30MB
                 self.cache.countLimit = 50 // 降低图片数量
                 #if DEBUG
-                print("🧠 检测到内存压力，降低图片缓存限制")
+                debugLog("🧠 检测到内存压力，降低图片缓存限制")
                 #endif
             } else {
                 // 恢复正常缓存限制
@@ -220,7 +220,7 @@ extension ImageCache {
             }
             
             #if DEBUG
-            print("🔮 预测性预加载: \(postsToLoad.count) 个帖子，方向: \(direction)")
+            debugLog("🔮 预测性预加载: \(postsToLoad.count) 个帖子，方向: \(direction)")
             #endif
         }
     }
@@ -242,7 +242,7 @@ extension ImageCache {
     func printCacheStats() {
         let stats = getCacheStats()
         #if DEBUG
-        print("""
+        debugLog("""
         🖼️ 图片缓存统计:
         - 缓存限制: \(stats.count) 张图片
         - 大小限制: \(stats.size / (1024*1024)) MB

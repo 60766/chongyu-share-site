@@ -54,7 +54,7 @@ struct MultiChatKeyboardAdaptive: ViewModifier {
                     }
                     
                     #if DEBUG
-                    print("MultiChatKeyboardAdaptive - 键盘 frame 变化，高度: \(height), 动画时长: \(duration)")
+                    debugLog("MultiChatKeyboardAdaptive - 键盘 frame 变化，高度: \(height), 动画时长: \(duration)")
                     #endif
                     
                         previousKeyboardHeight = keyboardHeight
@@ -78,7 +78,7 @@ struct MultiChatKeyboardAdaptive: ViewModifier {
                         // 如果收到的高度为0且之前键盘是显示的，使用默认高度（仅模拟器）
                         if height == 0 && previousKeyboardHeight > 0 && !hasManuallySetKeyboardHeight {
                             #if DEBUG
-                            print("MultiChatKeyboardAdaptive - 模拟器环境，键盘高度为0，使用默认高度")
+                            debugLog("MultiChatKeyboardAdaptive - 模拟器环境，键盘高度为0，使用默认高度")
                             #endif
                         withAnimation(swiftUIAnimation) {
                             keyboardHeight = UIScreen.main.bounds.height * 0.35
@@ -101,14 +101,14 @@ struct MultiChatKeyboardAdaptive: ViewModifier {
                 }
                 .onAppear {
                     #if DEBUG
-                    print("MultiChatKeyboardAdaptive - 视图出现，准备监听键盘通知")
+                    debugLog("MultiChatKeyboardAdaptive - 视图出现，准备监听键盘通知")
                     #endif
                     
                     // 监听自定义通知
                     NotificationCenter.default.addObserver(forName: Notification.Name("MultiChatForceShowKeyboard"), object: nil, queue: .main) { notification in
                         if let height = notification.userInfo?["height"] as? CGFloat {
                             #if DEBUG
-                            print("MultiChatKeyboardAdaptive - 收到强制显示键盘通知，高度: \(height)")
+                            debugLog("MultiChatKeyboardAdaptive - 收到强制显示键盘通知，高度: \(height)")
                             #endif
                             // 立即更新，不使用动画，确保第一次打开时也能正确贴合
                                 keyboardHeight = height
@@ -118,7 +118,7 @@ struct MultiChatKeyboardAdaptive: ViewModifier {
                     
                     NotificationCenter.default.addObserver(forName: Notification.Name("MultiChatForceHideKeyboard"), object: nil, queue: .main) { _ in
                         #if DEBUG
-                        print("MultiChatKeyboardAdaptive - 收到强制隐藏键盘通知")
+                        debugLog("MultiChatKeyboardAdaptive - 收到强制隐藏键盘通知")
                         #endif
                         // 立即更新，不使用动画
                             keyboardHeight = 0
@@ -138,7 +138,7 @@ struct MultiChatKeyboardAdaptive: ViewModifier {
                         .contentShape(Rectangle())
                         .onTapGesture {
                             #if DEBUG
-                            print("MultiChatKeyboardAdaptive - 点击空白区域，关闭键盘")
+                            debugLog("MultiChatKeyboardAdaptive - 点击空白区域，关闭键盘")
                             #endif
                             // 关闭键盘
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -216,13 +216,13 @@ class MultiChatKeyboardHeightSubscription<S: Subscriber>: Subscription where S.I
                 }
                 
                 #if DEBUG
-                print("MultiChatKeyboardHeightSubscription - 键盘 frame 变化，高度: \(height)")
+                debugLog("MultiChatKeyboardHeightSubscription - 键盘 frame 变化，高度: \(height)")
                 #endif
                 return height
             }
             .sink { [weak self] height in
                 #if DEBUG
-                print("MultiChatKeyboardHeightSubscription - 发送键盘高度: \(height)")
+                debugLog("MultiChatKeyboardHeightSubscription - 发送键盘高度: \(height)")
                 #endif
                 _ = self?.subscriber?.receive(height)
             }
@@ -233,7 +233,7 @@ class MultiChatKeyboardHeightSubscription<S: Subscriber>: Subscription where S.I
             .publisher(for: UIResponder.keyboardWillHideNotification)
             .sink { [weak self] _ in
                 #if DEBUG
-                print("MultiChatKeyboardHeightSubscription - 收到键盘隐藏通知")
+                debugLog("MultiChatKeyboardHeightSubscription - 收到键盘隐藏通知")
                 #endif
                 _ = self?.subscriber?.receive(0)
             }
@@ -244,7 +244,7 @@ class MultiChatKeyboardHeightSubscription<S: Subscriber>: Subscription where S.I
             .publisher(for: Notification.Name("MultiChatForceShowKeyboard"))
             .compactMap { notification -> CGFloat? in
                 #if DEBUG
-                print("MultiChatKeyboardHeightSubscription - 收到强制显示键盘通知")
+                debugLog("MultiChatKeyboardHeightSubscription - 收到强制显示键盘通知")
                 #endif
                 return notification.userInfo?["height"] as? CGFloat ?? UIScreen.main.bounds.height * 0.35
             }
@@ -257,7 +257,7 @@ class MultiChatKeyboardHeightSubscription<S: Subscriber>: Subscription where S.I
             .publisher(for: Notification.Name("MultiChatForceHideKeyboard"))
             .sink { [weak self] _ in
                 #if DEBUG
-                print("MultiChatKeyboardHeightSubscription - 收到强制隐藏键盘通知")
+                debugLog("MultiChatKeyboardHeightSubscription - 收到强制隐藏键盘通知")
                 #endif
                 _ = self?.subscriber?.receive(0)
             }

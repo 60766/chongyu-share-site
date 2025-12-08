@@ -155,7 +155,7 @@ fileprivate struct PostAvatar: View {
         }
         .onAppear {
             #if DEBUG
-            print("⚠️ PostAvatar - 使用字母头像: \(initialLetter) (来自: \(url))")
+            debugLog("⚠️ PostAvatar - 使用字母头像: \(initialLetter) (来自: \(url))")
             #endif
         }
     }

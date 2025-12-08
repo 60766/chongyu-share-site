@@ -65,7 +65,7 @@ struct NotificationView: View {
             return try todayInteractionStatsImpl()
         } catch {
             #if DEBUG
-            print("❌ 计算今日互动统计失败: \(error.localizedDescription)")
+            debugLog("❌ 计算今日互动统计失败: \(error.localizedDescription)")
             #endif
             // 返回默认值
             return (0, 0, [], [], 0, 0, 0, [], 0)
@@ -200,7 +200,7 @@ struct NotificationView: View {
             }
         } catch {
             #if DEBUG
-            print("❌ 读取单聊消息失败: \(error.localizedDescription)")
+            debugLog("❌ 读取单聊消息失败: \(error.localizedDescription)")
             #endif
         }
         let top3Private = privateChatCountByCharacter.sorted { $0.value > $1.value }.prefix(3)
@@ -242,7 +242,7 @@ struct NotificationView: View {
             }
         } catch {
             #if DEBUG
-            print("❌ 读取会话失败: \(error.localizedDescription)")
+            debugLog("❌ 读取会话失败: \(error.localizedDescription)")
             #endif
         }
         // 虚拟评论首次出现在今天（需要查看该角色在所有帖子中最早的虚拟评论是否在今天）
@@ -424,7 +424,7 @@ struct NotificationView: View {
                 .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PostLikeUpdated"))) { _ in
                     // 监听帖子点赞更新通知，刷新今日互动统计
                     #if DEBUG
-                    print("❤️ 收到PostLikeUpdated通知，刷新今日互动统计")
+                    debugLog("❤️ 收到PostLikeUpdated通知，刷新今日互动统计")
                     #endif
                     DispatchQueue.main.async {
                         // 触发今日互动统计的重新计算
@@ -435,7 +435,7 @@ struct NotificationView: View {
                 .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CommentLikeUpdated"))) { _ in
                     // 监听评论点赞更新通知，刷新今日互动统计
                     #if DEBUG
-                    print("❤️ NotificationViewOriginal: 收到CommentLikeUpdated通知，刷新今日互动统计")
+                    debugLog("❤️ NotificationViewOriginal: 收到CommentLikeUpdated通知，刷新今日互动统计")
                     #endif
                     DispatchQueue.main.async {
                         // 触发今日互动统计的重新计算

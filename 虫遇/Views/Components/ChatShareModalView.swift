@@ -169,7 +169,7 @@ struct ChatShareModalView: View {
         guard currentCardIndex < shareCards.count else { return }
         
         #if DEBUG
-        print("🔍 点击了微信分享按钮")
+        debugLog("🔍 点击了微信分享按钮")
         #endif
         
         // 添加触觉反馈

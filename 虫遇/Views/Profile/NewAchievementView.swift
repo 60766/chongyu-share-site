@@ -45,7 +45,7 @@ struct NewAchievementView: View {
         .refreshable {
             // 支持下拉刷新
             #if DEBUG
-            print("🔄 用户触发下拉刷新成就数据")
+            debugLog("🔄 用户触发下拉刷新成就数据")
             #endif
             evaluator.updateAllAchievements(using: modelContext)
         }

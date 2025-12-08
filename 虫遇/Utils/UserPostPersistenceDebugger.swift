@@ -257,7 +257,7 @@ class UserPostPersistenceDebugger: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             let checkResult = self.checkUserPostsInStorage()
             #if DEBUG
-            print(checkResult)
+            debugLog(checkResult)
             #endif
         }
         
@@ -307,7 +307,7 @@ class UserPostPersistenceDebugger: ObservableObject {
     private func restoreUserPostsFromStorage() {
         guard let data = UserDefaults.standard.data(forKey: userPostsKey) else {
             #if DEBUG
-            print("🔍 没有找到持久化的用户帖子数据")
+            debugLog("🔍 没有找到持久化的用户帖子数据")
             #endif
             return
         }
@@ -327,11 +327,11 @@ class UserPostPersistenceDebugger: ObservableObject {
             }
             
             #if DEBUG
-            print("✅ 成功恢复 \(userPosts.count) 条用户帖子")
+            debugLog("✅ 成功恢复 \(userPosts.count) 条用户帖子")
             #endif
         } catch {
             #if DEBUG
-            print("❌ 恢复用户帖子失败: \(error.localizedDescription)")
+            debugLog("❌ 恢复用户帖子失败: \(error.localizedDescription)")
             #endif
         }
     }
@@ -347,7 +347,7 @@ class UserPostPersistenceDebugger: ObservableObject {
         }
         
         #if DEBUG
-        print("📦 加载了 \(samplePosts.count) 条示例帖子")
+        debugLog("📦 加载了 \(samplePosts.count) 条示例帖子")
         #endif
     }
     

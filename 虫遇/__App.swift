@@ -26,7 +26,7 @@ struct ChongYuApp: App {
     var sharedModelContainer: ModelContainer = {
         // 🔍 诊断模式：逐个测试每个Model类
         #if DEBUG
-        print("🔍 [SwiftData] 开始诊断Model类...")
+        debugLog("🔍 [SwiftData] 开始诊断Model类...")
         
         // 测试每个Model类是否能被正确识别
         let modelClasses: [(String, Any.Type)] = [
@@ -42,7 +42,7 @@ struct ChongYuApp: App {
         ]
         
         for (name, type) in modelClasses {
-            print("   ✅ \(name): \(type)")
+            debugLog("   ✅ \(name): \(type)")
         }
         #endif
         
@@ -78,19 +78,19 @@ struct ChongYuApp: App {
 
         // 🔍 详细诊断：逐个测试每个Model类
         #if DEBUG
-        print("🔍 [SwiftData] 测试每个Model类...")
+        debugLog("🔍 [SwiftData] 测试每个Model类...")
         for modelType in schemaModels {
             let typeName = String(describing: modelType)
-            print("   📦 测试: \(typeName)")
+            debugLog("   📦 测试: \(typeName)")
             
             // 尝试创建Schema只包含这个Model
             do {
                 let testSchema = Schema([modelType])
                 let testConfig = ModelConfiguration(schema: testSchema, isStoredInMemoryOnly: true)
                 let _ = try ModelContainer(for: testSchema, configurations: [testConfig])
-                print("      ✅ \(typeName) 通过")
+                debugLog("      ✅ \(typeName) 通过")
             } catch {
-                print("      ❌ \(typeName) 失败: \(error)")
+                debugLog("      ❌ \(typeName) 失败: \(error)")
             }
         }
         #endif
@@ -98,9 +98,9 @@ struct ChongYuApp: App {
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            print("❌ [SwiftData] ModelContainer创建失败: \(error)")
-            print("   错误类型: \(type(of: error))")
-            print("   错误详情: \(error.localizedDescription)")
+            debugLog("❌ [SwiftData] ModelContainer创建失败: \(error)")
+            debugLog("   错误类型: \(type(of: error))")
+            debugLog("   错误详情: \(error.localizedDescription)")
             
             // 尝试删除损坏的数据库文件
             let fileManager = FileManager.default
@@ -115,11 +115,11 @@ struct ChongYuApp: App {
                         let backupPath = dbFile.appendingPathExtension("backup")
                         // 尝试备份，如果失败则直接删除
                         if (try? fileManager.moveItem(at: dbFile, to: backupPath)) != nil {
-                            print("   📦 已备份: \(dbFile.lastPathComponent)")
+                            debugLog("   📦 已备份: \(dbFile.lastPathComponent)")
                         } else {
                             // 如果备份失败，直接删除
                             try? fileManager.removeItem(at: dbFile)
-                            print("   🗑️ 已删除: \(dbFile.lastPathComponent)")
+                            debugLog("   🗑️ 已删除: \(dbFile.lastPathComponent)")
                         }
                     }
                 }
@@ -127,26 +127,26 @@ struct ChongYuApp: App {
                 // 尝试重新创建
                 do {
                     let retryContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
-                    print("   ✅ 删除旧数据库后重新创建成功")
+                    debugLog("   ✅ 删除旧数据库后重新创建成功")
                     return retryContainer
                 } catch {
-                    print("   ⚠️ 重新创建仍然失败: \(error)")
+                    debugLog("   ⚠️ 重新创建仍然失败: \(error)")
                 }
             }
             
             // 最后的fallback：使用内存模式（数据不会持久化，但至少应用可以启动）
-            print("   🔄 尝试使用内存模式作为fallback...")
+            debugLog("   🔄 尝试使用内存模式作为fallback...")
             let memoryConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
             do {
                 let fallbackContainer = try ModelContainer(for: schema, configurations: [memoryConfig])
-                print("   ✅ 使用内存模式（数据不会持久化，重启后丢失）")
-                print("   ⚠️ 建议：删除应用重新安装以恢复持久化存储")
+                debugLog("   ✅ 使用内存模式（数据不会持久化，重启后丢失）")
+                debugLog("   ⚠️ 建议：删除应用重新安装以恢复持久化存储")
                 return fallbackContainer
             } catch {
                 // 如果连内存模式都失败，说明Schema定义有问题
                 #if DEBUG
-                print("   ❌ 内存模式创建也失败，Schema可能有问题")
-                print("   错误详情: \(error)")
+                debugLog("   ❌ 内存模式创建也失败，Schema可能有问题")
+                debugLog("   错误详情: \(error)")
                 #endif
                 
                 // 记录错误到日志系统
@@ -155,7 +155,7 @@ struct ChongYuApp: App {
                 // 尝试创建一个最小可用的容器（只包含基础模型）
                 do {
                     #if DEBUG
-                    print("   🔄 尝试创建最小可用容器（仅基础模型）...")
+                    debugLog("   🔄 尝试创建最小可用容器（仅基础模型）...")
                     #endif
                     
                     // 只使用最基础的模型，避免复杂关系导致的问题
@@ -171,8 +171,8 @@ struct ChongYuApp: App {
                     let minimalContainer = try ModelContainer(for: minimalSchema, configurations: [minimalConfig])
                     
                     #if DEBUG
-                    print("   ✅ 创建最小可用容器成功（功能受限）")
-                    print("   ⚠️ 警告：部分功能可能不可用，建议删除应用重新安装")
+                    debugLog("   ✅ 创建最小可用容器成功（功能受限）")
+                    debugLog("   ⚠️ 警告：部分功能可能不可用，建议删除应用重新安装")
                     #endif
                     
                     // 在主线程显示错误提示（延迟执行，确保UI已初始化）
@@ -192,7 +192,7 @@ struct ChongYuApp: App {
                 } catch {
                     // 如果连最小容器都创建失败，记录错误但继续运行
                     #if DEBUG
-                    print("   ❌ 最小容器创建也失败: \(error)")
+                    debugLog("   ❌ 最小容器创建也失败: \(error)")
                     #endif
                     Logger.error("最小容器创建失败", error: error, log: Logger.data)
                     
@@ -204,7 +204,7 @@ struct ChongYuApp: App {
                         let emptyContainer = try ModelContainer(for: emptySchema, configurations: [emptyConfig])
                         
                         #if DEBUG
-                        print("   ⚠️ 使用空容器（数据功能完全不可用）")
+                        debugLog("   ⚠️ 使用空容器（数据功能完全不可用）")
                         #endif
                         
                         // 显示严重错误提示
@@ -225,7 +225,7 @@ struct ChongYuApp: App {
                         // 最后的最后，如果连空容器都创建失败，使用系统默认处理
                         // 这应该永远不会发生，但如果发生了，至少不会崩溃
                         #if DEBUG
-                        print("   🚨 所有容器创建方案都失败，使用系统默认处理")
+                        debugLog("   🚨 所有容器创建方案都失败，使用系统默认处理")
                         #endif
                         Logger.error("所有容器创建方案都失败", error: error, log: Logger.data)
                         
@@ -268,10 +268,10 @@ struct ChongYuApp: App {
         #if DEBUG
         let initTime = (CFAbsoluteTimeGetCurrent() - initStartTime) * 1000
         let totalTime = (CFAbsoluteTimeGetCurrent() - AppDelegate.appStartTime) * 1000
-        print("⚡️ 应用启动完成")
-        print("📊 性能统计:")
-        print("   - init()耗时: \(String(format: "%.0f", initTime))ms")
-        print("   - 总启动耗时: \(String(format: "%.0f", totalTime))ms")
+        debugLog("⚡️ 应用启动完成")
+        debugLog("📊 性能统计:")
+        debugLog("   - init()耗时: \(String(format: "%.0f", initTime))ms")
+        debugLog("   - 总启动耗时: \(String(format: "%.0f", totalTime))ms")
         #endif
     }
     var body: some Scene {
@@ -284,11 +284,11 @@ struct ChongYuApp: App {
                 .task {
                     // StoreKit 测试
                     #if DEBUG
-                    print("[APP] 开始加载 StoreKit 产品...")
+                    debugLog("[APP] 开始加载 StoreKit 产品...")
                     #endif
                     await storeKitManager.loadProducts()
                     #if DEBUG
-                    print("[APP] StoreKit 产品加载完成: \(storeKitManager.products.count) 个")
+                    debugLog("[APP] StoreKit 产品加载完成: \(storeKitManager.products.count) 个")
                     #endif
                 }
                 .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TriggerAutoBackup"))) { _ in
@@ -360,7 +360,7 @@ struct ChongYuApp: App {
     private func setupAPIConfig() {
         // API配置管理器已自动处理密钥设置
         #if DEBUG
-        print("🔑 API配置管理器已自动初始化")
+        debugLog("🔑 API配置管理器已自动初始化")
         #endif
         
         // 自动API测试已删除以节省API调用费用

@@ -51,7 +51,7 @@ class IntelligentDataCache: ObservableObject {
     
     @objc private func handleMemoryWarning() {
         #if DEBUG
-        print("🧠 收到内存警告，开始智能清理缓存")
+        debugLog("🧠 收到内存警告，开始智能清理缓存")
         #endif
         cleanupLeastRecentlyUsedCache()
     }
@@ -68,13 +68,13 @@ class IntelligentDataCache: ObservableObject {
                 updatePostAccessOrder(id)
                 cacheHits += 1
                 #if DEBUG
-                print("📈 帖子缓存命中: \(id)")
+                debugLog("📈 帖子缓存命中: \(id)")
                 #endif
                 return cachedPost
             } else {
                 cacheMisses += 1
                 #if DEBUG
-                print("📉 帖子缓存未命中: \(id)")
+                debugLog("📉 帖子缓存未命中: \(id)")
                 #endif
                 return nil
             }
@@ -119,7 +119,7 @@ class IntelligentDataCache: ObservableObject {
                 if self.postDataCache[post.id] == nil {
                     self.postDataCache[post.id] = post
                     #if DEBUG
-                    print("🔮 预加载帖子: \(post.id)")
+                    debugLog("🔮 预加载帖子: \(post.id)")
                     #endif
                 }
             }
@@ -137,13 +137,13 @@ class IntelligentDataCache: ObservableObject {
                 updateCommentAccessOrder(postId)
                 cacheHits += 1
                 #if DEBUG
-                print("📈 评论缓存命中: \(postId)")
+                debugLog("📈 评论缓存命中: \(postId)")
                 #endif
                 return cachedComments
             } else {
                 cacheMisses += 1
                 #if DEBUG
-                print("📉 评论缓存未命中: \(postId)")
+                debugLog("📉 评论缓存未命中: \(postId)")
                 #endif
                 return nil
             }
@@ -175,7 +175,7 @@ class IntelligentDataCache: ObservableObject {
         cacheQueue.async(flags: .barrier) { [weak self] in
             self?.commentCache[postId] = comments
             #if DEBUG
-            print("🔄 已更新评论缓存: \(postId)")
+            debugLog("🔄 已更新评论缓存: \(postId)")
             #endif
         }
     }
@@ -199,7 +199,7 @@ class IntelligentDataCache: ObservableObject {
         postDataCache.removeValue(forKey: oldestPostId)
         postAccessOrder.removeFirst()
         #if DEBUG
-        print("🗑️ 清理最旧帖子缓存: \(oldestPostId)")
+        debugLog("🗑️ 清理最旧帖子缓存: \(oldestPostId)")
         #endif
     }
     
@@ -208,7 +208,7 @@ class IntelligentDataCache: ObservableObject {
         commentCache.removeValue(forKey: oldestPostId)
         commentAccessOrder.removeFirst()
         #if DEBUG
-        print("🗑️ 清理最旧评论缓存: \(oldestPostId)")
+        debugLog("🗑️ 清理最旧评论缓存: \(oldestPostId)")
         #endif
     }
     
@@ -234,7 +234,7 @@ class IntelligentDataCache: ObservableObject {
             }
             
             #if DEBUG
-            print("🧹 内存压力清理完成，剩余帖子: \(self.postDataCache.count), 剩余评论: \(self.commentCache.count)")
+            debugLog("🧹 内存压力清理完成，剩余帖子: \(self.postDataCache.count), 剩余评论: \(self.commentCache.count)")
             #endif
         }
     }
@@ -250,7 +250,7 @@ class IntelligentDataCache: ObservableObject {
             self?.postAccessOrder.removeAll()
             self?.commentAccessOrder.removeAll()
             #if DEBUG
-            print("🧹 已清理所有智能缓存")
+            debugLog("🧹 已清理所有智能缓存")
             #endif
         }
     }
@@ -284,7 +284,7 @@ class IntelligentDataCache: ObservableObject {
     func printCacheStats() {
         let status = getCacheStatus()
         #if DEBUG
-        print("""
+        debugLog("""
         📊 智能缓存统计:
         - 缓存帖子数: \(status.posts)/\(maxPostCacheSize)
         - 缓存评论数: \(status.comments)/\(maxCommentCacheSize)
@@ -314,7 +314,7 @@ extension IntelligentDataCache {
             }
             
             #if DEBUG
-            print("📦 批量预加载 \(posts.count) 个帖子")
+            debugLog("📦 批量预加载 \(posts.count) 个帖子")
             #endif
         }
     }

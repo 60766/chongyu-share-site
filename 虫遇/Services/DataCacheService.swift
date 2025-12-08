@@ -31,7 +31,7 @@ class DataCacheService: ObservableObject {
         setupLifecycleObservers()
         
         #if DEBUG
-        print("🗄️ 数据缓存服务初始化")
+        debugLog("🗄️ 数据缓存服务初始化")
         #endif
     }
     
@@ -65,7 +65,7 @@ class DataCacheService: ObservableObject {
         dataUpdateSubject.send(key)
         
         #if DEBUG
-        print("🗄️ 缓存数据: \(key) (\(type))")
+        debugLog("🗄️ 缓存数据: \(key) (\(type))")
         #endif
     }
     
@@ -84,7 +84,7 @@ class DataCacheService: ObservableObject {
                 // 缓存已过期，清除
                 cache.removeValue(forKey: key)
                 #if DEBUG
-                print("🗄️ 缓存过期: \(key)")
+                debugLog("🗄️ 缓存过期: \(key)")
                 #endif
             }
             
@@ -96,7 +96,7 @@ class DataCacheService: ObservableObject {
         
         guard let value = entry.value as? T else {
             #if DEBUG
-            print("⚠️ 缓存类型不匹配: \(key), 期望 \(T.self), 实际 \(type(of: entry.value))")
+            debugLog("⚠️ 缓存类型不匹配: \(key), 期望 \(T.self), 实际 \(type(of: entry.value))")
             #endif
             return defaultValue
         }
@@ -137,7 +137,7 @@ class DataCacheService: ObservableObject {
     func invalidate(key: String) {
         cache.removeValue(forKey: key)
         #if DEBUG
-        print("🗄️ 缓存已清除: \(key)")
+        debugLog("🗄️ 缓存已清除: \(key)")
         #endif
     }
     
@@ -153,7 +153,7 @@ class DataCacheService: ObservableObject {
         }
         
         #if DEBUG
-        print("🗄️ 已清除\(keysToRemove.count)个前缀为'\(prefix)'的缓存")
+        debugLog("🗄️ 已清除\(keysToRemove.count)个前缀为'\(prefix)'的缓存")
         #endif
     }
     
@@ -163,7 +163,7 @@ class DataCacheService: ObservableObject {
     func invalidateAll() {
         cache.removeAll()
         #if DEBUG
-        print("🗄️ 已清除所有缓存")
+        debugLog("🗄️ 已清除所有缓存")
         #endif
     }
     
@@ -179,7 +179,7 @@ class DataCacheService: ObservableObject {
         
         #if DEBUG
         if !expiredKeys.isEmpty {
-            print("🗄️ 已清除\(expiredKeys.count)个过期缓存")
+            debugLog("🗄️ 已清除\(expiredKeys.count)个过期缓存")
         }
         #endif
     }
@@ -217,7 +217,7 @@ class DataCacheService: ObservableObject {
         }
         
         #if DEBUG
-        print("⚠️ 收到内存警告，已清理非关键缓存")
+        debugLog("⚠️ 收到内存警告，已清理非关键缓存")
         #endif
     }
     
@@ -234,20 +234,20 @@ class DataCacheService: ObservableObject {
         let totalMisses = cacheMisses.values.reduce(0, +)
         let hitRate = totalHits + totalMisses > 0 ? Double(totalHits) / Double(totalHits + totalMisses) : 0
         
-        print("📊 缓存统计:")
-        print("   - 总条目数: \(totalEntries)")
-        print("   - 有效条目: \(validEntries)")
-        print("   - 过期条目: \(expiredEntries)")
-        print("   - 命中次数: \(totalHits)")
-        print("   - 未命中次数: \(totalMisses)")
-        print("   - 命中率: \(String(format: "%.2f%%", hitRate * 100))")
+        debugLog("📊 缓存统计:")
+        debugLog("   - 总条目数: \(totalEntries)")
+        debugLog("   - 有效条目: \(validEntries)")
+        debugLog("   - 过期条目: \(expiredEntries)")
+        debugLog("   - 命中次数: \(totalHits)")
+        debugLog("   - 未命中次数: \(totalMisses)")
+        debugLog("   - 命中率: \(String(format: "%.2f%%", hitRate * 100))")
         
         // 打印最常用的缓存键
         let topHits = cacheHits.sorted { $0.value > $1.value }.prefix(5)
         if !topHits.isEmpty {
-            print("   - 最常用的缓存键:")
+            debugLog("   - 最常用的缓存键:")
             for (key, hits) in topHits {
-                print("     * \(key): \(hits)次")
+                debugLog("     * \(key): \(hits)次")
             }
         }
     }

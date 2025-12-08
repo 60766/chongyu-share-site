@@ -79,7 +79,7 @@ struct Logger {
      * 仅在DEBUG模式下输出
      */
     #if DEBUG
-    static func print(_ message: String, log: OSLog = .default) {
+    static func debugLog(_ message: String, log: OSLog = .default) {
         os_log("%{public}@", log: log, type: .debug, message)
     }
     #endif

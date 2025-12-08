@@ -465,7 +465,7 @@ class FeedbackLearningSystem {
             UserDefaults.standard.set(data, forKey: "feedbackRecords")
         } catch {
             #if DEBUG
-            print("无法保存反馈记录: \(error.localizedDescription)")
+            debugLog("无法保存反馈记录: \(error.localizedDescription)")
             #endif
         }
     }
@@ -480,7 +480,7 @@ class FeedbackLearningSystem {
                 feedbackRecords = try decoder.decode([FeedbackRecord].self, from: data)
             } catch {
                 #if DEBUG
-                print("无法加载反馈记录: \(error.localizedDescription)")
+                debugLog("无法加载反馈记录: \(error.localizedDescription)")
                 #endif
             }
         }

@@ -222,7 +222,7 @@ struct AppTabView: View {
                 self.tabBarManager.setTabBarController(tabBarController)
                 
                 #if DEBUG
-                print("🚀 性能优化生效：TabBarController直接引用已建立")
+                debugLog("🚀 性能优化生效：TabBarController直接引用已建立")
                 #endif
             }
         }
@@ -289,11 +289,11 @@ struct AppTabView: View {
                     switch result {
                     case .success(let filePath):
                         #if DEBUG
-                        print("✅ [自动备份] 备份成功: \(filePath)")
+                        debugLog("✅ [自动备份] 备份成功: \(filePath)")
                         #endif
                     case .failure(let error):
                         #if DEBUG
-                        print("⚠️ [自动备份] 备份失败: \(error.localizedDescription)")
+                        debugLog("⚠️ [自动备份] 备份失败: \(error.localizedDescription)")
                         #endif
                     }
                 }

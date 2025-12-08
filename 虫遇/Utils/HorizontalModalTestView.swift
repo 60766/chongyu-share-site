@@ -63,7 +63,7 @@ struct HorizontalModalTestView: View {
             direction: .fromRight,
             onDismiss: {
                 #if DEBUG
-                print("模态视图已关闭")
+                debugLog("模态视图已关闭")
                 #endif
             }
         ) {
@@ -81,7 +81,7 @@ struct HorizontalModalTestView: View {
             direction: .fromRight,
             onDismiss: {
                 #if DEBUG
-                print("项目模态视图已关闭")
+                debugLog("项目模态视图已关闭")
                 #endif
             }
         ) { item in

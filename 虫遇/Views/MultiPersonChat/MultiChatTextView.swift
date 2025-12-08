@@ -29,7 +29,7 @@ struct MultiChatTextView: UIViewRepresentable {
         
         // 添加调试日志
         #if DEBUG
-        print("MultiChatTextView - makeUIView 创建")
+        debugLog("MultiChatTextView - makeUIView 创建")
         #endif
         
         return textView
@@ -59,12 +59,12 @@ struct MultiChatTextView: UIViewRepresentable {
         DispatchQueue.main.async {
         if isFocused != uiView.isFirstResponder {
             #if DEBUG
-            print("MultiChatTextView - updateUIView - isFocused: \(isFocused), isFirstResponder: \(uiView.isFirstResponder)")
+            debugLog("MultiChatTextView - updateUIView - isFocused: \(isFocused), isFirstResponder: \(uiView.isFirstResponder)")
             #endif
             
                 if isFocused && !uiView.isFirstResponder {
                     #if DEBUG
-                    print("MultiChatTextView - 尝试激活键盘")
+                    debugLog("MultiChatTextView - 尝试激活键盘")
                     #endif
                     uiView.becomeFirstResponder()
                     
@@ -146,7 +146,7 @@ struct MultiChatTextView: UIViewRepresentable {
         
         func textViewDidBeginEditing(_ textView: UITextView) {
             #if DEBUG
-            print("MultiChatTextView - textViewDidBeginEditing")
+            debugLog("MultiChatTextView - textViewDidBeginEditing")
             #endif
             
             // 立即更新焦点状态，不使用动画，让系统键盘自然处理动画
@@ -159,7 +159,7 @@ struct MultiChatTextView: UIViewRepresentable {
         
         func textViewDidEndEditing(_ textView: UITextView) {
             #if DEBUG
-            print("MultiChatTextView - textViewDidEndEditing")
+            debugLog("MultiChatTextView - textViewDidEndEditing")
             #endif
             // 立即更新焦点状态，不使用动画，让系统键盘自然处理动画
             DispatchQueue.main.async {

@@ -24,7 +24,7 @@ final class BackendTestService {
         do {
             let url = baseURL
             #if DEBUG
-            print("🔍 测试连接到: \(url.absoluteString)")
+            debugLog("🔍 测试连接到: \(url.absoluteString)")
             #endif
             
             var request = URLRequest(url: url)
@@ -42,8 +42,8 @@ final class BackendTestService {
             let responseBody = String(data: data, encoding: .utf8) ?? ""
             
             #if DEBUG
-            print("📡 响应状态码: \(statusCode)")
-            print("📄 响应内容: \(responseBody)")
+            debugLog("📡 响应状态码: \(statusCode)")
+            debugLog("📄 响应内容: \(responseBody)")
             #endif
             
             var details: [String: Any] = [
@@ -84,7 +84,7 @@ final class BackendTestService {
         do {
             let url = baseURL.appendingPathComponent("health")
             #if DEBUG
-            print("🏥 测试健康检查: \(url.absoluteString)")
+            debugLog("🏥 测试健康检查: \(url.absoluteString)")
             #endif
             
             var request = URLRequest(url: url)

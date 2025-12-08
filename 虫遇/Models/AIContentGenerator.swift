@@ -110,10 +110,10 @@ class AIContentGenerator {
         return Future { promise in
             // 创建后台任务，确保即使用户退出页面也能完成API调用
             let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
-                print("⚠️ generateResonancePosts: 后台任务超时，但API请求会继续进行")
+                debugLog("⚠️ generateResonancePosts: 后台任务超时，但API请求会继续进行")
             }
             
-            print("🚀 开始生成虫洞共鸣帖子 - 个人化时空连接")
+            debugLog("🚀 开始生成虫洞共鸣帖子 - 个人化时空连接")
             
             // 创建针对用户情境的深度分析，增强个人化
             _ = self.analyzeUserContext(situation: situation, expectation: expectation, keyword: keyword)
@@ -141,7 +141,7 @@ class AIContentGenerator {
             
             // 确保没有重复的历史人物
             selectedFigures = Array(Set(selectedFigures))
-            print("🔍 选择的历史人物: \(selectedFigures.joined(separator: ", "))")
+            debugLog("🔍 选择的历史人物: \(selectedFigures.joined(separator: ", "))")
             
             var posts: [ResonancePost] = []
             var generatedContents = Set<String>() // 用于检测内容重复
@@ -150,7 +150,7 @@ class AIContentGenerator {
             func generateNextPost(index: Int) {
                 // 检查是否已生成所有帖子
                 if index >= selectedFigures.count {
-                    print("✅ 所有帖子生成完成，共\(posts.count)篇")
+                    debugLog("✅ 所有帖子生成完成，共\(posts.count)篇")
                     // 完成后清理资源并返回结果
                     UIApplication.shared.endBackgroundTask(backgroundTaskID)
                     promise(.success(posts))
@@ -162,7 +162,7 @@ class AIContentGenerator {
                 let figureIndex = historicalFigures.firstIndex(of: figure) ?? 0
                 let avatar = avatarSymbols[figureIndex]
                 
-                print("🔄 开始生成第\(index+1)/\(selectedFigures.count)篇深度共鸣帖子，人物: \(figure)")
+                debugLog("🔄 开始生成第\(index+1)/\(selectedFigures.count)篇深度共鸣帖子，人物: \(figure)")
                 
                 // 为每个历史人物定制情境和期望，增加个性化
                 let customizedSituation = self.customizeSituationForFigure(figure: figure, baseSituation: situation)
@@ -179,17 +179,17 @@ class AIContentGenerator {
                 .sink(
                     receiveCompletion: { completion in
                         if case .failure(let error) = completion {
-                            print("❌ 生成\(figure)内容失败: \(error.localizedDescription)")
+                            debugLog("❌ 生成\(figure)内容失败: \(error.localizedDescription)")
                             
                             // 即使失败也不使用备用内容，而是跳过这个帖子
-                            print("⚠️ 跳过\(figure)的帖子生成")
+                            debugLog("⚠️ 跳过\(figure)的帖子生成")
                         }
                         
                         // 继续处理下一个帖子
                         generateNextPost(index: index + 1)
                     },
                     receiveValue: { result in
-                        print("📄 成功获取\(figure)深度共鸣内容，长度: \(result.content.count)字符")
+                        debugLog("📄 成功获取\(figure)深度共鸣内容，长度: \(result.content.count)字符")
                         
                         // 创建帖子前检查内容是否重复
                         if !generatedContents.contains(result.content) {
@@ -218,9 +218,9 @@ class AIContentGenerator {
                                 comments: comments
                             )
                             posts.append(post)
-                            print("✅ 已将\(figure)深度共鸣帖子添加到结果数组，包含\(comments.count)条评论")
+                            debugLog("✅ 已将\(figure)深度共鸣帖子添加到结果数组，包含\(comments.count)条评论")
                         } else {
-                            print("⚠️ 检测到重复内容，跳过添加\(figure)的帖子")
+                            debugLog("⚠️ 检测到重复内容，跳过添加\(figure)的帖子")
                         }
                         
                         // 不要在这里调用generateNextPost，因为它会在receiveCompletion中调用
@@ -657,7 +657,7 @@ class AIContentGenerator {
         figure: String
     ) -> Future<String, Error> {
         return Future { promise in
-            print("🚀 generateCreativeIdeaContent: 开始为\(figure)生成奇思妙想内容")
+            debugLog("🚀 generateCreativeIdeaContent: 开始为\(figure)生成奇思妙想内容")
             
             // 更多元化的表达形式，不只是"突然想到"
             let expressionForms = [
@@ -758,20 +758,20 @@ class AIContentGenerator {
             - 不要使用八股文或说教语气，要像真人随手记录的灵感
             """
             
-            print("📝 生成提示词完成，长度: \(prompt.count)字符")
-            print("🔄 准备调用API生成内容...")
+            debugLog("📝 生成提示词完成，长度: \(prompt.count)字符")
+            debugLog("🔄 准备调用API生成内容...")
             
             self.generateContent(prompt: prompt)
                 .sink(
                     receiveCompletion: { completion in
                         if case .failure(let error) = completion {
-                            print("❌ 奇思妙想内容生成失败: \(error.localizedDescription)")
+                            debugLog("❌ 奇思妙想内容生成失败: \(error.localizedDescription)")
                             promise(.failure(error))
                         }
                     },
                     receiveValue: { content in
-                        print("✅ 奇思妙想内容生成成功，长度: \(content.count)字符")
-                        print("📄 内容前30个字符: \(content.prefix(30))")
+                        debugLog("✅ 奇思妙想内容生成成功，长度: \(content.count)字符")
+                        debugLog("📄 内容前30个字符: \(content.prefix(30))")
                         promise(.success(content))
                     }
                 )
@@ -997,12 +997,12 @@ class AIContentGenerator {
         return Future { promise in
             // 创建后台任务，确保即使用户退出页面也能完成API调用
             let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
-                print("⚠️ AIContentGenerator: 内容生成的后台任务超时")
+                debugLog("⚠️ AIContentGenerator: 内容生成的后台任务超时")
             }
             
-            print("🚀 开始生成内容")
-            print("📝 提示词长度: \(prompt.count)字符")
-            print("📝 提示词前100字符: \"\(prompt.prefix(100))...\"")
+            debugLog("🚀 开始生成内容")
+            debugLog("📝 提示词长度: \(prompt.count)字符")
+            debugLog("📝 提示词前100字符: \"\(prompt.prefix(100))...\"")
             
             // 添加多次重试逻辑
             let maxRetryCount = 3
@@ -1010,25 +1010,25 @@ class AIContentGenerator {
             
             func attemptAPICall() {
                 currentTry += 1
-                print("🔄 API调用尝试 #\(currentTry)/\(maxRetryCount)")
+                debugLog("🔄 API调用尝试 #\(currentTry)/\(maxRetryCount)")
                 
                 AINetworkService.shared.sendRequest(prompt: prompt)
                     .sink(
                         receiveCompletion: { completion in
                             if case .failure(let error) = completion {
-                                print("⚠️ API调用失败，错误: \(error.localizedDescription)")
+                                debugLog("⚠️ API调用失败，错误: \(error.localizedDescription)")
                                 
                                 if currentTry < maxRetryCount {
-                                    print("🔄 重试API调用...")
+                                    debugLog("🔄 重试API调用...")
                                     // 注意：端点管理已迁移到后端服务器，无需客户端切换
                                     attemptAPICall()
                                 } else {
-                                    print("❌ 已达到最大重试次数(\(maxRetryCount)次)，API调用失败")
+                                    debugLog("❌ 已达到最大重试次数(\(maxRetryCount)次)，API调用失败")
                                     
                                     // 结束后台任务
                                     if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                                         UIApplication.shared.endBackgroundTask(backgroundTaskID)
-                                        print("🏁 AIContentGenerator: 内容生成任务失败，后台任务结束")
+                                        debugLog("🏁 AIContentGenerator: 内容生成任务失败，后台任务结束")
                                     }
                                     
                                     promise(.failure(error))
@@ -1037,13 +1037,13 @@ class AIContentGenerator {
                                 // 结束后台任务
                                 if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                                     UIApplication.shared.endBackgroundTask(backgroundTaskID)
-                                    print("🏁 AIContentGenerator: 内容生成任务成功完成，后台任务结束")
+                                    debugLog("🏁 AIContentGenerator: 内容生成任务成功完成，后台任务结束")
                                 }
                             }
                         },
                         receiveValue: { output in
-                            print("✅ 成功生成内容，字数: \(output.count)")
-                            print("📄 内容前50字符: \"\(output.prefix(50))...\"")
+                            debugLog("✅ 成功生成内容，字数: \(output.count)")
+                            debugLog("📄 内容前50字符: \"\(output.prefix(50))...\"")
                             promise(.success(output))
                         }
                     )
@@ -1731,7 +1731,7 @@ class AIContentGenerator {
             let commenters = Array(shuffled.prefix(commentersCount))
             
             #if DEBUG
-            print("🔒 评论者选择（已应用分类过滤）: 从\(allAvailableCharacters.count)个可用角色中选择\(commenters.count)个")
+            debugLog("🔒 评论者选择（已应用分类过滤）: 从\(allAvailableCharacters.count)个可用角色中选择\(commenters.count)个")
             #endif
             
             // 构建提示词
@@ -1747,11 +1747,11 @@ class AIContentGenerator {
                 .catch { error -> AnyPublisher<String, AINetworkError> in
                     // 对于部分数据可用的错误，尝试重试一次
                     if case AINetworkError.partialDataAvailable(_) = error {
-                        print("🔄 检测到部分数据传输失败，尝试重试...")
+                        debugLog("🔄 检测到部分数据传输失败，尝试重试...")
                         // 简单重试一次，使用稍微不同的参数以避免完全相同的请求
                         return AINetworkService.shared.sendRequest(prompt: prompt)
                             .catch { retryError in
-                                print("❌ 重试后仍然失败: \(retryError.localizedDescription)")
+                                debugLog("❌ 重试后仍然失败: \(retryError.localizedDescription)")
                                 return Fail<String, AINetworkError>(error: retryError).eraseToAnyPublisher()
                             }
                             .eraseToAnyPublisher()
@@ -1769,7 +1769,7 @@ class AIContentGenerator {
                         let result = self.parseContentAndComments(from: response)
                         switch result {
                         case .success(let contentAndComments):
-                            print("✅ AI成功生成内容和\(contentAndComments.comments.count)条评论")
+                            debugLog("✅ AI成功生成内容和\(contentAndComments.comments.count)条评论")
                             promise(.success(contentAndComments))
                         case .failure(let error):
                             promise(.failure(error))
@@ -2126,7 +2126,7 @@ class AIContentGenerator {
      * 解析生成的内容和评论
      */
     private func parseContentAndComments(from response: String) -> Result<(content: String, comments: [(character: String, comment: String, isReply: Bool, replyTo: String?)]), Error> {
-        print(" 解析AI返回的内容和评论...")
+        debugLog(" 解析AI返回的内容和评论...")
         
         // 匹配内容部分
         let contentRegexPattern = "---内容开始---(.*?)---内容结束---"
@@ -2137,7 +2137,7 @@ class AIContentGenerator {
             (response as NSString).substring(with: contentMatch!.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines) : 
             response
         
-        print("📄 解析得到的原始内容: \(content.prefix(100))..." + (content.count > 100 ? "..." : ""))
+        debugLog("📄 解析得到的原始内容: \(content.prefix(100))..." + (content.count > 100 ? "..." : ""))
         
         // 检查内容是否包含特定格式特征
         let containsModernInterpretation = content.contains("（现代解读：") && content.contains("）")
@@ -2149,18 +2149,18 @@ class AIContentGenerator {
                                        content.contains("经验") || content.contains("挑战"))
         
         if containsModernInterpretation {
-            print("🔎 检测到「古潮新语」格式 - 包含现代解读部分")
+            debugLog("🔎 检测到「古潮新语」格式 - 包含现代解读部分")
         }
         
         if containsTimelineHeader {
-            print("🔎 检测到「时空记事」格式 - 包含时间地点标注")
+            debugLog("🔎 检测到「时空记事」格式 - 包含时间地点标注")
         }
         
         if containsResonancePattern {
-            print("🔎 检测到「虫洞共鸣」格式 - 包含人生洞见特征")
+            debugLog("🔎 检测到「虫洞共鸣」格式 - 包含人生洞见特征")
         }
         
-        print("📊 内容统计: 总长度=\(content.count)字符, 行数=\(content.components(separatedBy: "\n").count)")
+        debugLog("📊 内容统计: 总长度=\(content.count)字符, 行数=\(content.components(separatedBy: "\n").count)")
         
         // 匹配评论部分
         let commentsRegexPattern = "---评论开始---(.*?)---评论结束---"
@@ -2174,7 +2174,7 @@ class AIContentGenerator {
         var comments: [(character: String, comment: String, isReply: Bool, replyTo: String?)] = []
         let commentLines = commentsText.components(separatedBy: .newlines).filter { !$0.isEmpty }
         
-        print("📝 评论行数: \(commentLines.count)")
+        debugLog("📝 评论行数: \(commentLines.count)")
         
         // 主要解析方法：查找"："分隔符和回复评论格式
         for (index, line) in commentLines.enumerated() {
@@ -2192,7 +2192,7 @@ class AIContentGenerator {
                     
                     if !replier.isEmpty && !replyToName.isEmpty && !replyContent.isEmpty {
                         comments.append((replier, replyContent, true, replyToName))
-                        print("✅ 成功解析回复评论#\(index+1): \(replier) 回复 @\(replyToName): \(replyContent.prefix(20))...")
+                        debugLog("✅ 成功解析回复评论#\(index+1): \(replier) 回复 @\(replyToName): \(replyContent.prefix(20))...")
                     }
                 }
             }
@@ -2204,11 +2204,11 @@ class AIContentGenerator {
                 // 只有当角色名和评论内容都不为空时才添加
                 if !character.isEmpty && !comment.isEmpty {
                     comments.append((character, comment, false, nil))
-                    print("✅ 成功解析基础评论#\(index+1): \(character) - \(comment.prefix(20))...")
+                    debugLog("✅ 成功解析基础评论#\(index+1): \(character) - \(comment.prefix(20))...")
                 } else if !character.isEmpty && comment.isEmpty {
-                    print("⚠️ 评论内容为空: \(character)")
+                    debugLog("⚠️ 评论内容为空: \(character)")
                 } else {
-                    print("⚠️ 角色名为空")
+                    debugLog("⚠️ 角色名为空")
                 }
             } else if let range = line.range(of: ":") {
                 // 尝试英文冒号分隔符
@@ -2217,23 +2217,23 @@ class AIContentGenerator {
                 
                 if !character.isEmpty && !comment.isEmpty {
                     comments.append((character, comment, false, nil))
-                    print("✅ 使用英文冒号解析评论#\(index+1): \(character) - \(comment.prefix(20))...")
+                    debugLog("✅ 使用英文冒号解析评论#\(index+1): \(character) - \(comment.prefix(20))...")
                 }
             } else if line.contains("-") {
                 // 尝试破折号分隔符
                 let parts = line.components(separatedBy: "-").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 if parts.count >= 2 && !parts[0].isEmpty && !parts[1].isEmpty {
                     comments.append((parts[0], parts[1], false, nil))
-                    print("✅ 使用破折号解析评论#\(index+1): \(parts[0]) - \(parts[1].prefix(20))...")
+                    debugLog("✅ 使用破折号解析评论#\(index+1): \(parts[0]) - \(parts[1].prefix(20))...")
                 }
             } else {
-                print("⚠️ 无法解析评论行: \(line)")
+                debugLog("⚠️ 无法解析评论行: \(line)")
             }
         }
         
         // 如果基本解析失败，尝试回退方案
         if comments.isEmpty && !commentsText.isEmpty {
-            print("⚠️ 标准评论解析失败，尝试备用解析方法...")
+            debugLog("⚠️ 标准评论解析失败，尝试备用解析方法...")
             
             // 尝试识别可能的评论块
             if commentLines.count >= 2 {
@@ -2248,7 +2248,7 @@ class AIContentGenerator {
                         // 检查第二行是否像评论内容（较长）
                         if possibleComment.count > 10 {
                             comments.append((possibleCharacter, possibleComment, false, nil))
-                            print("✅ 备用方法(相邻行)解析成功: \(possibleCharacter) - \(possibleComment.prefix(20))...")
+                            debugLog("✅ 备用方法(相邻行)解析成功: \(possibleCharacter) - \(possibleComment.prefix(20))...")
                             i += 1 // 跳过下一行
                         }
                     }
@@ -2259,10 +2259,10 @@ class AIContentGenerator {
             // 尝试使用\n\n分割评论块
             if comments.isEmpty {
                 let possibleComments = commentsText.components(separatedBy: "\n\n")
-                print("🔄 备用解析 - 检测到\(possibleComments.count)个可能的评论块")
+                debugLog("🔄 备用解析 - 检测到\(possibleComments.count)个可能的评论块")
                 
                 for (index, possibleComment) in possibleComments.enumerated() {
-                    print("🔍 分析评论块#\(index+1): \(possibleComment.prefix(30))...")
+                    debugLog("🔍 分析评论块#\(index+1): \(possibleComment.prefix(30))...")
                     
                     // 尝试使用冒号分割
                     if let range = possibleComment.range(of: "：") ?? possibleComment.range(of: ":") {
@@ -2271,7 +2271,7 @@ class AIContentGenerator {
                         
                         if !character.isEmpty && !comment.isEmpty {
                             comments.append((character, comment, false, nil))
-                            print("✅ 备用方法解析成功: \(character) - \(comment.prefix(20))...")
+                            debugLog("✅ 备用方法解析成功: \(character) - \(comment.prefix(20))...")
                         }
                     } else {
                         // 尝试使用换行分割
@@ -2282,7 +2282,7 @@ class AIContentGenerator {
                             
                             if character.count < 20 && comment.count > 10 {
                                 comments.append((character, comment, false, nil))
-                                print("✅ 备用方法(多行)解析成功: \(character) - \(comment.prefix(20))...")
+                                debugLog("✅ 备用方法(多行)解析成功: \(character) - \(comment.prefix(20))...")
                             }
                         }
                     }
@@ -2313,7 +2313,7 @@ class AIContentGenerator {
             filteredComments.append((character, comment, isReply, replyTo))
         }
         
-        print("📊 最终解析结果: \(filteredComments.count)条有效评论，包含\(filteredComments.filter { $0.isReply }.count)条回复评论")
+        debugLog("📊 最终解析结果: \(filteredComments.count)条有效评论，包含\(filteredComments.filter { $0.isReply }.count)条回复评论")
         return .success((content, filteredComments))
     }
     
@@ -2333,17 +2333,17 @@ class AIContentGenerator {
         commentersCount: Int = 3
     ) -> Future<(content: String, comments: [(character: String, comment: String, isReply: Bool, replyTo: String?)]), Error> {
         return Future { promise in
-            print("🔄 开始生成带评论的虫洞共鸣内容: 角色=\(figure), 情境=\(situation)")
+            debugLog("🔄 开始生成带评论的虫洞共鸣内容: 角色=\(figure), 情境=\(situation)")
             
             // 根据历史人物查询对应的CharacterIdentity
             self.findCharacterByName(name: figure)
                 .sink(
                     receiveCompletion: { completion in
                         if case .failure(let error) = completion {
-                            print("❌ 查找角色信息失败: \(error.localizedDescription)")
+                            debugLog("❌ 查找角色信息失败: \(error.localizedDescription)")
                             
                             // 创建一个临时角色信息并继续生成内容
-                            print("⚠️ 创建临时角色继续生成内容")
+                            debugLog("⚠️ 创建临时角色继续生成内容")
                             let tempCharacter = CharacterSystem.CharacterIdentity(
                                 id: "temp_\(UUID().uuidString.prefix(8))",
                                 name: figure,
@@ -2383,7 +2383,7 @@ class AIContentGenerator {
                         }
                     },
                     receiveValue: { character in
-                        print("✅ 找到角色: \(character.name), 类型: \(character.type.displayName)")
+                        debugLog("✅ 找到角色: \(character.name), 类型: \(character.type.displayName)")
                         
                         // 使用找到的角色信息生成内容
                         self.generateContentWithComments(
@@ -2424,7 +2424,7 @@ class AIContentGenerator {
                 // 找到匹配的角色
                 promise(.success(foundCharacter))
             } else {
-                print("⚠️ 在数据库中未找到角色: \(name)，尝试使用备用方案")
+                debugLog("⚠️ 在数据库中未找到角色: \(name)，尝试使用备用方案")
                 
                 // 备用方案：尝试使用模糊匹配
                 let potentialMatches = characterSystem.getAllCharacters().filter {
@@ -2432,10 +2432,10 @@ class AIContentGenerator {
                 }
                 
                 if let bestMatch = potentialMatches.first {
-                    print("✅ 找到最佳匹配角色: \(bestMatch.name)")
+                    debugLog("✅ 找到最佳匹配角色: \(bestMatch.name)")
                     promise(.success(bestMatch))
                 } else {
-                    print("⚠️ 无匹配角色，创建临时角色")
+                    debugLog("⚠️ 无匹配角色，创建临时角色")
                     
                     // 创建一个临时角色（优先使用历史人物类型）
                     let tempCharacter = CharacterSystem.CharacterIdentity(
@@ -2510,7 +2510,7 @@ class AIContentGenerator {
         // 处理评论
         let commentItems = self.processComments(result.comments, contentID: contentItem.id)
         
-        print("✅ 成功处理内容和\(commentItems.count)条评论")
+        debugLog("✅ 成功处理内容和\(commentItems.count)条评论")
         return (contentItem, commentItems)
     }
     
@@ -2534,7 +2534,7 @@ class AIContentGenerator {
         _ commentItems: [(character: String, comment: String, isReply: Bool, replyTo: String?)],
         contentID: String
     ) -> [CommentItem] {
-        print("🔄 处理\(commentItems.count)条评论...")
+        debugLog("🔄 处理\(commentItems.count)条评论...")
         
         var comments: [CommentItem] = []
         var commentMap: [String: String] = [:] // 角色名到评论ID的映射
@@ -2593,7 +2593,7 @@ class AIContentGenerator {
         // 保存评论到评论存储
         CommentStore.shared.saveComments(comments, forContentID: contentID)
         
-        print("✅ 成功处理\(comments.count)条评论")
+        debugLog("✅ 成功处理\(comments.count)条评论")
         return comments
     }
 }

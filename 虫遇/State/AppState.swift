@@ -36,7 +36,7 @@ class AppState: ObservableObject {
 
     // MARK: - 初始化
     private init() {
-        print("🚀 AppState 初始化...")
+        debugLog("🚀 AppState 初始化...")
         setupBindings()
         loadInitialData()
     }
@@ -57,7 +57,7 @@ class AppState: ObservableObject {
 
     // MARK: - 数据加载
     func loadInitialData() {
-        print("⏳ AppState 开始加载初始数据...")
+        debugLog("⏳ AppState 开始加载初始数据...")
         loadCharacters()
         // postViewModel 和 notificationService 会在初始化时自动加载数据
         // 因此这里只需要确保它们被初始化即可
@@ -69,18 +69,18 @@ class AppState: ObservableObject {
     // 加载角色数据
     func loadCharacters(force: Bool = false) {
         if shouldLoadData(forKey: "characters", force: force) {
-            print("🎭 AppState 正在加载角色数据...")
+            debugLog("🎭 AppState 正在加载角色数据...")
             // AppState用于全局状态，不受分类屏蔽影响，使用不过滤的版本
             self.characters = CharacterModel.loadAllCharactersWithoutFilter()
             self.lastLoadTime["characters"] = Date()
-            print("✅ AppState 角色数据加载完成，共 \(self.characters.count) 个角色。")
+            debugLog("✅ AppState 角色数据加载完成，共 \(self.characters.count) 个角色。")
         }
     }
     
     // 更新用户统计数据
     func updateUserStats(force: Bool = false) {
         if shouldLoadData(forKey: "userStats", force: force) {
-            print("📊 AppState 正在更新用户统计...")
+            debugLog("📊 AppState 正在更新用户统计...")
             
             // 使用后台线程进行计算，避免阻塞UI
             Task(priority: .utility) {
@@ -89,7 +89,7 @@ class AppState: ObservableObject {
                 await MainActor.run {
                     self.userStats = stats
                     self.lastLoadTime["userStats"] = Date()
-                    print("✅ AppState 用户统计更新完成。")
+                    debugLog("✅ AppState 用户统计更新完成。")
                 }
             }
         }
@@ -98,19 +98,19 @@ class AppState: ObservableObject {
     // MARK: - 缓存逻辑
     private func shouldLoadData(forKey key: String, force: Bool) -> Bool {
         if force {
-            print("⚡️ 强制刷新: \(key)")
+            debugLog("⚡️ 强制刷新: \(key)")
             return true
         }
         guard let lastLoad = lastLoadTime[key] else {
-            print("⏳ 首次加载: \(key)")
+            debugLog("⏳ 首次加载: \(key)")
             return true
         }
         let interval = Date().timeIntervalSince(lastLoad)
         if interval > cacheDuration {
-            print("⏰ 缓存过期，重新加载: \(key) (已过 \(Int(interval)) 秒)")
+            debugLog("⏰ 缓存过期，重新加载: \(key) (已过 \(Int(interval)) 秒)")
             return true
         }
-        print("✅ 从缓存加载: \(key)")
+        debugLog("✅ 从缓存加载: \(key)")
         return false
     }
     
@@ -167,13 +167,13 @@ class ContentGenerationStateManager: ObservableObject {
     func startGenerating(contentType: String) {
         isGenerating = true
         generatingContentType = contentType
-        print("🎬 开始生成内容: \(contentType)")
+        debugLog("🎬 开始生成内容: \(contentType)")
     }
     
     /// 结束生成内容
     func finishGenerating() {
         isGenerating = false
         generatingContentType = ""
-        print("✅ 内容生成完成")
+        debugLog("✅ 内容生成完成")
     }
 } 

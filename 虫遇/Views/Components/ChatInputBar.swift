@@ -50,13 +50,13 @@ struct ChatInputBar: View {
                     .onAppear {
                         // 不在页面出现时自动获得焦点，让用户手动点击输入框来激活
                         #if DEBUG
-                        print("ChatInputBar - 组件已出现，等待用户点击激活")
+                        debugLog("ChatInputBar - 组件已出现，等待用户点击激活")
                         #endif
                     }
                     .onDisappear {
                         // 组件消失时立即失去焦点，确保键盘快速收起（和梦幻联动一致）
                         #if DEBUG
-                        print("ChatInputBar - 组件消失，立即失去焦点")
+                        debugLog("ChatInputBar - 组件消失，立即失去焦点")
                         #endif
                         if textFieldFocused {
                             textFieldFocused = false
@@ -72,7 +72,7 @@ struct ChatInputBar: View {
                 .contentShape(Rectangle())
                 .onTapGesture {
                     #if DEBUG
-                    print("ChatInputBar - 输入框被点击")
+                    debugLog("ChatInputBar - 输入框被点击")
                     #endif
                     
                     // 防止重复触发键盘动画

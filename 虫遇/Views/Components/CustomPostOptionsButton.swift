@@ -499,12 +499,12 @@ struct CustomPostOptionsButton: View {
     // 增加生成数量
     private func increaseCount() {
         #if DEBUG
-        print("🔼🔼🔼 尝试增加生成数量，当前值: \(currentCount)")
+        debugLog("🔼🔼🔼 尝试增加生成数量，当前值: \(currentCount)")
         #endif
         
         guard let post = post else {
             #if DEBUG
-            print("⚠️⚠️⚠️ 严重错误: post为nil")
+            debugLog("⚠️⚠️⚠️ 严重错误: post为nil")
             #endif
             return
         }
@@ -515,7 +515,7 @@ struct CustomPostOptionsButton: View {
             let newCount = ExplorationCountManager.shared.increaseCount(for: contentType)
             currentCount = newCount
             #if DEBUG
-            print("✅ 成功增加生成数量: \(currentCount)")
+            debugLog("✅ 成功增加生成数量: \(currentCount)")
             #endif
             
             // 添加触觉反馈
@@ -526,7 +526,7 @@ struct CustomPostOptionsButton: View {
             let newCount = ExplorationCountManager.shared.increaseCount(for: defaultContentType)
             currentCount = newCount
             #if DEBUG
-            print("⚠️ 无法获取内容类型，使用默认类型增加生成数量: \(currentCount)")
+            debugLog("⚠️ 无法获取内容类型，使用默认类型增加生成数量: \(currentCount)")
             #endif
             
             // 添加触觉反馈
@@ -537,12 +537,12 @@ struct CustomPostOptionsButton: View {
     // 减少生成数量
     private func decreaseCount() {
         #if DEBUG
-        print("🔽🔽🔽 尝试减少生成数量，当前值: \(currentCount)")
+        debugLog("🔽🔽🔽 尝试减少生成数量，当前值: \(currentCount)")
         #endif
         
         guard let post = post else {
             #if DEBUG
-            print("⚠️⚠️⚠️ 严重错误: post为nil")
+            debugLog("⚠️⚠️⚠️ 严重错误: post为nil")
             #endif
             return
         }
@@ -553,7 +553,7 @@ struct CustomPostOptionsButton: View {
             let newCount = ExplorationCountManager.shared.decreaseCount(for: contentType)
             currentCount = newCount
             #if DEBUG
-            print("✅ 成功减少生成数量: \(currentCount)")
+            debugLog("✅ 成功减少生成数量: \(currentCount)")
             #endif
             
             // 添加触觉反馈
@@ -564,7 +564,7 @@ struct CustomPostOptionsButton: View {
             let newCount = ExplorationCountManager.shared.decreaseCount(for: defaultContentType)
             currentCount = newCount
             #if DEBUG
-            print("⚠️ 无法获取内容类型，使用默认类型减少生成数量: \(currentCount)")
+            debugLog("⚠️ 无法获取内容类型，使用默认类型减少生成数量: \(currentCount)")
             #endif
             
             // 添加触觉反馈

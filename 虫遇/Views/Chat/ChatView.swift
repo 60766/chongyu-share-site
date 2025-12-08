@@ -387,7 +387,7 @@ struct ChatView: View {
                     // 推入一个新的隐藏状态
                     tabBarManager.pushHideState()
                     #if DEBUG
-                    print("ChatView首次出现：TabBar已隐藏")
+                    debugLog("ChatView首次出现：TabBar已隐藏")
                     #endif
                 } else {
                     // 如果状态栈不为空，表示可能是从角色详情页返回
@@ -404,7 +404,7 @@ struct ChatView: View {
                     }
                     
                     #if DEBUG
-                    print("ChatView再次出现：TabBar状态已调整，当前深度: \(tabBarManager.hideStateStack.count)")
+                    debugLog("ChatView再次出现：TabBar状态已调整，当前深度: \(tabBarManager.hideStateStack.count)")
                     #endif
                 }
                 */
@@ -461,7 +461,7 @@ struct ChatView: View {
                 // 立即强制显示，无任何延迟
                 tabBarManager.showImmediately()
                 #if DEBUG
-                print("ChatView消失返回主页：TabBar立即重置并显示")
+                debugLog("ChatView消失返回主页：TabBar立即重置并显示")
                 #endif
             } else {
                 // 如果是返回到角色详情页，我们需要确保TabBar状态栈的一致性
@@ -470,7 +470,7 @@ struct ChatView: View {
                     tabBarManager.popHideState()
                 }
                 #if DEBUG
-                print("ChatView消失返回角色详情页：TabBar状态栈已调整，当前深度: \(tabBarManager.hideStateStack.count)")
+                debugLog("ChatView消失返回角色详情页：TabBar状态栈已调整，当前深度: \(tabBarManager.hideStateStack.count)")
                 #endif
             }
             */
@@ -567,11 +567,11 @@ struct ChatView: View {
         let content = messageText
         
         // 调试日志已关闭
-        // print("\n📱 ===== 用户发送消息 =====")
-        // print("📤 消息内容: \"\(content)\"")
-        // print("🗣️ 发送给角色: \(character.name) (ID: \(character.id))")
-        // print("🔄 会话ID: \(conversationId)")
-        // print("📱 ===== 消息详情结束 =====\n")
+        // debugLog("\n📱 ===== 用户发送消息 =====")
+        // debugLog("📤 消息内容: \"\(content)\"")
+        // debugLog("🗣️ 发送给角色: \(character.name) (ID: \(character.id))")
+        // debugLog("🔄 会话ID: \(conversationId)")
+        // debugLog("📱 ===== 消息详情结束 =====\n")
         
         // 创建用户消息
         let userMessage = Message(
@@ -795,11 +795,11 @@ struct ChatView: View {
         }
         
         // 调试日志已关闭
-        // print("\n🔄 ===== 构建对话上下文 =====")
-        // print("📜 最近消息数量: \(recentMessages.count)")
-        // print("📝 对话上下文内容:")
-        // print(context)
-        // print("🔄 ===== 上下文构建结束 =====\n")
+        // debugLog("\n🔄 ===== 构建对话上下文 =====")
+        // debugLog("📜 最近消息数量: \(recentMessages.count)")
+        // debugLog("📝 对话上下文内容:")
+        // debugLog(context)
+        // debugLog("🔄 ===== 上下文构建结束 =====\n")
         
         return context
     }
@@ -837,11 +837,11 @@ struct ChatView: View {
                         // 🔧 修复：当没有历史消息时，清空消息数组，避免显示错误的消息
                         self.messages = []
                         #if DEBUG
-                        print("📱 没有找到历史消息记录，已清空消息数组")
+                        debugLog("📱 没有找到历史消息记录，已清空消息数组")
                         #endif
                     } else {
                         #if DEBUG
-                        print("📱 成功加载 \(historicalMessages.count) 条历史消息")
+                        debugLog("📱 成功加载 \(historicalMessages.count) 条历史消息")
                         #endif
                         
                         // 一次性更新消息数组，避免多次重绘
@@ -1091,7 +1091,7 @@ struct ChatView: View {
             // 在模拟器中，keyboardAdaptive会自动处理键盘
             #if targetEnvironment(simulator)
             #if DEBUG
-            print("ChatView - 模拟器环境，keyboardAdaptive会自动处理")
+            debugLog("ChatView - 模拟器环境，keyboardAdaptive会自动处理")
             #endif
             #endif
         }
@@ -1112,7 +1112,7 @@ struct ChatView: View {
         #if targetEnvironment(simulator)
                     // keyboardAdaptive会自动处理键盘适配，无需手动模拟
         #if DEBUG
-        print("ChatView - 模拟器环境，keyboardAdaptive会自动处理键盘")
+        debugLog("ChatView - 模拟器环境，keyboardAdaptive会自动处理键盘")
         #endif
         #endif
     }
@@ -1472,7 +1472,7 @@ struct ChatMessageBubbleView: View {
         // 直接返回固定的彩色背景，所有角色使用统一的温暖淡紫色
         let color = Color(hex: "E8E3F8") // 温暖淡紫色 - 提高纯度和对比度
         #if DEBUG
-        print("🎨 getCharacterBubbleColor called, returning: \(color)")
+        debugLog("🎨 getCharacterBubbleColor called, returning: \(color)")
         #endif
         return color
     }

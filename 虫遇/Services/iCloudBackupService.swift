@@ -32,8 +32,8 @@ class iCloudBackupService: ObservableObject {
         // 首先检查iCloud是否可用
         guard FileManager.default.ubiquityIdentityToken != nil else {
             #if DEBUG
-            print("⚠️ [iCloud] ubiquityIdentityToken 为 nil")
-            print("   请检查：1. 是否登录iCloud  2. 是否开启iCloud Drive")
+            debugLog("⚠️ [iCloud] ubiquityIdentityToken 为 nil")
+            debugLog("   请检查：1. 是否登录iCloud  2. 是否开启iCloud Drive")
             #endif
             return nil
         }
@@ -41,8 +41,8 @@ class iCloudBackupService: ObservableObject {
         // 尝试获取iCloud容器URL（使用默认容器）
         guard let iCloudURL = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
             #if DEBUG
-            print("❌ [iCloud] 无法获取iCloud容器URL")
-            print("   请检查Xcode中iCloud容器配置")
+            debugLog("❌ [iCloud] 无法获取iCloud容器URL")
+            debugLog("   请检查Xcode中iCloud容器配置")
             #endif
             return nil
         }
@@ -56,7 +56,7 @@ class iCloudBackupService: ObservableObject {
             do {
                 try fileManager.createDirectory(at: documentsURL, withIntermediateDirectories: true, attributes: nil)
                 #if DEBUG
-                print("✅ [iCloud] 创建Documents目录成功")
+                debugLog("✅ [iCloud] 创建Documents目录成功")
                 #endif
             } catch {
                 Logger.error("创建Documents目录失败", error: error, log: Logger.data)
@@ -85,7 +85,7 @@ class iCloudBackupService: ObservableObject {
         // 检查iCloud可用性
         guard isiCloudAvailable else {
             #if DEBUG
-            print("❌ [iCloud] iCloud不可用")
+            debugLog("❌ [iCloud] iCloud不可用")
             #endif
             completion(.failure(iCloudBackupError.iCloudNotAvailable))
             return
@@ -96,7 +96,7 @@ class iCloudBackupService: ObservableObject {
             // 获取备份目录URL
             guard let backupDirURL = self.getBackupDirectoryURL() else {
                 #if DEBUG
-                print("❌ [iCloud] 无法获取备份目录URL")
+                debugLog("❌ [iCloud] 无法获取备份目录URL")
                 #endif
                 DispatchQueue.main.async {
                     completion(.failure(iCloudBackupError.cannotCreateDirectory))
@@ -105,7 +105,7 @@ class iCloudBackupService: ObservableObject {
             }
             
             #if DEBUG
-            print("📁 [iCloud] 备份目录路径: \(backupDirURL.path)")
+            debugLog("📁 [iCloud] 备份目录路径: \(backupDirURL.path)")
             #endif
             
             // 确保目录存在
@@ -117,7 +117,7 @@ class iCloudBackupService: ObservableObject {
                 do {
                     try fileManager.createDirectory(at: backupDirURL, withIntermediateDirectories: true, attributes: nil)
                     #if DEBUG
-                    print("✅ [iCloud] 创建备份目录成功: \(backupDirURL.path)")
+                    debugLog("✅ [iCloud] 创建备份目录成功: \(backupDirURL.path)")
                     #endif
                 } catch {
                     Logger.error("创建备份目录失败", error: error, log: Logger.data)
@@ -128,7 +128,7 @@ class iCloudBackupService: ObservableObject {
                 }
             } else {
                 #if DEBUG
-                print("✅ [iCloud] 备份目录已存在")
+                debugLog("✅ [iCloud] 备份目录已存在")
                 #endif
             }
             
@@ -140,7 +140,7 @@ class iCloudBackupService: ObservableObject {
             var fileURL = backupDirURL.appendingPathComponent(fileName)
             
             #if DEBUG
-            print("💾 [iCloud] 准备保存文件: \(fileName)")
+            debugLog("💾 [iCloud] 准备保存文件: \(fileName)")
             #endif
             
             // 将数据转换为JSON
@@ -156,7 +156,7 @@ class iCloudBackupService: ObservableObject {
                 try? fileURL.setResourceValues(resourceValues)
                 
                 #if DEBUG
-                print("✅ [iCloud] 文件保存成功: \(fileURL.path)")
+                debugLog("✅ [iCloud] 文件保存成功: \(fileURL.path)")
                 #endif
                 
                 // ⚠️ 重要：备份成功后再清理旧备份（确保只保留1个）
@@ -193,7 +193,7 @@ class iCloudBackupService: ObservableObject {
         // 检查文件是否存在
         guard fileManager.fileExists(atPath: file.url.path) else {
             #if DEBUG
-            print("❌ [恢复] 备份文件不存在: \(file.url.path)")
+            debugLog("❌ [恢复] 备份文件不存在: \(file.url.path)")
             #endif
             return nil
         }
@@ -201,7 +201,7 @@ class iCloudBackupService: ObservableObject {
         // 读取文件内容
         guard let data = try? Data(contentsOf: file.url) else {
             #if DEBUG
-            print("❌ [恢复] 无法读取备份文件: \(file.url.path)")
+            debugLog("❌ [恢复] 无法读取备份文件: \(file.url.path)")
             #endif
             return nil
         }
@@ -209,13 +209,13 @@ class iCloudBackupService: ObservableObject {
         // 解析JSON
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             #if DEBUG
-            print("❌ [恢复] 备份文件格式无效: \(file.url.path)")
+            debugLog("❌ [恢复] 备份文件格式无效: \(file.url.path)")
             #endif
             return nil
         }
         
         #if DEBUG
-        print("✅ [恢复] 成功读取备份文件: \(file.fileName)")
+        debugLog("✅ [恢复] 成功读取备份文件: \(file.fileName)")
         #endif
         return json
     }
@@ -275,11 +275,11 @@ class iCloudBackupService: ObservableObject {
                     // 由于 iCloud Drive 的同步特性，无法实现"只删本地不删云端"
                     try FileManager.default.removeItem(at: backup.url)
                     #if DEBUG
-                    print("🗑️ [iCloud] 已删除旧备份: \(backup.fileName)（本地和云端都已删除）")
+                    debugLog("🗑️ [iCloud] 已删除旧备份: \(backup.fileName)（本地和云端都已删除）")
                     #endif
                 } catch {
                     #if DEBUG
-                    print("⚠️ [iCloud] 删除旧备份失败: \(backup.fileName), 错误: \(error.localizedDescription)")
+                    debugLog("⚠️ [iCloud] 删除旧备份失败: \(backup.fileName), 错误: \(error.localizedDescription)")
                     #endif
                 }
             }

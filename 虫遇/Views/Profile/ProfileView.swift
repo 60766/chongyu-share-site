@@ -226,7 +226,7 @@ class UserProfileManager: ObservableObject {
         // 检查是否升级
         if userLevel > oldLevel {
             #if DEBUG
-            print("🎉 恭喜升级！从 Lv.\(oldLevel) 升级到 Lv.\(userLevel)")
+            debugLog("🎉 恭喜升级！从 Lv.\(oldLevel) 升级到 Lv.\(userLevel)")
             #endif
             
             // 显示升级通知
@@ -285,28 +285,28 @@ class UserProfileManager: ObservableObject {
         let maxLevelExp = range.next - range.current
         
         #if DEBUG
-        print("🔍 UserProfileManager调试信息:")
+        debugLog("🔍 UserProfileManager调试信息:")
         #endif
         #if DEBUG
-        print("  - 当前等级: \(userLevel)")
+        debugLog("  - 当前等级: \(userLevel)")
         #endif
         #if DEBUG
-        print("  - 总经验值: \(userExperience)")
+        debugLog("  - 总经验值: \(userExperience)")
         #endif
         #if DEBUG
-        print("  - 计算得到的总经验值: \(totalExp)")
+        debugLog("  - 计算得到的总经验值: \(totalExp)")
         #endif
         #if DEBUG
-        print("  - 等级范围: \(range.current) - \(range.next)")
+        debugLog("  - 等级范围: \(range.current) - \(range.next)")
         #endif
         #if DEBUG
-        print("  - 当前等级内经验值: \(currentLevelExp)/\(maxLevelExp)")
+        debugLog("  - 当前等级内经验值: \(currentLevelExp)/\(maxLevelExp)")
         #endif
         #if DEBUG
-        print("  - 升级进度: \(getLevelUpProgress()) (\(Int(getLevelUpProgress() * 100))%)")
+        debugLog("  - 升级进度: \(getLevelUpProgress()) (\(Int(getLevelUpProgress() * 100))%)")
         #endif
         #if DEBUG
-        print("  - 统计数据: \(stats)")
+        debugLog("  - 统计数据: \(stats)")
         #endif
     }
     
@@ -354,7 +354,7 @@ class UserProfileManager: ObservableObject {
             try data.write(to: fileURL)
         } catch {
             #if DEBUG
-            print("保存头像失败: \(error)")
+            debugLog("保存头像失败: \(error)")
             #endif
         }
     }
@@ -478,7 +478,7 @@ struct TouchableView: UIViewRepresentable {
         
         @objc func handleTap() {
             #if DEBUG
-            print("UIKit按钮被点击")
+            debugLog("UIKit按钮被点击")
             #endif
             let generator = UIImpactFeedbackGenerator(style: .heavy)
             generator.impactOccurred()
@@ -600,7 +600,7 @@ struct ProfileView: View {
 
                 cachedDeepDialogueCount = 0
                 #if DEBUG
-                print("🎯 ProfileView: 初始化默认缓存值")
+                debugLog("🎯 ProfileView: 初始化默认缓存值")
                 #endif
             }
         }
@@ -652,7 +652,7 @@ struct ProfileView: View {
                     }
                 
                 #if DEBUG
-                print("🚀 ProfileView: 页面加载完成，缓存状态: \(isCacheValid ? "有效" : "需要更新")")
+                debugLog("🚀 ProfileView: 页面加载完成，缓存状态: \(isCacheValid ? "有效" : "需要更新")")
                 
                 // 🔍 调试：打印当前等级和经验值信息
                 userProfileManager.debugLevelInfo()
@@ -677,30 +677,30 @@ struct ProfileView: View {
                 autoCollapseTimer = nil
                 
                 #if DEBUG
-                print("✅ ProfileView: 资源清理完成")
+                debugLog("✅ ProfileView: 资源清理完成")
                 #endif
             }
             .photosPicker(isPresented: $showingImagePicker, selection: $selectedImage, matching: .images)
             .onChange(of: selectedImage) { _, newItem in
                 Task {
                     #if DEBUG
-                    print("📱 ProfileView: 图片选择器触发，开始加载图片")
+                    debugLog("📱 ProfileView: 图片选择器触发，开始加载图片")
                     #endif
                     if let newItem = newItem {
                         do {
                             if let data = try await newItem.loadTransferable(type: Data.self),
                                let image = UIImage(data: data) {
                                 #if DEBUG
-                                print("📱 ProfileView: 图片加载成功，尺寸: \(image.size)")
+                                debugLog("📱 ProfileView: 图片加载成功，尺寸: \(image.size)")
                                 #endif
                                 #if DEBUG
-                                print("📱 ProfileView: 图片CGImage存在: \(image.cgImage != nil)")
+                                debugLog("📱 ProfileView: 图片CGImage存在: \(image.cgImage != nil)")
                                 #endif
                                 
                                 // 确保图片有效
                                 guard image.size.width > 0 && image.size.height > 0 && image.cgImage != nil else {
                                     #if DEBUG
-                                    print("❌ ProfileView: 图片无效，尺寸为0或没有CGImage")
+                                    debugLog("❌ ProfileView: 图片无效，尺寸为0或没有CGImage")
                                     #endif
                                     return
                                 }
@@ -708,25 +708,25 @@ struct ProfileView: View {
                                 await MainActor.run {
                                     selectedUIImage = image
                                     #if DEBUG
-                                    print("📱 ProfileView: 已设置 selectedUIImage，尺寸: \(image.size)")
+                                    debugLog("📱 ProfileView: 已设置 selectedUIImage，尺寸: \(image.size)")
                                     #endif
                                     #if DEBUG
-                                    print("📱 ProfileView: selectedUIImage 已设置，sheet 将自动显示")
+                                    debugLog("📱 ProfileView: selectedUIImage 已设置，sheet 将自动显示")
                                     #endif
                                 }
                             } else {
                                 #if DEBUG
-                                print("❌ ProfileView: 无法创建 UIImage")
+                                debugLog("❌ ProfileView: 无法创建 UIImage")
                                 #endif
                             }
                         } catch {
                             #if DEBUG
-                            print("❌ ProfileView: 图片加载失败: \(error)")
+                            debugLog("❌ ProfileView: 图片加载失败: \(error)")
                             #endif
                         }
                     } else {
                         #if DEBUG
-                        print("❌ ProfileView: 没有选择图片")
+                        debugLog("❌ ProfileView: 没有选择图片")
                         #endif
                     }
                 }
@@ -757,7 +757,7 @@ struct ProfileView: View {
                 )
                 .onAppear {
                     #if DEBUG
-                    print("📱 Sheet: 显示头像编辑器，图片尺寸: \(identifiableImage.image.size)")
+                    debugLog("📱 Sheet: 显示头像编辑器，图片尺寸: \(identifiableImage.image.size)")
                     #endif
                 }
             }
@@ -1263,7 +1263,7 @@ struct ProfileView: View {
                         UserPostRowView(post: post)
                             .onAppear {
                                 #if DEBUG
-                                print("🔵 [myPostsDetailView] UserPostRowView 出现，内容: \(post.content.prefix(20))...")
+                                debugLog("🔵 [myPostsDetailView] UserPostRowView 出现，内容: \(post.content.prefix(20))...")
                                 #endif
                             }
                     }
@@ -2113,14 +2113,14 @@ struct ProfileView: View {
         }
         
         #if DEBUG
-        print("🔍 ProfileView: 发现 \(likeNotifications.count) 个点赞通知")
+        debugLog("🔍 ProfileView: 发现 \(likeNotifications.count) 个点赞通知")
         #endif
         
         // 统计总点赞数
         let totalLikes = likeNotifications.count
         
         #if DEBUG
-        print("❤️ ProfileView: 计算得到的总点赞数: \(totalLikes)")
+        debugLog("❤️ ProfileView: 计算得到的总点赞数: \(totalLikes)")
         #endif
         
         return totalLikes
@@ -2206,7 +2206,7 @@ struct ProfileView: View {
             }
         } catch {
             #if DEBUG
-            print("获取消息失败: \(error)")
+            debugLog("获取消息失败: \(error)")
             #endif
         }
         
@@ -2415,7 +2415,7 @@ struct ProfileView: View {
                 .lineLimit(3)
                 .onTapGesture {
                     #if DEBUG
-                    print("🔵 [UserPostRowView private] Text 被点击")
+                    debugLog("🔵 [UserPostRowView private] Text 被点击")
                     #endif
                 }
             
@@ -2444,7 +2444,7 @@ struct ProfileView: View {
             .contextMenu {
                 Button {
                     #if DEBUG
-                    print("🔵 [UserPostRowView private] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
+                    debugLog("🔵 [UserPostRowView private] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
                     #endif
                     UIPasteboard.general.string = post.content.trimmingCharacters(in: .whitespacesAndNewlines)
                     let generator = UINotificationFeedbackGenerator()
@@ -2460,12 +2460,12 @@ struct ProfileView: View {
             }
             .onTapGesture {
                 #if DEBUG
-                print("🔵 [UserPostRowView private] VStack 被点击")
+                debugLog("🔵 [UserPostRowView private] VStack 被点击")
                 #endif
             }
             .onLongPressGesture {
                 #if DEBUG
-                print("🔵 [UserPostRowView private] VStack 被长按")
+                debugLog("🔵 [UserPostRowView private] VStack 被长按")
                 #endif
             }
         .padding(.horizontal, 12)
@@ -2707,7 +2707,7 @@ struct ProfileView: View {
         // 如果正在计算，跳过
         guard !isCalculating else { 
             #if DEBUG
-            print("🔄 ProfileView: 正在计算中，跳过重复请求")
+            debugLog("🔄 ProfileView: 正在计算中，跳过重复请求")
             #endif
             return 
         }
@@ -2715,7 +2715,7 @@ struct ProfileView: View {
         // 如果缓存仍然有效，跳过
         guard !isCacheValid else { 
             #if DEBUG
-            print("✅ ProfileView: 缓存仍然有效，跳过更新")
+            debugLog("✅ ProfileView: 缓存仍然有效，跳过更新")
             #endif
             return 
         }
@@ -2724,14 +2724,14 @@ struct ProfileView: View {
         let timeSinceLastUpdate = Date().timeIntervalSince(lastCacheUpdate)
         guard timeSinceLastUpdate > 30 else {
             #if DEBUG
-            print("⏰ ProfileView: 距离上次更新仅\(Int(timeSinceLastUpdate))秒，跳过更新")
+            debugLog("⏰ ProfileView: 距离上次更新仅\(Int(timeSinceLastUpdate))秒，跳过更新")
             #endif
             return
         }
         
         isCalculating = true
         #if DEBUG
-        print("🚀 ProfileView: 开始异步更新缓存")
+        debugLog("🚀 ProfileView: 开始异步更新缓存")
         #endif
         
         // 在后台异步计算，避免阻塞UI
@@ -2791,8 +2791,8 @@ struct ProfileView: View {
         isCalculating = false
         
         #if DEBUG
-        print("🚀 ProfileView: 缓存更新完成，数据刷新成功")
-        print("📊 ProfileView: 统计数据已同步到UserProfileManager: \(stats)")
+        debugLog("🚀 ProfileView: 缓存更新完成，数据刷新成功")
+        debugLog("📊 ProfileView: 统计数据已同步到UserProfileManager: \(stats)")
         #endif
     }
     
@@ -2807,7 +2807,7 @@ struct ProfileView: View {
             .debounce(for: .milliseconds(1000), scheduler: DispatchQueue.main) // 增加防抖时间到1秒
             .sink { _ in
                 #if DEBUG
-                print("📊 ProfileView: 检测到帖子数量变化，更新缓存")
+                debugLog("📊 ProfileView: 检测到帖子数量变化，更新缓存")
                 #endif
                 self.loadOrCalculateStats()
             }
@@ -2822,7 +2822,7 @@ struct ProfileView: View {
             .debounce(for: .milliseconds(1000), scheduler: DispatchQueue.main) // 增加防抖时间到1秒
             .sink { _ in
                 #if DEBUG
-                print("📊 ProfileView: 检测到通知数量变化，更新缓存")
+                debugLog("📊 ProfileView: 检测到通知数量变化，更新缓存")
                 #endif
                 self.loadOrCalculateStats()
             }
@@ -2836,7 +2836,7 @@ struct ProfileView: View {
             .debounce(for: .milliseconds(1000), scheduler: DispatchQueue.main) // 增加防抖时间到1秒
             .sink { _ in
                 #if DEBUG
-                print("📊 ProfileView: 检测到点赞数量变化，更新缓存")
+                debugLog("📊 ProfileView: 检测到点赞数量变化，更新缓存")
                 #endif
                 self.loadOrCalculateStats()
             }
@@ -2868,7 +2868,7 @@ struct ProfileView: View {
             return sessions.count
         } catch {
             #if DEBUG
-            print("获取聊天会话失败: \(error)")
+            debugLog("获取聊天会话失败: \(error)")
             #endif
             return 0
         }
@@ -2916,7 +2916,7 @@ struct ProfileView: View {
             return deepMessages
         } catch {
             #if DEBUG
-            print("获取聊天消息失败: \(error)")
+            debugLog("获取聊天消息失败: \(error)")
             #endif
             return 0
         }
@@ -2952,7 +2952,7 @@ struct ProfileView: View {
             return userCommentsCount + userMessagesCount + userPostsCount
         } catch {
             #if DEBUG
-            print("❌ 计算对话数失败: \(error)")
+            debugLog("❌ 计算对话数失败: \(error)")
             #endif
             return 0
         }
@@ -2978,7 +2978,7 @@ struct ProfileView: View {
             return try modelContext.fetchCount(descriptor)
         } catch {
             #if DEBUG
-            print("❌ 计算穿越次数失败: \(error)")
+            debugLog("❌ 计算穿越次数失败: \(error)")
             #endif
             return 0
         }
@@ -3000,7 +3000,7 @@ struct ProfileView: View {
             return messages.filter { $0.content.count > 100 }.count
         } catch {
             #if DEBUG
-            print("❌ 计算深度对话次数失败: \(error)")
+            debugLog("❌ 计算深度对话次数失败: \(error)")
             #endif
             return 0
         }
@@ -3377,7 +3377,7 @@ struct UserPostRowView: View {
                 )
                 .onTapGesture {
                     #if DEBUG
-                    print("🔵 [UserPostRowView struct] 头像被点击")
+                    debugLog("🔵 [UserPostRowView struct] 头像被点击")
                     #endif
                 }
                 .allowsHitTesting(true)
@@ -3408,7 +3408,7 @@ struct UserPostRowView: View {
                     .allowsHitTesting(true)
                     .onTapGesture {
                         #if DEBUG
-                        print("🔵 [UserPostRowView struct] Text 被点击")
+                        debugLog("🔵 [UserPostRowView struct] Text 被点击")
                         #endif
                     }
             }
@@ -3418,7 +3418,7 @@ struct UserPostRowView: View {
             .contextMenu {
                 Button {
                     #if DEBUG
-                    print("🔵 [UserPostRowView struct] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
+                    debugLog("🔵 [UserPostRowView struct] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
                     #endif
                     UIPasteboard.general.string = post.content.trimmingCharacters(in: .whitespacesAndNewlines)
                     let generator = UINotificationFeedbackGenerator()
@@ -3434,12 +3434,12 @@ struct UserPostRowView: View {
             }
             .onTapGesture {
                 #if DEBUG
-                print("🔵 [UserPostRowView struct] VStack 被点击")
+                debugLog("🔵 [UserPostRowView struct] VStack 被点击")
                 #endif
             }
             .onLongPressGesture {
                 #if DEBUG
-                print("🔵 [UserPostRowView struct] VStack 被长按")
+                debugLog("🔵 [UserPostRowView struct] VStack 被长按")
                 #endif
             }
             
@@ -3448,12 +3448,12 @@ struct UserPostRowView: View {
                 postThumbnailView
                     .onAppear {
                         #if DEBUG
-                        print("🖼️ 显示图片缩略图: 数量 = \(post.images.count), IDs = \(post.images)")
+                        debugLog("🖼️ 显示图片缩略图: 数量 = \(post.images.count), IDs = \(post.images)")
                         #endif
                     }
                     .onTapGesture {
                         #if DEBUG
-                        print("🔵 [UserPostRowView struct] 图片缩略图被点击")
+                        debugLog("🔵 [UserPostRowView struct] 图片缩略图被点击")
                         #endif
                     }
                     .allowsHitTesting(true) // 图片可以点击，但不应该拦截文本区域
@@ -3465,12 +3465,12 @@ struct UserPostRowView: View {
         .allowsHitTesting(true)
         .onTapGesture {
             #if DEBUG
-            print("🔵 [UserPostRowView struct] HStack 被点击")
+            debugLog("🔵 [UserPostRowView struct] HStack 被点击")
             #endif
         }
         .onLongPressGesture {
             #if DEBUG
-            print("🔵 [UserPostRowView struct] HStack 被长按")
+            debugLog("🔵 [UserPostRowView struct] HStack 被长按")
             #endif
         }
         .fullScreenCover(isPresented: $showImageViewer) {
@@ -4361,7 +4361,7 @@ struct UserPostCard: View {
         .contextMenu {
             Button {
                 #if DEBUG
-                print("🔵 [UserPostCard] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
+                debugLog("🔵 [UserPostCard] contextMenu 按钮被点击，内容: \(post.content.prefix(20))...")
                 #endif
                 UIPasteboard.general.string = post.content.trimmingCharacters(in: .whitespacesAndNewlines)
                 let generator = UINotificationFeedbackGenerator()

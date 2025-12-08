@@ -44,7 +44,7 @@ public struct TimeSpaceEffectCenterTestView: View {
                         blackHoleCenterPosition = CGPoint(x: centerX, y: centerY)
                         
                         #if DEBUG
-                        print("测试页面黑洞中心位置设置为: x=\(centerX), y=\(centerY)")
+                        debugLog("测试页面黑洞中心位置设置为: x=\(centerX), y=\(centerY)")
                         #endif
                     }
             }
@@ -121,7 +121,7 @@ public struct TimeSpaceEffectCenterTestView: View {
                     TimeSpaceEffectView(isActive: $showEffect, centerPosition: centerPosition) {
                         // 特效完成后的回调
                         #if DEBUG
-                        print("特效完成")
+                        debugLog("特效完成")
                         #endif
                     }
                     .edgesIgnoringSafeArea(.all)
@@ -133,7 +133,7 @@ public struct TimeSpaceEffectCenterTestView: View {
                     TimeSpaceEffectView(isActive: $showEffect) {
                         // 特效完成后的回调
                         #if DEBUG
-                        print("特效完成")
+                        debugLog("特效完成")
                         #endif
                     }
                     .edgesIgnoringSafeArea(.all)

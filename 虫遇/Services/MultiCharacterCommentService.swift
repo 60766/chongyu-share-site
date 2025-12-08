@@ -100,7 +100,7 @@ class MultiCharacterCommentService {
         // 创建后台任务，确保即使用户退出页面也能完成API调用
         let backgroundTaskID = UIApplication.shared.beginBackgroundTask {
             #if DEBUG
-            print("⚠️ MultiCharacterCommentService: 批量生成角色评论的后台任务超时")
+            debugLog("⚠️ MultiCharacterCommentService: 批量生成角色评论的后台任务超时")
             #endif
         }
         
@@ -121,7 +121,7 @@ class MultiCharacterCommentService {
         
         // 调用API生成批量评论
         #if DEBUG
-        print("🔥🔥🔥 === 正在调用 AINetworkService.sendRequest === 🔥🔥🔥")
+        debugLog("🔥🔥🔥 === 正在调用 AINetworkService.sendRequest === 🔥🔥🔥")
         #endif
         AINetworkService.shared.sendRequest(prompt: batchPrompt)
             .sink(
@@ -133,7 +133,7 @@ class MultiCharacterCommentService {
                     if backgroundTaskID != UIBackgroundTaskIdentifier.invalid {
                         UIApplication.shared.endBackgroundTask(backgroundTaskID)
                         #if DEBUG
-                        print("🏁 MultiCharacterCommentService: 批量角色评论生成任务已完成，后台任务结束")
+                        debugLog("🏁 MultiCharacterCommentService: 批量角色评论生成任务已完成，后台任务结束")
                         #endif
                     }
                     
@@ -147,17 +147,17 @@ class MultiCharacterCommentService {
                     timerCancellable?.cancel()
                     
                     #if DEBUG
-                    print("✅ 批量API返回成功!")
+                    debugLog("✅ 批量API返回成功!")
                     
                     // 🔍 添加详细的API响应调试信息
-                    print("\n📥 ===== 批量角色评论API响应详细内容 =====")
-                    print("🔷 响应统计:")
-                    print("  - 响应长度: \(output.count)字符")
-                    print("  - 响应行数: \(output.components(separatedBy: .newlines).count)")
-                    print("\n🔷 完整响应内容:")
-                    print("=====================================")
-                    print(output)
-                    print("=====================================\n")
+                    debugLog("\n📥 ===== 批量角色评论API响应详细内容 =====")
+                    debugLog("🔷 响应统计:")
+                    debugLog("  - 响应长度: \(output.count)字符")
+                    debugLog("  - 响应行数: \(output.components(separatedBy: .newlines).count)")
+                    debugLog("\n🔷 完整响应内容:")
+                    debugLog("=====================================")
+                    debugLog(output)
+                    debugLog("=====================================\n")
                     #endif
                     
                     // 解析API返回的批量评论结果
@@ -168,37 +168,37 @@ class MultiCharacterCommentService {
                     
                     // 🔍 添加详细的解析结果调试信息
                     #if DEBUG
-                    print("\n📊 ===== 批量评论解析结果 =====")
-                    print("🎯 请求的角色: \(characterIDs.joined(separator: ", "))")
-                    print("✅ 成功解析的角色: \(commentsMap.keys.joined(separator: ", "))")
-                    print("🔷 解析详情:")
+                    debugLog("\n📊 ===== 批量评论解析结果 =====")
+                    debugLog("🎯 请求的角色: \(characterIDs.joined(separator: ", "))")
+                    debugLog("✅ 成功解析的角色: \(commentsMap.keys.joined(separator: ", "))")
+                    debugLog("🔷 解析详情:")
                     for (characterId, response) in commentsMap {
                         let characterName = self.characterDataManager.getName(for: characterId) ?? characterId
-                        print("  - \(characterName) (\(characterId)): \"\(response.content.prefix(30))...\"")
-                        print("    点赞: \(response.shouldLike ? "是" : "否")")
+                        debugLog("  - \(characterName) (\(characterId)): \"\(response.content.prefix(30))...\"")
+                        debugLog("    点赞: \(response.shouldLike ? "是" : "否")")
                     }
                     
                     if !missingCharacters.isEmpty {
-                        print("❌ 未能解析的角色: \(missingCharacters.joined(separator: ", "))")
+                        debugLog("❌ 未能解析的角色: \(missingCharacters.joined(separator: ", "))")
                         for missingId in missingCharacters {
                             let missingName = self.characterDataManager.getName(for: missingId) ?? missingId
-                            print("  - \(missingName) (\(missingId))")
+                            debugLog("  - \(missingName) (\(missingId))")
                         }
                     }
-                    print("=====================================\n")
+                    debugLog("=====================================\n")
                     #endif
                     
                     if !missingCharacters.isEmpty && commentsMap.isEmpty {
                         // 如果所有角色都没有成功解析，返回错误
                         #if DEBUG
-                        print("❌ 批量评论生成失败: 无法解析任何角色的评论")
+                        debugLog("❌ 批量评论生成失败: 无法解析任何角色的评论")
                         #endif
                         completion(.failure(NSError(domain: "MultiCharacterCommentService", code: -2, userInfo: [NSLocalizedDescriptionKey: "评论解析失败"])))
                         return
                     } else if !missingCharacters.isEmpty {
                         // 如果部分角色没有成功解析，记录日志
                         #if DEBUG
-                        print("⚠️ 部分角色评论未能解析: \(missingCharacters.joined(separator: ", "))")
+                        debugLog("⚠️ 部分角色评论未能解析: \(missingCharacters.joined(separator: ", "))")
                         #endif
                     }
                     
@@ -206,7 +206,7 @@ class MultiCharacterCommentService {
                     self.addCommentsToPost(commentsMap: commentsMap, characterIDs: characterIDs, postId: postId, isInvited: isInvited, requestContext: requestContext)
                     
                     #if DEBUG
-                    print("✅ 批量评论生成完成，成功解析\(commentsMap.count)个角色的评论")
+                    debugLog("✅ 批量评论生成完成，成功解析\(commentsMap.count)个角色的评论")
                     #endif
                     // 转换为只包含评论内容的映射，保持向后兼容
                     let contentOnlyMap = commentsMap.mapValues { $0.content }
@@ -257,7 +257,7 @@ class MultiCharacterCommentService {
             if let context = modelContext,
                let insight = insightService.loadCachedInsight(characterId: id, modelContext: context) {
                 #if DEBUG
-                print("✅ 为角色 \(name) 加载了缓存画像")
+                debugLog("✅ 为角色 \(name) 加载了缓存画像")
                 #endif
                 insightInfo = "\n  画像摘要：\(insight.summary)"
             }
@@ -268,7 +268,7 @@ class MultiCharacterCommentService {
         // 获取帖子作者信息 - 如果提供了作者名称则使用，否则使用默认值
         let authorInfo = postAuthor ?? "帖子作者"
         #if DEBUG
-        print("👤 使用帖子作者: \(authorInfo)")
+        debugLog("👤 使用帖子作者: \(authorInfo)")
         #endif
         
         // 确定提示词类型和内容
@@ -304,7 +304,7 @@ class MultiCharacterCommentService {
             } else if let authorId = authorCharacterId {
                 // 如果有作者ID但不在列表中，添加到列表的开头
                 #if DEBUG
-                print("⚠️ 帖子作者ID不在角色列表中，将其添加到列表开头")
+                debugLog("⚠️ 帖子作者ID不在角色列表中，将其添加到列表开头")
                 #endif
                 var newCharacterIDs = characterIDs
                 newCharacterIDs.insert(authorId, at: 0)
@@ -607,7 +607,7 @@ class MultiCharacterCommentService {
         }
         
         #if DEBUG
-        print("📋 构建批量提示词，包含\(characterIDs.count)个角色")
+        debugLog("📋 构建批量提示词，包含\(characterIDs.count)个角色")
         #endif
         return prompt
     }
@@ -620,12 +620,12 @@ class MultiCharacterCommentService {
      */
     private func parseAPIResponse(response: String, characterIDs: [String]) -> [String: CharacterResponse] {
         #if DEBUG
-        print("📄 原始响应内容预览: \(response.prefix(100))...")
+        debugLog("📄 原始响应内容预览: \(response.prefix(100))...")
         
-        print("📄 AI原始响应（前500字符）:")
-        print("---")
-        print(String(response.prefix(500)))
-        print("---")
+        debugLog("📄 AI原始响应（前500字符）:")
+        debugLog("---")
+        debugLog(String(response.prefix(500)))
+        debugLog("---")
         #endif
         
         var result = [String: CharacterResponse]()
@@ -639,8 +639,8 @@ class MultiCharacterCommentService {
         let normalizedCharacterIDs = characterIDs.map { $0.lowercased() }
         
         #if DEBUG
-        print("📋 待解析角色ID: \(characterIDs.joined(separator: ", "))")
-        print("📊 总行数: \(lines.count)")
+        debugLog("📋 待解析角色ID: \(characterIDs.joined(separator: ", "))")
+        debugLog("📊 总行数: \(lines.count)")
         #endif
         
         // 处理每一行
@@ -663,7 +663,7 @@ class MultiCharacterCommentService {
                     let (content, shouldLike) = parseCharacterContent(currentComment)
                     result[id] = CharacterResponse(content: content, shouldLike: shouldLike)
                     #if DEBUG
-                    print("✓ 已解析角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
+                    debugLog("✓ 已解析角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
                     #endif
                     currentComment = ""
                 }
@@ -680,12 +680,12 @@ class MultiCharacterCommentService {
                     let originalId = characterIDs.first { $0.lowercased() == normalizedExtractedId } ?? extractedId
                     currentCharacterId = originalId
                     #if DEBUG
-                    print("✓ 找到角色评论标记[方括号]: \(originalId)")
+                    debugLog("✓ 找到角色评论标记[方括号]: \(originalId)")
                     #endif
                 } else {
                     currentCharacterId = nil
                     #if DEBUG
-                    print("⚠️ 找到未知角色ID: \(extractedId)，已忽略")
+                    debugLog("⚠️ 找到未知角色ID: \(extractedId)，已忽略")
                     #endif
                 }
             }
@@ -696,7 +696,7 @@ class MultiCharacterCommentService {
                     let (content, shouldLike) = parseCharacterContent(currentComment)
                     result[id] = CharacterResponse(content: content, shouldLike: shouldLike)
                     #if DEBUG
-                    print("✓ 已解析角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
+                    debugLog("✓ 已解析角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
                     #endif
                     currentComment = ""
                 }
@@ -705,7 +705,7 @@ class MultiCharacterCommentService {
                 let originalId = characterIDs.first { $0.lowercased() == trimmedLine.lowercased() } ?? trimmedLine
                 currentCharacterId = originalId
                 #if DEBUG
-                print("✓ 找到角色评论标记[直接ID]: \(originalId)")
+                debugLog("✓ 找到角色评论标记[直接ID]: \(originalId)")
                 #endif
             }
             // 如果不是角色ID标记行，且当前有正在处理的角色ID，则添加到评论内容
@@ -723,7 +723,7 @@ class MultiCharacterCommentService {
                         let (content, shouldLike) = parseCharacterContent(currentComment)
                         result[id] = CharacterResponse(content: content, shouldLike: shouldLike)
                         #if DEBUG
-                        print("✓ 已解析角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
+                        debugLog("✓ 已解析角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
                         #endif
                         currentComment = ""
                     }
@@ -732,7 +732,7 @@ class MultiCharacterCommentService {
                     let originalId = characterIDs.first { $0.lowercased() == potentialCharacterId } ?? trimmedLine
                     currentCharacterId = originalId
                     #if DEBUG
-                    print("✓ 找到角色评论标记[内容中]: \(originalId)")
+                    debugLog("✓ 找到角色评论标记[内容中]: \(originalId)")
                     #endif
                 } else {
                     // 添加到当前评论内容
@@ -749,19 +749,19 @@ class MultiCharacterCommentService {
             let (content, shouldLike) = parseCharacterContent(currentComment)
             result[id] = CharacterResponse(content: content, shouldLike: shouldLike)
             #if DEBUG
-            print("✓ 已解析最后一个角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
+            debugLog("✓ 已解析最后一个角色评论: \(id), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
             #endif
         }
         
         // 输出解析结果统计
         #if DEBUG
-        print("📊 解析结果: 成功解析\(result.count)/\(characterIDs.count)个角色的评论")
+        debugLog("📊 解析结果: 成功解析\(result.count)/\(characterIDs.count)个角色的评论")
         #endif
         
         // 如果标准解析方法失败，尝试使用后备方法
         if result.isEmpty {
             #if DEBUG
-            print("⚠️ 标准解析方法未能提取任何评论，尝试使用后备解析方法")
+            debugLog("⚠️ 标准解析方法未能提取任何评论，尝试使用后备解析方法")
             #endif
             result = fallbackParseResponse(response: response, characterIDs: characterIDs)
         }
@@ -770,11 +770,11 @@ class MultiCharacterCommentService {
         let missingCharacters = characterIDs.filter { !result.keys.contains($0) }
         if !missingCharacters.isEmpty {
             #if DEBUG
-            print("⚠️ 以下角色的评论未能解析: \(missingCharacters.joined(separator: ", "))")
+            debugLog("⚠️ 以下角色的评论未能解析: \(missingCharacters.joined(separator: ", "))")
             
             // 检查是否有帖子作者在缺失列表中
             if let authorId = characterIDs.first, missingCharacters.contains(authorId) {
-                print("❗️ 警告: 帖子作者的评论未能解析")
+                debugLog("❗️ 警告: 帖子作者的评论未能解析")
             }
             #endif
         }
@@ -819,7 +819,7 @@ class MultiCharacterCommentService {
      */
     private func fallbackParseResponse(response: String, characterIDs: [String]) -> [String: CharacterResponse] {
         #if DEBUG
-        print("🔄 使用后备解析方法")
+        debugLog("🔄 使用后备解析方法")
         #endif
         var result = [String: CharacterResponse]()
         
@@ -829,7 +829,7 @@ class MultiCharacterCommentService {
         // 尝试方法1：按照空行分割响应，然后检查每个块的第一行是否是角色ID
         let blocks = response.components(separatedBy: "\n\n")
         #if DEBUG
-        print("📊 后备解析：找到\(blocks.count)个文本块")
+        debugLog("📊 后备解析：找到\(blocks.count)个文本块")
         #endif
         
         for block in blocks {
@@ -851,7 +851,7 @@ class MultiCharacterCommentService {
                         let (content, shouldLike) = parseCharacterContent(comment)
                         result[originalId] = CharacterResponse(content: content, shouldLike: shouldLike)
                         #if DEBUG
-                        print("✓ 后备方法解析到角色评论: \(originalId), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
+                        debugLog("✓ 后备方法解析到角色评论: \(originalId), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
                         #endif
                     }
                     break
@@ -862,7 +862,7 @@ class MultiCharacterCommentService {
         // 如果方法1失败，尝试方法2：使用正则表达式查找角色ID和评论
         if result.isEmpty && !characterIDs.isEmpty {
             #if DEBUG
-            print("🔄 后备解析方法1失败，尝试方法2")
+            debugLog("🔄 后备解析方法1失败，尝试方法2")
             #endif
             
             for characterId in characterIDs {
@@ -901,7 +901,7 @@ class MultiCharacterCommentService {
                                 let (content, shouldLike) = parseCharacterContent(commentText)
                                 result[characterId] = CharacterResponse(content: content, shouldLike: shouldLike)
                                 #if DEBUG
-                                print("✓ 后备方法2解析到角色评论: \(characterId), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
+                                debugLog("✓ 后备方法2解析到角色评论: \(characterId), 长度: \(content.count)字符, 点赞: \(shouldLike ? "是" : "否")")
                                 #endif
                                 break
                             }
@@ -912,7 +912,7 @@ class MultiCharacterCommentService {
         }
         
         #if DEBUG
-        print("📊 后备解析结果: 成功解析\(result.count)/\(characterIDs.count)个角色的评论")
+        debugLog("📊 后备解析结果: 成功解析\(result.count)/\(characterIDs.count)个角色的评论")
         #endif
         return result
     }
@@ -932,7 +932,7 @@ class MultiCharacterCommentService {
         // 查找对应帖子
         guard viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) != nil else {
             #if DEBUG
-            print("❌ 未找到指定的帖子ID: \(postId)")
+            debugLog("❌ 未找到指定的帖子ID: \(postId)")
             #endif
             return
         }
@@ -942,7 +942,7 @@ class MultiCharacterCommentService {
             let authorId = characterIDs[0]
             if !commentsMap.keys.contains(authorId) {
                 #if DEBUG
-                print("⚠️ 帖子作者(\(authorId))的评论未在API返回结果中，跳过默认回复")
+                debugLog("⚠️ 帖子作者(\(authorId))的评论未在API返回结果中，跳过默认回复")
                 #endif
                 
                 // 不添加默认回复，直接使用原始的评论映射
@@ -1053,7 +1053,7 @@ class MultiCharacterCommentService {
         
         guard let postIndex = viewModel.posts.firstIndex(where: { $0.id.uuidString == postId }) else {
             #if DEBUG
-            print("❌ 未找到指定的帖子ID: \(postId)，无法直接添加评论")
+            debugLog("❌ 未找到指定的帖子ID: \(postId)，无法直接添加评论")
             #endif
             return
         }
@@ -1118,14 +1118,14 @@ class MultiCharacterCommentService {
                 parentCommentId = UUID(uuidString: userCommentId)
                 replyToUsername = "当前用户"
                 #if DEBUG
-                print("🔧 设置虚拟角色回复的父评论ID: \(userCommentId)")
+                debugLog("🔧 设置虚拟角色回复的父评论ID: \(userCommentId)")
                 #endif
             } else {
                 // 这是邀请的虚拟角色评论，或者是虚拟角色对帖子的评论
                 parentCommentId = nil
                 replyToUsername = nil
                 #if DEBUG
-                print("🔧 虚拟角色评论作为顶级评论（邀请评论或帖子评论）")
+                debugLog("🔧 虚拟角色评论作为顶级评论（邀请评论或帖子评论）")
                 #endif
             }
             
@@ -1177,7 +1177,7 @@ class MultiCharacterCommentService {
         
         if newComments.isEmpty {
             #if DEBUG
-            print("⚠️ 没有新评论需要添加，所有评论都已存在")
+            debugLog("⚠️ 没有新评论需要添加，所有评论都已存在")
             #endif
             return
         }
@@ -1293,7 +1293,7 @@ class MultiCharacterCommentService {
                 seenContent.insert(uniqueKey)
             } else {
                 #if DEBUG
-                print("⚠️ 检测到重复评论，已跳过: \(comment.username)")
+                debugLog("⚠️ 检测到重复评论，已跳过: \(comment.username)")
                 #endif
             }
         }
@@ -1320,7 +1320,7 @@ class MultiCharacterCommentService {
         // 这是解决问题的关键，确保所有角色的头像都通过唯一的、正确的服务获取。
         let avatarPath = CharacterAvatarService.shared.getAvatarName(for: id)
         #if DEBUG
-        print("✅ 使用 CharacterAvatarService 获取头像路径: ID '\(id)' -> Path '\(avatarPath)'")
+        debugLog("✅ 使用 CharacterAvatarService 获取头像路径: ID '\(id)' -> Path '\(avatarPath)'")
         #endif
         
         let now = Date()
@@ -1337,7 +1337,7 @@ class MultiCharacterCommentService {
         )
         
         #if DEBUG
-        print("✅ 成功创建评论: \(name), 头像路径: \(avatarPath)")
+        debugLog("✅ 成功创建评论: \(name), 头像路径: \(avatarPath)")
         #endif
         
         return newComment

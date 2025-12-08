@@ -15,7 +15,7 @@ class FollowDataMigration {
      */
     func migrateFollowData() {
         #if DEBUG
-        print("🔄 开始关注数据迁移...")
+        debugLog("🔄 开始关注数据迁移...")
         #endif
         
         var allFollowedUsers: Set<String> = Set()
@@ -24,7 +24,7 @@ class FollowDataMigration {
         if let followedUsers = UserDefaults.standard.stringArray(forKey: "FollowedUsers") {
             allFollowedUsers.formUnion(followedUsers)
             #if DEBUG
-            print("📱 从FollowedUsers迁移了 \(followedUsers.count) 个用户")
+            debugLog("📱 从FollowedUsers迁移了 \(followedUsers.count) 个用户")
             #endif
         }
         
@@ -38,7 +38,7 @@ class FollowDataMigration {
             }
             allFollowedUsers.formUnion(characterNames)
             #if DEBUG
-            print("🎭 从favoriteCharacters迁移了 \(characterNames.count) 个角色")
+            debugLog("🎭 从favoriteCharacters迁移了 \(characterNames.count) 个角色")
             #endif
         }
         
@@ -55,7 +55,7 @@ class FollowDataMigration {
             }
             allFollowedUsers.formUnion(characterNames)
             #if DEBUG
-            print("⚙️ 从FollowedCharacters迁移了 \(characterNames.count) 个角色")
+            debugLog("⚙️ 从FollowedCharacters迁移了 \(characterNames.count) 个角色")
             #endif
         }
         
@@ -67,7 +67,7 @@ class FollowDataMigration {
         // cleanupOldData()
         
         #if DEBUG
-        print("✅ 关注数据迁移完成，共迁移了 \(uniqueFollowedUsers.count) 个用户/角色")
+        debugLog("✅ 关注数据迁移完成，共迁移了 \(uniqueFollowedUsers.count) 个用户/角色")
         #endif
         
         // 6. 标记迁移已完成
@@ -100,7 +100,7 @@ class FollowDataMigration {
         // 保留FollowedUsers作为主数据源，不删除
         
         #if DEBUG
-        print("🗑️ 已清理旧的关注数据")
+        debugLog("🗑️ 已清理旧的关注数据")
         #endif
     }
     

@@ -401,7 +401,7 @@ struct CharacterDetailView: View {
                             tabBarManager.popHideState()
                         }
                         #if DEBUG
-                        print("从ChatView返回CharacterDetailView：TabBar状态栈已调整，当前深度: \(tabBarManager.hideStateStack.count)")
+                        debugLog("从ChatView返回CharacterDetailView：TabBar状态栈已调整，当前深度: \(tabBarManager.hideStateStack.count)")
                         #endif
                     }
                     */
@@ -588,7 +588,7 @@ struct CharacterDetailView: View {
                 .disabled(!isUserCreated)
                 .onAppear {
                     #if DEBUG
-                    print("🔍 CharacterDetailView - 显示角色头像: \(character.avatarUrl), 名称: \(character.name), 是否用户创建: \(isUserCreated)")
+                    debugLog("🔍 CharacterDetailView - 显示角色头像: \(character.avatarUrl), 名称: \(character.name), 是否用户创建: \(isUserCreated)")
                     #endif
                     // 确保在onAppear时加载自定义头像
                     loadCustomAvatar()
@@ -1274,7 +1274,7 @@ struct CharacterDetailView: View {
             
             // 输出调试信息
             #if DEBUG
-            print("✓ 返回按钮已创建并显示")
+            debugLog("✓ 返回按钮已创建并显示")
             #endif
         }
     }
@@ -1381,7 +1381,7 @@ struct CharacterDetailView: View {
             
             // 输出调试信息
             #if DEBUG
-            print("✓ 分享按钮已创建并显示")
+            debugLog("✓ 分享按钮已创建并显示")
             #endif
         }
     }
@@ -1389,7 +1389,7 @@ struct CharacterDetailView: View {
     // 立即隐藏系统按钮，用于页面切换时
     private func hideSystemButtons() {
         #if DEBUG
-        print("🔄 CharacterDetailView - 隐藏系统按钮")
+        debugLog("🔄 CharacterDetailView - 隐藏系统按钮")
         #endif
         
         // 使用异步调用确保UI更新
@@ -1398,7 +1398,7 @@ struct CharacterDetailView: View {
             if let window = self.systemBackButtonWindow {
             window.isHidden = true
                 #if DEBUG
-                print("✓ 返回按钮已隐藏")
+                debugLog("✓ 返回按钮已隐藏")
                 #endif
         }
         
@@ -1406,7 +1406,7 @@ struct CharacterDetailView: View {
             if let window = self.systemShareButtonWindow {
             window.isHidden = true
                 #if DEBUG
-                print("✓ 分享按钮已隐藏")
+                debugLog("✓ 分享按钮已隐藏")
                 #endif
             }
         }
@@ -1415,7 +1415,7 @@ struct CharacterDetailView: View {
     // 显示系统按钮，用于页面返回时
     private func showSystemButtons() {
         #if DEBUG
-        print("🔄 CharacterDetailView - 显示系统按钮")
+        debugLog("🔄 CharacterDetailView - 显示系统按钮")
         #endif
         
         // 使用异步调用确保UI更新
@@ -1423,13 +1423,13 @@ struct CharacterDetailView: View {
         // 显示返回按钮
             if let window = self.systemBackButtonWindow, !window.isHidden {
                 #if DEBUG
-                print("✓ 返回按钮窗口已存在，设置为可见")
+                debugLog("✓ 返回按钮窗口已存在，设置为可见")
                 #endif
             window.isHidden = false
         } else {
                 // 如果按钮不存在或被隐藏，重新创建
                 #if DEBUG
-                print("⚠️ 返回按钮窗口不存在或被隐藏，重新创建")
+                debugLog("⚠️ 返回按钮窗口不存在或被隐藏，重新创建")
                 #endif
                 self.addSystemLevelBackButton()
         }
@@ -1437,13 +1437,13 @@ struct CharacterDetailView: View {
         // 显示分享按钮
             if let window = self.systemShareButtonWindow, !window.isHidden {
                 #if DEBUG
-                print("✓ 分享按钮窗口已存在，设置为可见")
+                debugLog("✓ 分享按钮窗口已存在，设置为可见")
                 #endif
             window.isHidden = false
         } else {
                 // 如果按钮不存在或被隐藏，重新创建
                 #if DEBUG
-                print("⚠️ 分享按钮窗口不存在或被隐藏，重新创建")
+                debugLog("⚠️ 分享按钮窗口不存在或被隐藏，重新创建")
                 #endif
                 self.addSystemLevelShareButton()
             }
@@ -1482,7 +1482,7 @@ struct CharacterDetailView: View {
      */
     private func loadData() {
         #if DEBUG
-        print("🔍 CharacterDetailView - 加载数据")
+        debugLog("🔍 CharacterDetailView - 加载数据")
         #endif
         
         // 初始化角色主题
@@ -1510,7 +1510,7 @@ struct CharacterDetailView: View {
      */
     private func initializeView() {
         #if DEBUG
-        print("🔍 CharacterDetailView - 初始化视图: \(character.name)")
+        debugLog("🔍 CharacterDetailView - 初始化视图: \(character.name)")
         #endif
         
         // 调用loadData方法
@@ -1531,12 +1531,12 @@ struct CharacterDetailView: View {
                 DispatchQueue.main.async {
                     self.customImage = image
                     #if DEBUG
-                    print("✅ CharacterDetailView - 成功加载自定义头像: \(characterId)")
+                    debugLog("✅ CharacterDetailView - 成功加载自定义头像: \(characterId)")
                     #endif
                 }
             } else {
                 #if DEBUG
-                print("⚠️ CharacterDetailView - 自定义头像文件不存在: \(characterId)")
+                debugLog("⚠️ CharacterDetailView - 自定义头像文件不存在: \(characterId)")
                 #endif
             }
         }
@@ -1551,7 +1551,7 @@ struct CharacterDetailView: View {
         let characterId = character.id
             
             #if DEBUG
-        print("🔄 CharacterDetailView - 开始更新角色头像: \(characterId)")
+        debugLog("🔄 CharacterDetailView - 开始更新角色头像: \(characterId)")
             #endif
             
         // 保存图片到文档目录
@@ -1566,7 +1566,7 @@ struct CharacterDetailView: View {
                 self.updateCharacterModelAvatar(characterId: characterId)
                 
                         #if DEBUG
-                print("✅ CharacterDetailView - 头像更新成功: \(characterId)")
+                debugLog("✅ CharacterDetailView - 头像更新成功: \(characterId)")
                         #endif
                     }
         }
@@ -1594,7 +1594,7 @@ struct CharacterDetailView: View {
         // 将图片转换为JPEG数据
         guard let data = resizedImage.jpegData(compressionQuality: 0.8) else {
                     #if DEBUG
-            print("❌ CharacterDetailView - 无法将图片转换为JPEG数据")
+            debugLog("❌ CharacterDetailView - 无法将图片转换为JPEG数据")
                     #endif
             return
         }
@@ -1607,7 +1607,7 @@ struct CharacterDetailView: View {
             try FileManager.default.createDirectory(at: documentsDirectory, withIntermediateDirectories: true, attributes: nil)
         } catch {
                 #if DEBUG
-            print("❌ CharacterDetailView - 创建目录失败: \(error)")
+            debugLog("❌ CharacterDetailView - 创建目录失败: \(error)")
                 #endif
             return
         }
@@ -1619,11 +1619,11 @@ struct CharacterDetailView: View {
         do {
             try data.write(to: fileURL)
                         #if DEBUG
-            print("✅ CharacterDetailView - 头像已保存到: \(fileURL.path), 尺寸: \(Int(resizedImage.size.width))x\(Int(resizedImage.size.height))")
+            debugLog("✅ CharacterDetailView - 头像已保存到: \(fileURL.path), 尺寸: \(Int(resizedImage.size.width))x\(Int(resizedImage.size.height))")
             #endif
         } catch {
             #if DEBUG
-            print("❌ CharacterDetailView - 保存头像失败: \(error)")
+            debugLog("❌ CharacterDetailView - 保存头像失败: \(error)")
                         #endif
                     }
                 }
@@ -1635,7 +1635,7 @@ struct CharacterDetailView: View {
     private func updateCharacterModelAvatar(characterId: String) {
         guard let data = UserDefaults.standard.data(forKey: "CustomCharactersData") else {
             #if DEBUG
-            print("⚠️ CharacterDetailView - 未找到CustomCharactersData")
+            debugLog("⚠️ CharacterDetailView - 未找到CustomCharactersData")
             #endif
             return
         }
@@ -1668,12 +1668,12 @@ struct CharacterDetailView: View {
                 )
                 
                 #if DEBUG
-                print("✅ CharacterDetailView - CharacterModel头像信息已更新: \(characterId)")
+                debugLog("✅ CharacterDetailView - CharacterModel头像信息已更新: \(characterId)")
                 #endif
             }
         } catch {
             #if DEBUG
-            print("❌ CharacterDetailView - 更新CharacterModel失败: \(error)")
+            debugLog("❌ CharacterDetailView - 更新CharacterModel失败: \(error)")
             #endif
         }
         }
@@ -2029,7 +2029,7 @@ private struct DetailTabBarView: View {
             ForEach(0..<tabOptions.count, id: \.self) { index in
                 Button {
                     #if DEBUG
-                    print("标签选择: \(tabOptions[index])")
+                    debugLog("标签选择: \(tabOptions[index])")
                     #endif
                     withAnimation {
                         selectedTabIndex = index
@@ -2543,7 +2543,7 @@ private struct ShareCardView: View {
             let fileURL = documentsDirectory.appendingPathComponent("\(characterId).jpg")
             
             #if DEBUG
-            print("📁 CharacterDetailView - 尝试加载自定义头像: \(fileURL.path)")
+            debugLog("📁 CharacterDetailView - 尝试加载自定义头像: \(fileURL.path)")
             #endif
             
             // 检查文件是否存在
@@ -2553,17 +2553,17 @@ private struct ShareCardView: View {
                     DispatchQueue.main.async {
                         self.customImage = image
                         #if DEBUG
-                        print("✅ CharacterDetailView - 成功加载自定义头像: \(fileURL.path)")
+                        debugLog("✅ CharacterDetailView - 成功加载自定义头像: \(fileURL.path)")
                         #endif
                     }
                 } else {
                     #if DEBUG
-                    print("❌ CharacterDetailView - 无法加载自定义头像数据: \(fileURL.path)")
+                    debugLog("❌ CharacterDetailView - 无法加载自定义头像数据: \(fileURL.path)")
                     #endif
                 }
             } else {
                 #if DEBUG
-                print("⚠️ CharacterDetailView - 自定义头像文件不存在: \(fileURL.path)")
+                debugLog("⚠️ CharacterDetailView - 自定义头像文件不存在: \(fileURL.path)")
                 #endif
                 // 尝试从备份目录加载
                 let backupURL = URL(fileURLWithPath: "/Users/lishilong/IOS开发/虫遇/虫遇/backup_images/default_avatar.png")
@@ -2573,7 +2573,7 @@ private struct ShareCardView: View {
                     DispatchQueue.main.async {
                         self.customImage = image
                         #if DEBUG
-                        print("✅ CharacterDetailView - 从备份目录加载头像成功")
+                        debugLog("✅ CharacterDetailView - 从备份目录加载头像成功")
                         #endif
                     }
                 }

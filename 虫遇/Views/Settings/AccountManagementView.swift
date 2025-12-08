@@ -132,10 +132,10 @@ struct AccountManagementView: View {
                         // 3. 立即生成新 token（切换账号后应该使用新 token）
                         accountManager.createNewAccount { newToken in
                             #if DEBUG
-                            print("✅ 切换账号：已清除旧账号，已生成新 token: \(String(newToken.prefix(8)))...")
+                            debugLog("✅ 切换账号：已清除旧账号，已生成新 token: \(String(newToken.prefix(8)))...")
                             #endif
                             #if DEBUG
-                            print("💰 余额已归零，等待用户登录后才会加载新账号余额")
+                            debugLog("💰 余额已归零，等待用户登录后才会加载新账号余额")
                             #endif
                         }
                     }
@@ -509,11 +509,11 @@ struct AccountManagementView: View {
                 switch result {
                 case .success:
                     #if DEBUG
-                    print("✅ 自动备份成功")
+                    debugLog("✅ 自动备份成功")
                     #endif
                 case .failure(let error):
                     #if DEBUG
-                    print("⚠️ 自动备份失败: \(error.localizedDescription)")
+                    debugLog("⚠️ 自动备份失败: \(error.localizedDescription)")
                     #endif
                 }
             }
@@ -548,11 +548,11 @@ struct AccountManagementView: View {
                     switch result {
                     case .success(let filePath):
                         #if DEBUG
-                        print("✅ [自动备份] 备份成功: \(filePath)")
+                        debugLog("✅ [自动备份] 备份成功: \(filePath)")
                         #endif
                     case .failure(let error):
                         #if DEBUG
-                        print("⚠️ [自动备份] 备份失败: \(error.localizedDescription)")
+                        debugLog("⚠️ [自动备份] 备份失败: \(error.localizedDescription)")
                         #endif
                     }
                 }
@@ -1420,7 +1420,7 @@ struct BackupCharacterAvatarView: View {
         // 检查文件是否存在
         guard fileManager.fileExists(atPath: avatarURL.path) else {
             #if DEBUG
-            print("⚠️ [头像显示] 头像文件不存在: \(avatarURL.path)")
+            debugLog("⚠️ [头像显示] 头像文件不存在: \(avatarURL.path)")
             #endif
             return
         }
@@ -1429,7 +1429,7 @@ struct BackupCharacterAvatarView: View {
         guard let imageData = try? Data(contentsOf: avatarURL),
               let image = UIImage(data: imageData) else {
             #if DEBUG
-            print("⚠️ [头像显示] 无法加载头像图片: \(avatarURL.path)")
+            debugLog("⚠️ [头像显示] 无法加载头像图片: \(avatarURL.path)")
             #endif
             return
         }
@@ -2204,41 +2204,41 @@ struct BackupPostImageView: View {
     
     private func loadImage() {
         #if DEBUG
-        print("🖼️ [显示] 开始加载帖子图片: \(imageId)")
+        debugLog("🖼️ [显示] 开始加载帖子图片: \(imageId)")
         #endif
         
         // 方法1: 从备份数据中加载（base64）
         if let postImages = postImages {
             #if DEBUG
-            print("🖼️ [显示] 备份数据中有 \(postImages.count) 张图片")
+            debugLog("🖼️ [显示] 备份数据中有 \(postImages.count) 张图片")
             #endif
             if let imageData = postImages.first(where: { ($0["id"] as? String) == imageId }),
                let base64Data = imageData["imageData"] as? String {
                 #if DEBUG
-                print("🖼️ [显示] 找到图片数据，base64长度: \(base64Data.count)")
+                debugLog("🖼️ [显示] 找到图片数据，base64长度: \(base64Data.count)")
                 #endif
                 if let imageData = Data(base64Encoded: base64Data),
                    let uiImage = UIImage(data: imageData) {
                     DispatchQueue.main.async {
                         self.image = uiImage
                         #if DEBUG
-                        print("✅ [显示] 成功从备份数据加载图片: \(imageId)")
+                        debugLog("✅ [显示] 成功从备份数据加载图片: \(imageId)")
                         #endif
                     }
                     return
                 } else {
                     #if DEBUG
-                    print("⚠️ [显示] base64解码失败: \(imageId)")
+                    debugLog("⚠️ [显示] base64解码失败: \(imageId)")
                     #endif
                 }
             } else {
                 #if DEBUG
-                print("⚠️ [显示] 在备份数据中未找到图片: \(imageId), 可用ID: \(postImages.compactMap { $0["id"] as? String })")
+                debugLog("⚠️ [显示] 在备份数据中未找到图片: \(imageId), 可用ID: \(postImages.compactMap { $0["id"] as? String })")
                 #endif
             }
         } else {
             #if DEBUG
-            print("⚠️ [显示] 备份数据中没有postImages")
+            debugLog("⚠️ [显示] 备份数据中没有postImages")
             #endif
         }
         
@@ -2246,7 +2246,7 @@ struct BackupPostImageView: View {
         let fileManager = FileManager.default
         guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             #if DEBUG
-            print("⚠️ [显示] 无法获取Documents目录")
+            debugLog("⚠️ [显示] 无法获取Documents目录")
             #endif
             return
         }
@@ -2257,14 +2257,14 @@ struct BackupPostImageView: View {
         
         if fileManager.fileExists(atPath: imagePath.path) {
             #if DEBUG
-            print("🖼️ [显示] 找到文件: PostImages/\(imageId).jpg")
+            debugLog("🖼️ [显示] 找到文件: PostImages/\(imageId).jpg")
             #endif
             if let imageData = try? Data(contentsOf: imagePath),
                let uiImage = UIImage(data: imageData) {
                 DispatchQueue.main.async {
                     self.image = uiImage
                     #if DEBUG
-                    print("✅ [显示] 成功从文件系统加载图片: PostImages/\(imageId).jpg")
+                    debugLog("✅ [显示] 成功从文件系统加载图片: PostImages/\(imageId).jpg")
                     #endif
                 }
                 return
@@ -2275,14 +2275,14 @@ struct BackupPostImageView: View {
         let alternativePath = documentsDirectory.appendingPathComponent("\(imageId).jpg")
         if fileManager.fileExists(atPath: alternativePath.path) {
             #if DEBUG
-            print("🖼️ [显示] 找到文件（旧格式）: \(imageId).jpg")
+            debugLog("🖼️ [显示] 找到文件（旧格式）: \(imageId).jpg")
             #endif
             if let imageData = try? Data(contentsOf: alternativePath),
                let uiImage = UIImage(data: imageData) {
                 DispatchQueue.main.async {
                     self.image = uiImage
                     #if DEBUG
-                    print("✅ [显示] 成功从文件系统加载图片（旧格式）: \(imageId).jpg")
+                    debugLog("✅ [显示] 成功从文件系统加载图片（旧格式）: \(imageId).jpg")
                     #endif
                 }
                 return
@@ -2290,7 +2290,7 @@ struct BackupPostImageView: View {
         }
         
         #if DEBUG
-        print("⚠️ [显示] 无法从任何位置加载图片: \(imageId)")
+        debugLog("⚠️ [显示] 无法从任何位置加载图片: \(imageId)")
         #endif
     }
 }
@@ -2709,7 +2709,7 @@ struct BackupHistoryView: View {
             generator.notificationOccurred(.success)
         } catch {
             #if DEBUG
-            print("删除备份失败: \(error)")
+            debugLog("删除备份失败: \(error)")
             #endif
         }
     }

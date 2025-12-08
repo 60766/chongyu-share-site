@@ -296,50 +296,50 @@ struct ExplorationOptionsMenuView: View {
     private func loadCurrentCount() {
         // 打印临时帖子信息，帮助调试
         #if DEBUG
-        print("📊 加载帖子数量设置：帖子ID=\(post.id), 内容类型=\(post.contentType ?? "nil")")
+        debugLog("📊 加载帖子数量设置：帖子ID=\(post.id), 内容类型=\(post.contentType ?? "nil")")
         #endif
         
         guard let contentTypeString = post.contentType else {
             #if DEBUG
-            print("⚠️ 错误：帖子contentType为nil，使用默认数量6")
+            debugLog("⚠️ 错误：帖子contentType为nil，使用默认数量6")
             #endif
             currentCount = 6
             return
         }
         
         #if DEBUG
-        print("🔄 尝试加载[\(contentTypeString)]的数量设置")
+        debugLog("🔄 尝试加载[\(contentTypeString)]的数量设置")
         #endif
         
         // 打印所有可用的ContentType枚举值
         #if DEBUG
-        print("📚 可用的ContentType枚举值：")
+        debugLog("📚 可用的ContentType枚举值：")
         #endif
         for type in ContentGeneratorService.ContentType.allCases {
             #if DEBUG
-            print("  - \(type.rawValue)")
+            debugLog("  - \(type.rawValue)")
             #endif
         }
         
         // 检查CreationTypeManager中的类型
         #if DEBUG
-        print("📚 CreationTypeManager中的类型：")
+        debugLog("📚 CreationTypeManager中的类型：")
         #endif
         for type in CreationTypeManager.shared.types {
             #if DEBUG
-            print("  - \(type)")
+            debugLog("  - \(type)")
             #endif
         }
         
         // 特殊处理"虫洞共鸣"类型
         if contentTypeString == "虫洞共鸣" || contentTypeString == "resonance" {
             #if DEBUG
-            print("🔍 检测到虫洞共鸣类型，使用特殊处理：")
+            debugLog("🔍 检测到虫洞共鸣类型，使用特殊处理：")
             #endif
             let resonanceType = ContentGeneratorService.ContentType.resonance
             currentCount = ExplorationCountManager.shared.getCount(for: resonanceType)
             #if DEBUG
-            print("✅ 成功加载虫洞共鸣的数量设置：\(currentCount)")
+            debugLog("✅ 成功加载虫洞共鸣的数量设置：\(currentCount)")
             #endif
             return
         }
@@ -347,19 +347,19 @@ struct ExplorationOptionsMenuView: View {
         // 特殊处理"穿越吐槽"类型
         if contentTypeString == "穿越吐槽" {
             #if DEBUG
-            print("🔍 检测到穿越吐槽类型，使用特殊处理：")
+            debugLog("🔍 检测到穿越吐槽类型，使用特殊处理：")
             #endif
             let creativeIdeaType = ContentGeneratorService.ContentType.creativeIdea
             currentCount = ExplorationCountManager.shared.getCount(for: creativeIdeaType)
             #if DEBUG
-            print("✅ 成功加载穿越吐槽的数量设置：\(currentCount)")
+            debugLog("✅ 成功加载穿越吐槽的数量设置：\(currentCount)")
             #endif
             return
         }
         
         guard let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) else {
             #if DEBUG
-            print("⚠️ 错误：无法将[\(contentTypeString)]转换为ContentType枚举，使用默认数量6")
+            debugLog("⚠️ 错误：无法将[\(contentTypeString)]转换为ContentType枚举，使用默认数量6")
             #endif
             currentCount = 6
             return
@@ -368,7 +368,7 @@ struct ExplorationOptionsMenuView: View {
         // 从ExplorationCountManager获取当前设置的生成数量
         currentCount = ExplorationCountManager.shared.getCount(for: contentType)
         #if DEBUG
-        print("✅ 成功加载[\(contentTypeString)]的数量设置：\(currentCount)")
+        debugLog("✅ 成功加载[\(contentTypeString)]的数量设置：\(currentCount)")
         #endif
     }
     
@@ -376,26 +376,26 @@ struct ExplorationOptionsMenuView: View {
     private func increaseCount() {
         guard let contentTypeString = post.contentType else {
             #if DEBUG
-            print("⚠️ 错误：增加数量失败，帖子contentType为nil")
+            debugLog("⚠️ 错误：增加数量失败，帖子contentType为nil")
             #endif
             return
         }
         
         #if DEBUG
-        print("🔄 尝试增加[\(contentTypeString)]的数量")
+        debugLog("🔄 尝试增加[\(contentTypeString)]的数量")
         #endif
         
         // 特殊处理"虫洞共鸣"类型
         if contentTypeString == "虫洞共鸣" || contentTypeString == "resonance" {
             #if DEBUG
-            print("🔍 检测到虫洞共鸣类型，使用特殊处理增加数量")
+            debugLog("🔍 检测到虫洞共鸣类型，使用特殊处理增加数量")
             #endif
             // 触发触觉反馈
             HapticFeedbackManager.shared.lightImpact()
             // 使用枚举值直接增加数量
             currentCount = ExplorationCountManager.shared.increaseCount(for: .resonance)
             #if DEBUG
-            print("✅ 成功增加虫洞共鸣的数量为：\(currentCount)")
+            debugLog("✅ 成功增加虫洞共鸣的数量为：\(currentCount)")
             #endif
             // 显示提示
             ToastManager.shared.showToast(message: "已设置生成\(currentCount)篇「虫洞共鸣」")
@@ -405,14 +405,14 @@ struct ExplorationOptionsMenuView: View {
         // 特殊处理"穿越吐槽"类型
         if contentTypeString == "穿越吐槽" {
             #if DEBUG
-            print("🔍 检测到穿越吐槽类型，使用特殊处理增加数量")
+            debugLog("🔍 检测到穿越吐槽类型，使用特殊处理增加数量")
             #endif
             // 触发触觉反馈
             HapticFeedbackManager.shared.lightImpact()
             // 使用枚举值直接增加数量
             currentCount = ExplorationCountManager.shared.increaseCount(for: .creativeIdea)
             #if DEBUG
-            print("✅ 成功增加穿越吐槽的数量为：\(currentCount)")
+            debugLog("✅ 成功增加穿越吐槽的数量为：\(currentCount)")
             #endif
             // 显示提示
             ToastManager.shared.showToast(message: "已设置生成\(currentCount)篇「穿越吐槽」")
@@ -421,7 +421,7 @@ struct ExplorationOptionsMenuView: View {
         
         guard let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) else {
             #if DEBUG
-            print("⚠️ 错误：增加数量失败，无法将[\(contentTypeString)]转换为ContentType枚举")
+            debugLog("⚠️ 错误：增加数量失败，无法将[\(contentTypeString)]转换为ContentType枚举")
             #endif
             return
         }
@@ -432,7 +432,7 @@ struct ExplorationOptionsMenuView: View {
         // 增加数量并更新UI
         currentCount = ExplorationCountManager.shared.increaseCount(for: contentType)
         #if DEBUG
-        print("✅ 成功增加[\(contentTypeString)]的数量为：\(currentCount)")
+        debugLog("✅ 成功增加[\(contentTypeString)]的数量为：\(currentCount)")
         #endif
         
         // 显示提示
@@ -443,26 +443,26 @@ struct ExplorationOptionsMenuView: View {
     private func decreaseCount() {
         guard let contentTypeString = post.contentType else {
             #if DEBUG
-            print("⚠️ 错误：减少数量失败，帖子contentType为nil")
+            debugLog("⚠️ 错误：减少数量失败，帖子contentType为nil")
             #endif
             return
         }
         
         #if DEBUG
-        print("🔄 尝试减少[\(contentTypeString)]的数量")
+        debugLog("🔄 尝试减少[\(contentTypeString)]的数量")
         #endif
         
         // 特殊处理"虫洞共鸣"类型
         if contentTypeString == "虫洞共鸣" || contentTypeString == "resonance" {
             #if DEBUG
-            print("🔍 检测到虫洞共鸣类型，使用特殊处理减少数量")
+            debugLog("🔍 检测到虫洞共鸣类型，使用特殊处理减少数量")
             #endif
             // 触发触觉反馈
             HapticFeedbackManager.shared.lightImpact()
             // 使用枚举值直接减少数量
             currentCount = ExplorationCountManager.shared.decreaseCount(for: .resonance)
             #if DEBUG
-            print("✅ 成功减少虫洞共鸣的数量为：\(currentCount)")
+            debugLog("✅ 成功减少虫洞共鸣的数量为：\(currentCount)")
             #endif
             // 显示提示
             ToastManager.shared.showToast(message: "已设置生成\(currentCount)篇「虫洞共鸣」")
@@ -472,14 +472,14 @@ struct ExplorationOptionsMenuView: View {
         // 特殊处理"穿越吐槽"类型
         if contentTypeString == "穿越吐槽" {
             #if DEBUG
-            print("🔍 检测到穿越吐槽类型，使用特殊处理减少数量")
+            debugLog("🔍 检测到穿越吐槽类型，使用特殊处理减少数量")
             #endif
             // 触发触觉反馈
             HapticFeedbackManager.shared.lightImpact()
             // 使用枚举值直接减少数量
             currentCount = ExplorationCountManager.shared.decreaseCount(for: .creativeIdea)
             #if DEBUG
-            print("✅ 成功减少穿越吐槽的数量为：\(currentCount)")
+            debugLog("✅ 成功减少穿越吐槽的数量为：\(currentCount)")
             #endif
             // 显示提示
             ToastManager.shared.showToast(message: "已设置生成\(currentCount)篇「穿越吐槽」")
@@ -488,7 +488,7 @@ struct ExplorationOptionsMenuView: View {
         
         guard let contentType = ContentGeneratorService.ContentType(rawValue: contentTypeString) else {
             #if DEBUG
-            print("⚠️ 错误：减少数量失败，无法将[\(contentTypeString)]转换为ContentType枚举")
+            debugLog("⚠️ 错误：减少数量失败，无法将[\(contentTypeString)]转换为ContentType枚举")
             #endif
             return
         }
@@ -499,7 +499,7 @@ struct ExplorationOptionsMenuView: View {
         // 减少数量并更新UI
         currentCount = ExplorationCountManager.shared.decreaseCount(for: contentType)
         #if DEBUG
-        print("✅ 成功减少[\(contentTypeString)]的数量为：\(currentCount)")
+        debugLog("✅ 成功减少[\(contentTypeString)]的数量为：\(currentCount)")
         #endif
         
         // 显示提示

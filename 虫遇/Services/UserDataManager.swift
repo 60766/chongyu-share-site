@@ -16,7 +16,7 @@ class UserDataManager: ObservableObject {
     /// 清除所有用户数据
     func clearAllUserData() {
         #if DEBUG
-        print("🧹 开始清除用户数据...")
+        debugLog("🧹 开始清除用户数据...")
         #endif
         
         // 1. 清除用户资料
@@ -32,7 +32,7 @@ class UserDataManager: ObservableObject {
         clearUserPreferences()
         
         #if DEBUG
-        print("🧹 用户数据清除完成")
+        debugLog("🧹 用户数据清除完成")
         #endif
     }
     
@@ -58,7 +58,7 @@ class UserDataManager: ObservableObject {
         }
         
         #if DEBUG
-        print("✅ 已清除用户资料")
+        debugLog("✅ 已清除用户资料")
         #endif
     }
     
@@ -79,7 +79,7 @@ class UserDataManager: ObservableObject {
         }
         
         #if DEBUG
-        print("✅ 已清除自定义角色数据")
+        debugLog("✅ 已清除自定义角色数据")
         #endif
     }
     
@@ -100,7 +100,7 @@ class UserDataManager: ObservableObject {
         }
         
         #if DEBUG
-        print("✅ 已清除聊天记录")
+        debugLog("✅ 已清除聊天记录")
         #endif
     }
     
@@ -118,7 +118,7 @@ class UserDataManager: ObservableObject {
         }
         
         #if DEBUG
-        print("✅ 已清除用户偏好设置")
+        debugLog("✅ 已清除用户偏好设置")
         #endif
     }
     
@@ -128,7 +128,7 @@ class UserDataManager: ObservableObject {
     /// - Parameter modelContext: SwiftData的ModelContext，用于获取私聊和多人对话数据
     func exportUserData(modelContext: ModelContext? = nil) -> [String: Any] {
         #if DEBUG
-        print("🔄 开始导出用户核心数据...")
+        debugLog("🔄 开始导出用户核心数据...")
         #endif
         var exportData: [String: Any] = [:]
         
@@ -143,7 +143,7 @@ class UserDataManager: ObservableObject {
         ]
         exportData["profile"] = profile
         #if DEBUG
-        print("👤 个人档案: \(profile)")
+        debugLog("👤 个人档案: \(profile)")
         #endif
         
         // 2. 我的创作
@@ -184,7 +184,7 @@ class UserDataManager: ObservableObject {
             // 添加帖子图片数据（base64编码）
             if !post.images.isEmpty {
                 #if DEBUG
-                print("📸 [备份] 帖子 \(post.id.uuidString) 有 \(post.images.count) 张图片: \(post.images)")
+                debugLog("📸 [备份] 帖子 \(post.id.uuidString) 有 \(post.images.count) 张图片: \(post.images)")
                 #endif
                 var postImages: [[String: Any]] = []
                 for imageId in post.images {
@@ -194,11 +194,11 @@ class UserDataManager: ObservableObject {
                             "imageData": imageData
                         ])
                         #if DEBUG
-                        print("✅ [备份] 已备份帖子图片: \(imageId), base64长度: \(imageData.count)")
+                        debugLog("✅ [备份] 已备份帖子图片: \(imageId), base64长度: \(imageData.count)")
                         #endif
                     } else {
                         #if DEBUG
-                        print("⚠️ [备份] 无法加载帖子图片: \(imageId)")
+                        debugLog("⚠️ [备份] 无法加载帖子图片: \(imageId)")
                         #endif
                     }
                 }
@@ -206,11 +206,11 @@ class UserDataManager: ObservableObject {
                     postData["images"] = post.images // 保留图片ID列表
                     postData["postImages"] = postImages // 添加图片数据
                     #if DEBUG
-                    print("✅ [备份] 帖子图片备份完成: \(postImages.count)/\(post.images.count) 张")
+                    debugLog("✅ [备份] 帖子图片备份完成: \(postImages.count)/\(post.images.count) 张")
                     #endif
                 } else {
                     #if DEBUG
-                    print("⚠️ [备份] 帖子 \(post.id.uuidString) 没有成功备份任何图片")
+                    debugLog("⚠️ [备份] 帖子 \(post.id.uuidString) 没有成功备份任何图片")
                     #endif
                 }
             }
@@ -232,7 +232,7 @@ class UserDataManager: ObservableObject {
         
         exportData["myCreations"] = myCreations
         #if DEBUG
-        print("✍️ 我的创作: \(postsData.count) 篇帖子（用户: \(userPostsCount), AI: \(aiPostsCount)）, \(totalComments) 条评论, \(customCharacters.count) 个自定义角色")
+        debugLog("✍️ 我的创作: \(postsData.count) 篇帖子（用户: \(userPostsCount), AI: \(aiPostsCount)）, \(totalComments) 条评论, \(customCharacters.count) 个自定义角色")
         #endif
         
         // 3. 成长记录
@@ -250,21 +250,21 @@ class UserDataManager: ObservableObject {
         ]
         exportData["highlights"] = highlights
         #if DEBUG
-        print("📈 成长记录: \(highlights)")
+        debugLog("📈 成长记录: \(highlights)")
         #endif
         
         // 4. 成就系统数据
         let achievementsData = getAchievementsData()
         exportData["achievements"] = achievementsData
         #if DEBUG
-        print("🏆 成就系统: \(achievementsData.count) 个成就已导出")
+        debugLog("🏆 成就系统: \(achievementsData.count) 个成就已导出")
         #endif
         
         // 5. 私聊对话数据
         if let conversationsData = getConversationsData(modelContext: modelContext) {
             exportData["conversations"] = conversationsData
             #if DEBUG
-            print("💬 私聊对话: \(conversationsData["totalConversations"] as? Int ?? 0) 个对话, \(conversationsData["totalMessages"] as? Int ?? 0) 条消息")
+            debugLog("💬 私聊对话: \(conversationsData["totalConversations"] as? Int ?? 0) 个对话, \(conversationsData["totalMessages"] as? Int ?? 0) 条消息")
             #endif
         }
         
@@ -272,7 +272,7 @@ class UserDataManager: ObservableObject {
         if let multiChatData = getMultiPersonChatData(modelContext: modelContext) {
             exportData["multiPersonChats"] = multiChatData
             #if DEBUG
-            print("👥 多人对话: \(multiChatData["totalSessions"] as? Int ?? 0) 个会话, \(multiChatData["totalMessages"] as? Int ?? 0) 条消息")
+            debugLog("👥 多人对话: \(multiChatData["totalSessions"] as? Int ?? 0) 个会话, \(multiChatData["totalMessages"] as? Int ?? 0) 条消息")
             #endif
         }
         
@@ -282,7 +282,7 @@ class UserDataManager: ObservableObject {
                 if let likesArray = try JSONSerialization.jsonObject(with: likesData) as? [[String: Any]] {
                     exportData["likes"] = likesArray
                     #if DEBUG
-                    print("✅ [备份] 已备份 \(likesArray.count) 条点赞记录")
+                    debugLog("✅ [备份] 已备份 \(likesArray.count) 条点赞记录")
                     #endif
                 } else {
                     // 尝试使用JSONDecoder解码
@@ -294,14 +294,14 @@ class UserDataManager: ObservableObject {
                            let likesArray = try? JSONSerialization.jsonObject(with: encodedData) as? [[String: Any]] {
                             exportData["likes"] = likesArray
                             #if DEBUG
-                            print("✅ [备份] 已备份 \(likesArray.count) 条点赞记录")
+                            debugLog("✅ [备份] 已备份 \(likesArray.count) 条点赞记录")
                             #endif
                         }
                     }
                 }
             } catch {
                 #if DEBUG
-                print("⚠️ [备份] 备份点赞记录失败: \(error)")
+                debugLog("⚠️ [备份] 备份点赞记录失败: \(error)")
                 #endif
             }
         }
@@ -311,11 +311,11 @@ class UserDataManager: ObservableObject {
             exportData["followedCharacters"] = followedData
             let count = followedData["count"] as? Int ?? 0
             #if DEBUG
-            print("🤝 关注角色: 已备份 \(count) 个关注对象")
+            debugLog("🤝 关注角色: 已备份 \(count) 个关注对象")
             #endif
         } else {
             #if DEBUG
-            print("🤝 关注角色: 当前没有关注任何角色")
+            debugLog("🤝 关注角色: 当前没有关注任何角色")
             #endif
         }
         
@@ -325,17 +325,17 @@ class UserDataManager: ObservableObject {
                 if let customCharactersArray = try JSONSerialization.jsonObject(with: customCharactersData) as? [[String: Any]] {
                     exportData["CustomCharactersData"] = customCharactersArray
                     #if DEBUG
-                    print("✅ [备份] 已直接备份CustomCharactersData: \(customCharactersArray.count) 个角色")
+                    debugLog("✅ [备份] 已直接备份CustomCharactersData: \(customCharactersArray.count) 个角色")
                     #endif
                 }
             } catch {
                 #if DEBUG
-                print("⚠️ [备份] 备份CustomCharactersData失败: \(error)")
+                debugLog("⚠️ [备份] 备份CustomCharactersData失败: \(error)")
                 #endif
             }
         } else {
             #if DEBUG
-            print("⚠️ [备份] CustomCharactersData不存在，跳过直接备份")
+            debugLog("⚠️ [备份] CustomCharactersData不存在，跳过直接备份")
             #endif
         }
         
@@ -347,7 +347,7 @@ class UserDataManager: ObservableObject {
         ]
         
         #if DEBUG
-        print("📤 用户核心数据导出完成")
+        debugLog("📤 用户核心数据导出完成")
         #endif
         return exportData
     }
@@ -546,7 +546,7 @@ class UserDataManager: ObservableObject {
                 }
             } catch {
                 #if DEBUG
-                print("⚠️ 解析 CustomCharactersData 失败: \(error)")
+                debugLog("⚠️ 解析 CustomCharactersData 失败: \(error)")
                 #endif
             }
         }
@@ -600,7 +600,7 @@ class UserDataManager: ObservableObject {
         let fileManager = FileManager.default
         guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             #if DEBUG
-            print("⚠️ [备份] 无法获取Documents目录")
+            debugLog("⚠️ [备份] 无法获取Documents目录")
             #endif
             return nil
         }
@@ -612,7 +612,7 @@ class UserDataManager: ObservableObject {
         // 检查文件是否存在
         if fileManager.fileExists(atPath: imagePath.path) {
             #if DEBUG
-            print("✅ [备份] 找到帖子图片文件: PostImages/\(imageId).jpg")
+            debugLog("✅ [备份] 找到帖子图片文件: PostImages/\(imageId).jpg")
             #endif
             return loadImageFromURL(imagePath)
         }
@@ -621,13 +621,13 @@ class UserDataManager: ObservableObject {
         let alternativePath = documentsDirectory.appendingPathComponent("\(imageId).jpg")
         if fileManager.fileExists(atPath: alternativePath.path) {
             #if DEBUG
-            print("✅ [备份] 找到帖子图片文件（旧格式）: \(imageId).jpg")
+            debugLog("✅ [备份] 找到帖子图片文件（旧格式）: \(imageId).jpg")
             #endif
             return loadImageFromURL(alternativePath)
         }
         
         #if DEBUG
-        print("⚠️ [备份] 帖子图片文件不存在: PostImages/\(imageId).jpg 或 \(imageId).jpg")
+        debugLog("⚠️ [备份] 帖子图片文件不存在: PostImages/\(imageId).jpg 或 \(imageId).jpg")
         #endif
         return nil
     }
@@ -637,7 +637,7 @@ class UserDataManager: ObservableObject {
         // 读取图片数据
         guard let imageData = try? Data(contentsOf: url) else {
             #if DEBUG
-            print("⚠️ [备份] 无法读取图片文件: \(url.path)")
+            debugLog("⚠️ [备份] 无法读取图片文件: \(url.path)")
             #endif
             return nil
         }
@@ -645,7 +645,7 @@ class UserDataManager: ObservableObject {
         // 转换为base64编码
         let base64String = imageData.base64EncodedString()
         #if DEBUG
-        print("✅ [备份] 成功加载图片: \(url.lastPathComponent), 大小: \(imageData.count) bytes")
+        debugLog("✅ [备份] 成功加载图片: \(url.lastPathComponent), 大小: \(imageData.count) bytes")
         #endif
         return base64String
     }
@@ -656,7 +656,7 @@ class UserDataManager: ObservableObject {
         let fileManager = FileManager.default
         guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             #if DEBUG
-            print("⚠️ [备份] 无法获取Documents目录")
+            debugLog("⚠️ [备份] 无法获取Documents目录")
             #endif
             return nil
         }
@@ -683,19 +683,19 @@ class UserDataManager: ObservableObject {
                     // 转换为base64编码
                     let base64String = imageData.base64EncodedString()
                     #if DEBUG
-                    print("✅ [备份] 成功加载头像: \(characterId), 文件: \(fileName), 大小: \(imageData.count) bytes, base64长度: \(base64String.count)")
+                    debugLog("✅ [备份] 成功加载头像: \(characterId), 文件: \(fileName), 大小: \(imageData.count) bytes, base64长度: \(base64String.count)")
                     #endif
                     return base64String
                 } else {
             #if DEBUG
-            print("⚠️ [备份] 无法读取头像文件: \(avatarURL.path)")
+            debugLog("⚠️ [备份] 无法读取头像文件: \(avatarURL.path)")
             #endif
                 }
             }
         }
         
         #if DEBUG
-        print("⚠️ [备份] 头像文件不存在: characterId=\(characterId), 尝试的文件: \(possibleFileNames.joined(separator: ", "))")
+        debugLog("⚠️ [备份] 头像文件不存在: characterId=\(characterId), 尝试的文件: \(possibleFileNames.joined(separator: ", "))")
         #endif
         return nil
     }
@@ -704,7 +704,7 @@ class UserDataManager: ObservableObject {
     private func getConversationsData(modelContext: ModelContext?) -> [String: Any]? {
         guard let modelContext = modelContext else {
             #if DEBUG
-            print("⚠️ [备份] ModelContext不可用，跳过私聊对话备份")
+            debugLog("⚠️ [备份] ModelContext不可用，跳过私聊对话备份")
             #endif
             return nil
         }
@@ -760,7 +760,7 @@ class UserDataManager: ObservableObject {
             ]
         } catch {
             #if DEBUG
-            print("❌ [备份] 获取私聊对话数据失败: \(error)")
+            debugLog("❌ [备份] 获取私聊对话数据失败: \(error)")
             #endif
             return nil
         }
@@ -770,7 +770,7 @@ class UserDataManager: ObservableObject {
     private func getMultiPersonChatData(modelContext: ModelContext?) -> [String: Any]? {
         guard let modelContext = modelContext else {
             #if DEBUG
-            print("⚠️ [备份] ModelContext不可用，跳过多人对话备份")
+            debugLog("⚠️ [备份] ModelContext不可用，跳过多人对话备份")
             #endif
             return nil
         }
@@ -828,7 +828,7 @@ class UserDataManager: ObservableObject {
             ]
         } catch {
             #if DEBUG
-            print("❌ [备份] 获取多人对话数据失败: \(error)")
+            debugLog("❌ [备份] 获取多人对话数据失败: \(error)")
             #endif
             return nil
         }
@@ -940,14 +940,14 @@ class UserDataManager: ObservableObject {
         // 检查备份数据格式（account字段是可选的，因为新版本可能没有）
         guard let profileData = backupData["profile"] as? [String: Any] else {
             #if DEBUG
-            print("❌ 备份数据格式无效：缺少 profile 字段")
-            print("📋 备份数据包含的字段: \(backupData.keys.joined(separator: ", "))")
+            debugLog("❌ 备份数据格式无效：缺少 profile 字段")
+            debugLog("📋 备份数据包含的字段: \(backupData.keys.joined(separator: ", "))")
             #endif
             return false
         }
         
         #if DEBUG
-        print("📥 [恢复] 开始恢复用户数据...")
+        debugLog("📥 [恢复] 开始恢复用户数据...")
         #endif
         
         // 恢复用户资料
@@ -957,31 +957,31 @@ class UserDataManager: ObservableObject {
         if let username = profileData["username"] as? String {
             userDefaults.set(username, forKey: "user_profile_username")
             #if DEBUG
-            print("✅ [恢复] 用户名: \(username)")
+            debugLog("✅ [恢复] 用户名: \(username)")
             #endif
         } else if let nickname = profileData["nickname"] as? String {
             userDefaults.set(nickname, forKey: "user_profile_username")
             #if DEBUG
-            print("✅ [恢复] 用户名: \(nickname)")
+            debugLog("✅ [恢复] 用户名: \(nickname)")
             #endif
         }
         
         if let signature = profileData["personalSignature"] as? String {
             userDefaults.set(signature, forKey: "user_profile_personal_signature")
             #if DEBUG
-            print("✅ [恢复] 个人签名")
+            debugLog("✅ [恢复] 个人签名")
             #endif
         } else if let signature = profileData["signature"] as? String {
             userDefaults.set(signature, forKey: "user_profile_personal_signature")
             #if DEBUG
-            print("✅ [恢复] 个人签名")
+            debugLog("✅ [恢复] 个人签名")
             #endif
         }
         
         if let avatarName = profileData["avatarImageName"] as? String {
             userDefaults.set(avatarName, forKey: "user_profile_avatar_name")
             #if DEBUG
-            print("✅ [恢复] 头像")
+            debugLog("✅ [恢复] 头像")
             #endif
         }
         
@@ -994,13 +994,13 @@ class UserDataManager: ObservableObject {
             let newLevel = max(currentLevel, backupLevel)
             userDefaults.set(newLevel, forKey: "user_profile_level")
             #if DEBUG
-            print("✅ [恢复] 等级: 当前 \(currentLevel) + 备份 \(backupLevel) = 最终 \(newLevel)")
+            debugLog("✅ [恢复] 等级: 当前 \(currentLevel) + 备份 \(backupLevel) = 最终 \(newLevel)")
             #endif
         } else if let backupLevel = profileData["level"] as? Int {
             let newLevel = max(currentLevel, backupLevel)
             userDefaults.set(newLevel, forKey: "user_profile_level")
             #if DEBUG
-            print("✅ [恢复] 等级: 当前 \(currentLevel) + 备份 \(backupLevel) = 最终 \(newLevel)")
+            debugLog("✅ [恢复] 等级: 当前 \(currentLevel) + 备份 \(backupLevel) = 最终 \(newLevel)")
             #endif
         }
         
@@ -1009,13 +1009,13 @@ class UserDataManager: ObservableObject {
             let newExperience = currentExperience + backupExperience
             userDefaults.set(newExperience, forKey: "user_profile_experience")
             #if DEBUG
-            print("✅ [恢复] 经验值: 当前 \(currentExperience) + 备份 \(backupExperience) = 最终 \(newExperience)")
+            debugLog("✅ [恢复] 经验值: 当前 \(currentExperience) + 备份 \(backupExperience) = 最终 \(newExperience)")
             #endif
         } else if let backupExperience = profileData["experience"] as? Int {
             let newExperience = currentExperience + backupExperience
             userDefaults.set(newExperience, forKey: "user_profile_experience")
             #if DEBUG
-            print("✅ [恢复] 经验值: 当前 \(currentExperience) + 备份 \(backupExperience) = 最终 \(newExperience)")
+            debugLog("✅ [恢复] 经验值: 当前 \(currentExperience) + 备份 \(backupExperience) = 最终 \(newExperience)")
             #endif
         }
         
@@ -1099,7 +1099,7 @@ class UserDataManager: ObservableObject {
         }
         
         #if DEBUG
-        print("📥 用户数据恢复完成")
+        debugLog("📥 用户数据恢复完成")
         #endif
         return true
     }
@@ -1163,9 +1163,9 @@ class UserDataManager: ObservableObject {
         }
         
         #if DEBUG
-        print("✅ 成就系统数据恢复完成")
-        print("   - 恢复了 \(restoredCount) 个成就的进度")
-        print("   - 恢复了 \(pinnedCount) 个固定成就")
+        debugLog("✅ 成就系统数据恢复完成")
+        debugLog("   - 恢复了 \(restoredCount) 个成就的进度")
+        debugLog("   - 恢复了 \(pinnedCount) 个固定成就")
         #endif
     }
     
@@ -1181,7 +1181,7 @@ class UserDataManager: ObservableObject {
     /// 恢复自定义角色数据
     private func restoreCustomCharacters(_ characters: [[String: Any]]) {
         #if DEBUG
-        print("📥 [恢复] 开始恢复自定义角色，备份数据中有 \(characters.count) 个角色")
+        debugLog("📥 [恢复] 开始恢复自定义角色，备份数据中有 \(characters.count) 个角色")
         #endif
         
         let userDefaults = UserDefaults.standard
@@ -1206,7 +1206,7 @@ class UserDataManager: ObservableObject {
         for characterData in characters {
             guard let characterId = characterData["id"] as? String else {
                 #if DEBUG
-                print("⚠️ [恢复] 跳过无效的角色数据（缺少ID）")
+                debugLog("⚠️ [恢复] 跳过无效的角色数据（缺少ID）")
                 #endif
                 continue
             }
@@ -1302,7 +1302,7 @@ class UserDataManager: ObservableObject {
                 existingCharacters[existingIndex] = characterToSave
                 updatedCount += 1
                 #if DEBUG
-                print("✅ [恢复] 已更新角色数据: \(characterToSave["name"] as? String ?? "未命名")")
+                debugLog("✅ [恢复] 已更新角色数据: \(characterToSave["name"] as? String ?? "未命名")")
                 #endif
             } else {
                 // 新角色，添加到列表
@@ -1410,17 +1410,17 @@ class UserDataManager: ObservableObject {
             userDefaults.synchronize()
             
             #if DEBUG
-            print("✅ [恢复] 自定义角色恢复完成: 恢复了 \(newlyRestoredCount) 个新角色，更新了 \(updatedCount) 个现有角色（共 \(existingCharacters.count) 个）")
+            debugLog("✅ [恢复] 自定义角色恢复完成: 恢复了 \(newlyRestoredCount) 个新角色，更新了 \(updatedCount) 个现有角色（共 \(existingCharacters.count) 个）")
             if restoredAvatarCount > 0 {
-                print("   - 恢复了 \(restoredAvatarCount) 个头像文件")
+                debugLog("   - 恢复了 \(restoredAvatarCount) 个头像文件")
             }
             
             // 验证保存是否成功
             if let verifyData = userDefaults.data(forKey: "CustomCharactersData"),
                let verifyArray = try? JSONSerialization.jsonObject(with: verifyData) as? [[String: Any]] {
-                print("✅ [恢复] 验证保存成功: UserDefaults中有 \(verifyArray.count) 个角色")
+                debugLog("✅ [恢复] 验证保存成功: UserDefaults中有 \(verifyArray.count) 个角色")
             } else {
-                print("⚠️ [恢复] 验证保存失败: 无法读取保存的数据")
+                debugLog("⚠️ [恢复] 验证保存失败: 无法读取保存的数据")
             }
             #endif
             
@@ -1495,7 +1495,7 @@ class UserDataManager: ObservableObject {
         
         #if DEBUG
         if restoredCount > 0 {
-            print("✅ 帖子图片恢复完成: 恢复了 \(restoredCount) 张图片")
+            debugLog("✅ 帖子图片恢复完成: 恢复了 \(restoredCount) 张图片")
         }
         #endif
     }
@@ -1504,7 +1504,7 @@ class UserDataManager: ObservableObject {
     private func savePostImage(imageId: String, base64Data: String) {
         guard let imageData = Data(base64Encoded: base64Data) else {
             #if DEBUG
-            print("⚠️ 无法解码base64帖子图片数据: \(imageId)")
+            debugLog("⚠️ 无法解码base64帖子图片数据: \(imageId)")
             #endif
             return
         }
@@ -1512,7 +1512,7 @@ class UserDataManager: ObservableObject {
         let fileManager = FileManager.default
         guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             #if DEBUG
-            print("⚠️ 无法获取Documents目录")
+            debugLog("⚠️ 无法获取Documents目录")
             #endif
             return
         }
@@ -1530,7 +1530,7 @@ class UserDataManager: ObservableObject {
             // 写入图片数据
             try imageData.write(to: imageURL)
             #if DEBUG
-            print("✅ 帖子图片恢复成功: PostImages/\(imageId).jpg")
+            debugLog("✅ 帖子图片恢复成功: PostImages/\(imageId).jpg")
             #endif
         } catch {
             Logger.error("保存帖子图片文件失败", error: error, log: Logger.data)
@@ -1540,7 +1540,7 @@ class UserDataManager: ObservableObject {
     /// 恢复帖子数据到PostViewModel
     private func restorePostsData(posts: [[String: Any]]) {
         #if DEBUG
-        print("📥 [恢复] 开始恢复帖子数据，共 \(posts.count) 条")
+        debugLog("📥 [恢复] 开始恢复帖子数据，共 \(posts.count) 条")
         #endif
         
         // 先加载现有的帖子数据（合并而不是覆盖）
@@ -1554,11 +1554,11 @@ class UserDataManager: ObservableObject {
                 decoder.dateDecodingStrategy = .iso8601
                 existingUserPosts = try decoder.decode([UserPostModel].self, from: userPostsData)
                 #if DEBUG
-                print("📥 [恢复] 当前已有 \(existingUserPosts.count) 条用户帖子")
+                debugLog("📥 [恢复] 当前已有 \(existingUserPosts.count) 条用户帖子")
                 #endif
             } catch {
                 #if DEBUG
-                print("⚠️ [恢复] 加载现有用户帖子失败: \(error)")
+                debugLog("⚠️ [恢复] 加载现有用户帖子失败: \(error)")
                 #endif
             }
         }
@@ -1570,11 +1570,11 @@ class UserDataManager: ObservableObject {
                 decoder.dateDecodingStrategy = .iso8601
                 existingAIPosts = try decoder.decode([UserPostModel].self, from: aiPostsData)
                 #if DEBUG
-                print("📥 [恢复] 当前已有 \(existingAIPosts.count) 条AI帖子")
+                debugLog("📥 [恢复] 当前已有 \(existingAIPosts.count) 条AI帖子")
                 #endif
             } catch {
                 #if DEBUG
-                print("⚠️ [恢复] 加载现有AI帖子失败: \(error)")
+                debugLog("⚠️ [恢复] 加载现有AI帖子失败: \(error)")
                 #endif
             }
         }
@@ -1588,7 +1588,7 @@ class UserDataManager: ObservableObject {
                   let content = postData["content"] as? String,
                   let username = postData["username"] as? String else {
                 #if DEBUG
-                print("⚠️ [恢复] 跳过无效的帖子数据")
+                debugLog("⚠️ [恢复] 跳过无效的帖子数据")
                 #endif
                 continue
             }
@@ -1599,7 +1599,7 @@ class UserDataManager: ObservableObject {
             
             if alreadyExists {
                 #if DEBUG
-                print("⏩ [恢复] 帖子已存在，跳过: \(uuid)")
+                debugLog("⏩ [恢复] 帖子已存在，跳过: \(uuid)")
                 #endif
                 continue
             }
@@ -1691,14 +1691,14 @@ class UserDataManager: ObservableObject {
         if !sortedUserPosts.isEmpty {
             savePostsToUserDefaults(posts: sortedUserPosts, key: "UserPosts_v1")
             #if DEBUG
-            print("✅ [恢复] 用户帖子合并完成: 原有 \(existingUserPosts.count) 条 + 恢复 \(restoredUserPosts.count) 条 = 共 \(sortedUserPosts.count) 条（已按时间排序）")
+            debugLog("✅ [恢复] 用户帖子合并完成: 原有 \(existingUserPosts.count) 条 + 恢复 \(restoredUserPosts.count) 条 = 共 \(sortedUserPosts.count) 条（已按时间排序）")
             #endif
         }
         
         if !sortedAIPosts.isEmpty {
             savePostsToUserDefaults(posts: sortedAIPosts, key: "AIPosts_v1")
             #if DEBUG
-            print("✅ [恢复] AI帖子合并完成: 原有 \(existingAIPosts.count) 条 + 恢复 \(restoredAIPosts.count) 条 = 共 \(sortedAIPosts.count) 条（已按时间排序）")
+            debugLog("✅ [恢复] AI帖子合并完成: 原有 \(existingAIPosts.count) 条 + 恢复 \(restoredAIPosts.count) 条 = 共 \(sortedAIPosts.count) 条（已按时间排序）")
             #endif
         }
         
@@ -1716,7 +1716,7 @@ class UserDataManager: ObservableObject {
             let data = try encoder.encode(posts)
             UserDefaults.standard.set(data, forKey: key)
             #if DEBUG
-            print("✅ [恢复] 帖子已保存到UserDefaults: \(key)")
+            debugLog("✅ [恢复] 帖子已保存到UserDefaults: \(key)")
             #endif
         } catch {
             Logger.error("保存帖子到UserDefaults失败", error: error, log: Logger.data)
@@ -1773,7 +1773,7 @@ class UserDataManager: ObservableObject {
         guard let modelContext = modelContext else {
             #if DEBUG
             if let conversations = conversationsData["conversations"] as? [[String: Any]] {
-                print("⚠️ [恢复] 检测到 \(conversations.count) 个私聊对话，但ModelContext不可用，跳过恢复")
+                debugLog("⚠️ [恢复] 检测到 \(conversations.count) 个私聊对话，但ModelContext不可用，跳过恢复")
             }
             #endif
             return
@@ -1781,14 +1781,14 @@ class UserDataManager: ObservableObject {
         
         guard let conversations = conversationsData["conversations"] as? [[String: Any]] else {
             #if DEBUG
-            print("⚠️ [恢复] 私聊对话数据格式无效：缺少 conversations 字段")
-            print("📋 [恢复] 私聊对话数据包含的字段: \(conversationsData.keys.joined(separator: ", "))")
+            debugLog("⚠️ [恢复] 私聊对话数据格式无效：缺少 conversations 字段")
+            debugLog("📋 [恢复] 私聊对话数据包含的字段: \(conversationsData.keys.joined(separator: ", "))")
             #endif
             return
         }
         
         #if DEBUG
-        print("📥 [恢复] 开始恢复 \(conversations.count) 个私聊对话")
+        debugLog("📥 [恢复] 开始恢复 \(conversations.count) 个私聊对话")
         #endif
         var restoredConversations = 0
         var restoredMessages = 0
@@ -1823,7 +1823,7 @@ class UserDataManager: ObservableObject {
             if let existing = existingConversation {
                 // 对话已存在，合并消息（只添加不存在的消息）
                 #if DEBUG
-                print("🔄 [恢复] 对话已存在，合并消息: \(conversationId)")
+                debugLog("🔄 [恢复] 对话已存在，合并消息: \(conversationId)")
                 #endif
                 
                 // 获取现有消息ID列表
@@ -1846,7 +1846,7 @@ class UserDataManager: ObservableObject {
                     // 检查消息是否已存在
                     if existingMessageIds.contains(messageId) {
                         #if DEBUG
-                        print("⏩ [恢复] 消息已存在，跳过: \(messageId)")
+                        debugLog("⏩ [恢复] 消息已存在，跳过: \(messageId)")
                         #endif
                         continue
                     }
@@ -1891,7 +1891,7 @@ class UserDataManager: ObservableObject {
                 existing.updatedAt = latestMessageTime
                 
                 #if DEBUG
-                print("✅ [恢复] 对话已更新: 新增 \(newMessageCount) 条消息")
+                debugLog("✅ [恢复] 对话已更新: 新增 \(newMessageCount) 条消息")
                 #endif
             } else {
                 // 创建新对话
@@ -1956,7 +1956,7 @@ class UserDataManager: ObservableObject {
         do {
             try modelContext.save()
             #if DEBUG
-            print("✅ [恢复] 私聊对话恢复完成: \(restoredConversations) 个对话, \(restoredMessages) 条消息")
+            debugLog("✅ [恢复] 私聊对话恢复完成: \(restoredConversations) 个对话, \(restoredMessages) 条消息")
             #endif
             
             // 发送通知，让UI刷新私聊对话列表
@@ -1973,7 +1973,7 @@ class UserDataManager: ObservableObject {
         guard let modelContext = modelContext else {
             #if DEBUG
             if let sessions = multiChatData["sessions"] as? [[String: Any]] {
-                print("⚠️ [恢复] 检测到 \(sessions.count) 个多人对话会话，但ModelContext不可用，跳过恢复")
+                debugLog("⚠️ [恢复] 检测到 \(sessions.count) 个多人对话会话，但ModelContext不可用，跳过恢复")
             }
             #endif
             return
@@ -1981,14 +1981,14 @@ class UserDataManager: ObservableObject {
         
         guard let sessions = multiChatData["sessions"] as? [[String: Any]] else {
             #if DEBUG
-            print("⚠️ [恢复] 多人对话数据格式无效：缺少 sessions 字段")
-            print("📋 [恢复] 多人对话数据包含的字段: \(multiChatData.keys.joined(separator: ", "))")
+            debugLog("⚠️ [恢复] 多人对话数据格式无效：缺少 sessions 字段")
+            debugLog("📋 [恢复] 多人对话数据包含的字段: \(multiChatData.keys.joined(separator: ", "))")
             #endif
             return
         }
         
         #if DEBUG
-        print("📥 [恢复] 开始恢复 \(sessions.count) 个多人对话会话")
+        debugLog("📥 [恢复] 开始恢复 \(sessions.count) 个多人对话会话")
         #endif
         var restoredSessions = 0
         var updatedSessions = 0
@@ -1998,7 +1998,7 @@ class UserDataManager: ObservableObject {
             guard let sessionId = sessionData["id"] as? String,
                   let topic = sessionData["topic"] as? String else {
                 #if DEBUG
-                print("⚠️ [恢复] 跳过无效的多人对话会话数据")
+                debugLog("⚠️ [恢复] 跳过无效的多人对话会话数据")
                 #endif
                 continue
             }
@@ -2009,7 +2009,7 @@ class UserDataManager: ObservableObject {
             let messagesData = sessionData["messages"] as? [[String: Any]] ?? []
             
             #if DEBUG
-            print("📥 [恢复] 处理多人对话会话: \(topic), ID: \(sessionId), 消息数: \(messagesData.count)")
+            debugLog("📥 [恢复] 处理多人对话会话: \(topic), ID: \(sessionId), 消息数: \(messagesData.count)")
             #endif
             
             // 恢复消息（先按时间排序，确保消息顺序正确）
@@ -2032,7 +2032,7 @@ class UserDataManager: ObservableObject {
             if let existing = existingSession {
                 // 会话已存在，合并消息（只添加不存在的消息）
                 #if DEBUG
-                print("🔄 [恢复] 会话已存在，合并消息: \(sessionId)")
+                debugLog("🔄 [恢复] 会话已存在，合并消息: \(sessionId)")
                 #endif
                 
                 // 获取现有消息ID列表
@@ -2058,7 +2058,7 @@ class UserDataManager: ObservableObject {
                     // 检查消息是否已存在
                     if existingMessageIds.contains(messageId) {
                         #if DEBUG
-                        print("⏩ [恢复] 多人对话消息已存在，跳过: \(messageId)")
+                        debugLog("⏩ [恢复] 多人对话消息已存在，跳过: \(messageId)")
                         #endif
                         continue
                     }
@@ -2096,7 +2096,7 @@ class UserDataManager: ObservableObject {
                 
                 updatedSessions += 1
                 #if DEBUG
-                print("✅ [恢复] 会话已更新: 新增 \(newMessageCount) 条消息（会话现有 \(existing.messageCount) 条消息）")
+                debugLog("✅ [恢复] 会话已更新: 新增 \(newMessageCount) 条消息（会话现有 \(existing.messageCount) 条消息）")
                 #endif
             } else {
                 // 创建新会话
@@ -2164,7 +2164,7 @@ class UserDataManager: ObservableObject {
         do {
             try modelContext.save()
             #if DEBUG
-            print("✅ [恢复] 多人对话恢复完成: 恢复了 \(restoredSessions) 个新会话，更新了 \(updatedSessions) 个现有会话，共恢复/更新 \(restoredMessages) 条消息")
+            debugLog("✅ [恢复] 多人对话恢复完成: 恢复了 \(restoredSessions) 个新会话，更新了 \(updatedSessions) 个现有会话，共恢复/更新 \(restoredMessages) 条消息")
             #endif
             
             // 发送通知，让UI刷新多人对话列表
@@ -2179,7 +2179,7 @@ class UserDataManager: ObservableObject {
     /// 恢复点赞记录数据
     private func restoreLikesData(likes: [[String: Any]]) {
         #if DEBUG
-        print("📥 [恢复] 开始恢复点赞记录，共 \(likes.count) 条")
+        debugLog("📥 [恢复] 开始恢复点赞记录，共 \(likes.count) 条")
         #endif
         
         // 先加载现有的点赞记录
@@ -2190,11 +2190,11 @@ class UserDataManager: ObservableObject {
                 decoder.dateDecodingStrategy = .iso8601
                 existingLikes = try decoder.decode([LikeRecord].self, from: likesData)
                 #if DEBUG
-                print("📥 [恢复] 当前已有 \(existingLikes.count) 条点赞记录")
+                debugLog("📥 [恢复] 当前已有 \(existingLikes.count) 条点赞记录")
                 #endif
             } catch {
                 #if DEBUG
-                print("⚠️ [恢复] 加载现有点赞记录失败: \(error)")
+                debugLog("⚠️ [恢复] 加载现有点赞记录失败: \(error)")
                 #endif
             }
         }
@@ -2206,7 +2206,7 @@ class UserDataManager: ObservableObject {
                   let typeString = likeData["type"] as? String,
                   let type = LikeRecordType(rawValue: typeString) else {
                 #if DEBUG
-                print("⚠️ [恢复] 跳过无效的点赞记录数据")
+                debugLog("⚠️ [恢复] 跳过无效的点赞记录数据")
                 #endif
                 continue
             }
@@ -2251,7 +2251,7 @@ class UserDataManager: ObservableObject {
                 restoredCount += 1
             } else {
                 #if DEBUG
-                print("⏩ [恢复] 点赞记录已存在，跳过: \(postId)")
+                debugLog("⏩ [恢复] 点赞记录已存在，跳过: \(postId)")
                 #endif
             }
         }
@@ -2264,7 +2264,7 @@ class UserDataManager: ObservableObject {
             UserDefaults.standard.set(data, forKey: "UserLikes_v1")
             
             #if DEBUG
-            print("✅ [恢复] 点赞记录恢复完成: 原有 \(existingLikes.count - restoredCount) 条 + 恢复 \(restoredCount) 条 = 共 \(existingLikes.count) 条")
+            debugLog("✅ [恢复] 点赞记录恢复完成: 原有 \(existingLikes.count - restoredCount) 条 + 恢复 \(restoredCount) 条 = 共 \(existingLikes.count) 条")
             #endif
             
             // 通知UserLikeService重新加载
@@ -2302,7 +2302,7 @@ class UserDataManager: ObservableObject {
         usernames = usernames.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         guard !usernames.isEmpty else {
             #if DEBUG
-            print("ℹ️ [恢复] 没有关注角色数据需要恢复")
+            debugLog("ℹ️ [恢复] 没有关注角色数据需要恢复")
             #endif
             return
         }
@@ -2318,7 +2318,7 @@ class UserDataManager: ObservableObject {
         }
         
         #if DEBUG
-        print("✅ [恢复] 关注角色: 已恢复 \(usernames.count) 个关注对象")
+        debugLog("✅ [恢复] 关注角色: 已恢复 \(usernames.count) 个关注对象")
         #endif
     }
     

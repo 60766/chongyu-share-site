@@ -23,7 +23,7 @@ class ThoughtJourneyService: ObservableObject {
      */
     func generateReport(timeRange: TimeRange, modelContext: ModelContext) {
         #if DEBUG
-        print("🚀 开始生成次元回放报告 - 时间范围: \(timeRange.description)")
+        debugLog("🚀 开始生成次元回放报告 - 时间范围: \(timeRange.description)")
         #endif
         isGenerating = true
         errorMessage = nil
@@ -32,30 +32,30 @@ class ThoughtJourneyService: ObservableObject {
         let (userData, allChatMessages) = collectUserData(timeRange: timeRange, modelContext: modelContext)
         
         #if DEBUG
-        print("📊 数据收集完成:")
+        debugLog("📊 数据收集完成:")
         #endif
         #if DEBUG
-        print("  - 帖子数: \(userData.posts.count)")
+        debugLog("  - 帖子数: \(userData.posts.count)")
         #endif
         #if DEBUG
-        print("  - 评论数: \(userData.comments.count)")
+        debugLog("  - 评论数: \(userData.comments.count)")
         #endif
         #if DEBUG
-        print("  - 聊天数: \(userData.chats.count)")
+        debugLog("  - 聊天数: \(userData.chats.count)")
         #endif
         #if DEBUG
-        print("  - 事件数: \(userData.events.count)")
+        debugLog("  - 事件数: \(userData.events.count)")
         #endif
         
         // 2. 构建AI提示词
         let prompt = buildPrompt(userData: userData, timeRange: timeRange, allChatMessages: allChatMessages)
         #if DEBUG
-        print("📝 AI提示词长度: \(prompt.count) 字符")
+        debugLog("📝 AI提示词长度: \(prompt.count) 字符")
         #endif
         
         // 3. 调用AI
         #if DEBUG
-        print("🌐 开始调用AI服务...")
+        debugLog("🌐 开始调用AI服务...")
         #endif
         aiNetworkService.sendRequest(prompt: prompt)
             .receive(on: DispatchQueue.main)
@@ -64,21 +64,21 @@ class ThoughtJourneyService: ObservableObject {
                     self?.isGenerating = false
                     if case .failure(let error) = completion {
                         #if DEBUG
-                        print("❌ 次元回放生成失败: \(error.localizedDescription)")
+                        debugLog("❌ 次元回放生成失败: \(error.localizedDescription)")
                         #endif
                         self?.errorMessage = "生成失败: \(error.localizedDescription)"
                     } else {
                         #if DEBUG
-                        print("✅ 次元回放API调用完成")
+                        debugLog("✅ 次元回放API调用完成")
                         #endif
                     }
                 },
                 receiveValue: { [weak self] response in
                     #if DEBUG
-                    print("📥 收到AI响应，长度: \(response.count) 字符")
+                    debugLog("📥 收到AI响应，长度: \(response.count) 字符")
                     #endif
                     #if DEBUG
-                    print("📄 响应预览: \(String(response.prefix(100)))...")
+                    debugLog("📄 响应预览: \(String(response.prefix(100)))...")
                     #endif
                     self?.parseAndSaveReport(response: response, userData: userData)
                 }
@@ -161,22 +161,22 @@ class ThoughtJourneyService: ObservableObject {
             
             // 详细调试每条多人聊天消息
             #if DEBUG
-            print("🔍 多人聊天消息详情:")
+            debugLog("🔍 多人聊天消息详情:")
             #endif
             for (index, message) in allMultiChatMessages.enumerated() {
                 #if DEBUG
-                print("  消息\(index): characterId=\(message.characterId), characterName=\(message.characterName), isUserMessage=\(message.isUserMessage), content=\(message.content.prefix(20))...")
+                debugLog("  消息\(index): characterId=\(message.characterId), characterName=\(message.characterName), isUserMessage=\(message.isUserMessage), content=\(message.content.prefix(20))...")
                 #endif
             }
             
             userMultiChatMessages = allMultiChatMessages.filter { $0.isUserMessage }
             
             #if DEBUG
-            print("✅ 多人聊天消息: 总计\(allMultiChatMessages.count)条, 用户消息\(userMultiChatMessages.count)条")
+            debugLog("✅ 多人聊天消息: 总计\(allMultiChatMessages.count)条, 用户消息\(userMultiChatMessages.count)条")
             #endif
         } catch {
             #if DEBUG
-            print("❌ 获取多人聊天消息失败: \(error)")
+            debugLog("❌ 获取多人聊天消息失败: \(error)")
             #endif
         }
         
@@ -194,11 +194,11 @@ class ThoughtJourneyService: ObservableObject {
             userOneOnOneMessages = allOneOnOneMessages.filter { $0.isFromUser }
             
             #if DEBUG
-            print("✅ 一对一聊天消息: 总计\(allOneOnOneMessages.count)条, 用户消息\(userOneOnOneMessages.count)条")
+            debugLog("✅ 一对一聊天消息: 总计\(allOneOnOneMessages.count)条, 用户消息\(userOneOnOneMessages.count)条")
             #endif
         } catch {
             #if DEBUG
-            print("❌ 获取一对一聊天消息失败: \(error)")
+            debugLog("❌ 获取一对一聊天消息失败: \(error)")
             #endif
         }
         
@@ -213,40 +213,40 @@ class ThoughtJourneyService: ObservableObject {
         
         // 调试信息
         #if DEBUG
-        print("📊 数据收集完成:")
+        debugLog("📊 数据收集完成:")
         #endif
         #if DEBUG
-        print("  - 用户帖子: \(userPosts.count)篇")
+        debugLog("  - 用户帖子: \(userPosts.count)篇")
         #endif
         #if DEBUG
-        print("  - 用户评论: \(userCommentsWithPosts.count)条") 
+        debugLog("  - 用户评论: \(userCommentsWithPosts.count)条") 
         #endif
         #if DEBUG
-        print("  - 用户聊天消息: \(totalUserChatMessages)条")
+        debugLog("  - 用户聊天消息: \(totalUserChatMessages)条")
         #endif
         #if DEBUG
-        print("  - 聊天对话总数: \(totalChatMessages)条")
+        debugLog("  - 聊天对话总数: \(totalChatMessages)条")
         #endif
         #if DEBUG
-        print("  - 通知事件: \(notifications.count)个")
+        debugLog("  - 通知事件: \(notifications.count)个")
         #endif
         #if DEBUG
-        print("  - 多人聊天详情: 总计\(allMultiChatMessages.count)条, 用户\(userMultiChatMessages.count)条")
+        debugLog("  - 多人聊天详情: 总计\(allMultiChatMessages.count)条, 用户\(userMultiChatMessages.count)条")
         #endif
         #if DEBUG
-        print("  - 一对一聊天详情: 总计\(allOneOnOneMessages.count)条, 用户\(userOneOnOneMessages.count)条")
+        debugLog("  - 一对一聊天详情: 总计\(allOneOnOneMessages.count)条, 用户\(userOneOnOneMessages.count)条")
         #endif
         
         // 打印多人聊天的会话ID
         let multiChatSessions = Set(allMultiChatMessages.map { $0.sessionId })
         #if DEBUG
-        print("  - 多人聊天会话ID: \(Array(multiChatSessions))")
+        debugLog("  - 多人聊天会话ID: \(Array(multiChatSessions))")
         #endif
         
         // 打印一对一聊天的conversationId
         let oneOnOneSessions = Set(allOneOnOneMessages.map { $0.conversationId })
         #if DEBUG
-        print("  - 一对一聊天会话ID: \(Array(oneOnOneSessions))")
+        debugLog("  - 一对一聊天会话ID: \(Array(oneOnOneSessions))")
         #endif
         
         let userDataDigest = UserDataDigest(
@@ -634,7 +634,7 @@ class ThoughtJourneyService: ObservableObject {
             return !session.chatTheme.isEmpty ? session.chatTheme : session.topic
         } catch {
             #if DEBUG
-            print("❌ 获取会话主题失败: \(error)")
+            debugLog("❌ 获取会话主题失败: \(error)")
             #endif
             return nil
         }
@@ -654,18 +654,18 @@ class ThoughtJourneyService: ObservableObject {
      */
     private func buildDetailedChatContexts(userData: UserDataDigest, allChatMessages: [ChatContextItem]) -> String {
         #if DEBUG
-        print("🔍 构建详细聊天上下文:")
+        debugLog("🔍 构建详细聊天上下文:")
         #endif
         #if DEBUG
-        print("  - userData.chats数量: \(userData.chats.count)")
+        debugLog("  - userData.chats数量: \(userData.chats.count)")
         #endif
         #if DEBUG
-        print("  - allChatMessages数量: \(allChatMessages.count)")
+        debugLog("  - allChatMessages数量: \(allChatMessages.count)")
         #endif
         
         if userData.chats.isEmpty {
             #if DEBUG
-            print("  - 结果: 无对话记录")
+            debugLog("  - 结果: 无对话记录")
             #endif
             return "无对话记录"
         }
@@ -673,7 +673,7 @@ class ThoughtJourneyService: ObservableObject {
         // 打印所有用户聊天数据
         for (index, chat) in userData.chats.enumerated() {
             #if DEBUG
-            print("  - 用户聊天\(index): sessionId=\(chat.sessionId ?? "nil"), characterName=\(chat.characterName), content=\(chat.content.prefix(20))...")
+            debugLog("  - 用户聊天\(index): sessionId=\(chat.sessionId ?? "nil"), characterName=\(chat.characterName), content=\(chat.content.prefix(20))...")
             #endif
         }
         
@@ -689,11 +689,11 @@ class ThoughtJourneyService: ObservableObject {
         }
         
         #if DEBUG
-        print("  - 分组后的会话数: \(sessionGroups.count)")
+        debugLog("  - 分组后的会话数: \(sessionGroups.count)")
         #endif
         for (_, chats) in sessionGroups {
             #if DEBUG
-            print("    * 会话: \(chats.count)条消息")
+            debugLog("    * 会话: \(chats.count)条消息")
             #endif
         }
         
@@ -750,13 +750,13 @@ class ThoughtJourneyService: ObservableObject {
         userChats: [UserDataDigest.ChatData]
     ) -> String {
         #if DEBUG
-        print("    🔍 构建会话\(sessionId)的完整上下文:")
+        debugLog("    🔍 构建会话\(sessionId)的完整上下文:")
         #endif
         #if DEBUG
-        print("      - 角色: \(characterName)")
+        debugLog("      - 角色: \(characterName)")
         #endif
         #if DEBUG
-        print("      - allChatMessages总数: \(allChatMessages.count)")
+        debugLog("      - allChatMessages总数: \(allChatMessages.count)")
         #endif
         
         // 获取该会话的所有消息（包括用户和角色的）
@@ -766,19 +766,19 @@ class ThoughtJourneyService: ObservableObject {
             // 一对一聊天：按conversationId匹配
             let conversationId = sessionId.replacingOccurrences(of: "private_", with: "")
             #if DEBUG
-            print("      - 一对一聊天，匹配conversationId: \(conversationId)")
+            debugLog("      - 一对一聊天，匹配conversationId: \(conversationId)")
             #endif
             sessionMessages = allChatMessages.filter { $0.sessionId == conversationId }
         } else {
             // 多人聊天：按sessionId匹配
             #if DEBUG
-            print("      - 多人聊天，匹配sessionId: \(sessionId)")
+            debugLog("      - 多人聊天，匹配sessionId: \(sessionId)")
             #endif
             sessionMessages = allChatMessages.filter { $0.sessionId == sessionId }
         }
         
         #if DEBUG
-        print("      - 找到该会话的消息数: \(sessionMessages.count)")
+        debugLog("      - 找到该会话的消息数: \(sessionMessages.count)")
         #endif
         
         // 按时间排序
@@ -811,7 +811,7 @@ class ThoughtJourneyService: ObservableObject {
      */
     private func parseAndSaveReport(response: String, userData: UserDataDigest) {
         #if DEBUG
-        print("🔄 开始解析并保存次元回放报告...")
+        debugLog("🔄 开始解析并保存次元回放报告...")
         #endif
         
         let report = ThoughtJourneyReport(
@@ -828,25 +828,25 @@ class ThoughtJourneyService: ObservableObject {
         )
         
         #if DEBUG
-        print("📋 报告统计:")
+        debugLog("📋 报告统计:")
         #endif
         #if DEBUG
-        print("  - ID: \(report.id)")
+        debugLog("  - ID: \(report.id)")
         #endif
         #if DEBUG
-        print("  - 时间范围: \(report.timeRange.description)")
+        debugLog("  - 时间范围: \(report.timeRange.description)")
         #endif
         #if DEBUG
-        print("  - 内容长度: \(report.content.count) 字符")
+        debugLog("  - 内容长度: \(report.content.count) 字符")
         #endif
         #if DEBUG
-        print("  - 统计数据: posts=\(report.stats.postsCount), comments=\(report.stats.commentsCount), chats=\(report.stats.chatsCount), characters=\(report.stats.charactersCount)")
+        debugLog("  - 统计数据: posts=\(report.stats.postsCount), comments=\(report.stats.commentsCount), chats=\(report.stats.chatsCount), characters=\(report.stats.charactersCount)")
         #endif
         
         currentReport = report
         saveReportToCache(report)
         #if DEBUG
-        print("✅ 次元回放报告生成并保存完成!")
+        debugLog("✅ 次元回放报告生成并保存完成!")
         #endif
     }
     
@@ -877,34 +877,34 @@ class ThoughtJourneyService: ObservableObject {
             UserDefaults.standard.synchronize()
             
             #if DEBUG
-            print("✅ 次元回放报告已保存并备份:")
+            debugLog("✅ 次元回放报告已保存并备份:")
             #endif
             #if DEBUG
-            print("  - 时间范围: \(report.timeRange.description)")
+            debugLog("  - 时间范围: \(report.timeRange.description)")
             #endif
             #if DEBUG
-            print("  - 内容长度: \(report.content.count) 字符") 
+            debugLog("  - 内容长度: \(report.content.count) 字符") 
             #endif
             #if DEBUG
-            print("  - 生成时间: \(formatDate(report.generatedAt))")
+            debugLog("  - 生成时间: \(formatDate(report.generatedAt))")
             #endif
             #if DEBUG
-            print("  - 存储键: \(key)")
+            debugLog("  - 存储键: \(key)")
             #endif
             #if DEBUG
-            print("  - 备份键: \(backupKey)")
+            debugLog("  - 备份键: \(backupKey)")
             #endif
             
         } catch {
             #if DEBUG
-            print("❌ 保存报告失败: \(error)")
+            debugLog("❌ 保存报告失败: \(error)")
             #endif
             // 尝试直接保存简化版本
             let fallbackData = report.content.data(using: .utf8) ?? Data()
             let fallbackKey = "thought_journey_fallback_\(report.timeRange.key)"
             UserDefaults.standard.set(fallbackData, forKey: fallbackKey)
             #if DEBUG
-            print("⚠️ 已保存报告内容的备用版本到: \(fallbackKey)")
+            debugLog("⚠️ 已保存报告内容的备用版本到: \(fallbackKey)")
             #endif
         }
     }
@@ -924,18 +924,18 @@ class ThoughtJourneyService: ObservableObject {
             do {
                 let report = try JSONDecoder().decode(ThoughtJourneyReport.self, from: data)
                 #if DEBUG
-                print("✅ 从主存储成功加载次元回放报告: \(timeRange.description)")
+                debugLog("✅ 从主存储成功加载次元回放报告: \(timeRange.description)")
                 #endif
                 #if DEBUG
-                print("  - 生成时间: \(formatDate(report.generatedAt))")
+                debugLog("  - 生成时间: \(formatDate(report.generatedAt))")
                 #endif
                 #if DEBUG
-                print("  - 内容长度: \(report.content.count) 字符")
+                debugLog("  - 内容长度: \(report.content.count) 字符")
                 #endif
                 return report
             } catch {
                 #if DEBUG
-                print("❌ 主存储解析失败: \(error)")
+                debugLog("❌ 主存储解析失败: \(error)")
                 #endif
             }
         }
@@ -945,26 +945,26 @@ class ThoughtJourneyService: ObservableObject {
             do {
                 let report = try JSONDecoder().decode(ThoughtJourneyReport.self, from: backupData)
                 #if DEBUG
-                print("✅ 从备份存储成功恢复次元回放报告: \(timeRange.description)")
+                debugLog("✅ 从备份存储成功恢复次元回放报告: \(timeRange.description)")
                 #endif
                 #if DEBUG
-                print("  - 生成时间: \(formatDate(report.generatedAt))")
+                debugLog("  - 生成时间: \(formatDate(report.generatedAt))")
                 #endif
                 #if DEBUG
-                print("  - 内容长度: \(report.content.count) 字符")
+                debugLog("  - 内容长度: \(report.content.count) 字符")
                 #endif
                 
                 // 🔧 恢复主存储
                 UserDefaults.standard.set(backupData, forKey: key)
                 UserDefaults.standard.synchronize()
                 #if DEBUG
-                print("🔄 已从备份恢复主存储")
+                debugLog("🔄 已从备份恢复主存储")
                 #endif
                 
                 return report
             } catch {
                 #if DEBUG
-                print("❌ 备份存储解析失败: \(error)")
+                debugLog("❌ 备份存储解析失败: \(error)")
                 #endif
             }
         }
@@ -974,7 +974,7 @@ class ThoughtJourneyService: ObservableObject {
         if let fallbackData = UserDefaults.standard.data(forKey: fallbackKey),
            let content = String(data: fallbackData, encoding: .utf8) {
             #if DEBUG
-            print("⚠️ 从备用存储恢复次元回放内容: \(timeRange.description)")
+            debugLog("⚠️ 从备用存储恢复次元回放内容: \(timeRange.description)")
             #endif
             
             // 创建最小化报告对象
@@ -992,7 +992,7 @@ class ThoughtJourneyService: ObservableObject {
             )
             
             #if DEBUG
-            print("🔄 已从备用存储创建报告对象，内容长度: \(content.count) 字符")
+            debugLog("🔄 已从备用存储创建报告对象，内容长度: \(content.count) 字符")
             #endif
             return fallbackReport
         }
@@ -1000,21 +1000,21 @@ class ThoughtJourneyService: ObservableObject {
         // 🔧 检查元数据，用于调试
         if let metadata = UserDefaults.standard.dictionary(forKey: metaKey) {
             #if DEBUG
-            print("📊 发现次元回放元数据:")
+            debugLog("📊 发现次元回放元数据:")
             #endif
             #if DEBUG
-            print("  - 保存时间: \(Date(timeIntervalSince1970: metadata["savedAt"] as? Double ?? 0))")
+            debugLog("  - 保存时间: \(Date(timeIntervalSince1970: metadata["savedAt"] as? Double ?? 0))")
             #endif
             #if DEBUG
-            print("  - 内容长度: \(metadata["contentLength"] as? Int ?? 0)")
+            debugLog("  - 内容长度: \(metadata["contentLength"] as? Int ?? 0)")
             #endif
             #if DEBUG
-            print("  - 版本: \(metadata["version"] as? String ?? "未知")")
+            debugLog("  - 版本: \(metadata["version"] as? String ?? "未知")")
             #endif
         }
         
         #if DEBUG
-        print("📂 未找到任何缓存的次元回放报告: \(timeRange.description)")
+        debugLog("📂 未找到任何缓存的次元回放报告: \(timeRange.description)")
         #endif
         return nil
     }
@@ -1073,18 +1073,18 @@ class ThoughtJourneyService: ObservableObject {
      */
     private func buildOptimizedChatContexts(userData: UserDataDigest, allChatMessages: [ChatContextItem], timeRange: TimeRange) -> String {
         #if DEBUG
-        print("🔍 构建优化版聊天上下文:")
+        debugLog("🔍 构建优化版聊天上下文:")
         #endif
         #if DEBUG
-        print("  - userData.chats数量: \(userData.chats.count)")
+        debugLog("  - userData.chats数量: \(userData.chats.count)")
         #endif
         #if DEBUG
-        print("  - allChatMessages数量: \(allChatMessages.count)")
+        debugLog("  - allChatMessages数量: \(allChatMessages.count)")
         #endif
         
         if userData.chats.isEmpty {
             #if DEBUG
-            print("  - 结果: 无对话记录")
+            debugLog("  - 结果: 无对话记录")
             #endif
             return "无对话记录"
         }
@@ -1092,7 +1092,7 @@ class ThoughtJourneyService: ObservableObject {
         // 1. 过滤有价值的聊天消息
         let meaningfulChats = filterMeaningfulChats(userData.chats)
         #if DEBUG
-        print("  - 过滤后有价值的聊天: \(meaningfulChats.count)条")
+        debugLog("  - 过滤后有价值的聊天: \(meaningfulChats.count)条")
         #endif
         
         // 2. 分类聊天记录
@@ -1117,10 +1117,10 @@ class ThoughtJourneyService: ObservableObject {
         }
         
         #if DEBUG
-        print("  - 一对一聊天记录: \(oneOnOneChats.count)条")
+        debugLog("  - 一对一聊天记录: \(oneOnOneChats.count)条")
         #endif
         #if DEBUG
-        print("  - 多人对话会话数: \(groupChatSessions.count)个")
+        debugLog("  - 多人对话会话数: \(groupChatSessions.count)个")
         #endif
         
         var contextParts: [String] = []
@@ -1187,10 +1187,10 @@ class ThoughtJourneyService: ObservableObject {
         
         let result = contextParts.joined(separator: "\n")
         #if DEBUG
-        print("  - 最终包含: 多人对话(有用户回复)\(selectedGroupChats.count)个, 一对一聊天\(selectedOneOnOneSessions.count)个")
+        debugLog("  - 最终包含: 多人对话(有用户回复)\(selectedGroupChats.count)个, 一对一聊天\(selectedOneOnOneSessions.count)个")
         #endif
         #if DEBUG
-        print("  - 生成的上下文长度: \(result.count) 字符")
+        debugLog("  - 生成的上下文长度: \(result.count) 字符")
         #endif
         
         return result
@@ -1241,16 +1241,16 @@ class ThoughtJourneyService: ObservableObject {
         guard let firstChat = chats.first else { return "" }
         
         #if DEBUG
-        print("    🔍 构建多人对话会话上下文:")
+        debugLog("    🔍 构建多人对话会话上下文:")
         #endif
         #if DEBUG
-        print("      - sessionId: \(sessionId)")
+        debugLog("      - sessionId: \(sessionId)")
         #endif
         #if DEBUG
-        print("      - chats数量: \(chats.count)")
+        debugLog("      - chats数量: \(chats.count)")
         #endif
         #if DEBUG
-        print("      - allChatMessages总数: \(allChatMessages.count)")
+        debugLog("      - allChatMessages总数: \(allChatMessages.count)")
         #endif
         
         var sessionInfo = ""
@@ -1273,7 +1273,7 @@ class ThoughtJourneyService: ObservableObject {
             .sorted { $0.timestamp < $1.timestamp }
         
         #if DEBUG
-        print("      - 匹配到的sessionMessages数量: \(sessionMessages.count)")
+        debugLog("      - 匹配到的sessionMessages数量: \(sessionMessages.count)")
         #endif
         
         // 从用户发送的消息开始提取，最多10条消息
@@ -1288,18 +1288,18 @@ class ThoughtJourneyService: ObservableObject {
         }
         
         #if DEBUG
-        print("      - 提取的消息数量: \(extractedMessages.count)")
+        debugLog("      - 提取的消息数量: \(extractedMessages.count)")
         #endif
         
         // 如果没有匹配到消息，尝试其他匹配方式
         if sessionMessages.isEmpty {
             #if DEBUG
-            print("      - 尝试其他匹配方式...")
+            debugLog("      - 尝试其他匹配方式...")
             #endif
             // 打印前几个allChatMessages的sessionId用于调试
             for (index, msg) in allChatMessages.prefix(5).enumerated() {
                 #if DEBUG
-                print("      - allChatMessages[\(index)].sessionId: \(msg.sessionId)")
+                debugLog("      - allChatMessages[\(index)].sessionId: \(msg.sessionId)")
                 #endif
             }
         }
@@ -1332,12 +1332,12 @@ class ThoughtJourneyService: ObservableObject {
             }
         } else {
             #if DEBUG
-            print("      - 警告: 没有找到用户回复的消息，跳过此会话")
+            debugLog("      - 警告: 没有找到用户回复的消息，跳过此会话")
             #endif
         }
         
         #if DEBUG
-        print("      - 生成的sessionInfo长度: \(sessionInfo.count)")
+        debugLog("      - 生成的sessionInfo长度: \(sessionInfo.count)")
         #endif
         return sessionInfo + "\n"
     }
@@ -1594,19 +1594,19 @@ extension ThoughtJourneyService {
         var usedContent = Set<Int>() // 记录已使用的内容索引，避免重复选择
         
         #if DEBUG
-        print("🎲 随机时间点内容组选择 - 时间范围: \(timeRange.description)")
+        debugLog("🎲 随机时间点内容组选择 - 时间范围: \(timeRange.description)")
         #endif
         #if DEBUG
-        print("  - 总内容数: \(allContent.count)")
+        debugLog("  - 总内容数: \(allContent.count)")
         #endif
         #if DEBUG
-        print("  - 目标选择数: \(maxCount)")
+        debugLog("  - 目标选择数: \(maxCount)")
         #endif
         #if DEBUG
-        print("  - 时间点数: \(timePointCount)")
+        debugLog("  - 时间点数: \(timePointCount)")
         #endif
         #if DEBUG
-        print("  - 随机时间点: \(randomTimePoints.map { formatDateForRandomSelection($0) })")
+        debugLog("  - 随机时间点: \(randomTimePoints.map { formatDateForRandomSelection($0) })")
         #endif
         
         // 为每个随机时间点选择内容组
@@ -1630,13 +1630,13 @@ extension ThoughtJourneyService {
             
             if !contentGroup.isEmpty {
                 #if DEBUG
-                print("  ✅ 时间点 \(formatDateForRandomSelection(timePoint)): 选中 \(contentGroup.count) 条相关内容")
+                debugLog("  ✅ 时间点 \(formatDateForRandomSelection(timePoint)): 选中 \(contentGroup.count) 条相关内容")
                 #endif
             }
         }
         
         #if DEBUG
-        print("  - 最终选中: \(selectedContent.count) 条内容")
+        debugLog("  - 最终选中: \(selectedContent.count) 条内容")
         #endif
         return selectedContent
     }
@@ -1706,19 +1706,19 @@ extension ThoughtJourneyService {
         var usedPostIds = Set<UUID>()
         
         #if DEBUG
-        print("🎲 随机时间点评论组选择 - 时间范围: \(timeRange.description)")
+        debugLog("🎲 随机时间点评论组选择 - 时间范围: \(timeRange.description)")
         #endif
         #if DEBUG
-        print("  - 总评论数: \(allComments.count)")
+        debugLog("  - 总评论数: \(allComments.count)")
         #endif
         #if DEBUG
-        print("  - 涉及帖子数: \(commentsByPost.count)")
+        debugLog("  - 涉及帖子数: \(commentsByPost.count)")
         #endif
         #if DEBUG
-        print("  - 目标选择数: \(maxCount)")
+        debugLog("  - 目标选择数: \(maxCount)")
         #endif
         #if DEBUG
-        print("  - 时间点数: \(timePointCount)")
+        debugLog("  - 时间点数: \(timePointCount)")
         #endif
         
         for timePoint in randomTimePoints {
@@ -1760,13 +1760,13 @@ extension ThoughtJourneyService {
                 usedPostIds.insert(bestPostId)
                 
                 #if DEBUG
-                print("  ✅ 时间点 \(formatDateForRandomSelection(timePoint)): 选中帖子 \(bestPostId.uuidString) 的 \(bestCommentGroup.count) 条评论")
+                debugLog("  ✅ 时间点 \(formatDateForRandomSelection(timePoint)): 选中帖子 \(bestPostId.uuidString) 的 \(bestCommentGroup.count) 条评论")
                 #endif
             }
         }
         
         #if DEBUG
-        print("  - 最终选中: \(selectedComments.count) 条评论")
+        debugLog("  - 最终选中: \(selectedComments.count) 条评论")
         #endif
         return selectedComments
     }
@@ -1828,19 +1828,19 @@ extension ThoughtJourneyService {
         var usedSessionIndices = Set<Int>()
         
         #if DEBUG
-        print("🎲 随机时间点聊天会话组选择 - 时间范围: \(timeRange.description)")
+        debugLog("🎲 随机时间点聊天会话组选择 - 时间范围: \(timeRange.description)")
         #endif
         #if DEBUG
-        print("  - 总会话数: \(allSessions.count)")
+        debugLog("  - 总会话数: \(allSessions.count)")
         #endif
         #if DEBUG
-        print("  - 目标选择数: \(maxCount)")
+        debugLog("  - 目标选择数: \(maxCount)")
         #endif
         #if DEBUG
-        print("  - 时间点数: \(timePointCount)")
+        debugLog("  - 时间点数: \(timePointCount)")
         #endif
         #if DEBUG
-        print("  - 随机时间点: \(randomTimePoints.map { formatDateForRandomSelection($0) })")
+        debugLog("  - 随机时间点: \(randomTimePoints.map { formatDateForRandomSelection($0) })")
         #endif
         
         // 为每个随机时间点选择会话组
@@ -1873,13 +1873,13 @@ extension ThoughtJourneyService {
             
             if groupSize > 0 {
                 #if DEBUG
-                print("  ✅ 时间点 \(formatDateForRandomSelection(timePoint)): 选中 \(groupSize) 个相关会话")
+                debugLog("  ✅ 时间点 \(formatDateForRandomSelection(timePoint)): 选中 \(groupSize) 个相关会话")
                 #endif
             }
         }
         
         #if DEBUG
-        print("  - 最终选中: \(selectedSessions.count) 个会话")
+        debugLog("  - 最终选中: \(selectedSessions.count) 个会话")
         #endif
         return selectedSessions
     }

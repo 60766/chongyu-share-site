@@ -21,7 +21,7 @@ class PartialDataDelegate: NSObject, URLSessionDataDelegate, URLSessionDelegate 
         // 即使有错误，也尝试返回已接收的数据
         if let error = error as? URLError, error.code == .networkConnectionLost {
             #if DEBUG
-            print("🔄 Connection lost, but we have \(receivedData.count) bytes of partial data")
+            debugLog("🔄 Connection lost, but we have \(receivedData.count) bytes of partial data")
             #endif
             completion?(receivedData.isEmpty ? nil : receivedData, task.response, error)
         } else {
@@ -88,7 +88,7 @@ class AINetworkService: ObservableObject {
     private init() {
         let url = BackendURLProvider.resolvedURL()
         #if DEBUG
-        print("🌐 [AINetworkService] 使用 baseURL: \(url.absoluteString)")
+        debugLog("🌐 [AINetworkService] 使用 baseURL: \(url.absoluteString)")
         #endif
         self.baseURL = url
     }
@@ -115,12 +115,12 @@ class AINetworkService: ObservableObject {
                 }
                 
                 #if DEBUG
-                print("📥 HTTP status: \(httpResponse.statusCode)")
+                debugLog("📥 HTTP status: \(httpResponse.statusCode)")
                 #endif
                 
                 if httpResponse.statusCode == 402 {
                     #if DEBUG
-                    print("💳 402 Payment Required from backend")
+                    debugLog("💳 402 Payment Required from backend")
                     #endif
                     Task { @MainActor in
                         WalletManager.shared.showPurchaseSheet()
@@ -132,7 +132,7 @@ class AINetworkService: ObservableObject {
                 
                 if httpResponse.statusCode != 200 {
                     #if DEBUG
-                    print("❌ Non-200 status: \(httpResponse.statusCode)")
+                    debugLog("❌ Non-200 status: \(httpResponse.statusCode)")
                     #endif
                     
                     // 403错误：API额度不足或服务不可用
@@ -142,11 +142,11 @@ class AINetworkService: ObservableObject {
                             // 显示友好的错误提示
                             let errorMessage = "API服务暂时不可用，请联系客服或稍后重试"
                             #if DEBUG
-                            print("🔔 [Toast] 准备显示403错误提示: \(errorMessage)")
+                            debugLog("🔔 [Toast] 准备显示403错误提示: \(errorMessage)")
                             #endif
                             ToastManager.shared.showToast(message: errorMessage)
                             #if DEBUG
-                            print("🔔 [Toast] Toast已调用，isVisible应该为true")
+                            debugLog("🔔 [Toast] Toast已调用，isVisible应该为true")
                             #endif
                         }
                     } else {
@@ -175,7 +175,7 @@ class AINetworkService: ObservableObject {
                                     // 如果解析失败但有网络错误，优先报告网络问题
                                     if let urlError = error as? URLError, urlError.code == .networkConnectionLost {
                                         #if DEBUG
-                                        print("🔄 Data parsing failed, but connection was lost - treating as partial data available")
+                                        debugLog("🔄 Data parsing failed, but connection was lost - treating as partial data available")
                                         #endif
                                         promise(.failure(.partialDataAvailable(urlError)))
                                     } else {
@@ -236,8 +236,8 @@ class AINetworkService: ObservableObject {
         let url = baseURL.appendingPathComponent("api/proxy")
         
         // 调试日志已关闭
-        // print("🌐 AINetworkService baseURL: \(baseURL.absoluteString)")
-        // print("➡️ POST \(url.absoluteString)")
+        // debugLog("🌐 AINetworkService baseURL: \(baseURL.absoluteString)")
+        // debugLog("➡️ POST \(url.absoluteString)")
         
         // 构建请求体（后端将附加模型名等）
         let requestBody: [String: Any] = [
@@ -259,12 +259,12 @@ class AINetworkService: ObservableObject {
         request.addValue(token, forHTTPHeaderField: "X-App-Account-Token")
         request.addValue(AppAccountManager.shared.deviceIdentifier, forHTTPHeaderField: "X-Device-Id")
         #if DEBUG
-        print("🪪 实际使用的Token: \(token)")
+        debugLog("🪪 实际使用的Token: \(token)")
         #endif
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-            // print("📦 Request body size: \(request.httpBody?.count ?? 0) bytes")
+            // debugLog("📦 Request body size: \(request.httpBody?.count ?? 0) bytes")
         } catch {
             return Fail(error: AINetworkError.requestFailed(error)).eraseToAnyPublisher()
         }
@@ -289,7 +289,7 @@ class AINetworkService: ObservableObject {
     ) -> AnyPublisher<String, AINetworkError> {
         let url = baseURL.appendingPathComponent("api/proxy")
         
-        // print("🔄 准备代理聊天请求 - 角色: \(characterName)")
+        // debugLog("🔄 准备代理聊天请求 - 角色: \(characterName)")
         
         let systemPrompt = """
         你是\(characterName)，\(characterInfo)
@@ -343,7 +343,7 @@ class AINetworkService: ObservableObject {
         request.addValue(chatToken, forHTTPHeaderField: "X-App-Account-Token")
         request.addValue(AppAccountManager.shared.deviceIdentifier, forHTTPHeaderField: "X-Device-Id")
         #if DEBUG
-        print("🪪 聊天使用的Token: \(chatToken)")
+        debugLog("🪪 聊天使用的Token: \(chatToken)")
         #endif
         do { request.httpBody = try JSONSerialization.data(withJSONObject: requestBody) } catch {
             return Fail(error: AINetworkError.requestFailed(error)).eraseToAnyPublisher()
@@ -360,7 +360,7 @@ class AINetworkService: ObservableObject {
     private func parseJSONResponse(data: Data, allowPartial: Bool = false) -> AnyPublisher<String, AINetworkError> {
         do {
             #if DEBUG
-            print("📦 Received data size: \(data.count) bytes")
+            debugLog("📦 Received data size: \(data.count) bytes")
             #endif
             
             // 尝试解析完整的JSON
@@ -377,7 +377,7 @@ class AINetworkService: ObservableObject {
             
         } catch {
             #if DEBUG
-            print("❌ JSON parsing failed: \(error)")
+            debugLog("❌ JSON parsing failed: \(error)")
             #endif
             
             // 如果允许部分数据，尝试从原始数据中提取有用信息
@@ -398,7 +398,7 @@ class AINetworkService: ObservableObject {
         }
         
         #if DEBUG
-        print("🔍 Attempting partial JSON parsing from: \(dataString.prefix(200))...")
+        debugLog("🔍 Attempting partial JSON parsing from: \(dataString.prefix(200))...")
         #endif
         
         // 尝试修复不完整的JSON
@@ -407,7 +407,7 @@ class AINetworkService: ObservableObject {
         if let repairedData = repairedJSON.data(using: .utf8),
            let jsonObject = try? JSONSerialization.jsonObject(with: repairedData) as? [String: Any] {
             #if DEBUG
-            print("✅ Successfully repaired and parsed partial JSON")
+            debugLog("✅ Successfully repaired and parsed partial JSON")
             #endif
             return self.extractContentFromJSON(jsonObject)
         }
@@ -439,7 +439,7 @@ class AINetworkService: ObservableObject {
         }
         
         #if DEBUG
-        print("🔧 JSON repair: \(jsonString.count) -> \(repaired.count) chars")
+        debugLog("🔧 JSON repair: \(jsonString.count) -> \(repaired.count) chars")
         #endif
         return repaired
     }
@@ -477,7 +477,7 @@ class AINetworkService: ObservableObject {
                             .replacingOccurrences(of: "\\\\", with: "\\")
                         
                         #if DEBUG
-                        print("✅ Extracted content via regex pattern #\(index + 1): \(unescapedContent.prefix(100))...")
+                        debugLog("✅ Extracted content via regex pattern #\(index + 1): \(unescapedContent.prefix(100))...")
                         #endif
                         return Just(unescapedContent.trimmingCharacters(in: .whitespacesAndNewlines))
                             .setFailureType(to: AINetworkError.self)
@@ -488,8 +488,8 @@ class AINetworkService: ObservableObject {
         }
         
         #if DEBUG
-        print("❌ Failed to extract content from partial data")
-        print("🔍 Data sample: \(dataString.prefix(500))")
+        debugLog("❌ Failed to extract content from partial data")
+        debugLog("🔍 Data sample: \(dataString.prefix(500))")
         #endif
         return Fail(error: AINetworkError.decodingError(NSError(domain: "Regex", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to extract content from partial data"]))).eraseToAnyPublisher()
     }

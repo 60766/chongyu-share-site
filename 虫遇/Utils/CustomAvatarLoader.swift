@@ -35,14 +35,14 @@ class CustomAvatarLoader {
                     let fileURL = documentsDirectory.appendingPathComponent("\(characterId).\(ext)")
                     
                     #if DEBUG
-                    print("🔍 CustomAvatarLoader: 检查文件（characterId） - \(fileURL.path)")
+                    debugLog("🔍 CustomAvatarLoader: 检查文件（characterId） - \(fileURL.path)")
                     #endif
                     
                     if FileManager.default.fileExists(atPath: fileURL.path) {
                         if let imageData = try? Data(contentsOf: fileURL),
                            let image = UIImage(data: imageData) {
                             #if DEBUG
-                            print("✅ CustomAvatarLoader: 成功加载头像（characterId） - \(fileURL.path)")
+                            debugLog("✅ CustomAvatarLoader: 成功加载头像（characterId） - \(fileURL.path)")
                             #endif
                             return image
                         }
@@ -56,14 +56,14 @@ class CustomAvatarLoader {
                 let fileURL1 = documentsDirectory.appendingPathComponent(avatarName)
                 
                 #if DEBUG
-                print("🔍 CustomAvatarLoader: 检查文件（avatarName直接） - \(fileURL1.path)")
+                debugLog("🔍 CustomAvatarLoader: 检查文件（avatarName直接） - \(fileURL1.path)")
                 #endif
                 
                 if FileManager.default.fileExists(atPath: fileURL1.path) {
                     if let imageData = try? Data(contentsOf: fileURL1),
                        let image = UIImage(data: imageData) {
                         #if DEBUG
-                        print("✅ CustomAvatarLoader: 成功加载头像（avatarName直接） - \(fileURL1.path)")
+                        debugLog("✅ CustomAvatarLoader: 成功加载头像（avatarName直接） - \(fileURL1.path)")
                         #endif
                         return image
                     }
@@ -74,14 +74,14 @@ class CustomAvatarLoader {
                     let fileURL = documentsDirectory.appendingPathComponent("\(avatarName).\(ext)")
                     
                     #if DEBUG
-                    print("🔍 CustomAvatarLoader: 检查文件（avatarName+扩展名） - \(fileURL.path)")
+                    debugLog("🔍 CustomAvatarLoader: 检查文件（avatarName+扩展名） - \(fileURL.path)")
                     #endif
                     
             if FileManager.default.fileExists(atPath: fileURL.path) {
                 if let imageData = try? Data(contentsOf: fileURL),
                    let image = UIImage(data: imageData) {
                             #if DEBUG
-                            print("✅ CustomAvatarLoader: 成功加载头像（avatarName+扩展名） - \(fileURL.path)")
+                            debugLog("✅ CustomAvatarLoader: 成功加载头像（avatarName+扩展名） - \(fileURL.path)")
                             #endif
                     return image
                 }
@@ -90,11 +90,11 @@ class CustomAvatarLoader {
             }
             
             #if DEBUG
-            print("⚠️ CustomAvatarLoader: 未找到头像文件 - characterId: \(characterId), avatarName: \(avatarName)")
+            debugLog("⚠️ CustomAvatarLoader: 未找到头像文件 - characterId: \(characterId), avatarName: \(avatarName)")
             // 列出文档目录中的所有文件，帮助调试
             if let files = try? FileManager.default.contentsOfDirectory(atPath: documentsDirectory.path) {
                 let customFiles = files.filter { $0.hasPrefix("custom_") || $0.hasPrefix("user_avatar_") }
-                print("📁 文档目录中的custom_/user_avatar_文件: \(customFiles.prefix(10))")
+                debugLog("📁 文档目录中的custom_/user_avatar_文件: \(customFiles.prefix(10))")
             }
             #endif
         }

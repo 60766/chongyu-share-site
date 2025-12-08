@@ -70,7 +70,7 @@ public struct InputDebugView: View {
                 )
                 .onChange(of: textFieldIsFocused) { oldValue, newValue in
                     #if DEBUG
-                    print("TextField焦点状态: \(newValue)")
+                    debugLog("TextField焦点状态: \(newValue)")
                     #endif
                 }
                 .padding(.horizontal)
@@ -90,7 +90,7 @@ public struct InputDebugView: View {
                 )
                 .onChange(of: textEditorIsFocused) { oldValue, newValue in
                     #if DEBUG
-                    print("TextEditor焦点状态: \(newValue)")
+                    debugLog("TextEditor焦点状态: \(newValue)")
                     #endif
                 }
                 .padding(.horizontal)
@@ -109,7 +109,7 @@ public struct InputDebugView: View {
             .padding(.horizontal)
             .onChange(of: debugState.simpleInputFocused) { oldValue, newValue in
                 #if DEBUG
-                print("SimpleInput焦点状态: \(newValue)")
+                debugLog("SimpleInput焦点状态: \(newValue)")
                 #endif
             }
         }

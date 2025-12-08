@@ -341,7 +341,7 @@ struct ThoughtJourneyView: View {
     /// 重新生成报告 - 清除现有内容并生成新内容
     private func regenerateReport() {
         #if DEBUG
-        print("🔄 用户确认重新生成次元回放报告")
+        debugLog("🔄 用户确认重新生成次元回放报告")
         #endif
         service.currentReport = nil
         generateReport()
