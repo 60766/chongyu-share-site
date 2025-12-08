@@ -702,10 +702,6 @@ struct PublishPanelView: View {
         let characterProbabilitiesToPublish = getProbabilityDict()
         let publishModeToPublish = publishMode
         
-        // ⚡️ 关键优化：立即清空图片数组，释放内存
-        // 图片已经被复制到imagesToPublish，可以安全清空
-        selectedImages = []
-        
         // 立即关闭发布面板并收起键盘，给用户即时反馈
         withAnimation(.easeOut(duration: 0.05)) {
             isVisible = false
@@ -734,6 +730,11 @@ struct PublishPanelView: View {
                     publishMode: publishModeToPublish
                 )
             }
+        }
+        
+        // ⚡️ 关键优化：延迟清空图片，等面板完全退出后再释放大图，避免界面关闭瞬间的卡顿
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            self.selectedImages.removeAll()
         }
     }
     

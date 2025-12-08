@@ -2215,7 +2215,8 @@ struct FullscreenPostDetailView: View {
     
     // 帖子内容区域
     private func makePostContentSection() -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        // 收紧文字与图片间距，贴近首页卡片视觉
+        VStack(alignment: .leading, spacing: 2) {
             // 帖子文字内容
             if !viewModel.post.content.isEmpty {
                 let textLeadingPadding = calculateDynamicPadding(text: viewModel.post.content)
@@ -2229,7 +2230,7 @@ struct FullscreenPostDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .leading) // 🔒 修复：确保文字左对齐
                     .padding(.leading, textLeadingPadding)
                     .padding(.trailing, 16)
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 6)
                     .id("post_text_content_\(viewModel.post.id.uuidString)")
                     .contentShape(Rectangle())
                     .onLongPressGesture(minimumDuration: 0.35, maximumDistance: 12) {
@@ -2249,31 +2250,32 @@ struct FullscreenPostDetailView: View {
                 switch viewModel.post.images.count {
                 case 1:
                     singleImageView(viewModel.post.images[0])
+                        .padding(.top, 0) // 单图与文字贴近
                         .id("image_section_\(viewModel.post.id.uuidString)")
                 case 2:
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 2)
                         .padding(.horizontal, 16)
-                        .padding(.top, 4)
+                        .padding(.top, 4) // 恢复图片自身顶部间距
                         .id("image_section_\(viewModel.post.id.uuidString)")
                 case 3:
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
                         .padding(.horizontal, 16)
-                        .padding(.top, 4)
+                        .padding(.top, 4) // 恢复图片自身顶部间距
                         .id("image_section_\(viewModel.post.id.uuidString)")
                 case 4:
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 2)
                         .padding(.horizontal, 16)
-                        .padding(.top, 4)
+                        .padding(.top, 4) // 恢复图片自身顶部间距
                         .id("image_section_\(viewModel.post.id.uuidString)")
                 case 5, 6:
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
                         .padding(.horizontal, 16)
-                        .padding(.top, 4)
+                        .padding(.top, 4) // 恢复图片自身顶部间距
                         .id("image_section_\(viewModel.post.id.uuidString)")
                 default:
                     wechatStyleGridLayout(images: viewModel.post.images, columns: 3)
                         .padding(.horizontal, 16)
-                        .padding(.top, 4)
+                        .padding(.top, 4) // 恢复图片自身顶部间距
                         .id("image_section_\(viewModel.post.id.uuidString)")
                 }
             }

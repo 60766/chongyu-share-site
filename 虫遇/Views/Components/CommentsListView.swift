@@ -1404,12 +1404,12 @@ struct CommentItemView: View {
                     if let replyToUsername = comment.replyToUsername {
                         HStack(spacing: 4) {
                             Text("回复")
-                                .font(.system(size: 15))
-                                .foregroundColor(.gray)
+                                .font(.system(size: 13, weight: .regular))
+                                .foregroundColor(.gray.opacity(0.85))
                             
                             Text(replyToUsername)
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(.gray)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.gray.opacity(0.9))
                         }
                         .padding(.top, 2)
                     }
