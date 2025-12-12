@@ -529,17 +529,15 @@ struct CharacterDetailView: View {
             HStack(alignment: .center, spacing: 14) {
                 // 头像 - 左侧放置，符合图一设计
                 // 🔒 修复：如果是用户创建的角色，头像可点击更换
+                // 🔧 修复白色蒙版问题：非用户创建的角色不使用Button，直接显示头像，避免disabled Button的蒙版效果
                 let isUserCreated = character.id.hasPrefix("custom_") || character.id.hasPrefix("user_avatar_")
                 
-                Button(action: {
-                    if isUserCreated {
-                        isShowingImagePicker = true
-                    }
-                }) {
-                    ZStack(alignment: .bottomTrailing) {
+                // 头像视图内容
+                let avatarContent = ZStack(alignment: .bottomTrailing) {
                     if let customImage = customImage {
                         // 显示从文档目录加载的自定义头像
                         Image(uiImage: customImage)
+                            .renderingMode(.original)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                             .frame(width: 70, height: 70)
@@ -552,6 +550,7 @@ struct CharacterDetailView: View {
                         // 尝试加载系统提供的头像
                         if let image = UIImage(named: character.avatarUrl) {
                             Image(uiImage: image)
+                                .renderingMode(.original)
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
                                 .frame(width: 70, height: 70)
@@ -569,23 +568,36 @@ struct CharacterDetailView: View {
                             )
                         }
                     }
-                        
-                        // 如果是用户创建的角色，显示编辑图标
-                        if isUserCreated {
-                            Circle()
-                                .fill(Color(hex: "6A7FDB"))
-                                .frame(width: 20, height: 20)
-                                .overlay(
-                                    Image(systemName: "pencil")
-                                        .font(.system(size: 10, weight: .medium))
-                                        .foregroundColor(.white)
-                                )
-                                .offset(x: 2, y: 2)
-                        }
+                    
+                    // 如果是用户创建的角色，显示编辑图标
+                    if isUserCreated {
+                        Circle()
+                            .fill(Color(hex: "6A7FDB"))
+                            .frame(width: 20, height: 20)
+                            .overlay(
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.white)
+                            )
+                            .offset(x: 2, y: 2)
                     }
                 }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(!isUserCreated)
+                
+                // 根据是否为用户创建的角色，决定使用Button还是直接显示
+                Group {
+                    if isUserCreated {
+                        // 用户创建的角色：使用Button，可点击更换头像
+                        Button(action: {
+                            isShowingImagePicker = true
+                        }) {
+                            avatarContent
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    } else {
+                        // 虚拟角色：直接显示头像，不使用Button，避免disabled Button的白色蒙版
+                        avatarContent
+                    }
+                }
                 .onAppear {
                     #if DEBUG
                     debugLog("🔍 CharacterDetailView - 显示角色头像: \(character.avatarUrl), 名称: \(character.name), 是否用户创建: \(isUserCreated)")

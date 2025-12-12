@@ -14,8 +14,8 @@ struct CreateCharacterView: View {
     private let aiNetworkService = AINetworkService.shared
     private let apiConfigManager = APIConfigManager.shared
     
-    // 快速创建相关
-    @State private var quickCreateMode: Bool = false
+    // 快速创建相关 - 默认开启快速创建模式
+    @State private var quickCreateMode: Bool = true
     @State private var characterSearchText: String = ""
     @State private var isGeneratingInfo: Bool = false
     @State private var generationError: String? = nil

@@ -140,6 +140,7 @@ class CharacterAvatarService {
         case .image(let imageName):
             avatarView = AnyView(
                 Image(imageName)
+                    .renderingMode(.original)  // 确保使用原始渲染模式，避免白色蒙版
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: size, height: size)
@@ -262,6 +263,7 @@ class CharacterAvatarService {
         case .image(let imageName):
             avatarView = AnyView(
                 Image(imageName)
+                    .renderingMode(.original)  // 确保使用原始渲染模式，避免白色蒙版
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: size, height: size)
